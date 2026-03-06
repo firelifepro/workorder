@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form1</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form7</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -1106,16 +1106,26 @@ async function createDoc() {
 
 function buildWorkOrderHTML(d) {
   // Checkbox helpers
+  // Google Docs native checklist: Drive converts <ul class="google-docs-checklist"> to
+  // real interactive checkboxes when importing HTML. Each <li> becomes a toggleable checkbox.
   const checkedSvcs = new Set(
     [...document.querySelectorAll('input[name="svc"]:checked')].map(e => e.value)
   );
-  const cb  = (checked) => checked ? '&#9745;' : '&#9744;'; // ☑ ☐
-  const cbl = (checked, label) => `${cb(checked)}&nbsp;${label}`;
   const hasSvc = (v) => checkedSvcs.has(v);
   const hasAnySvc = (...vals) => vals.some(v => checkedSvcs.has(v));
   const trackerChecked = document.getElementById('tracker-updated')?.checked || false;
   const otherChecked   = document.getElementById('other-svc-cb')?.checked || false;
   const otherText      = d['OTHER SVC TEXT'] || '';
+
+  // Renders a single checkbox item as a Google Docs native checklist entry.
+  // checked=true  → renders as a ticked   ✅ interactive checkbox in the Doc
+  // checked=false → renders as an unticked ☐ interactive checkbox in the Doc
+  const chk = (checked, label) => {
+    const state = checked ? ' checked' : '';
+    return `<ul style="list-style-type:none;margin:0;padding:0;">` +
+           `<li style="list-style-type:none;" data-checked="${checked}">` +
+           `<input type="checkbox"${state} disabled> ${label}</li></ul>`;
+  };
 
   // Styles
   const S = {
@@ -1138,9 +1148,9 @@ function buildWorkOrderHTML(d) {
   const hdr = (t, colspan=4) => tr(th(t, colspan));
   const v   = (t) => (t||'').toString().replace(/\n/g,'<br>') || '&nbsp;';
 
-  // Frequency row for inspection services
+  // Frequency row for inspection services — one checklist item per frequency
   const freqRow = (prefix) => ['Annual','Semi Annual','Quarterly','Monthly']
-    .map(f => `${cb(hasSvc(`${prefix} – ${f}`))}&nbsp;${f}`).join('<br>');
+    .map(f => chk(hasSvc(`${prefix} – ${f}`), f)).join('');
 
   let html = `<!DOCTYPE html><html><body style="margin:18px;">`;
 
@@ -1173,10 +1183,10 @@ function buildWorkOrderHTML(d) {
     tr(th('Service Type(s) — check all that apply:', 4, S.subhdr)) +
     // Main service checkboxes
     tr(
-      td(cbl(hasAnySvc('Fire Alarm – Annual','Fire Alarm – Semi Annual','Fire Alarm – Quarterly','Fire Alarm – Monthly'), 'Fire Alarm Inspection')),
-      td(cbl(hasAnySvc('Sprinkler – Annual','Sprinkler – Semi Annual','Sprinkler – Quarterly','Sprinkler – Monthly'), 'Sprinkler Inspection')),
-      td(cbl(hasAnySvc('Extinguisher – Annual','Extinguisher – Semi Annual','Extinguisher – Quarterly','Extinguisher – Monthly'), 'Extinguisher Inspection')),
-      td(cbl(hasAnySvc('Exit Light – Annual','Exit Light – Semi Annual','Exit Light – Quarterly','Exit Light – Monthly'), 'Emergency Exit Light Inspection'))
+      td(chk(hasAnySvc('Fire Alarm – Annual','Fire Alarm – Semi Annual','Fire Alarm – Quarterly','Fire Alarm – Monthly'), 'Fire Alarm Inspection')),
+      td(chk(hasAnySvc('Sprinkler – Annual','Sprinkler – Semi Annual','Sprinkler – Quarterly','Sprinkler – Monthly'), 'Sprinkler Inspection')),
+      td(chk(hasAnySvc('Extinguisher – Annual','Extinguisher – Semi Annual','Extinguisher – Quarterly','Extinguisher – Monthly'), 'Extinguisher Inspection')),
+      td(chk(hasAnySvc('Exit Light – Annual','Exit Light – Semi Annual','Exit Light – Quarterly','Exit Light – Monthly'), 'Emergency Exit Light Inspection'))
     ) +
     // Frequency sub-rows
     tr(
@@ -1187,22 +1197,22 @@ function buildWorkOrderHTML(d) {
     ) +
     // Other services
     tr(
-      td(cbl(hasSvc('5-Year Internal Pipe Inspection'), '5-Year Internal Pipe Inspection')),
-      td(cbl(hasSvc('5-Year FDC Hydrostatic Test'), '5-Year FDC Hydrostatic Test')),
-      td(cbl(hasSvc('3-Year Dry Pipe Test'), '3-Year Dry Pipe Test')),
-      td(cbl(hasSvc('Annual Backflow Prevention Test'), 'Annual Backflow Prevention Test'))
+      td(chk(hasSvc('5-Year Internal Pipe Inspection'), '5-Year Internal Pipe Inspection')),
+      td(chk(hasSvc('5-Year FDC Hydrostatic Test'), '5-Year FDC Hydrostatic Test')),
+      td(chk(hasSvc('3-Year Dry Pipe Test'), '3-Year Dry Pipe Test')),
+      td(chk(hasSvc('Annual Backflow Prevention Test'), 'Annual Backflow Prevention Test'))
     ) +
     tr(
-      td(cbl(hasSvc('Deficiency Correction'), 'Deficiency Correction')),
-      td(cbl(hasSvc('Repair / Service Call'), 'Repair / Service Call')),
-      td(cbl(hasSvc('New Installation'), 'New Installation')),
-      td(cbl(hasSvc('Compliance Report'), 'Compliance Report'))
+      td(chk(hasSvc('Deficiency Correction'), 'Deficiency Correction')),
+      td(chk(hasSvc('Repair / Service Call'), 'Repair / Service Call')),
+      td(chk(hasSvc('New Installation'), 'New Installation')),
+      td(chk(hasSvc('Compliance Report'), 'Compliance Report'))
     ) +
     tr(
-      td(cbl(hasSvc('Monitoring Setup / Change'), 'Monitoring Setup / Change')),
-      td(cbl(hasSvc('Sub-Contractor Work'), 'Sub-Contractor Work')),
-      td(cbl(hasSvc('Walk-Through / Consultation'), 'Walk-Through / Consultation')),
-      td(cbl(otherChecked, 'Other: ' + (otherText||'')))
+      td(chk(hasSvc('Monitoring Setup / Change'), 'Monitoring Setup / Change')),
+      td(chk(hasSvc('Sub-Contractor Work'), 'Sub-Contractor Work')),
+      td(chk(hasSvc('Walk-Through / Consultation'), 'Walk-Through / Consultation')),
+      td(chk(otherChecked, 'Other: ' + (otherText||'')))
     ) +
     tr(th('Description of Work Requested:', 4, S.subhdr)) +
     tr(`<td colspan="4" style="${S.val}">${v(d['DESCRIPTION OF WORK'])}</td>`)
@@ -1214,7 +1224,7 @@ function buildWorkOrderHTML(d) {
     hdr('WORK ORDER INFORMATION') +
     tr(lbl('Date Requested:'), val(d['DATE REQUESTED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
     tr(lbl('Work Order #:'), val(d['WORK ORDER #']),
-       lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>cbl(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
+       lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>chk(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
     tr(lbl('Requested By:'), val(d['REQUESTED BY']), lbl('Assigned Technician:'), val(d['ASSIGNED TECHNICIAN'])) +
     tr(lbl('PO Number:'), val(d['PO NUMBER']), lbl('Scheduled Date:'), val(d['SCHEDULED DATE']))
   );
@@ -1224,10 +1234,10 @@ function buildWorkOrderHTML(d) {
   html += tbl(
     hdr('FIRE SYSTEM INFORMATION') +
     tr(lbl('System Type:'),
-       val(['Wet','Dry','Pre-Action','Deluge','Glycol'].map(t=>cbl(d['SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
+       val(['Wet','Dry','Pre-Action','Deluge','Glycol'].map(t=>chk(d['SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
        lbl('Panel Manufacturer:'), val(d['PANEL MANUFACTURER'])) +
     tr(lbl('Panel System Type:'),
-       val(['Conventional','Addressable'].map(t=>cbl(d['PANEL SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
+       val(['Conventional','Addressable'].map(t=>chk(d['PANEL SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
        lbl(''), val('')) +
     tr(lbl('Monitoring Company:'), val(d['MONITORING COMPANY']), lbl('Monitoring Account #:'), val(d['MONITORING ACCOUNT #'])) +
     tr(lbl('# of Sprinkler Heads:'), val(d['# SPRINKLER HEADS']), lbl('# of Fire Extinguishers:'), val(d['# FIRE EXTINGUISHERS'])) +
@@ -1257,10 +1267,10 @@ function buildWorkOrderHTML(d) {
     tr(td('Expense Name',S.ehdr), td('Description',S.ehdr), td('Quantity',S.ehdr), td('Total Amount',S.ehdr)) +
     tr(lbl('Materials'), val(d['MATERIALS DESCRIPTION']), val(d['MATERIALS QTY']), val(d['MATERIALS TOTAL'])) +
     tr(lbl('Labor Rate'),
-       val(['$85.00','$135.00'].map(r=>cbl(d['LABOR RATE']===r,r+'/hr')).join('&nbsp;&nbsp;')),
+       val(['$85.00','$135.00'].map(r=>chk(d['LABOR RATE']===r,r+'/hr')).join('&nbsp;&nbsp;')),
        val((d['LABOR HOURS']||'')+(d['LABOR HOURS']?' hrs':'')),
        val(d['LABOR TOTAL'])) +
-    tr(lbl('Trip Charge'), val(cbl(d['TRIP CHARGE']==='$90.00','$90.00')), val(''), val(d['TRIP CHARGE']==='$90.00'?d['TRIP CHARGE']:'')) +
+    tr(lbl('Trip Charge'), val(chk(d['TRIP CHARGE']==='$90.00','$90.00')), val(''), val(d['TRIP CHARGE']==='$90.00'?d['TRIP CHARGE']:'')) +
     tr(lbl('Misc'), val(d['MISC DESCRIPTION']), val(''), val(d['MISC TOTAL'])) +
     tr(`<td colspan="2" style="${S.lbl}">Total to Invoice</td>`,
        `<td style="${S.lbl}text-align:center;">=</td>`,
@@ -1272,15 +1282,15 @@ function buildWorkOrderHTML(d) {
   html += tbl(
     hdr('COMPLETION &amp; BILLING') +
     tr(lbl('Date Completed:'), val(d['DATE COMPLETED']),
-       lbl('Work Status:'), val(['Complete','Incomplete','Follow-Up Needed'].map(o=>cbl(d['WORK STATUS']===o,o)).join('&nbsp;&nbsp;'))) +
-    tr(lbl('Report Submitted:'), val(['Yes','No','Pending'].map(o=>cbl(d['REPORT SUBMITTED']===o,o)).join('&nbsp;&nbsp;')),
+       lbl('Work Status:'), val(['Complete','Incomplete','Follow-Up Needed'].map(o=>chk(d['WORK STATUS']===o,o)).join('&nbsp;&nbsp;'))) +
+    tr(lbl('Report Submitted:'), val(['Yes','No','Pending'].map(o=>chk(d['REPORT SUBMITTED']===o,o)).join('&nbsp;&nbsp;')),
        lbl('Invoice #:'), val(d['INVOICE #'])) +
     tr(lbl('Invoice Date:'), val(d['INVOICE DATE']), lbl('Total Invoice Amount:'), val(d['TOTAL INVOICE AMOUNT'])) +
-    tr(lbl('Payment Received:'), val(['Yes','No','Partial'].map(o=>cbl(d['PAYMENT RECEIVED']===o,o)).join('&nbsp;&nbsp;')),
-       lbl('Payment Method:'), val(['Check','ACH','Credit Card','Other'].map(o=>cbl(d['PAYMENT METHOD']===o,o)).join('&nbsp;&nbsp;'))) +
+    tr(lbl('Payment Received:'), val(['Yes','No','Partial'].map(o=>chk(d['PAYMENT RECEIVED']===o,o)).join('&nbsp;&nbsp;')),
+       lbl('Payment Method:'), val(['Check','ACH','Credit Card','Other'].map(o=>chk(d['PAYMENT METHOD']===o,o)).join('&nbsp;&nbsp;'))) +
     tr(lbl('Payment Date:'), val(d['PAYMENT DATE']), lbl('Entered into QuickBooks:'), val(d['ENTERED INTO QUICKBOOKS'])) +
     tr(lbl('Deposited Date:'), val(d['DEPOSITED DATE']),
-       `<td colspan="2" style="${S.val}">${cbl(trackerChecked,'Google Sheet Work Tracker Updated')}</td>`)
+       `<td colspan="2" style="${S.val}">${chk(trackerChecked,'Google Sheet Work Tracker Updated')}</td>`)
   );
   html += '<br>';
 
