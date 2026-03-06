@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
-<title>FLPS – Work Order</title>
+<title>Fire Life Protection – Work Order</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 FLPS – Work Order Form</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form11</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -285,7 +285,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 </div>
 
 <!-- SETUP GUIDE -->
-<!-- <details id="setup-guide">
+<details id="setup-guide">
   <summary>⚙️ First-time Google setup — click to expand</summary>
   <div class="guide-body">
     <div class="step"><div class="step-n">1</div><div>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a>, sign in with the Google account that owns your Drive, and create a new project (e.g. <code>FLIPS Work Orders</code>).</div></div>
@@ -295,7 +295,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     <div class="step"><div class="step-n">5</div><div>Click <strong>Connect</strong>, sign in once, and the property dropdown will load from your Google Sheet automatically.</div></div>
     <div class="step"><div class="step-n">💡</div><div><strong>Running locally?</strong> Open Terminal and run: <code>python3 -m http.server 8080</code> in the folder containing this file, then open <code>http://localhost:8080/FireLifeProtection_WorkOrder_Master.html</code>. Add <code>http://localhost:8080</code> as an authorized origin in your OAuth Client ID.</div></div>
   </div>
-</details> -->
+</details>
 
 <!-- DOCUMENT -->
 <div id="doc-wrapper">
@@ -977,7 +977,6 @@ function collectForm() {
     'CONTACT PHONE':        v('contact-phone'),
     'CONTACT EMAIL':        v('contact-email'),
     'BILLING EMAIL':        v('billing-email'),
-    'OTHER SVC TEXT':       v('other-svc-text'),
     'ACCESS / ENTRY INFO':  v('access-info'),
     'SERVICES':             svcList.join('\n') || '(none selected)',
     'DESCRIPTION OF WORK':  v('work-description'),
@@ -1041,13 +1040,9 @@ async function createDoc() {
   setStatus('submit-status', 'Building document…', '');
 
   try {
-    // Build HTML representation of the work order
     const html = buildWorkOrderHTML(data);
 
-    // Upload as HTML to Drive — Drive converts it to a Google Doc in ONE call
-    // This avoids the Docs API write quota entirely
     setStatus('submit-status', 'Uploading to Drive…', '');
-
     const boundary = '-------314159265358979';
     const metadata = JSON.stringify({ name: docName, mimeType: 'application/vnd.google-apps.document' });
     const body = [
@@ -1090,6 +1085,10 @@ async function createDoc() {
       );
     }
 
+    // Convert Completion & Billing checkboxes to native Docs checklist items
+    setStatus('submit-status', 'Applying checkboxes…', '');
+    await applyCompletionChecklists(newId);
+
     const url = `https://docs.google.com/document/d/${newId}/edit`;
     setStatus('submit-status', '✓ Work order saved!', 'ok');
     const lnk = document.getElementById('doc-link');
@@ -1104,25 +1103,95 @@ async function createDoc() {
   }
 }
 
+// ─────────────────────────────────────────────────────────
+// APPLY COMPLETION & BILLING CHECKLISTS
+// Paragraphs with "CB|" prefix are stripped then converted
+// to native BULLET_CHECKBOX items — 3 API calls total.
+// ─────────────────────────────────────────────────────────
+async function applyCompletionChecklists(docId) {
+  // Pass 1: find all "CB|" paragraphs
+  const r1 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+  if (!r1.ok) return;
+  const doc1 = await r1.json();
+
+  const cbParas = [];
+  function walk1(elements) {
+    for (const el of elements || []) {
+      if (el.paragraph) {
+        const text = (el.paragraph.elements||[]).map(e => e.textRun?.content||'').join('');
+        if (text.trimStart().startsWith('CB|')) {
+          cbParas.push({ si: el.startIndex, ei: el.endIndex });
+        }
+      }
+      if (el.table) for (const row of el.table.tableRows||[]) for (const cell of row.tableCells||[]) walk1(cell.content);
+    }
+  }
+  walk1(doc1.body.content);
+  if (cbParas.length === 0) return;
+
+  // Pass 2: delete "CB|" (3 chars) from each — reverse order to avoid index drift
+  const deleteReqs = [...cbParas]
+    .sort((a, b) => b.si - a.si)
+    .map(p => ({ deleteContentRange: { range: { startIndex: p.si, endIndex: p.si + 3 } } }));
+
+  const r2 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+    'POST', { requests: deleteReqs });
+  if (!r2.ok) { console.warn('CB delete failed:', (await r2.json()).error?.message); return; }
+
+  // Pass 3: re-read (indices shifted), then apply BULLET_CHECKBOX to all label paragraphs
+  const r3 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+  if (!r3.ok) return;
+  const doc3 = await r3.json();
+
+  const CB_LABELS = new Set([
+    'Complete','Incomplete','Follow-Up Needed',
+    'Yes','No','Pending','Partial',
+    'Check','ACH','Credit Card','Other',
+    'Google Sheet Work Tracker Updated'
+  ]);
+
+  const bulletParas = [];
+  function walk3(elements) {
+    for (const el of elements || []) {
+      if (el.paragraph) {
+        const text = (el.paragraph.elements||[]).map(e => e.textRun?.content||'').join('').replace(/[\r\n]+$/, '');
+        if (CB_LABELS.has(text)) bulletParas.push({ si: el.startIndex, ei: el.endIndex });
+      }
+      if (el.table) for (const row of el.table.tableRows||[]) for (const cell of row.tableCells||[]) walk3(cell.content);
+    }
+  }
+  walk3(doc3.body.content);
+  if (bulletParas.length === 0) return;
+
+  const bulletReqs = bulletParas.map(p => ({
+    createParagraphBullets: { range: { startIndex: p.si, endIndex: p.ei }, bulletPreset: 'BULLET_CHECKBOX' }
+  }));
+  for (let i = 0; i < bulletReqs.length; i += 50) {
+    await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      'POST', { requests: bulletReqs.slice(i, i+50) });
+  }
+}
+
 function buildWorkOrderHTML(d) {
-  // Checkbox helpers
-  // Google Docs native checklist: Drive converts <ul class="google-docs-checklist"> to
-  // real interactive checkboxes when importing HTML. Each <li> becomes a toggleable checkbox.
   const checkedSvcs = new Set(
     [...document.querySelectorAll('input[name="svc"]:checked')].map(e => e.value)
   );
-  const hasSvc = (v) => checkedSvcs.has(v);
-  const hasAnySvc = (...vals) => vals.some(v => checkedSvcs.has(v));
+  const hasSvc     = (v) => checkedSvcs.has(v);
+  const hasAnySvc  = (...vals) => vals.some(v => checkedSvcs.has(v));
   const trackerChecked = document.getElementById('tracker-updated')?.checked || false;
   const otherChecked   = document.getElementById('other-svc-cb')?.checked || false;
   const otherText      = d['OTHER SVC TEXT'] || '';
 
-  // Checkbox rendering — Unicode ☑/☐ chars.
-  // These look correct on screen and in print. In the Google Doc, users can
-  // manually change ☐ to ☑ by clicking and typing, or use Find & Replace.
-  const chk = (checked, label) => (checked ? '☑ ' : '☐ ') + label;
+  // Standard checkboxes — Unicode symbols, decorative only
+  const chk = (checked, label) => (checked ? '\u2611 ' : '\u2610 ') + label;
 
-  // Styles
+  // Completion & Billing checkboxes — each option is its own <p> with "CB|" prefix.
+  // The prefix is stripped post-upload and BULLET_CHECKBOX applied by applyCompletionChecklists().
+  const cbOpts = (opts) =>
+    `<td style="${S.val}">` +
+    opts.map(o => `<p style="margin:1px 0;font-size:9pt;line-height:1.4;">CB|${o}</p>`).join('') +
+    `</td>`;
+
   const S = {
     page:   'font-family:Arial,sans-serif;font-size:9pt;color:#000;width:100%;border-collapse:collapse;',
     hdr:    'background:#2e6da4;color:#fff;font-weight:bold;font-size:10pt;text-align:center;padding:5px 4px;',
@@ -1143,21 +1212,18 @@ function buildWorkOrderHTML(d) {
   const hdr = (t, colspan=4) => tr(th(t, colspan));
   const v   = (t) => (t||'').toString().replace(/\n/g,'<br>') || '&nbsp;';
 
-  // Frequency row for inspection services — one checklist item per frequency
   const freqRow = (prefix) => ['Annual','Semi Annual','Quarterly','Monthly']
-    .map(f => chk(hasSvc(`${prefix} – ${f}`), f)).join('');
+    .map(f => chk(hasSvc(`${prefix} \u2013 ${f}`), f)).join('<br>');
 
   let html = `<!DOCTYPE html><html><body style="margin:18px;">`;
 
-  // ── Company Letterhead ──────────────────────────────────────────
-  // Two-column: flame icon + company name left, "WORK ORDER" badge right
+  // ── Letterhead ──────────────────────────────────────────────────
   html += `
   <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
     <tr>
       <td style="width:60px;padding:6px 10px 6px 0;vertical-align:middle;">
         <div style="width:52px;height:52px;background:#2e6da4;border-radius:50%;
-                    display:flex;align-items:center;justify-content:center;
-                    font-size:26px;text-align:center;line-height:52px;">🔥</div>
+                    font-size:26px;text-align:center;line-height:52px;">&#128293;</div>
       </td>
       <td style="vertical-align:middle;padding:4px 0;">
         <div style="font-family:Arial,sans-serif;font-size:16pt;font-weight:bold;
@@ -1175,16 +1241,14 @@ function buildWorkOrderHTML(d) {
                     padding:7px 18px;border-radius:4px;letter-spacing:1px;">
           WORK ORDER
         </div>
-        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#888;
-                    margin-top:4px;text-align:right;">
+        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#888;margin-top:4px;text-align:right;">
           Line #: <strong style="color:#2e6da4;">${d['WORK ORDER #'] ? 'WO-'+d['WORK ORDER #'] : '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</strong>
         </div>
       </td>
     </tr>
-  </table>`;
-  html += '<br>';
+  </table><br>`;
 
-  // ── Work Order Information — FIRST SECTION ──────────────────────
+  // ── 1. Work Order Information ────────────────────────────────────
   html += tbl(
     hdr('WORK ORDER INFORMATION') +
     tr(lbl('Date Requested:'), val(d['DATE REQUESTED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
@@ -1195,7 +1259,7 @@ function buildWorkOrderHTML(d) {
   );
   html += '<br>';
 
-  // ── Client & Property ──────────────────────────────────────────
+  // ── 2. Client & Property ─────────────────────────────────────────
   html += tbl(
     hdr('CLIENT &amp; PROPERTY INFORMATION') +
     tr(lbl('Client / Company:'), val(v(d['CLIENT / COMPANY'])), lbl('Property Name:'), val(v(d['PROPERTY NAME']))) +
@@ -1206,25 +1270,17 @@ function buildWorkOrderHTML(d) {
   );
   html += '<br>';
 
-  // ── Scope of Work ──────────────────────────────────────────────
+  // ── 3. Scope of Work ─────────────────────────────────────────────
   html += tbl(
     hdr('SCOPE OF WORK') +
-    tr(th('Service Type(s) — check all that apply:', 4, S.subhdr)) +
-    // Main service checkboxes
+    tr(th('Service Type(s) \u2014 check all that apply:', 4, S.subhdr)) +
     tr(
-      td(chk(hasAnySvc('Fire Alarm – Annual','Fire Alarm – Semi Annual','Fire Alarm – Quarterly','Fire Alarm – Monthly'), 'Fire Alarm Inspection')),
-      td(chk(hasAnySvc('Sprinkler – Annual','Sprinkler – Semi Annual','Sprinkler – Quarterly','Sprinkler – Monthly'), 'Sprinkler Inspection')),
-      td(chk(hasAnySvc('Extinguisher – Annual','Extinguisher – Semi Annual','Extinguisher – Quarterly','Extinguisher – Monthly'), 'Extinguisher Inspection')),
-      td(chk(hasAnySvc('Exit Light – Annual','Exit Light – Semi Annual','Exit Light – Quarterly','Exit Light – Monthly'), 'Emergency Exit Light Inspection'))
+      td(chk(hasAnySvc('Fire Alarm \u2013 Annual','Fire Alarm \u2013 Semi Annual','Fire Alarm \u2013 Quarterly','Fire Alarm \u2013 Monthly'), 'Fire Alarm Inspection')),
+      td(chk(hasAnySvc('Sprinkler \u2013 Annual','Sprinkler \u2013 Semi Annual','Sprinkler \u2013 Quarterly','Sprinkler \u2013 Monthly'), 'Sprinkler Inspection')),
+      td(chk(hasAnySvc('Extinguisher \u2013 Annual','Extinguisher \u2013 Semi Annual','Extinguisher \u2013 Quarterly','Extinguisher \u2013 Monthly'), 'Extinguisher Inspection')),
+      td(chk(hasAnySvc('Exit Light \u2013 Annual','Exit Light \u2013 Semi Annual','Exit Light \u2013 Quarterly','Exit Light \u2013 Monthly'), 'Emergency Exit Light Inspection'))
     ) +
-    // Frequency sub-rows
-    tr(
-      td(freqRow('Fire Alarm')),
-      td(freqRow('Sprinkler')),
-      td(freqRow('Extinguisher')),
-      td(freqRow('Exit Light'))
-    ) +
-    // Other services
+    tr(td(freqRow('Fire Alarm')), td(freqRow('Sprinkler')), td(freqRow('Extinguisher')), td(freqRow('Exit Light'))) +
     tr(
       td(chk(hasSvc('5-Year Internal Pipe Inspection'), '5-Year Internal Pipe Inspection')),
       td(chk(hasSvc('5-Year FDC Hydrostatic Test'), '5-Year FDC Hydrostatic Test')),
@@ -1248,7 +1304,7 @@ function buildWorkOrderHTML(d) {
   );
   html += '<br>';
 
-  // ── Fire System Information ────────────────────────────────────
+  // ── 4. Fire System Information ───────────────────────────────────
   html += tbl(
     hdr('FIRE SYSTEM INFORMATION') +
     tr(lbl('System Type:'),
@@ -1264,7 +1320,7 @@ function buildWorkOrderHTML(d) {
   );
   html += '<br>';
 
-  // ── Sub-Contractor ─────────────────────────────────────────────
+  // ── 5. Sub-Contractor ────────────────────────────────────────────
   html += tbl(
     hdr('SUB-CONTRACTOR (IF APPLICABLE)') +
     tr(lbl('Sub-Contractor:'), val(d['SUB-CONTRACTOR']), lbl('Sub-Contractor Invoice #:'), val(d['SUB-CONTRACTOR INVOICE #'])) +
@@ -1272,14 +1328,12 @@ function buildWorkOrderHTML(d) {
   );
   html += '<br>';
 
-  // ── Notes / Deficiencies ───────────────────────────────────────
-  html += tbl(
-    hdr('NOTES / DEFICIENCIES FOUND', 1) +
-    tr(`<td style="${S.val}min-height:60px;">${v(d['NOTES / DEFICIENCIES'])}</td>`)
-  , 'width:100%;');
+  // ── 6. Notes / Deficiencies ──────────────────────────────────────
+  html += tbl(hdr('NOTES / DEFICIENCIES FOUND', 1) +
+    tr(`<td style="${S.val}min-height:60px;">${v(d['NOTES / DEFICIENCIES'])}</td>`), 'width:100%;');
   html += '<br>';
 
-  // ── FLIPS Expenses ─────────────────────────────────────────────
+  // ── 7. FLIPS Expenses ────────────────────────────────────────────
   html += tbl(
     hdr('FLIPS EXPENSES') +
     tr(td('Expense Name',S.ehdr), td('Description',S.ehdr), td('Quantity',S.ehdr), td('Total Amount',S.ehdr)) +
@@ -1296,23 +1350,26 @@ function buildWorkOrderHTML(d) {
   );
   html += '<br>';
 
-  // ── Completion & Billing ───────────────────────────────────────
+  // ── 8. Completion & Billing ──────────────────────────────────────
+  // Checkbox groups use cbOpts() — each option is its own <p> with "CB|" prefix.
+  // After upload, applyCompletionChecklists() strips the prefix and applies
+  // BULLET_CHECKBOX so they become real interactive checkboxes in the Doc.
   html += tbl(
     hdr('COMPLETION &amp; BILLING') +
     tr(lbl('Date Completed:'), val(d['DATE COMPLETED']),
-       lbl('Work Status:'), val(['Complete','Incomplete','Follow-Up Needed'].map(o=>chk(d['WORK STATUS']===o,o)).join('&nbsp;&nbsp;'))) +
-    tr(lbl('Report Submitted:'), val(['Yes','No','Pending'].map(o=>chk(d['REPORT SUBMITTED']===o,o)).join('&nbsp;&nbsp;')),
+       lbl('Work Status:'),    cbOpts(['Complete','Incomplete','Follow-Up Needed'])) +
+    tr(lbl('Report Submitted:'), cbOpts(['Yes','No','Pending']),
        lbl('Invoice #:'), val(d['INVOICE #'])) +
     tr(lbl('Invoice Date:'), val(d['INVOICE DATE']), lbl('Total Invoice Amount:'), val(d['TOTAL INVOICE AMOUNT'])) +
-    tr(lbl('Payment Received:'), val(['Yes','No','Partial'].map(o=>chk(d['PAYMENT RECEIVED']===o,o)).join('&nbsp;&nbsp;')),
-       lbl('Payment Method:'), val(['Check','ACH','Credit Card','Other'].map(o=>chk(d['PAYMENT METHOD']===o,o)).join('&nbsp;&nbsp;'))) +
+    tr(lbl('Payment Received:'), cbOpts(['Yes','No','Partial']),
+       lbl('Payment Method:'),   cbOpts(['Check','ACH','Credit Card','Other'])) +
     tr(lbl('Payment Date:'), val(d['PAYMENT DATE']), lbl('Entered into QuickBooks:'), val(d['ENTERED INTO QUICKBOOKS'])) +
     tr(lbl('Deposited Date:'), val(d['DEPOSITED DATE']),
-       `<td colspan="2" style="${S.val}">${chk(trackerChecked,'Google Sheet Work Tracker Updated')}</td>`)
+       `<td colspan="2" style="${S.val}"><p style="margin:1px 0;font-size:9pt;">CB|Google Sheet Work Tracker Updated</p></td>`)
   );
   html += '<br>';
 
-  // ── Footer ─────────────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────────
   html += `<p style="text-align:center;font-size:8pt;color:#666;font-style:italic;">
     Confidential &mdash; For Internal Use Only &nbsp;&nbsp;&nbsp; Fire Life Protection Systems
   </p>`;
@@ -1320,6 +1377,7 @@ function buildWorkOrderHTML(d) {
   html += '</body></html>';
   return html;
 }
+
 
 // ─────────────────────────────────────────────────────────
 // HELPERS
