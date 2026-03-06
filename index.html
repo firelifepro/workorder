@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form8</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form9</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -1123,9 +1123,11 @@ async function applyChecklists(docId) {
         const para = el.paragraph;
         // Get full text of paragraph
         const text = (para.elements || []).map(e => e.textRun?.content || '').join('');
-        const trimmed = text.trimStart();
-        if (trimmed.startsWith('\u2611') || trimmed.startsWith('\u2610')) {
-          const isChecked = trimmed.startsWith('\u2611');
+        const trimmed = text.trim();
+        // Match paragraphs containing ☑ or ☐ — may have leading whitespace from Drive import
+        const cbIdx = trimmed.search(/[\u2610\u2611]/);
+        if (cbIdx !== -1) {
+          const isChecked = trimmed.includes('\u2611');
           const si = el.startIndex;
           const ei = el.endIndex;
 
@@ -1133,7 +1135,7 @@ async function applyChecklists(docId) {
           requests.push({
             createParagraphBullets: {
               range: { startIndex: si, endIndex: ei },
-              bulletPreset: 'CHECKED_ITEMS_DEFAULT'
+              bulletPreset: 'BULLET_CHECKBOX'
             }
           });
 
@@ -1202,8 +1204,14 @@ async function applyChecklists(docId) {
       for (const el of elements || []) {
         if (el.paragraph) {
           const text = (el.paragraph.elements||[]).map(e=>e.textRun?.content||'').join('');
-          if (text.startsWith('\u2611 ') || text.startsWith('\u2610 ')) {
-            delReqs2.push({ deleteContentRange:{ range:{ startIndex:el.startIndex, endIndex:el.startIndex+2 } } });
+          if (text.includes('\u2611') || text.includes('\u2610')) {
+            const cbCharIdx = text.search(/[\u2610\u2611]/);
+            if (cbCharIdx !== -1) {
+              // startIndex is paragraph start; add offset to reach the ☑/☐ char
+              // +1 for the bullet char that was inserted by createParagraphBullets
+              const absStart = el.startIndex + cbCharIdx;
+              delReqs2.push({ deleteContentRange:{ range:{ startIndex:absStart, endIndex:absStart+2 } } });
+            }
           }
         }
         if (el.table) for (const row of el.table.tableRows||[]) for (const cell of row.tableCells||[]) walkForDelete(cell.content);
