@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form14a</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form15</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -1384,42 +1384,58 @@ function buildWorkOrderHTML(d) {
 // ─────────────────────────────────────────────────────────
 async function findOrCreateFolder(childName, parentName) {
   try {
-    // Search across My Drive + all shared drives
-    const baseParams = 'includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives';
+    // Try multiple search strategies to handle shared drives, "Shared with me", etc.
+    // Strategy A: allDrives corpora (finds shared drives the user is a member of)
+    // Strategy B: user corpora (finds "Shared with me" items in My Drive)
+    // Strategy C: search without mimeType filter (in case folder type differs)
 
-    // 1. Find the parent folder "FLPS Work Flow"
-    const parentQ = encodeURIComponent(
-      `name="${parentName}" and mimeType="application/vnd.google-apps.folder" and trashed=false`
-    );
-    const parentRes = await apiFetch(
-      `https://www.googleapis.com/drive/v3/files?q=${parentQ}&fields=files(id,name,driveId)&${baseParams}`
-    );
-    if (!parentRes.ok) throw new Error('Drive search failed: ' + (await parentRes.text()));
-    const parentJson = await parentRes.json();
-    const parentFolder = parentJson.files?.[0];
+    let parentFolder = null;
+
+    const strategies = [
+      // A — full shared drive search
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name="${parentName}" and mimeType="application/vnd.google-apps.folder" and trashed=false`)}&fields=files(id,name,driveId)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives`,
+      // B — my drive + shared with me
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name="${parentName}" and mimeType="application/vnd.google-apps.folder" and trashed=false`)}&fields=files(id,name,driveId)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=user`,
+      // C — no mime filter, allDrives
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name="${parentName}" and trashed=false`)}&fields=files(id,name,mimeType,driveId)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives`,
+    ];
+
+    for (const url of strategies) {
+      const res = await apiFetch(url);
+      if (!res.ok) { console.warn('Search failed:', await res.text()); continue; }
+      const json = await res.json();
+      console.log('Folder search results:', JSON.stringify(json.files));
+      if (json.files?.length > 0) {
+        parentFolder = json.files[0];
+        console.log(`Found "${parentName}" via strategy: ${url.includes('allDrives') ? 'allDrives' : 'user'}, id=${parentFolder.id}`);
+        break;
+      }
+    }
+
     if (!parentFolder) {
-      console.warn(`Folder "${parentName}" not found in any drive`);
-      toast(`⚠ Folder "${parentName}" not found — doc saved to Drive root`);
+      console.warn(`"${parentName}" not found in any search strategy`);
+      toast(`⚠ Folder "${parentName}" not found — check console for details`);
       return null;
     }
-    console.log(`Found parent folder: ${parentFolder.name} (${parentFolder.id})`);
 
-    // 2. Find "2 - Ready to Invoice" inside it
+    // Find the child folder inside the parent
     const childQ = encodeURIComponent(
       `name="${childName}" and mimeType="application/vnd.google-apps.folder" and "${parentFolder.id}" in parents and trashed=false`
     );
     const childRes = await apiFetch(
-      `https://www.googleapis.com/drive/v3/files?q=${childQ}&fields=files(id,name)&${baseParams}`
+      `https://www.googleapis.com/drive/v3/files?q=${childQ}&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives`
     );
-    if (!childRes.ok) throw new Error('Drive child search failed: ' + (await childRes.text()));
+    if (!childRes.ok) throw new Error('Child search failed: ' + (await childRes.text()));
     const childJson = await childRes.json();
+    console.log('Child folder search results:', JSON.stringify(childJson.files));
     const childFolder = childJson.files?.[0];
     if (!childFolder) {
-      console.warn(`Folder "${childName}" not found inside "${parentName}"`);
+      console.warn(`"${childName}" not found inside "${parentName}"`);
       toast(`⚠ Subfolder "${childName}" not found — doc saved to Drive root`);
       return null;
     }
-    console.log(`Found target folder: ${childFolder.name} (${childFolder.id})`);
+
+    console.log(`✓ Target folder: ${childFolder.name} (${childFolder.id})`);
     return childFolder.id;
 
   } catch(e) {
