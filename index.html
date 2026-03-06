@@ -977,6 +977,7 @@ function collectForm() {
     'CONTACT PHONE':        v('contact-phone'),
     'CONTACT EMAIL':        v('contact-email'),
     'BILLING EMAIL':        v('billing-email'),
+    'OTHER SVC TEXT':       v('other-svc-text'),
     'ACCESS / ENTRY INFO':  v('access-info'),
     'SERVICES':             svcList.join('\n') || '(none selected)',
     'DESCRIPTION OF WORK':  v('work-description'),
@@ -1091,507 +1092,339 @@ async function createDoc() {
 // bottom, then apply bold/color styling in a second pass.
 // ─────────────────────────────────────────────────────────
 async function writeDocContent(docId, d) {
-  // ── colour constants ──────────────────────────────────────────
-  const BLUE   = { red:0.18,  green:0.427, blue:0.643 }; // #2e6da4
-  const LBLUE  = { red:0.290, green:0.525, blue:0.910 }; // #4a86e8 expense header
-  const LGRAY  = { red:0.961, green:0.961, blue:0.961 }; // #f5f5f5 label cells
-  const WHITE  = { red:1, green:1, blue:1 };
-  const BLACK  = { red:0, green:0, blue:0 };
-  const DGRAY  = { red:0.25,  green:0.25,  blue:0.25  };
+  // ── colours ──────────────────────────────────────────────────
+  const BLUE  = { red:0.18,  green:0.427, blue:0.643 }; // #2e6da4
+  const LBLUE = { red:0.290, green:0.525, blue:0.910 }; // #4a86e8
+  const LGRAY = { red:0.961, green:0.961, blue:0.961 }; // #f5f5f5
+  const WHITE = { red:1, green:1, blue:1 };
+  const BLACK = { red:0, green:0, blue:0 };
+  const DGRAY = { red:0.25,  green:0.25,  blue:0.25  };
 
-  // ── helpers ───────────────────────────────────────────────────
-  const cb  = (checked) => checked ? '☑' : '☐';   // checkbox symbol
-  const val = (v) => v || '';
+  // ── cell constructors ─────────────────────────────────────────
+  const hdr  = (t) => ({ text:t, bold:true,  fg:WHITE, bg:BLUE,  size:10, center:true });
+  const ehdr = (t) => ({ text:t, bold:true,  fg:WHITE, bg:LBLUE, size:9  });
+  const lbl  = (t) => ({ text:t, bold:true,  fg:DGRAY, bg:LGRAY, size:9  });
+  const v    = (t) => ({ text:t||'',          fg:BLACK, bg:WHITE, size:9  });
+  const cb   = (checked, label) => (checked ? '☑ ' : '☐ ') + label;
 
-  // We'll collect all batchUpdate requests and send in chunks
-  const allRequests = [];
-  let cursor = 1; // current insert position (doc body starts at index 1)
+  // ── what services are checked ─────────────────────────────────
+  const checkedSvcs = new Set(
+    [...document.querySelectorAll('input[name="svc"]:checked')].map(e => e.value)
+  );
+  const svc = (val) => cb(checkedSvcs.has(val), val);
 
-  // Helper: append text at cursor, return [startIdx, endIdx]
-  function ins(text) {
-    allRequests.push({ insertText: { location:{ index: cursor }, text } });
-    const s = cursor; cursor += text.length; return [s, cursor];
-  }
+  // ── page margins ──────────────────────────────────────────────
+  await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{requests:[{
+    updateDocumentStyle:{ documentStyle:{
+      marginTop:{magnitude:36,unit:'PT'}, marginBottom:{magnitude:36,unit:'PT'},
+      marginLeft:{magnitude:36,unit:'PT'}, marginRight:{magnitude:36,unit:'PT'},
+      pageSize:{ height:{magnitude:792,unit:'PT'}, width:{magnitude:612,unit:'PT'} }
+    }, fields:'marginTop,marginBottom,marginLeft,marginRight,pageSize' }
+  }]});
 
-  // Style helpers — queue a style req; applied after all text is inserted
-  const styleReqs = [];
-  function styleTxt(start, end, opts) {
-    if (start >= end) return;
-    const ts = {};
-    const fields = [];
-    if (opts.bold !== undefined)      { ts.bold = opts.bold; fields.push('bold'); }
-    if (opts.size)                    { ts.fontSize = {magnitude:opts.size,unit:'PT'}; fields.push('fontSize'); }
-    if (opts.fg)                      { ts.foregroundColor={color:{rgbColor:opts.fg}}; fields.push('foregroundColor'); }
-    if (opts.bg)                      { ts.backgroundColor={color:{rgbColor:opts.bg}}; fields.push('backgroundColor'); }
-    if (opts.italic !== undefined)    { ts.italic = opts.italic; fields.push('italic'); }
-    styleReqs.push({ updateTextStyle:{ range:{startIndex:start,endIndex:end}, textStyle:ts, fields:fields.join(',') }});
-  }
-  function styleParaSpacing(start, end, above, below) {
-    styleReqs.push({ updateParagraphStyle:{
-      range:{startIndex:start,endIndex:end},
-      paragraphStyle:{ spaceAbove:{magnitude:above,unit:'PT'}, spaceBelow:{magnitude:below,unit:'PT'} },
-      fields:'spaceAbove,spaceBelow'
-    }});
-  }
+  const TW = 540; // usable width pts
 
-  // ── table builder ──────────────────────────────────────────────
-  // Insert an N-row x M-col table, then fill cells via insertText
-  // Returns the table's start index so we can reference it
-  async function buildTable(rows, cols, colWidths) {
-    // Insert table structure first (we'll flush inserts before this)
-    const tableReq = {
-      insertTable: {
-        rows, columns: cols,
-        location: { index: cursor }
-      }
-    };
-    // Tables shift cursor by: 1 (table start) + rows*(cols+1+1) roughly
-    // We need to flush everything before inserting a table, then re-read doc
-    return tableReq;
-  }
-
-  // ── STRATEGY: build whole doc as one big insertText block, ────
-  //   then style it.  Tables would be ideal but insertTable +     
-  //   per-cell addressing is complex across the entire form.       
-  //   Instead we use a fixed-width approach with tab stops and    
-  //   Unicode box-drawing for visual structure, then heavy styling.
-  //
-  //   Actually — the BEST approach for matching the PDF exactly   
-  //   is to insert tables one by one, flush+style between each.   
-  //   We'll do that.                                              
-  // ─────────────────────────────────────────────────────────────
-
-  // Because insertTable positions shift after each insert, we must
-  // send all requests up to a table insertion, get the new doc,  
-  // then continue.  We use a sequential flush approach.           
-
-  async function flush() {
-    if (allRequests.length === 0) return;
-    const chunks = [];
-    for (let i=0;i<allRequests.length;i+=20) chunks.push(allRequests.splice(0,20));
-    for (const chunk of chunks) {
-      const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{requests:chunk});
-      if (!r.ok) { const e=await r.json(); throw new Error('Doc write error: '+(e.error?.message||r.status)); }
-    }
-  }
-
-  async function flushStyles() {
-    if (styleReqs.length === 0) return;
-    const chunks = [];
-    const copy = styleReqs.splice(0, styleReqs.length);
-    for (let i=0;i<copy.length;i+=50) chunks.push(copy.slice(i,i+50));
-    for (const chunk of chunks) {
-      const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{requests:chunk});
-      if (!r.ok) { console.warn('Style warning:', (await r.json()).error?.message); }
-    }
-  }
-
-  // Re-read doc to get current end index after tables are inserted
-  async function getEndIndex() {
-    const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
-    const doc = await r.json();
-    const content = doc.body.content;
-    return content[content.length-1].endIndex - 1;
-  }
-
-  // Insert a table and return a helper to write into its cells
-  // cellData: array of rows, each row is array of {text, bold, bg, fg, size, center, colspan}
-  async function insertStyledTable(cellData, colWidths) {
+  // ═══════════════════════════════════════════════════════════════
+  // Core table builder
+  // cellData: array of rows; each row: array of cell objects
+  //   { text, bold, fg, bg, size, center, italic }
+  // colWidths: array of PT widths (must sum to TW)
+  // IMPORTANT: the Docs API does NOT support colspan in insertTable.
+  //   For full-width header rows, use a separate 1-col table.
+  // ═══════════════════════════════════════════════════════════════
+  async function tbl(cellData, colWidths) {
     const nRows = cellData.length;
     const nCols = colWidths.length;
 
-    await flush();
-    await flushStyles();
+    // ── flush any pending paragraph inserts first ──────────────
+    // (we always operate on the doc end, so nothing pending here)
 
-    // Get current end of doc to place table
-    const r0 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
-    const doc0 = await r0.json();
-    const bodyContent = doc0.body.content;
-    const insertAt = bodyContent[bodyContent.length-1].endIndex - 1;
+    // Get current doc end
+    const docEnd = async () => {
+      const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+      const doc = await r.json();
+      return doc.body.content.slice(-1)[0].endIndex - 1;
+    };
 
-    // Insert table
+    const insertAt = await docEnd();
+
+    // Insert table structure
     const tblRes = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{
       requests:[{ insertTable:{ rows:nRows, columns:nCols, location:{index:insertAt} } }]
     });
-    if (!tblRes.ok) throw new Error('Table insert failed: '+(await tblRes.json()).error?.message);
+    if (!tblRes.ok) throw new Error('insertTable failed: '+(await tblRes.json()).error?.message);
 
-    // Re-read to find table cell positions
+    // Re-read to find cell positions
     const r1 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
     const doc1 = await r1.json();
+    const allTables = [];
+    (function walk(elems){ for(const e of elems||[]){ if(e.table) allTables.push(e); } })(doc1.body.content);
+    const myTbl = allTables[allTables.length-1];
+    if (!myTbl) throw new Error('Table not found');
 
-    // Find the newly inserted table (last table in doc)
-    const tables = [];
-    function findTables(elems) {
-      for (const el of elems||[]) {
-        if (el.table) tables.push(el);
-        if (el.paragraph) {} // skip
-      }
-    }
-    findTables(doc1.body.content);
-    const tbl = tables[tables.length-1];
-    if (!tbl) throw new Error('Table not found after insert');
-
-    // Build list of cell paragraphs in order
-    const cellParagraphs = []; // {rowIdx, colIdx, startIndex, endIndex}
-    for (let ri=0; ri<(tbl.table.tableRows||[]).length; ri++) {
-      const row = tbl.table.tableRows[ri];
-      for (let ci=0; ci<(row.tableCells||[]).length; ci++) {
-        const cell = row.tableCells[ci];
+    // Build cell map: {ri_ci: {si, ei}}
+    const cellMap = {};
+    for (const [ri, row] of (myTbl.table.tableRows||[]).entries()) {
+      for (const [ci, cell] of (row.tableCells||[]).entries()) {
         const para = (cell.content||[])[0];
-        if (para && para.paragraph) {
-          const si = para.startIndex;
-          const ei = para.endIndex;
-          cellParagraphs.push({ri,ci,si,ei});
-        }
+        if (para) cellMap[`${ri}_${ci}`] = { si: para.startIndex, ei: para.endIndex };
       }
     }
 
-    // Write text into cells and collect style requests
+    // Insert cell text in REVERSE order (avoids index drift)
     const textReqs = [];
-    const cellStyleReqs = [];
+    for (let ri = nRows-1; ri >= 0; ri--) {
+      for (let ci = (cellData[ri]?.length||0)-1; ci >= 0; ci--) {
+        const key = `${ri}_${ci}`;
+        const cell = cellData[ri]?.[ci];
+        const cp = cellMap[key];
+        if (!cp || !cell?.text) continue;
+        textReqs.push({ insertText:{ location:{index:cp.si}, text:cell.text } });
+      }
+    }
+    if (textReqs.length) {
+      for (let i=0;i<textReqs.length;i+=20) {
+        const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',
+          {requests:textReqs.slice(i,i+20)});
+        if (!r.ok) console.warn('text insert warn:', (await r.json()).error?.message);
+      }
+    }
 
-    for (let ri=0; ri<cellData.length; ri++) {
-      for (let ci=0; ci<cellData[ri].length; ci++) {
-        const cp = cellParagraphs.find(p=>p.ri===ri&&p.ci===ci);
-        if (!cp) continue;
-        const cell = cellData[ri][ci];
-        const text = cell.text || '';
-        if (text) {
-          textReqs.push({ insertText:{ location:{index: cp.si}, text } });
-        }
-        // Queue cell background
-        if (cell.bg) {
-          cellStyleReqs.push({ updateTableCellStyle:{
-            tableRange:{ tableCellLocation:{tableStartLocation:{index:tbl.startIndex}, rowIndex:ri, columnIndex:ci}, rowSpan:1, columnSpan:1 },
-            tableCellStyle:{ backgroundColor:{color:{rgbColor:cell.bg}} },
+    // Re-read for final positions after text inserted
+    const r2 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+    const doc2 = await r2.json();
+    const allTables2 = [];
+    (function walk(elems){ for(const e of elems||[]){ if(e.table) allTables2.push(e); } })(doc2.body.content);
+    const myTbl2 = allTables2[allTables2.length-1];
+
+    // Style requests
+    const styleReqs = [];
+
+    for (const [ri, row] of (myTbl2.table.tableRows||[]).entries()) {
+      for (const [ci, cell] of (row.tableCells||[]).entries()) {
+        const cd = cellData[ri]?.[ci];
+        if (!cd) continue;
+        const para = (cell.content||[])[0];
+        if (!para) continue;
+        const si = para.startIndex;
+        const ei = para.endIndex - 1;
+
+        // Cell background
+        if (cd.bg) {
+          styleReqs.push({ updateTableCellStyle:{
+            tableRange:{ tableCellLocation:{ tableStartLocation:{index:myTbl2.startIndex}, rowIndex:ri, columnIndex:ci }, rowSpan:1, columnSpan:1 },
+            tableCellStyle:{ backgroundColor:{color:{rgbColor:cd.bg}} },
             fields:'backgroundColor'
           }});
         }
-      }
-    }
 
-    // Insert all cell text at once (must insert in REVERSE index order to avoid offset drift)
-    if (textReqs.length) {
-      // Sort by index descending
-      textReqs.sort((a,b)=>b.insertText.location.index - a.insertText.location.index);
-      for (let i=0;i<textReqs.length;i+=20) {
-        const chunk = textReqs.slice(i,i+20);
-        const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{requests:chunk});
-        if (!r.ok) { console.warn('Cell text warn:', (await r.json()).error?.message); }
-      }
-    }
-
-    // Re-read doc again to get updated indices for text styling
-    const r2 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
-    const doc2 = await r2.json();
-    const tables2 = [];
-    function findTables2(elems) { for (const el of elems||[]) { if (el.table) tables2.push(el); } }
-    findTables2(doc2.body.content);
-    const tbl2 = tables2[tables2.length-1];
-
-    // Apply text styles
-    const txtStyleReqs = [];
-    for (let ri=0; ri<cellData.length; ri++) {
-      const row2 = (tbl2.table.tableRows||[])[ri];
-      for (let ci=0; ci<cellData[ri].length; ci++) {
-        const cell = cellData[ri][ci];
-        const rowCell = (row2?.tableCells||[])[ci];
-        const para2 = (rowCell?.content||[])[0];
-        if (!para2 || !cell.text) continue;
-        const si = para2.startIndex;
-        const ei = para2.endIndex - 1; // -1 to exclude newline
-        if (si >= ei) continue;
-
-        const ts = {}; const fields = [];
-        if (cell.bold)   { ts.bold=true; fields.push('bold'); }
-        if (cell.fg)     { ts.foregroundColor={color:{rgbColor:cell.fg}}; fields.push('foregroundColor'); }
-        if (cell.size)   { ts.fontSize={magnitude:cell.size,unit:'PT'}; fields.push('fontSize'); }
-        if (cell.italic) { ts.italic=true; fields.push('italic'); }
-        if (fields.length) txtStyleReqs.push({ updateTextStyle:{range:{startIndex:si,endIndex:ei},textStyle:ts,fields:fields.join(',')} });
-
-        // Paragraph alignment
-        if (cell.center) {
-          txtStyleReqs.push({ updateParagraphStyle:{range:{startIndex:si,endIndex:ei},paragraphStyle:{alignment:'CENTER'},fields:'alignment'} });
+        if (si < ei) {
+          // Text style
+          const ts = {}; const fields = [];
+          if (cd.bold)   { ts.bold=true;  fields.push('bold'); }
+          if (cd.fg)     { ts.foregroundColor={color:{rgbColor:cd.fg}}; fields.push('foregroundColor'); }
+          if (cd.size)   { ts.fontSize={magnitude:cd.size,unit:'PT'}; fields.push('fontSize'); }
+          if (cd.italic) { ts.italic=true; fields.push('italic'); }
+          if (fields.length) styleReqs.push({ updateTextStyle:{range:{startIndex:si,endIndex:ei},textStyle:ts,fields:fields.join(',')} });
+          // Alignment
+          if (cd.center) styleReqs.push({ updateParagraphStyle:{range:{startIndex:si,endIndex:ei},paragraphStyle:{alignment:'CENTER'},fields:'alignment'} });
         }
       }
     }
 
-    // Apply cell backgrounds and text styles
-    const allCellReqs = [...cellStyleReqs, ...txtStyleReqs];
-    for (let i=0;i<allCellReqs.length;i+=50) {
-      const chunk = allCellReqs.slice(i,i+50);
-      if (!chunk.length) continue;
-      const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{requests:chunk});
-      if (!r.ok) { console.warn('Style warn:', (await r.json()).error?.message); }
-    }
-
-    // Set column widths
-    const colWidthReqs = colWidths.map((w,ci)=>({
-      updateTableColumnProperties:{
-        tableStartLocation:{index:tbl.startIndex},
+    // Column widths
+    for (let ci=0; ci<colWidths.length; ci++) {
+      styleReqs.push({ updateTableColumnProperties:{
+        tableStartLocation:{index:myTbl2.startIndex},
         columnIndices:[ci],
-        tableColumnProperties:{ widthType:'FIXED_WIDTH', width:{magnitude:w,unit:'PT'} },
+        tableColumnProperties:{ widthType:'FIXED_WIDTH', width:{magnitude:colWidths[ci],unit:'PT'} },
         fields:'widthType,width'
-      }
-    }));
-    if (colWidthReqs.length) {
-      for (let i=0;i<colWidthReqs.length;i+=10) {
-        const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{requests:colWidthReqs.slice(i,i+10)});
-        if (!r.ok) { console.warn('Col width warn:', (await r.json()).error?.message); }
-      }
+      }});
     }
 
-    // Add a blank paragraph after table so next table has somewhere to insert
-    const endIdx2 = (await (await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`)).json())
-      .body.content.slice(-1)[0].endIndex - 1;
-    await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{
-      requests:[{ insertText:{ location:{index:endIdx2}, text:'\n' } }]
-    });
+    // Flush styles in batches
+    for (let i=0;i<styleReqs.length;i+=50) {
+      const r = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',
+        {requests:styleReqs.slice(i,i+50)});
+      if (!r.ok) console.warn('style warn:', (await r.json()).error?.message);
+    }
+
+    // Add trailing newline so next table has room
+    const endNow = await docEnd();
+    await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',
+      {requests:[{ insertText:{ location:{index:endNow}, text:'\n' } }]});
   }
 
-  // ── shorthand cell constructors ───────────────────────────────
-  const hdr  = (text, cols=4) => ({text, bold:true, fg:WHITE, bg:BLUE,  size:10, _span:cols});
-  const ehdr = (text)         => ({text, bold:true, fg:WHITE, bg:LBLUE, size:9});
-  const lbl  = (text)         => ({text, bold:true, fg:DGRAY, bg:LGRAY, size:9});
-  const val2 = (text)         => ({text: text||'', fg:BLACK, size:9});
-  const mval = (text)         => ({text: text||'', fg:BLACK, size:9, _span:3}); // multi-col value
-  const chk  = (text)         => ({text: text||'', fg:BLACK, size:9}); // checkbox cell
+  // Convenience: single-row full-width header table (avoids colspan issues)
+  async function hdrTbl(text, bg) {
+    await tbl([[ {text, bold:true, fg:WHITE, bg:bg||BLUE, size:10, center:true} ]], [TW]);
+  }
 
-  // ── collect form data ────────────────────────────────────────
-  const chkd = (name) => {
-    const el = document.querySelector(`input[name="${name}"]:checked`);
-    return el ? el.value : '';
-  };
-  const isChk = (id) => document.getElementById(id)?.checked || false;
-  const svcs = [...document.querySelectorAll('input[name="svc"]:checked')].map(e=>e.value);
-  const hasSvc = (v) => svcs.includes(v);
+  // ── col layouts ───────────────────────────────────────────────
+  const C4 = [TW*0.22, TW*0.28, TW*0.22, TW*0.28]; // standard 4-col
+  const C2 = [TW*0.35, TW*0.65];                    // 2-col wide
 
-  // Checkbox display helper: returns "☑ label" or "☐ label"
-  const cbl = (checked, label) => (checked?'☑ ':'☐ ') + label;
+  // ══════════════════════════════════════════════════════════════
+  // 1. Company header (3 separate 1-col tables for clean full width)
+  // ══════════════════════════════════════════════════════════════
+  await tbl([[ {text:'FIRE LIFE PROTECTION SYSTEMS', bold:true, fg:WHITE, bg:BLUE, size:14, center:true} ]], [TW]);
+  await tbl([[ {text:'Fire Inspection & Protection Services', bold:false, fg:WHITE, bg:BLUE, size:10, center:true} ]], [TW]);
+  await tbl([[ {text:'WORK ORDER', bold:true, fg:WHITE, bg:BLUE, size:12, center:true} ]], [TW]);
 
-  // ── PAGE SETUP ───────────────────────────────────────────────
-  // Set document margins
-  await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,'POST',{
-    requests:[{
-      updateDocumentStyle:{
-        documentStyle:{ marginTop:{magnitude:36,unit:'PT'}, marginBottom:{magnitude:36,unit:'PT'},
-          marginLeft:{magnitude:36,unit:'PT'}, marginRight:{magnitude:36,unit:'PT'},
-          pageSize:{ height:{magnitude:792,unit:'PT'}, width:{magnitude:612,unit:'PT'} } },
-        fields:'marginTop,marginBottom,marginLeft,marginRight,pageSize'
-      }
-    }]
-  });
-
-  const TW = 540; // total usable width in PT (612 - 2*36)
-  const H = 18;   // standard row height hint
-
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 0: Company Header
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [ {text:'FIRE LIFE PROTECTION SYSTEMS', bold:true, fg:WHITE, bg:BLUE, size:14, center:true} ],
-    [ {text:'Fire Inspection & Protection Services', bold:false, fg:WHITE, bg:BLUE, size:10, center:true} ],
-    [ {text:'WORK ORDER', bold:true, fg:WHITE, bg:BLUE, size:12, center:true} ],
-  ], [TW]);
-
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 1: Line #
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [ lbl('Line #:'), val2(d['WORK ORDER #'] ? 'WO-'+d['WORK ORDER #'] : '') ]
+  // ══════════════════════════════════════════════════════════════
+  // 2. Line #
+  // ══════════════════════════════════════════════════════════════
+  await tbl([
+    [ lbl('Line #:'), v(d['WORK ORDER #'] ? 'WO-'+d['WORK ORDER #'] : '') ]
   ], [TW*0.3, TW*0.7]);
 
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 2: Client & Property Information
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [ {text:'CLIENT & PROPERTY INFORMATION', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4} ],
-    [ lbl('Client / Company:'),  val2(d['CLIENT / COMPANY']),  lbl(''),  val2('') ],
-    [ lbl('Property Name:'),     {text:d['PROPERTY NAME']||'', fg:BLACK, size:9, _span:3} ],
-    [ lbl('Service Address:'),   {text:d['SERVICE ADDRESS']||'', fg:BLACK, size:9, _span:3} ],
-    [ lbl('City / State / Zip:'),val2(d['CITY / STATE / ZIP']), lbl('Property Contact:'), val2(d['PROPERTY CONTACT']) ],
-    [ lbl('Contact Phone:'),     val2(d['CONTACT PHONE']),      lbl('Contact Email:'),     val2(d['CONTACT EMAIL']) ],
-    [ lbl('Access / Entry Info:'), {text:d['ACCESS / ENTRY INFO']||'', fg:BLACK, size:9, italic:true, _span:3} ],
-  ], [TW*0.22, TW*0.28, TW*0.22, TW*0.28]);
+  // ══════════════════════════════════════════════════════════════
+  // 3. Client & Property Information
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('CLIENT & PROPERTY INFORMATION');
+  await tbl([
+    [ lbl('Client / Company:'),   v(d['CLIENT / COMPANY']),      lbl('Property Name:'),    v(d['PROPERTY NAME']) ],
+    [ lbl('Service Address:'),    {text:d['SERVICE ADDRESS']||'', fg:BLACK, bg:WHITE, size:9}, lbl('City / State / Zip:'), v(d['CITY / STATE / ZIP']) ],
+    [ lbl('Property Contact:'),   v(d['PROPERTY CONTACT']),      lbl('Contact Phone:'),    v(d['CONTACT PHONE']) ],
+    [ lbl('Contact Email:'),      v(d['CONTACT EMAIL']),          lbl('Billing Email:'),    v(d['BILLING EMAIL']) ],
+    [ lbl('Access / Entry Info:'), {text:d['ACCESS / ENTRY INFO']||'', fg:BLACK, bg:WHITE, size:9, italic:true}, lbl(''), v('') ],
+  ], C4);
 
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 3: Scope of Work
-  // ═══════════════════════════════════════════════════════════
-  const svcRow = (svc1,f1,svc2,f2,svc3,f3,svc4,f4) => [
-    val2(cbl(hasSvc(svc1), svc1)), val2(cbl(hasSvc(svc2), svc2)),
-    val2(cbl(hasSvc(svc3), svc3)), val2(cbl(hasSvc(svc4), svc4))
-  ];
+  // ══════════════════════════════════════════════════════════════
+  // 4. Scope of Work
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('SCOPE OF WORK');
 
-  // Frequency checkboxes per service
-  const freqCell = (svcName) => {
-    const base = svcName.toLowerCase().replace(/\s+/g,'-');
-    // Check which frequency is selected for this service
-    const freqEl = document.querySelector(`input[name="${base}-freq"]:checked`);
-    const freq = freqEl?.value || '';
-    return val2(['Annual','Semi Annual','Quarterly','Monthly'].map(f=>cbl(f===freq,f)).join('  '));
-  };
-
-  // Simpler: just show checked services as checkboxes
-  const allSvcs = [
-    'Fire Alarm Inspection','Sprinkler Inspection','Extinguisher Inspection','Emergency Exit Light Inspection',
-    '5-Year Internal Pipe Inspection','5-Year FDC Hydrostatic Test','3-Year Dry Pipe Test',
-    'Annual Backflow Prevention Test','Deficiency Correction','Repair / Service Call',
-    'New Installation','Compliance Report','Monitoring Setup / Change','Sub-Contractor Work',
-    'Walk-Through / Consultation'
-  ];
-
-  // Get frequencies per service
-  const getFreqs = (svcLabel) => {
-    const map = {
-      'Fire Alarm Inspection': 'alarm',
-      'Sprinkler Inspection': 'sprinkler',
-      'Extinguisher Inspection': 'extinguisher',
-      'Emergency Exit Light Inspection': 'exit-light'
-    };
-    const prefix = map[svcLabel];
-    if (!prefix) return '';
-    const checked = [...document.querySelectorAll(`input[name="${prefix}-freq"]:checked`)];
-    return checked.map(e=>e.value).join(', ');
-  };
-
-  const scopeRows = [
-    [{text:'SCOPE OF WORK', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4}],
-    [{text:'Service Type(s) — check all that apply:', bold:true, fg:DGRAY, bg:LGRAY, size:9, _span:4}],
-  ];
-
-  // 4-column checkbox rows for main services
-  const svc4 = (s1,s2,s3,s4) => [
-    val2(cbl(hasSvc(s1),s1)), val2(cbl(hasSvc(s2),s2||'')), val2(cbl(hasSvc(s3),s3||'')), val2(cbl(hasSvc(s4),s4||''))
-  ];
-  scopeRows.push(svc4('Fire Alarm Inspection','Sprinkler Inspection','Extinguisher Inspection','Emergency Exit Light Inspection'));
-
-  // Frequency sub-rows
-  const inspSvcs = ['Fire Alarm Inspection','Sprinkler Inspection','Extinguisher Inspection','Emergency Exit Light Inspection'];
-  const freqLabels = ['Annual','Semi Annual','Quarterly','Monthly'];
-  const freqRow = inspSvcs.map(s => {
-    const freqs = getFreqs(s);
-    return val2(freqLabels.map(f=>cbl(freqs.includes(f),f)).join('\n'));
-  });
-  scopeRows.push(freqRow);
-
-  // Other service checkboxes in pairs
-  const otherSvcs = [
-    '5-Year Internal Pipe Inspection','5-Year FDC Hydrostatic Test',
-    '3-Year Dry Pipe Test','Annual Backflow Prevention Test',
-    'Deficiency Correction','Repair / Service Call',
-    'New Installation','Compliance Report',
-    'Monitoring Setup / Change','Sub-Contractor Work',
-    'Walk-Through / Consultation', (isChk('other-svc-cb') ? '☑ Other: '+d['DESCRIPTION OF WORK'] : '☐ Other')
-  ];
-  for (let i=0;i<otherSvcs.length;i+=4) {
-    scopeRows.push([
-      val2(cbl(hasSvc(otherSvcs[i]),   otherSvcs[i]||'')),
-      val2(cbl(hasSvc(otherSvcs[i+1]), otherSvcs[i+1]||'')),
-      val2(cbl(hasSvc(otherSvcs[i+2]), otherSvcs[i+2]||'')),
-      val2(cbl(hasSvc(otherSvcs[i+3]), otherSvcs[i+3]||''))
-    ]);
-  }
-
-  scopeRows.push([{text:'Description of Work Requested:', bold:true, fg:DGRAY, bg:LGRAY, size:9, _span:4}]);
-  scopeRows.push([{text:d['DESCRIPTION OF WORK']||'', fg:BLACK, size:9, _span:4}]);
-
-  await insertStyledTable(scopeRows, [TW*0.25, TW*0.25, TW*0.25, TW*0.25]);
-
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 4: Work Order Information
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [{text:'WORK ORDER INFORMATION', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4}],
-    [ lbl('Date Requested:'), val2(d['DATE REQUESTED']), lbl('Date Required:'), val2(d['DATE REQUIRED']) ],
-    [ lbl('Work Order #:'),   val2(d['WORK ORDER #']),
-      lbl('Priority:'),
-      val2(['Routine','Urgent','Emergency'].map(p=>cbl(d['PRIORITY']===p,p)).join('  ')) ],
-    [ lbl('Requested By:'), val2(d['REQUESTED BY']), lbl('Assigned Technician:'), val2(d['ASSIGNED TECHNICIAN']) ],
-    [ lbl('PO Number:'),    val2(d['PO NUMBER']),    lbl('Scheduled Date:'),      val2(d['SCHEDULED DATE']) ],
-  ], [TW*0.22, TW*0.28, TW*0.22, TW*0.28]);
-
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 5: Fire System Information
-  // ═══════════════════════════════════════════════════════════
-  const sysTypes = ['Wet','Dry','Pre-Action','Deluge','Glycol'];
-  const panelTypes = ['Conventional','Addressable'];
-  await insertStyledTable([
-    [{text:'FIRE SYSTEM INFORMATION', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4}],
-    [ lbl('System Type:'),
-      val2(sysTypes.map(t=>cbl(d['SYSTEM TYPE']===t,t)).join('  ')),
-      lbl('Panel Manufacturer:'), val2(d['PANEL MANUFACTURER']) ],
-    [ lbl('Panel System Type:'),
-      val2(panelTypes.map(t=>cbl(d['PANEL SYSTEM TYPE']===t,t)).join('  ')),
-      lbl(''), val2('') ],
-    [ lbl('Monitoring Company:'), val2(d['MONITORING COMPANY']), lbl('Monitoring Account #:'), val2(d['MONITORING ACCOUNT #']) ],
-    [ lbl('# of Sprinkler Heads:'), val2(d['# SPRINKLER HEADS']), lbl('# of Fire Extinguishers:'), val2(d['# FIRE EXTINGUISHERS']) ],
-    [ lbl('# of Hydrants:'), val2(d['# HYDRANTS']), lbl('# of Backflows:'), val2(d['# BACKFLOWS']) ],
-    [ lbl('Last Inspection Date:'), val2(d['LAST INSPECTION DATE']), lbl('Compliance Due Date:'), val2(d['COMPLIANCE DUE DATE']) ],
-  ], [TW*0.22, TW*0.28, TW*0.22, TW*0.28]);
-
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 6: Sub-Contractor
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [{text:'SUB-CONTRACTOR (IF APPLICABLE)', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4}],
-    [ lbl('Sub-Contractor:'), val2(d['SUB-CONTRACTOR']), lbl('Sub-Contractor Invoice #:'), val2(d['SUB-CONTRACTOR INVOICE #']) ],
-    [ lbl('Sub-Contractor Contact:'), val2(d['SUB-CONTRACTOR CONTACT']), lbl('Sub-Contractor Amount:'), val2(d['SUB-CONTRACTOR AMOUNT']) ],
-  ], [TW*0.22, TW*0.28, TW*0.22, TW*0.28]);
-
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 7: Notes / Deficiencies
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [{text:'NOTES / DEFICIENCIES FOUND', bold:true, fg:WHITE, bg:BLUE, size:10}],
-    [{text:d['NOTES / DEFICIENCIES']||'', fg:BLACK, size:9}],
-    [{text:'\n\n', fg:BLACK, size:9}],
+  // Service type header row
+  await tbl([
+    [{ text:'Service Type(s) — check all that apply:', bold:true, fg:DGRAY, bg:LGRAY, size:9, center:false }]
   ], [TW]);
 
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 8: FLIPS Expenses
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [{text:'FLIPS EXPENSES', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4}],
+  // 4-col inspection checkboxes (just the main service name)
+  await tbl([[
+    v(cb(checkedSvcs.has('Fire Alarm – Annual')||checkedSvcs.has('Fire Alarm – Semi Annual')||checkedSvcs.has('Fire Alarm – Quarterly')||checkedSvcs.has('Fire Alarm – Monthly'), 'Fire Alarm Inspection')),
+    v(cb(checkedSvcs.has('Sprinkler – Annual')||checkedSvcs.has('Sprinkler – Semi Annual')||checkedSvcs.has('Sprinkler – Quarterly')||checkedSvcs.has('Sprinkler – Monthly'), 'Sprinkler Inspection')),
+    v(cb(checkedSvcs.has('Extinguisher – Annual')||checkedSvcs.has('Extinguisher – Semi Annual')||checkedSvcs.has('Extinguisher – Quarterly')||checkedSvcs.has('Extinguisher – Monthly'), 'Extinguisher Inspection')),
+    v(cb(checkedSvcs.has('Exit Light – Annual')||checkedSvcs.has('Exit Light – Semi Annual')||checkedSvcs.has('Exit Light – Quarterly')||checkedSvcs.has('Exit Light – Monthly'), 'Emergency Exit Light Inspection')),
+  ]], [TW*0.25, TW*0.25, TW*0.25, TW*0.25]);
+
+  // Frequency sub-rows for each inspection type
+  const freqRow = (prefix) => ['Annual','Semi Annual','Quarterly','Monthly']
+    .map(f => cb(checkedSvcs.has(`${prefix} – ${f}`), f)).join('\n');
+  await tbl([[
+    v(freqRow('Fire Alarm')),
+    v(freqRow('Sprinkler')),
+    v(freqRow('Extinguisher')),
+    v(freqRow('Exit Light')),
+  ]], [TW*0.25, TW*0.25, TW*0.25, TW*0.25]);
+
+  // Other services — 4 per row
+  const otherSvcs = [
+    '5-Year Internal Pipe Inspection', '5-Year FDC Hydrostatic Test', '3-Year Dry Pipe Test', 'Annual Backflow Prevention Test',
+    'Deficiency Correction', 'Repair / Service Call', 'New Installation', 'Compliance Report',
+    'Monitoring Setup / Change', 'Sub-Contractor Work', 'Walk-Through / Consultation', '__OTHER__'
+  ];
+  const otherChecked = document.getElementById('other-svc-cb')?.checked || false;
+  const otherText = d['OTHER SVC TEXT'] || '';
+  for (let i=0; i<otherSvcs.length; i+=4) {
+    const row = otherSvcs.slice(i,i+4).map(s => {
+      if (s === '__OTHER__') return v(cb(otherChecked, 'Other: ' + otherText));
+      return v(cb(checkedSvcs.has(s), s));
+    });
+    await tbl([row], [TW*0.25, TW*0.25, TW*0.25, TW*0.25]);
+  }
+
+  // Description of Work
+  await tbl([[ {text:'Description of Work Requested:', bold:true, fg:DGRAY, bg:LGRAY, size:9} ]], [TW]);
+  await tbl([[ v(d['DESCRIPTION OF WORK']||'') ]], [TW]);
+
+  // ══════════════════════════════════════════════════════════════
+  // 5. Work Order Information
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('WORK ORDER INFORMATION');
+  await tbl([
+    [ lbl('Date Requested:'), v(d['DATE REQUESTED']), lbl('Date Required:'), v(d['DATE REQUIRED']) ],
+    [ lbl('Work Order #:'),   v(d['WORK ORDER #']),
+      lbl('Priority:'),       v(['Routine','Urgent','Emergency'].map(p=>cb(d['PRIORITY']===p,p)).join('  ')) ],
+    [ lbl('Requested By:'),   v(d['REQUESTED BY']),   lbl('Assigned Technician:'), v(d['ASSIGNED TECHNICIAN']) ],
+    [ lbl('PO Number:'),      v(d['PO NUMBER']),       lbl('Scheduled Date:'),      v(d['SCHEDULED DATE']) ],
+  ], C4);
+
+  // ══════════════════════════════════════════════════════════════
+  // 6. Fire System Information
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('FIRE SYSTEM INFORMATION');
+  await tbl([
+    [ lbl('System Type:'),
+      v(['Wet','Dry','Pre-Action','Deluge','Glycol'].map(t=>cb(d['SYSTEM TYPE']===t,t)).join('  ')),
+      lbl('Panel Manufacturer:'), v(d['PANEL MANUFACTURER']) ],
+    [ lbl('Panel System Type:'),
+      v(['Conventional','Addressable'].map(t=>cb(d['PANEL SYSTEM TYPE']===t,t)).join('  ')),
+      lbl(''), v('') ],
+    [ lbl('Monitoring Company:'),    v(d['MONITORING COMPANY']),     lbl('Monitoring Account #:'), v(d['MONITORING ACCOUNT #']) ],
+    [ lbl('# of Sprinkler Heads:'),  v(d['# SPRINKLER HEADS']),      lbl('# of Fire Extinguishers:'), v(d['# FIRE EXTINGUISHERS']) ],
+    [ lbl('# of Hydrants:'),         v(d['# HYDRANTS']),             lbl('# of Backflows:'),          v(d['# BACKFLOWS']) ],
+    [ lbl('Last Inspection Date:'),  v(d['LAST INSPECTION DATE']),   lbl('Compliance Due Date:'),     v(d['COMPLIANCE DUE DATE']) ],
+  ], C4);
+
+  // ══════════════════════════════════════════════════════════════
+  // 7. Sub-Contractor
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('SUB-CONTRACTOR (IF APPLICABLE)');
+  await tbl([
+    [ lbl('Sub-Contractor:'),         v(d['SUB-CONTRACTOR']),          lbl('Sub-Contractor Invoice #:'), v(d['SUB-CONTRACTOR INVOICE #']) ],
+    [ lbl('Sub-Contractor Contact:'), v(d['SUB-CONTRACTOR CONTACT']),  lbl('Sub-Contractor Amount:'),    v(d['SUB-CONTRACTOR AMOUNT']) ],
+  ], C4);
+
+  // ══════════════════════════════════════════════════════════════
+  // 8. Notes / Deficiencies
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('NOTES / DEFICIENCIES FOUND');
+  await tbl([[ v(d['NOTES / DEFICIENCIES'] || '\n\n') ]], [TW]);
+
+  // ══════════════════════════════════════════════════════════════
+  // 9. FLIPS Expenses
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('FLIPS EXPENSES');
+  await tbl([
     [ ehdr('Expense Name'), ehdr('Description'), ehdr('Quantity'), ehdr('Total Amount') ],
-    [ lbl('Materials'),     val2(d['MATERIALS DESCRIPTION']), val2(d['MATERIALS QTY']), val2(d['MATERIALS TOTAL']) ],
+    [ lbl('Materials'),  v(d['MATERIALS DESCRIPTION']), v(d['MATERIALS QTY']), v(d['MATERIALS TOTAL']) ],
     [ lbl('Labor Rate'),
-      val2(['$85.00','$135.00'].map(r=>cbl(d['LABOR RATE']===r, r+'/hr')).join('  ')),
-      val2(d['LABOR HOURS']+' hrs'),
-      val2(d['LABOR TOTAL']) ],
-    [ lbl('Trip Charge'),   val2(cbl(d['TRIP CHARGE']==='$90.00','$90.00')), val2(''), val2(d['TRIP CHARGE']==='$90.00'?'$90.00':'') ],
-    [ lbl('Misc'),          val2(d['MISC DESCRIPTION']), val2(''), val2(d['MISC TOTAL']) ],
-    [ {text:'Total to Invoice', bold:true, fg:DGRAY, bg:LGRAY, size:9, _span:2},
+      v(['$85.00','$135.00'].map(r=>cb(d['LABOR RATE']===r, r+'/hr')).join('  ')),
+      v((d['LABOR HOURS']||'') + (d['LABOR HOURS']?' hrs':'')),
+      v(d['LABOR TOTAL']) ],
+    [ lbl('Trip Charge'), v(cb(d['TRIP CHARGE']==='$90.00','$90.00')), v(''), v(d['TRIP CHARGE']==='$90.00'?d['TRIP CHARGE']:'') ],
+    [ lbl('Misc'),        v(d['MISC DESCRIPTION']),  v(''), v(d['MISC TOTAL']) ],
+    [ {text:'Total to Invoice', bold:true, fg:DGRAY, bg:LGRAY, size:9},
       {text:'=', bold:true, fg:DGRAY, bg:LGRAY, size:9},
+      {text:'', fg:BLACK, bg:WHITE, size:9},
       {text:d['TOTAL TO INVOICE']||'', bold:true, fg:DGRAY, bg:LGRAY, size:10} ],
   ], [TW*0.18, TW*0.40, TW*0.14, TW*0.28]);
 
-  // ═══════════════════════════════════════════════════════════
-  // TABLE 9: Completion & Billing
-  // ═══════════════════════════════════════════════════════════
-  const wsOpts = ['Complete','Incomplete','Follow-Up Needed'];
-  const rsOpts = ['Yes','No','Pending'];
-  const prOpts = ['Yes','No','Partial'];
-  const pmOpts = ['Check','ACH','Credit Card','Other'];
-  await insertStyledTable([
-    [{text:'COMPLETION & BILLING', bold:true, fg:WHITE, bg:BLUE, size:10, _span:4}],
-    [ lbl('Date Completed:'), val2(d['DATE COMPLETED']),
-      lbl('Work Status:'), val2(wsOpts.map(o=>cbl(d['WORK STATUS']===o,o)).join('  ')) ],
-    [ lbl('Report Submitted:'), val2(rsOpts.map(o=>cbl(d['REPORT SUBMITTED']===o,o)).join('  ')),
-      lbl('Invoice #:'), val2(d['INVOICE #']) ],
-    [ lbl('Invoice Date:'), val2(d['INVOICE DATE']), lbl('Total Invoice Amount:'), val2(d['TOTAL INVOICE AMOUNT']) ],
-    [ lbl('Payment Received:'), val2(prOpts.map(o=>cbl(d['PAYMENT RECEIVED']===o,o)).join('  ')),
-      lbl('Payment Method:'), val2(pmOpts.map(o=>cbl(d['PAYMENT METHOD']===o,o)).join('  ')) ],
-    [ lbl('Payment Date:'), val2(d['PAYMENT DATE']), lbl('Entered into QuickBooks:'), val2(d['ENTERED INTO QUICKBOOKS']) ],
-    [ lbl('Deposited Date:'), val2(d['DEPOSITED DATE']),
-      {text: cbl(isChk('sheet-updated-cb'), 'Google Sheet Work Tracker Updated'), bold:false, fg:BLACK, size:9, _span:2} ],
-  ], [TW*0.22, TW*0.28, TW*0.22, TW*0.28]);
+  // ══════════════════════════════════════════════════════════════
+  // 10. Completion & Billing
+  // ══════════════════════════════════════════════════════════════
+  await hdrTbl('COMPLETION & BILLING');
+  const trackerChecked = document.getElementById('tracker-updated')?.checked || false;
+  await tbl([
+    [ lbl('Date Completed:'),   v(d['DATE COMPLETED']),
+      lbl('Work Status:'),      v(['Complete','Incomplete','Follow-Up Needed'].map(o=>cb(d['WORK STATUS']===o,o)).join('  ')) ],
+    [ lbl('Report Submitted:'), v(['Yes','No','Pending'].map(o=>cb(d['REPORT SUBMITTED']===o,o)).join('  ')),
+      lbl('Invoice #:'),        v(d['INVOICE #']) ],
+    [ lbl('Invoice Date:'),     v(d['INVOICE DATE']),         lbl('Total Invoice Amount:'), v(d['TOTAL INVOICE AMOUNT']) ],
+    [ lbl('Payment Received:'), v(['Yes','No','Partial'].map(o=>cb(d['PAYMENT RECEIVED']===o,o)).join('  ')),
+      lbl('Payment Method:'),   v(['Check','ACH','Credit Card','Other'].map(o=>cb(d['PAYMENT METHOD']===o,o)).join('  ')) ],
+    [ lbl('Payment Date:'),     v(d['PAYMENT DATE']),         lbl('Entered into QuickBooks:'), v(d['ENTERED INTO QUICKBOOKS']) ],
+    [ lbl('Deposited Date:'),   v(d['DEPOSITED DATE']),
+      {text: cb(trackerChecked, 'Google Sheet Work Tracker Updated'), fg:BLACK, bg:WHITE, size:9},
+      v('') ],
+  ], C4);
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // Footer
-  // ═══════════════════════════════════════════════════════════
-  await insertStyledTable([
-    [{text:'Confidential — For Internal Use Only          Fire Life Protection Systems', italic:true, fg:DGRAY, size:8, center:true}]
-  ], [TW]);
+  // ══════════════════════════════════════════════════════════════
+  await tbl([[ {text:'Confidential — For Internal Use Only          Fire Life Protection Systems',
+    italic:true, fg:DGRAY, bg:WHITE, size:8, center:true} ]], [TW]);
 }
 
 // ─────────────────────────────────────────────────────────
