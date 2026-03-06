@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form16</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form17</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -1071,7 +1071,7 @@ async function createDoc() {
 
     // Move into "FLPS Work Flow / 2 - Ready to Invoice"
     setStatus('submit-status', 'Moving to folder…', '');
-    const targetFolderId = await findOrCreateFolder('2 - Ready to Invoice', 'FLPS Work Flow');
+    const targetFolderId = await findTargetFolder('2 - Ready to Invoice');
     if (targetFolderId) {
       const oldParents = (parents || []).join(',');
       await apiFetch(
@@ -1382,75 +1382,24 @@ function buildWorkOrderHTML(d) {
 // inside it. Shared drives require includeItemsFromAllDrives
 // and supportsAllDrives params.
 // ─────────────────────────────────────────────────────────
-async function findOrCreateFolder(childName, parentName) {
+async function findTargetFolder(folderName) {
   try {
-    // The Drive API v3 search for shared folders is tricky.
-    // Best approach: list ALL folders the user can see (no name filter first),
-    // then filter client-side — avoids query encoding / escaping issues entirely.
-    // We also try a direct name query as a fast path first.
-
-    let parentFolder = null;
-
-    // Fast path: direct name query across all drives + shared with me
-    const fastQ = encodeURIComponent(`mimeType="application/vnd.google-apps.folder" and trashed=false`);
-    const fastUrl = `https://www.googleapis.com/drive/v3/files?q=${fastQ}` +
-      `&fields=files(id,name,driveId,parents)` +
-      `&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives` +
-      `&pageSize=1000`;
-
-    const fastRes = await apiFetch(fastUrl);
-    if (fastRes.ok) {
-      const fastJson = await fastRes.json();
-      console.log(`Drive returned ${fastJson.files?.length} folders total`);
-      // Log all folder names so user can see exactly what's visible
-      const names = (fastJson.files || []).map(f => f.name);
-      console.log('All visible folders:', JSON.stringify(names));
-      // Case-insensitive match in case of subtle differences
-      parentFolder = fastJson.files?.find(
-        f => f.name.trim().toLowerCase() === parentName.trim().toLowerCase()
-      ) || null;
-      if (parentFolder) console.log(`✓ Found "${parentFolder.name}" id=${parentFolder.id}`);
-    } else {
-      console.warn('Fast folder list failed:', await fastRes.text());
-    }
-
-    if (!parentFolder) {
-      console.warn(`"${parentName}" not found among all visible folders`);
-      toast(`⚠ Folder "${parentName}" not found — check console (F12) for all visible folder names`);
-      return null;
-    }
-
-    // Find child folder — search inside the parent we found
-    const childQ = encodeURIComponent(
-      `mimeType="application/vnd.google-apps.folder" and "${parentFolder.id}" in parents and trashed=false`
+    const q = encodeURIComponent(`mimeType="application/vnd.google-apps.folder" and trashed=false`);
+    const res = await apiFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives&pageSize=1000`
     );
-    const childRes = await apiFetch(
-      `https://www.googleapis.com/drive/v3/files?q=${childQ}` +
-      `&fields=files(id,name)` +
-      `&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives` +
-      `&pageSize=100`
-    );
-    if (!childRes.ok) throw new Error('Child search failed: ' + (await childRes.text()));
-    const childJson = await childRes.json();
-    console.log('Subfolders inside "' + parentFolder.name + '":', JSON.stringify(childJson.files?.map(f=>f.name)));
-    const childFolder = childJson.files?.find(
-      f => f.name.trim().toLowerCase() === childName.trim().toLowerCase()
-    );
-    if (!childFolder) {
-      console.warn(`"${childName}" not found inside "${parentName}"`);
-      toast(`⚠ Subfolder "${childName}" not found — doc saved to Drive root`);
-      return null;
-    }
-
-    console.log(`✓ Target folder: "${childFolder.name}" id=${childFolder.id}`);
-    return childFolder.id;
-
+    if (!res.ok) { console.warn('Folder list failed:', await res.text()); return null; }
+    const json = await res.json();
+    const folder = json.files?.find(f => f.name.trim().toLowerCase() === folderName.trim().toLowerCase());
+    if (!folder) { console.warn(`Folder "${folderName}" not found`); toast(`⚠ Folder "${folderName}" not found`); return null; }
+    console.log(`✓ Found folder "${folder.name}" id=${folder.id}`);
+    return folder.id;
   } catch(e) {
-    console.warn('findOrCreateFolder error:', e.message);
+    console.warn('findTargetFolder error:', e.message);
     return null;
   }
 }
-
 
 // ─────────────────────────────────────────────────────────
 // HELPERS
