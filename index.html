@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form11</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form13</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -328,10 +328,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="value-cell"><input type="text" id="technician"></td>
     </tr>
     <tr>
-      <td class="label-cell">PO Number:</td>
-      <td class="value-cell"><input type="text" id="po-number"></td>
       <td class="label-cell">Scheduled Date:</td>
-      <td class="value-cell"><input type="date" id="scheduled-date"></td>
+      <td colspan="3" class="value-cell"><input type="date" id="scheduled-date"></td>
     </tr>
   </table>
 
@@ -967,7 +965,6 @@ function collectForm() {
     'PRIORITY':             r('priority'),
     'REQUESTED BY':         v('requested-by'),
     'ASSIGNED TECHNICIAN':  v('technician'),
-    'PO NUMBER':            v('po-number'),
     'SCHEDULED DATE':       fmtDate(v('scheduled-date')),
     'CLIENT / COMPANY':     v('client-company'),
     'PROPERTY NAME':        document.getElementById('property-select').options[document.getElementById('property-select').selectedIndex]?.text || '',
@@ -1071,16 +1068,14 @@ async function createDoc() {
     if (!uploadRes.ok) throw new Error((await uploadRes.json()).error?.message || 'Upload failed');
     const { id: newId, parents } = await uploadRes.json();
 
-    // Move to same folder as template doc
+    // Move into "FLPS Work Flow / 2 - Ready to Invoice"
     setStatus('submit-status', 'Moving to folder…', '');
-    const tplMeta = await (await apiFetch(
-      `https://www.googleapis.com/drive/v3/files/${TEMPLATE_DOC_ID}?fields=parents`
-    )).json();
-    const parent = tplMeta.parents?.[0];
-    if (parent && parent !== (parents?.[0])) {
+    const targetFolderId = await findOrCreateFolder('2 - Ready to Invoice', 'FLPS Work Flow');
+    if (targetFolderId) {
       const oldParents = (parents || []).join(',');
       await apiFetch(
-        `https://www.googleapis.com/drive/v3/files/${newId}?addParents=${parent}&removeParents=${oldParents}`,
+        `https://www.googleapis.com/drive/v3/files/${newId}?addParents=${targetFolderId}` +
+        (oldParents ? `&removeParents=${oldParents}` : ''),
         'PATCH', null
       );
     }
@@ -1255,7 +1250,7 @@ function buildWorkOrderHTML(d) {
     tr(lbl('Work Order #:'), val(d['WORK ORDER #']),
        lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>chk(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
     tr(lbl('Requested By:'), val(d['REQUESTED BY']), lbl('Assigned Technician:'), val(d['ASSIGNED TECHNICIAN'])) +
-    tr(lbl('PO Number:'), val(d['PO NUMBER']), lbl('Scheduled Date:'), val(d['SCHEDULED DATE']))
+    tr(lbl('Scheduled Date:'), `<td colspan="3" style="${S.val}">${d['SCHEDULED DATE'] || '&nbsp;'}</td>`)
   );
   html += '<br>';
 
@@ -1376,6 +1371,44 @@ function buildWorkOrderHTML(d) {
 
   html += '</body></html>';
   return html;
+}
+
+
+// ─────────────────────────────────────────────────────────
+// FIND FOLDER
+// Finds "FLPS Work Flow" by name, then finds the child
+// folder "2 - Ready to Invoice" inside it.
+// Returns the child folder's ID, or null on failure.
+// ─────────────────────────────────────────────────────────
+async function findOrCreateFolder(childName, parentName) {
+  try {
+    // 1. Find the parent folder by name
+    const parentRes = await apiFetch(
+      `https://www.googleapis.com/drive/v3/files?q=` +
+      encodeURIComponent(`name="${parentName}" and mimeType="application/vnd.google-apps.folder" and trashed=false`) +
+      `&fields=files(id,name)&spaces=drive`
+    );
+    if (!parentRes.ok) throw new Error('Drive search failed');
+    const parentJson = await parentRes.json();
+    const parentFolder = parentJson.files?.[0];
+    if (!parentFolder) { console.warn(`Folder "${parentName}" not found`); return null; }
+
+    // 2. Find the child folder inside it
+    const childRes = await apiFetch(
+      `https://www.googleapis.com/drive/v3/files?q=` +
+      encodeURIComponent(`name="${childName}" and mimeType="application/vnd.google-apps.folder" and "${parentFolder.id}" in parents and trashed=false`) +
+      `&fields=files(id,name)&spaces=drive`
+    );
+    if (!childRes.ok) throw new Error('Drive child search failed');
+    const childJson = await childRes.json();
+    const childFolder = childJson.files?.[0];
+    if (!childFolder) { console.warn(`Folder "${childName}" not found inside "${parentName}"`); return null; }
+
+    return childFolder.id;
+  } catch(e) {
+    console.warn('findOrCreateFolder error:', e.message);
+    return null;
+  }
 }
 
 
