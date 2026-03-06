@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form10</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -1149,16 +1149,50 @@ function buildWorkOrderHTML(d) {
 
   let html = `<!DOCTYPE html><html><body style="margin:18px;">`;
 
-  // ── Company Header ─────────────────────────────────────────────
-  html += tbl(
-    tr(th('FIRE LIFE PROTECTION SYSTEMS', 1, `${S.hdr}font-size:14pt;`)) +
-    tr(th('Fire Inspection &amp; Protection Services', 1, `${S.hdr}font-size:10pt;font-weight:normal;`)) +
-    tr(th('WORK ORDER', 1, `${S.hdr}font-size:12pt;`))
-  );
+  // ── Company Letterhead ──────────────────────────────────────────
+  // Two-column: flame icon + company name left, "WORK ORDER" badge right
+  html += `
+  <table style="width:100%;border-collapse:collapse;border-bottom:3px solid #2e6da4;margin-bottom:6px;">
+    <tr>
+      <td style="width:60px;padding:6px 10px 6px 0;vertical-align:middle;">
+        <div style="width:52px;height:52px;background:#2e6da4;border-radius:50%;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:26px;text-align:center;line-height:52px;">🔥</div>
+      </td>
+      <td style="vertical-align:middle;padding:4px 0;">
+        <div style="font-family:Arial,sans-serif;font-size:16pt;font-weight:bold;
+                    color:#2e6da4;letter-spacing:0.5px;line-height:1.1;">
+          FIRE LIFE PROTECTION SYSTEMS
+        </div>
+        <div style="font-family:Arial,sans-serif;font-size:9.5pt;color:#555;
+                    font-style:italic;margin-top:2px;">
+          Fire Inspection &amp; Protection Services
+        </div>
+      </td>
+      <td style="vertical-align:middle;text-align:right;padding:4px 0;">
+        <div style="display:inline-block;background:#2e6da4;color:#fff;
+                    font-family:Arial,sans-serif;font-size:13pt;font-weight:bold;
+                    padding:7px 18px;border-radius:4px;letter-spacing:1px;">
+          WORK ORDER
+        </div>
+        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#888;
+                    margin-top:4px;text-align:right;">
+          Line #: <strong style="color:#2e6da4;">${d['WORK ORDER #'] ? 'WO-'+d['WORK ORDER #'] : '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</strong>
+        </div>
+      </td>
+    </tr>
+  </table>`;
   html += '<br>';
 
-  // ── Line # ─────────────────────────────────────────────────────
-  html += tbl(tr(lbl('Line #:'), val(d['WORK ORDER #'] ? 'WO-'+d['WORK ORDER #'] : '')));
+  // ── Work Order Information — FIRST SECTION ──────────────────────
+  html += tbl(
+    hdr('WORK ORDER INFORMATION') +
+    tr(lbl('Date Requested:'), val(d['DATE REQUESTED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
+    tr(lbl('Work Order #:'), val(d['WORK ORDER #']),
+       lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>chk(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
+    tr(lbl('Requested By:'), val(d['REQUESTED BY']), lbl('Assigned Technician:'), val(d['ASSIGNED TECHNICIAN'])) +
+    tr(lbl('PO Number:'), val(d['PO NUMBER']), lbl('Scheduled Date:'), val(d['SCHEDULED DATE']))
+  );
   html += '<br>';
 
   // ── Client & Property ──────────────────────────────────────────
@@ -1211,17 +1245,6 @@ function buildWorkOrderHTML(d) {
     ) +
     tr(th('Description of Work Requested:', 4, S.subhdr)) +
     tr(`<td colspan="4" style="${S.val}">${v(d['DESCRIPTION OF WORK'])}</td>`)
-  );
-  html += '<br>';
-
-  // ── Work Order Information ─────────────────────────────────────
-  html += tbl(
-    hdr('WORK ORDER INFORMATION') +
-    tr(lbl('Date Requested:'), val(d['DATE REQUESTED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
-    tr(lbl('Work Order #:'), val(d['WORK ORDER #']),
-       lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>chk(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
-    tr(lbl('Requested By:'), val(d['REQUESTED BY']), lbl('Assigned Technician:'), val(d['ASSIGNED TECHNICIAN'])) +
-    tr(lbl('PO Number:'), val(d['PO NUMBER']), lbl('Scheduled Date:'), val(d['SCHEDULED DATE']))
   );
   html += '<br>';
 
