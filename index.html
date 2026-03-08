@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form18</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form19</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -304,7 +304,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   <table class="wo-table">
     <tr><td colspan="4" class="section-header">WORK ORDER INFORMATION</td></tr>
     <tr>
-      <td class="label-cell">Date Requested:</td>
+      <td class="label-cell">Date Completed:</td>
       <td class="value-cell"><input type="date" id="date-requested"></td>
       <td class="label-cell">Date Required:</td>
       <td class="value-cell"><input type="date" id="date-required"></td>
@@ -593,11 +593,9 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   <table class="wo-table">
     <tr><td colspan="4" class="section-header">COMPLETION &amp; BILLING</td></tr>
     <tr>
-      <td class="label-cell">Date Completed:</td>
-      <td class="value-cell"><input type="date" id="date-completed"></td>
       <td class="label-cell">Work Status:</td>
-      <td class="value-cell">
-        <div class="check-group">
+      <td colspan="3" class="value-cell">
+        <div class="check-group" style="flex-direction:row;gap:16px;">
           <label><input type="radio" name="work-status" value="Complete"> Complete</label>
           <label><input type="radio" name="work-status" value="Incomplete"> Incomplete</label>
           <label><input type="radio" name="work-status" value="Follow-Up Needed"> Follow-Up Needed</label>
@@ -959,7 +957,7 @@ function collectForm() {
   if (otherCb) svcList.push('Other: ' + v('other-svc-text'));
 
   return {
-    'DATE REQUESTED':       fmtDate(v('date-requested')),
+    'DATE COMPLETED':       fmtDate(v('date-requested')),  // field renamed to Date Completed
     'DATE REQUIRED':        fmtDate(v('date-required')),
     'WORK ORDER #':         v('wo-number'),
     'PRIORITY':             r('priority'),
@@ -1003,7 +1001,6 @@ function collectForm() {
     'MISC DESCRIPTION':         v('misc-desc'),
     'MISC TOTAL':               '$' + (v('misc-total') || '0.00'),
     'TOTAL TO INVOICE':         '$' + (v('grand-total') || '0.00'),
-    'DATE COMPLETED':           fmtDate(v('date-completed')),
     'WORK STATUS':              r('work-status'),
     'REPORT SUBMITTED':         r('report-sub'),
     'INVOICE #':                v('invoice-num'),
@@ -1028,10 +1025,29 @@ async function createDoc() {
   if (!accessToken) { toast('Connect to Google first'); return; }
 
   const data = collectForm();
-  const dateFallback = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const property = data['PROPERTY NAME'] || dateFallback;
-  const woNum  = data['WORK ORDER #'] || new Date().toISOString().slice(0,10);
-  const docName = `WO ${woNum} - ${property}`;
+  // Property name: parse up to first comma
+  const rawProp = data['PROPERTY NAME'] || '';
+  const property = (rawProp.includes(',') ? rawProp.split(',')[0] : rawProp).trim()
+    || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Service type: first checked svc checkbox in DOM order, formatted for title
+  const firstSvc = (() => {
+    const checked = document.querySelector('input[name="svc"]:checked');
+    if (!checked) return '';
+    // e.g. "Fire Alarm – Annual" → "Fire Alarm Annual"
+    //      "Repair / Service Call" → "Repair Service Call"
+    return checked.value.replace(/\s*[–—-]\s*/g, ' ').replace(/\s*\/\s*/g, ' ').trim();
+  })();
+
+  // Date completed (date-requested field, now relabeled): formatted mm-dd-yyyy
+  const rawDate = document.getElementById('date-requested').value; // yyyy-mm-dd
+  const dateTitle = rawDate
+    ? rawDate.split('-').slice(1).concat(rawDate.split('-')[0]).join('-') // mm-dd-yyyy
+    : '';
+
+  const woNum  = data['WORK ORDER #'] || '';
+  const titleParts = [`WO ${woNum}`, property, firstSvc, dateTitle].filter(Boolean);
+  const docName = titleParts.join(' - ');
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.classList.add('loading');
@@ -1247,7 +1263,7 @@ function buildWorkOrderHTML(d) {
   // ── 1. Work Order Information ────────────────────────────────────
   html += tbl(
     hdr('WORK ORDER INFORMATION') +
-    tr(lbl('Date Requested:'), val(d['DATE REQUESTED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
+    tr(lbl('Date Completed:'), val(d['DATE COMPLETED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
     tr(lbl('Work Order #:'), val(d['WORK ORDER #']),
        lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>chk(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
     tr(lbl('Requested By:'), val(d['REQUESTED BY']), lbl('Assigned Technician:'), val(d['ASSIGNED TECHNICIAN'])) +
@@ -1352,8 +1368,8 @@ function buildWorkOrderHTML(d) {
   // BULLET_CHECKBOX so they become real interactive checkboxes in the Doc.
   html += tbl(
     hdr('COMPLETION &amp; BILLING') +
-    tr(lbl('Date Completed:'), val(d['DATE COMPLETED']),
-       lbl('Work Status:'),    cbOpts(['Complete','Incomplete','Follow-Up Needed'])) +
+    tr(lbl('Work Status:'), cbOpts(['Complete','Incomplete','Follow-Up Needed']),
+       lbl(''), val('')) +
     tr(lbl('Report Submitted:'), cbOpts(['Yes','No','Pending']),
        lbl('Invoice #:'), val(d['INVOICE #'])) +
     tr(lbl('Invoice Date:'), val(d['INVOICE DATE']), lbl('Total Invoice Amount:'), val(d['TOTAL INVOICE AMOUNT'])) +
@@ -1441,6 +1457,7 @@ window.addEventListener('load', () => {
   const c = localStorage.getItem('flips_client_id');
   if (k) { document.getElementById('api-key').value = k; API_KEY_VAL = k; }
   if (c) document.getElementById('client-id').value = c;
+  // date-requested field is now 'Date Completed' — default to today
   document.getElementById('date-requested').value = new Date().toISOString().split('T')[0];
   calcTotal();
 });
