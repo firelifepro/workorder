@@ -271,7 +271,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form24</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form25</h1>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -749,7 +749,7 @@ async function loadSheet() {
   try {
 
     // ── Strategy 1: Sheets API (native Google Sheets only) ──
-    const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties&key=${API_KEY_VAL}`;
+    const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`;
     const metaRes = await fetch(sheetsUrl, { headers: { Authorization: 'Bearer ' + accessToken } });
 
     if (metaRes.ok) {
@@ -760,7 +760,7 @@ async function loadSheet() {
         if (String(s.properties.sheetId) === String(SHEET_GID)) { tabName = s.properties.title; break; }
       }
       const valRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}?key=${API_KEY_VAL}`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`,
         { headers: { Authorization: 'Bearer ' + accessToken } }
       );
       if (!valRes.ok) throw new Error('Sheets values error ' + valRes.status);
