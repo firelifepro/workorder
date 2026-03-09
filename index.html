@@ -284,7 +284,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Work Order Form27</h1>
+  <h1>🔥 Fire Life Protection – Work Order Form28</h1>
   <a href="create-invoices.html" class="nav-link">🧾 Create QB Invoices</a>
   <div class="top-input">
     <label>API Key:</label>
@@ -1159,13 +1159,13 @@ async function createDoc() {
     const modal = document.createElement('div');
     modal.id = 'wo-error-modal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
-    modal.innerHTML = \`<div style="background:white;border-radius:8px;padding:28px 32px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+    modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
       <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
       <div style="font-weight:700;font-size:1rem;color:#c0392b;margin-bottom:8px;">Line # Required</div>
       <div style="font-size:0.875rem;color:#555;margin-bottom:20px;">Please enter a Line # before saving the work order.</div>
       <button onclick="document.getElementById('wo-error-modal').remove();document.getElementById('wo-number').focus();"
         style="background:#2e6da4;color:white;border:none;padding:9px 28px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">OK</button>
-    </div>\`;
+    </div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
     return;
