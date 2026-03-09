@@ -462,39 +462,32 @@ function initGoogle() {
   if (!apiKey || !clientId) { toast('⚠ Enter both API Key and OAuth Client ID'); return; }
   localStorage.setItem('flips_api_key', apiKey);
   localStorage.setItem('flips_client_id', clientId);
-
-  // Load GSI + gapi if not already loaded
-  if (typeof google === 'undefined') {
-    loadScript('https://accounts.google.com/gsi/client', () =>
-      loadScript('https://apis.google.com/js/api.js', () => startGapi(apiKey, clientId))
-    );
-  } else {
-    startGapi(apiKey, clientId);
-  }
+  startTokenClient(clientId, 'consent');
 }
 
-function loadScript(src, cb) {
-  const s = document.createElement('script');
-  s.src = src; s.onload = cb;
-  document.head.appendChild(s);
-}
-
-function startGapi(apiKey, clientId) {
-  gapi.load('client', async () => {
-    await gapi.client.init({ apiKey, discoveryDocs: [] });
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: GOOGLE_SCOPES,
-      callback: async (resp) => {
-        if (resp.error) { setConnStatus('❌ Auth error: ' + resp.error, '#ff7777'); return; }
-        accessToken = resp.access_token;
-        gapi.client.setToken({ access_token: accessToken });
-        setConnStatus('✓ Connected', '#7fff7f');
-        loadDocs();
+function startTokenClient(clientId, prompt) {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: GOOGLE_SCOPES,
+    callback: async (resp) => {
+      if (resp.error) {
+        if (prompt === 'none') {
+          console.warn('Auto-connect silent fail:', resp.error);
+        } else {
+          setConnStatus('❌ Auth error: ' + resp.error, '#ff7777');
+        }
+        return;
       }
-    });
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+      accessToken = resp.access_token;
+      setConnStatus('✓ Connected', '#7fff7f');
+      loadDocs();
+    },
+    error_callback: (err) => {
+      if (prompt !== 'none') setConnStatus('❌ ' + (err.message || err.type), '#ff7777');
+      else console.warn('Auto-connect error:', err.type || err.message);
+    }
   });
+  tokenClient.requestAccessToken({ prompt });
 }
 
 function setConnStatus(msg, color) {
@@ -935,6 +928,15 @@ window.addEventListener('load', () => {
   if (location.search.includes('code=')) handleQBCallback();
 
   updateSelectedCount();
+
+  // Auto-connect Google silently if credentials are saved
+  if (k && c) {
+    try {
+      startTokenClient(c, 'none');
+    } catch(e) {
+      console.warn('Auto-connect init failed:', e.message);
+    }
+  }
 });
 </script>
 </body>
