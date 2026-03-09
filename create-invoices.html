@@ -479,6 +479,9 @@ function startTokenClient(clientId, prompt) {
         return;
       }
       accessToken = resp.access_token;
+      // Cache token with expiry (tokens last ~1 hour)
+      localStorage.setItem('flips_access_token', accessToken);
+      localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
       setConnStatus('✓ Connected', '#7fff7f');
       loadDocs();
     },
@@ -929,13 +932,16 @@ window.addEventListener('load', () => {
 
   updateSelectedCount();
 
-  // Auto-connect Google silently if credentials are saved
+  // Auto-connect: reuse cached token if still valid (no popup, no GSI call needed)
   if (k && c) {
-    try {
-      startTokenClient(c, 'none');
-    } catch(e) {
-      console.warn('Auto-connect init failed:', e.message);
+    const cachedToken = localStorage.getItem('flips_access_token');
+    const tokenExpiry = parseInt(localStorage.getItem('flips_token_expiry') || '0');
+    if (cachedToken && Date.now() < tokenExpiry) {
+      accessToken = cachedToken;
+      setConnStatus('✓ Connected', '#7fff7f');
+      loadDocs();
     }
+    // If token expired, user clicks Connect to re-auth once
   }
 });
 </script>
