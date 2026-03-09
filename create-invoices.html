@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<title>Fire Life Protection – Create Invoices</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 10pt;
+  background: #e8e8e8;
+  color: #000;
+  padding: 20px;
+}
+
+/* ── Top bar ── */
+#top-bar {
+  background: #1a1a2e;
+  color: white;
+  padding: 12px 20px;
+  margin: -20px -20px 20px -20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+#top-bar h1 { font-size: 1rem; font-weight: 600; flex: 1; }
+.top-bar-nav { display: flex; gap: 8px; align-items: center; }
+.nav-link {
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: all 0.15s;
+}
+.nav-link:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-link.active { background: #2e6da4; color: white; border-color: #2e6da4; }
+.top-input { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
+.top-input label { color: #aaa; white-space: nowrap; }
+.top-input input {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  width: 280px;
+}
+.top-input input::placeholder { color: rgba(255,255,255,0.4); }
+#connect-btn {
+  background: #2e6da4;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+#connect-btn:hover { background: #4a86e8; }
+#conn-status { font-size: 0.75rem; color: #7fff7f; min-width: 120px; }
+
+/* ── Setup guide ── */
+#setup-guide {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-left: 4px solid #f9a825;
+  border-radius: 4px;
+  margin-bottom: 18px;
+  font-size: 0.82rem;
+}
+#setup-guide summary {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #7b5800;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#setup-guide .guide-body { padding: 0 14px 14px; }
+.step { display: flex; gap: 10px; margin-top: 10px; color: #444; line-height: 1.5; }
+.step-n {
+  background: #f9a825; color: white; border-radius: 50%;
+  width: 22px; height: 22px; display: flex; align-items: center;
+  justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+}
+.step a { color: #2e6da4; font-weight: 600; }
+code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; }
+
+/* ── Main card ── */
+.card {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 18px;
+}
+
+/* ── Section headers ── */
+.section-header {
+  background: #2e6da4;
+  color: white;
+  font-weight: 700;
+  font-size: 10pt;
+  padding: 8px 14px;
+  border-radius: 5px 5px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-header span { flex: 1; }
+
+/* ── Folder / filter bar ── */
+#filter-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#filter-bar label { font-size: 0.8rem; color: #555; font-weight: 600; white-space: nowrap; }
+#search-input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  width: 240px;
+  outline: none;
+}
+#search-input:focus { border-color: #2e6da4; background: #e8f4ff; }
+#refresh-btn {
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+#refresh-btn:hover { background: #e0e8f5; border-color: #2e6da4; color: #2e6da4; }
+
+/* ── Select all bar ── */
+#select-bar {
+  padding: 8px 16px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fafafa;
+  font-size: 0.8rem;
+}
+#select-bar label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; }
+#select-bar input[type=checkbox] { width: 14px; height: 14px; accent-color: #2e6da4; }
+#doc-count { color: #777; font-size: 0.78rem; }
+
+/* ── Doc list ── */
+#doc-list {
+  min-height: 120px;
+  max-height: 440px;
+  overflow-y: auto;
+}
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 0.85rem;
+}
+.doc-row:last-child { border-bottom: none; }
+.doc-row:hover { background: #f0f6ff; }
+.doc-row.selected { background: #e4effc; }
+.doc-row input[type=checkbox] { width: 15px; height: 15px; accent-color: #2e6da4; flex-shrink: 0; cursor: pointer; }
+.doc-icon { font-size: 1rem; flex-shrink: 0; }
+.doc-info { flex: 1; min-width: 0; }
+.doc-name { font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-meta { font-size: 0.73rem; color: #888; margin-top: 1px; }
+.doc-amount { font-size: 0.82rem; font-weight: 700; color: #2e7d50; white-space: nowrap; margin-left: auto; }
+
+/* ── Empty / loading states ── */
+#list-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  color: #999;
+  font-size: 0.85rem;
+  gap: 10px;
+}
+#list-placeholder .big-icon { font-size: 2.5rem; }
+
+/* ── Spinner ── */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(46,109,164,0.25);
+  border-top-color: #2e6da4;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── QB settings card ── */
+#qb-card .card-body { padding: 14px 16px; }
+.field-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-end; }
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-group label { font-size: 0.75rem; font-weight: 600; color: #555; }
+.field-group input, .field-group select {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field-group input:focus, .field-group select:focus { border-color: #2e6da4; background: #e8f4ff; }
+.field-group input.wide { width: 320px; }
+.field-group input.med { width: 180px; }
+.field-group select.med { width: 180px; }
+
+/* ── Action bar ── */
+#action-bar {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+#create-btn {
+  background: #2e6da4;
+  color: white;
+  border: none;
+  padding: 10px 28px;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+#create-btn:hover { background: #4a86e8; }
+#create-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+#create-btn .btn-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+#create-btn.loading .btn-spinner { display: block; }
+#action-status { font-size: 0.85rem; flex: 1; }
+#action-status.ok { color: #2e7d50; font-weight: 600; }
+#action-status.err { color: #c0392b; }
+#selected-count { font-size: 0.82rem; color: #555; }
+
+/* ── Results table ── */
+#results-card { display: none; }
+.result-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.result-table th {
+  background: #2e6da4; color: white; font-weight: 700;
+  padding: 7px 10px; text-align: left;
+}
+.result-table td { border-bottom: 1px solid #eee; padding: 7px 10px; }
+.result-table tr:last-child td { border-bottom: none; }
+.result-table tr:hover td { background: #f5f9ff; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.badge-ok { background: #d4edda; color: #155724; }
+.badge-err { background: #f8d7da; color: #721c24; }
+.badge-skip { background: #fff3cd; color: #856404; }
+.result-link { color: #2e6da4; text-decoration: none; font-weight: 600; }
+.result-link:hover { text-decoration: underline; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1a2e; color: white;
+  padding: 10px 22px; border-radius: 6px;
+  font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 9999; white-space: nowrap;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 600px) {
+  .field-group input.wide { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="top-bar">
+  <h1>🔥 Fire Life Protection – Create Invoices</h1>
+  <div class="top-bar-nav">
+    <a href="index.html" class="nav-link">📋 Work Order</a>
+    <a href="create-invoices.html" class="nav-link active">🧾 Create Invoices</a>
+  </div>
+  <div class="top-input">
+    <label>API Key:</label>
+    <input type="password" id="api-key" placeholder="AIzaSy...">
+  </div>
+  <div class="top-input">
+    <label>OAuth Client ID:</label>
+    <input type="text" id="client-id" placeholder="123456...apps.googleusercontent.com">
+  </div>
+  <button id="connect-btn" onclick="initGoogle()">🔗 Connect</button>
+  <div id="conn-status"></div>
+</div>
+
+<!-- SETUP GUIDE -->
+<details id="setup-guide">
+  <summary>⚙️ Setup instructions — click to expand</summary>
+  <div class="guide-body">
+    <div class="step"><div class="step-n">1</div><div>Enter your <strong>Google API Key</strong> and <strong>OAuth Client ID</strong> (same ones used on the Work Order page), then click <strong>Connect</strong>. The page will sign you in and load all docs from the <code>x -TestInvoice</code> folder in your Google Drive.</div></div>
+    <div class="step"><div class="step-n">2</div><div>For QuickBooks, go to <a href="https://developer.intuit.com" target="_blank">developer.intuit.com</a>, create an app, and copy your <strong>Client ID</strong> and <strong>Client Secret</strong> into the QuickBooks section below. Set the redirect URI to this page's URL.</div></div>
+    <div class="step"><div class="step-n">3</div><div>Click <strong>Connect QuickBooks</strong> to authorise. Once connected, select the work order docs to invoice and click <strong>Create Selected Invoices</strong>.</div></div>
+    <div class="step"><div class="step-n">💡</div><div>Each checked work order doc is read, key billing fields are extracted (client, amount, line items), and a draft invoice is created in QuickBooks under the matching customer.</div></div>
+  </div>
+</details>
+
+<!-- WORK ORDER DOCS CARD -->
+<div class="card">
+  <div class="section-header">
+    <span>📁 Work Orders Ready to Invoice &nbsp;<small style="font-weight:400;opacity:.75;">(from Google Drive → x -TestInvoice)</small></span>
+    <button id="refresh-btn" onclick="loadDocs()" style="font-size:0.75rem;padding:4px 10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;cursor:pointer;">⟳ Refresh</button>
+  </div>
+
+  <div id="filter-bar">
+    <label>Search:</label>
+    <input type="text" id="search-input" placeholder="Filter by name…" oninput="filterDocs()">
+    <span id="doc-count" style="margin-left:auto;"></span>
+  </div>
+
+  <div id="select-bar">
+    <label>
+      <input type="checkbox" id="select-all" onchange="toggleAll(this.checked)">
+      Select All
+    </label>
+    <span id="selected-label" style="color:#555;font-size:0.78rem;">0 selected</span>
+  </div>
+
+  <div id="doc-list">
+    <div id="list-placeholder">
+      <div class="big-icon">📄</div>
+      <div>Connect to Google Drive to load work orders</div>
+    </div>
+  </div>
+</div>
+
+<!-- QUICKBOOKS SETTINGS CARD -->
+<div class="card" id="qb-card">
+  <div class="section-header"><span>⚡ QuickBooks Connection</span></div>
+  <div class="card-body">
+    <div class="field-row">
+      <div class="field-group">
+        <label>QB Client ID</label>
+        <input type="text" id="qb-client-id" class="wide" placeholder="AB...your QB OAuth2 client ID">
+      </div>
+      <div class="field-group" style="font-size:0.75rem;color:#888;align-self:flex-end;padding-bottom:8px;">
+        🔒 Client Secret is stored securely in Netlify environment variables
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label>Environment</label>
+        <select id="qb-env" class="med">
+          <option value="sandbox">Sandbox (testing)</option>
+          <option value="production">Production</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Default Due Days</label>
+        <input type="number" id="qb-due-days" class="med" value="30" min="0" max="365">
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:10px;">
+        <button onclick="connectQuickBooks()" style="background:#1fb272;color:white;border:none;padding:7px 16px;border-radius:4px;font-size:0.82rem;font-weight:600;cursor:pointer;">🔗 Connect QuickBooks</button>
+        <span id="qb-status" style="font-size:0.78rem;color:#888;"></span>
+      </div>
+    </div>
+    <div style="padding:8px 0 2px;font-size:0.75rem;color:#888;">
+      Redirect URI to register in your QB app: <code id="redirect-uri"></code>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="card">
+  <div id="action-bar">
+    <button id="create-btn" onclick="createInvoices()" disabled>
+      <div class="btn-spinner"></div>
+      🧾 Create Selected Invoices
+    </button>
+    <span id="selected-count">Select work orders above</span>
+    <span id="action-status"></span>
+  </div>
+</div>
+
+<!-- RESULTS CARD -->
+<div class="card" id="results-card">
+  <div class="section-header"><span>✅ Invoice Results</span></div>
+  <div style="padding:0;">
+    <table class="result-table" id="results-table">
+      <thead>
+        <tr>
+          <th>Work Order</th>
+          <th>Client</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>QB Invoice</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// CONSTANTS & STATE
+// ─────────────────────────────────────────────────────────
+const FOLDER_NAME = 'x -TestInvoice';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/documents.readonly';
+
+let accessToken = null;
+let tokenClient = null;
+let allDocs = [];        // { id, name, modifiedTime, amount, client }
+let qbAccessToken = null;
+let qbRealmId = null;
+
+// ─────────────────────────────────────────────────────────
+// GOOGLE IDENTITY INIT
+// ─────────────────────────────────────────────────────────
+function initGoogle() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter both API Key and OAuth Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+
+  // Load GSI + gapi if not already loaded
+  if (typeof google === 'undefined') {
+    loadScript('https://accounts.google.com/gsi/client', () =>
+      loadScript('https://apis.google.com/js/api.js', () => startGapi(apiKey, clientId))
+    );
+  } else {
+    startGapi(apiKey, clientId);
+  }
+}
+
+function loadScript(src, cb) {
+  const s = document.createElement('script');
+  s.src = src; s.onload = cb;
+  document.head.appendChild(s);
+}
+
+function startGapi(apiKey, clientId) {
+  gapi.load('client', async () => {
+    await gapi.client.init({ apiKey, discoveryDocs: [] });
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: GOOGLE_SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setConnStatus('❌ Auth error: ' + resp.error, '#ff7777'); return; }
+        accessToken = resp.access_token;
+        gapi.client.setToken({ access_token: accessToken });
+        setConnStatus('✓ Connected', '#7fff7f');
+        loadDocs();
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  });
+}
+
+function setConnStatus(msg, color) {
+  const el = document.getElementById('conn-status');
+  el.textContent = msg;
+  el.style.color = color || '#7fff7f';
+}
+
+// ─────────────────────────────────────────────────────────
+// LOAD DOCS FROM GOOGLE DRIVE
+// ─────────────────────────────────────────────────────────
+async function loadDocs() {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+  showPlaceholder('<div class="spinner"></div><div>Loading folder…</div>');
+  document.getElementById('doc-count').textContent = '';
+  allDocs = [];
+
+  try {
+    // 1. Find the target folder
+    const folderId = await findFolder(FOLDER_NAME);
+    if (!folderId) { showPlaceholder(`<div class="big-icon">📂</div><div>Folder "<strong>${FOLDER_NAME}</strong>" not found in your Drive</div>`); return; }
+
+    // 2. List docs in folder
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+    const res = await apiFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=files(id,name,modifiedTime,mimeType)&includeItemsFromAllDrives=true&supportsAllDrives=true&pageSize=200&orderBy=name`
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    const files = json.files || [];
+    if (files.length === 0) {
+      showPlaceholder(`<div class="big-icon">📭</div><div>No documents found in "<strong>${FOLDER_NAME}</strong>"</div>`);
+      return;
+    }
+
+    allDocs = files.map(f => ({
+      id: f.id,
+      name: f.name,
+      modifiedTime: f.modifiedTime,
+      mimeType: f.mimeType,
+      amount: null,
+      client: null
+    }));
+
+    renderDocList(allDocs);
+
+    // 3. Background — try to read amounts/clients from Google Docs content
+    enrichDocsInBackground();
+
+  } catch(e) {
+    showPlaceholder(`<div class="big-icon">⚠️</div><div>Error loading docs: ${e.message}</div>`);
+  }
+}
+
+// Try to pull TOTAL TO INVOICE and CLIENT from each doc
+async function enrichDocsInBackground() {
+  for (let doc of allDocs) {
+    if (doc.mimeType !== 'application/vnd.google-apps.document') continue;
+    try {
+      const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const text = extractText(data);
+      doc.amount = parseAmount(text);
+      doc.client = parseClient(text);
+      renderDocList(allDocs); // re-render with enriched data
+    } catch(e) { /* skip */ }
+  }
+}
+
+function extractText(docData) {
+  let out = '';
+  const content = docData?.body?.content || [];
+  for (const block of content) {
+    for (const elem of (block.paragraph?.elements || [])) {
+      out += (elem.textRun?.content || '');
+    }
+  }
+  return out;
+}
+
+function parseAmount(text) {
+  // Look for "Total to Invoice" line
+  const m = text.match(/total\s+to\s+invoice[^\d$]*(\$?[\d,]+\.?\d*)/i);
+  return m ? m[1].replace(/,/g, '') : null;
+}
+
+function parseClient(text) {
+  const m = text.match(/client\s*\/\s*company[:\s]+([^\n\r]+)/i);
+  return m ? m[1].trim() : null;
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDER DOC LIST
+// ─────────────────────────────────────────────────────────
+function renderDocList(docs) {
+  const filter = document.getElementById('search-input').value.toLowerCase();
+  const filtered = docs.filter(d => d.name.toLowerCase().includes(filter));
+
+  document.getElementById('doc-count').textContent = `${filtered.length} document${filtered.length !== 1 ? 's' : ''}`;
+
+  if (filtered.length === 0) {
+    showPlaceholder('<div class="big-icon">🔍</div><div>No documents match your filter</div>');
+    return;
+  }
+
+  const list = document.getElementById('doc-list');
+  list.innerHTML = filtered.map(doc => {
+    const isDoc = doc.mimeType === 'application/vnd.google-apps.document';
+    const icon = isDoc ? '📄' : '📎';
+    const date = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
+    const amountHtml = doc.amount ? `<div class="doc-amount">$${parseFloat(doc.amount).toLocaleString('en-US',{minimumFractionDigits:2})}</div>` : '';
+    const clientStr = doc.client ? ` &middot; ${doc.client}` : '';
+    return `<div class="doc-row" id="row-${doc.id}" onclick="toggleRow('${doc.id}')">
+      <input type="checkbox" id="chk-${doc.id}" onchange="onCheckChange()" onclick="event.stopPropagation()">
+      <div class="doc-icon">${icon}</div>
+      <div class="doc-info">
+        <div class="doc-name">${escHtml(doc.name)}</div>
+        <div class="doc-meta">Modified ${date}${clientStr}</div>
+      </div>
+      ${amountHtml}
+    </div>`;
+  }).join('');
+
+  onCheckChange(); // update counts
+}
+
+function showPlaceholder(html) {
+  document.getElementById('doc-list').innerHTML = `<div id="list-placeholder">${html}</div>`;
+  document.getElementById('doc-count').textContent = '';
+  updateSelectedCount();
+}
+
+function filterDocs() { renderDocList(allDocs); }
+
+function toggleRow(id) {
+  const chk = document.getElementById('chk-' + id);
+  chk.checked = !chk.checked;
+  onCheckChange();
+}
+
+function toggleAll(checked) {
+  document.querySelectorAll('#doc-list input[type=checkbox]').forEach(c => c.checked = checked);
+  onCheckChange();
+}
+
+function onCheckChange() {
+  const all = document.querySelectorAll('#doc-list input[type=checkbox]');
+  all.forEach(chk => {
+    const row = chk.closest('.doc-row');
+    if (row) row.classList.toggle('selected', chk.checked);
+  });
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const n = getCheckedIds().length;
+  document.getElementById('selected-label').textContent = `${n} selected`;
+  document.getElementById('selected-count').textContent = n > 0 ? `${n} work order${n > 1 ? 's' : ''} selected` : 'Select work orders above';
+  document.getElementById('create-btn').disabled = (n === 0 || !qbAccessToken);
+}
+
+function getCheckedIds() {
+  return [...document.querySelectorAll('#doc-list input[type=checkbox]:checked')].map(c => c.id.replace('chk-', ''));
+}
+
+// ─────────────────────────────────────────────────────────
+// QUICKBOOKS OAUTH
+// ─────────────────────────────────────────────────────────
+function connectQuickBooks() {
+  const clientId = document.getElementById('qb-client-id').value.trim();
+  if (!clientId) { toast('⚠ Enter your QuickBooks Client ID'); return; }
+  const env = document.getElementById('qb-env').value;
+  const redirectUri = encodeURIComponent(location.href.split('?')[0]);
+  const scope = encodeURIComponent('com.intuit.quickbooks.accounting');
+  const state = Math.random().toString(36).slice(2);
+  sessionStorage.setItem('qb_state', state);
+  sessionStorage.setItem('qb_client_id', clientId);
+  sessionStorage.setItem('qb_client_secret', document.getElementById('qb-client-secret').value.trim());
+  sessionStorage.setItem('qb_env', env);
+
+  const authUrl = `https://appcenter.intuit.com/connect/oauth2?` +
+    `client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code` +
+    `&scope=${scope}&state=${state}`;
+  window.open(authUrl, 'qb-auth', 'width=600,height=700');
+}
+
+// Handle QB redirect (called if this page is the redirect target)
+async function handleQBCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  const realmId = params.get('realmId');
+  if (!code || state !== sessionStorage.getItem('qb_state')) return;
+
+  const clientId = sessionStorage.getItem('qb_client_id');
+  const clientSecret = sessionStorage.getItem('qb_client_secret');
+  const env = sessionStorage.getItem('qb_env') || 'sandbox';
+  const redirectUri = location.href.split('?')[0];
+
+  document.getElementById('qb-status').textContent = 'Exchanging token…';
+  try {
+    // Exchange auth code via Netlify function proxy (avoids CORS). QB secrets stay server-side.
+    const resp = await fetch('/api/qb-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: redirectUri })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    qbAccessToken = data.access_token;
+    qbRealmId = realmId;
+    localStorage.setItem('qb_access_token', qbAccessToken);
+    localStorage.setItem('qb_realm_id', qbRealmId);
+    document.getElementById('qb-status').textContent = '✓ QuickBooks connected';
+    document.getElementById('qb-status').style.color = '#1fb272';
+    // Clean URL
+    history.replaceState({}, '', location.pathname);
+    updateSelectedCount();
+    toast('✅ QuickBooks connected!');
+  } catch(e) {
+    document.getElementById('qb-status').textContent = '❌ ' + e.message;
+    document.getElementById('qb-status').style.color = '#c0392b';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// CREATE INVOICES
+// ─────────────────────────────────────────────────────────
+async function createInvoices() {
+  const ids = getCheckedIds();
+  if (ids.length === 0) { toast('⚠ No work orders selected'); return; }
+  if (!qbAccessToken) { toast('⚠ Connect QuickBooks first'); return; }
+
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true; btn.classList.add('loading');
+  setActionStatus('Creating invoices…', '');
+  const results = [];
+
+  for (const id of ids) {
+    const doc = allDocs.find(d => d.id === id);
+    if (!doc) continue;
+    try {
+      // Re-read doc content if not enriched
+      if (!doc.amount || !doc.client) {
+        const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
+        if (res.ok) {
+          const data = await res.json();
+          const text = extractText(data);
+          doc.amount = doc.amount || parseAmount(text);
+          doc.client = doc.client || parseClient(text) || doc.name;
+        }
+      }
+
+      const invoiceResult = await createQBInvoice(doc);
+      results.push({ doc, status: 'ok', invoiceId: invoiceResult.id, invoiceNum: invoiceResult.DocNumber, link: buildQBLink(invoiceResult.id) });
+      toast(`✅ Invoice created: ${doc.name}`);
+    } catch(e) {
+      results.push({ doc, status: 'error', message: e.message });
+    }
+  }
+
+  btn.disabled = false; btn.classList.remove('loading');
+  const ok = results.filter(r => r.status === 'ok').length;
+  setActionStatus(`Done — ${ok} of ${results.length} invoice${results.length > 1 ? 's' : ''} created`, ok === results.length ? 'ok' : 'err');
+  showResults(results);
+  updateSelectedCount();
+}
+
+async function createQBInvoice(doc) {
+  const env = document.getElementById('qb-env').value;
+  const dueDays = parseInt(document.getElementById('qb-due-days').value) || 30;
+  const baseUrl = env === 'production'
+    ? `https://quickbooks.api.intuit.com/v3/company/${qbRealmId}`
+    : `https://sandbox-quickbooks.api.intuit.com/v3/company/${qbRealmId}`;
+
+  // Find or create the customer
+  const custRef = await findOrCreateCustomer(baseUrl, doc.client || doc.name);
+
+  const today = new Date();
+  const due = new Date(today); due.setDate(due.getDate() + dueDays);
+  const fmt = d => d.toISOString().split('T')[0];
+
+  const amount = parseFloat(doc.amount) || 0;
+  const body = {
+    Line: [{
+      Amount: amount,
+      DetailType: 'SalesItemLineDetail',
+      SalesItemLineDetail: {
+        ItemRef: { value: '1', name: 'Services' },
+        Qty: 1,
+        UnitPrice: amount
+      },
+      Description: doc.name
+    }],
+    CustomerRef: custRef,
+    TxnDate: fmt(today),
+    DueDate: fmt(due),
+    PrivateNote: `Created from Work Order: ${doc.name} (Google Drive ID: ${doc.id})`
+  };
+
+  const res = await fetch(`${baseUrl}/invoice?minorversion=70`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${qbAccessToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.Invoice;
+}
+
+async function findOrCreateCustomer(baseUrl, customerName) {
+  if (!customerName) customerName = 'Unknown Customer';
+  // Search for existing customer
+  try {
+    const q = encodeURIComponent(`SELECT * FROM Customer WHERE DisplayName = '${customerName.replace("'", "\\'")}'`);
+    const res = await fetch(`${baseUrl}/query?query=${q}&minorversion=70`, {
+      headers: { 'Authorization': `Bearer ${qbAccessToken}`, 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const customers = data?.QueryResponse?.Customer;
+      if (customers && customers.length > 0) return { value: customers[0].Id, name: customers[0].DisplayName };
+    }
+  } catch(e) { /* fall through to create */ }
+
+  // Create new customer
+  const res = await fetch(`${baseUrl}/customer?minorversion=70`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${qbAccessToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ DisplayName: customerName })
+  });
+  if (!res.ok) throw new Error('Could not create QB customer: ' + await res.text());
+  const data = await res.json();
+  return { value: data.Customer.Id, name: data.Customer.DisplayName };
+}
+
+function buildQBLink(invoiceId) {
+  const env = document.getElementById('qb-env').value;
+  if (env === 'production') return `https://app.qbo.intuit.com/app/invoice?txnId=${invoiceId}`;
+  return `https://app.sandbox.qbo.intuit.com/app/invoice?txnId=${invoiceId}`;
+}
+
+// ─────────────────────────────────────────────────────────
+// RESULTS TABLE
+// ─────────────────────────────────────────────────────────
+function showResults(results) {
+  const card = document.getElementById('results-card');
+  card.style.display = 'block';
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = results.map(r => {
+    const amt = r.doc.amount ? `$${parseFloat(r.doc.amount).toLocaleString('en-US',{minimumFractionDigits:2})}` : '—';
+    const client = r.doc.client || '—';
+    const badge = r.status === 'ok'
+      ? `<span class="badge badge-ok">✓ Created</span>`
+      : `<span class="badge badge-err">✗ Error</span>`;
+    const link = r.status === 'ok'
+      ? `<a class="result-link" href="${r.link}" target="_blank">#${r.invoiceNum || r.invoiceId} ↗</a>`
+      : `<span style="color:#c0392b;font-size:0.78rem;">${escHtml(r.message||'')}</span>`;
+    return `<tr>
+      <td>${escHtml(r.doc.name)}</td>
+      <td>${escHtml(client)}</td>
+      <td>${amt}</td>
+      <td>${badge}</td>
+      <td>${link}</td>
+    </tr>`;
+  }).join('');
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────
+async function findFolder(name) {
+  const q = encodeURIComponent(`mimeType="application/vnd.google-apps.folder" and trashed=false`);
+  const res = await apiFetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}` +
+    `&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives&pageSize=1000`
+  );
+  if (!res.ok) return null;
+  const json = await res.json();
+  const folder = json.files?.find(f => f.name.trim().toLowerCase() === name.trim().toLowerCase());
+  return folder?.id || null;
+}
+
+function apiFetch(url, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url, opts);
+}
+
+function setActionStatus(msg, cls) {
+  const el = document.getElementById('action-status');
+  el.textContent = msg;
+  el.className = cls;
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────
+// ON LOAD
+// ─────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Restore credentials
+  const k = localStorage.getItem('flips_api_key');
+  const c = localStorage.getItem('flips_client_id');
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
+
+  // Restore QB token if previously stored
+  const savedToken = localStorage.getItem('qb_access_token');
+  const savedRealm = localStorage.getItem('qb_realm_id');
+  if (savedToken) {
+    qbAccessToken = savedToken;
+    qbRealmId = savedRealm;
+    document.getElementById('qb-status').textContent = '✓ QuickBooks connected (saved session)';
+    document.getElementById('qb-status').style.color = '#1fb272';
+  }
+
+  // Set redirect URI hint
+  document.getElementById('redirect-uri').textContent = location.href.split('?')[0];
+
+  // Handle QB OAuth callback
+  if (location.search.includes('code=')) handleQBCallback();
+
+  updateSelectedCount();
+});
+</script>
+</body>
+</html>
