@@ -715,7 +715,7 @@ const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 // After deploying the Apps Script as a Web App, paste the URL below.
 // Apps Script → Deploy → New Deployment → Web App → Execute as Me → Anyone
 // Also run setSecret() in the Apps Script once after pasting.
-const APPS_SCRIPT_URL    = 'https://script.google.com/macros/s/AKfycbwBFg5DsvkZBX8sItKWb5kY7UR17lbo3ThlY4_1mgSESSA1qrcOc8CezmO-EwUVBW5lQA/exec'; // ← PASTE WEB APP URL HERE
+const APPS_SCRIPT_URL    = ''; // ← PASTE WEB APP URL HERE
 const APPS_SCRIPT_SECRET = 'flips-2026-secret'; // must match setSecret() in Apps Script
 const SHEET_GID = '1899870347';
 const TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc';
@@ -1683,10 +1683,11 @@ async function testScriptConnection() {
   btn.disabled = true;
   btn.textContent = '⏳ Testing…';
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch('/api/apps-script', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        _appsScriptUrl: APPS_SCRIPT_URL,
         secret: APPS_SCRIPT_SECRET,
         action: 'log',
         log: {
@@ -1727,10 +1728,10 @@ async function logToSheet(action, detail, status, error) {
   if (!APPS_SCRIPT_URL) { console.log('[LOG]', action, detail, status, error || ''); return; }
   const entry = { source: 'work-order-page', action, detail: String(detail || ''), status: status || 'INFO', error: String(error || '') };
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    await fetch('/api/apps-script', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: APPS_SCRIPT_SECRET, action: 'log', log: entry })
+      body: JSON.stringify({ _appsScriptUrl: APPS_SCRIPT_URL, secret: APPS_SCRIPT_SECRET, action: 'log', log: entry })
     });
   } catch(_) { /* never block on logging */ }
 }
@@ -1812,10 +1813,10 @@ async function updateInspectionSchedule(data) {
     `Sending ${updates.length} update(s) to Apps Script web app`, 'INFO');
 
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch('/api/apps-script', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: APPS_SCRIPT_SECRET, updates })
+      body: JSON.stringify({ _appsScriptUrl: APPS_SCRIPT_URL, secret: APPS_SCRIPT_SECRET, updates })
     });
 
     if (!resp.ok) {
