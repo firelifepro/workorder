@@ -1676,10 +1676,7 @@ window.addEventListener('load', () => {
 // ─────────────────────────────────────────────────────────
 async function testScriptConnection() {
   const btn = document.getElementById('test-conn-btn');
-  if (!APPS_SCRIPT_URL) {
-    toast('⚠ APPS_SCRIPT_URL is blank — paste it into index.html first');
-    return;
-  }
+  // URL is handled by the Cloudflare Worker env var — no client-side check needed
   btn.disabled = true;
   btn.textContent = '⏳ Testing…';
   try {
@@ -1725,7 +1722,6 @@ async function testScriptConnection() {
 // Non-blocking, never throws, silently swallows its own errors.
 // ─────────────────────────────────────────────────────────────────────────────
 async function logToSheet(action, detail, status, error) {
-  if (!APPS_SCRIPT_URL) { console.log('[LOG]', action, detail, status, error || ''); return; }
   const entry = { source: 'work-order-page', action, detail: String(detail || ''), status: status || 'INFO', error: String(error || '') };
   try {
     await fetch('/api/apps-script', {
@@ -1737,10 +1733,6 @@ async function logToSheet(action, detail, status, error) {
 }
 
 async function updateInspectionSchedule(data) {
-  if (!APPS_SCRIPT_URL) {
-    console.warn('APPS_SCRIPT_URL not set — inspection schedule not updated');
-    return;
-  }
 
   const propertyName  = data['PROPERTY NAME']   || '';
   const dateCompleted = data['DATE COMPLETED']   || '';
