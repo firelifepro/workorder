@@ -113,6 +113,42 @@ export default {
       }
     }
 
+    // ── /api/apps-script — Apps Script proxy ────────────────────────
+    // Forwards POST body to the Apps Script web app server-side,
+    // bypassing the CORS restriction that blocks browser → Apps Script.
+    // The Apps Script URL is passed in the body as _appsScriptUrl,
+    // OR set APPS_SCRIPT_URL as an env var in the Cloudflare dashboard.
+    if (url.pathname === '/api/apps-script' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); }
+      catch (e) { return corsResponse({ error: 'Invalid JSON body' }, 400); }
+
+      const targetUrl = env.APPS_SCRIPT_URL || body._appsScriptUrl;
+      if (!targetUrl) {
+        return corsResponse({ error: 'APPS_SCRIPT_URL not set — add it as a Cloudflare env var or pass _appsScriptUrl in body' }, 500);
+      }
+
+      // Remove the internal routing key before forwarding
+      const forwardBody = Object.assign({}, body);
+      delete forwardBody._appsScriptUrl;
+
+      try {
+        const resp = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(forwardBody),
+          redirect: 'follow',   // Apps Script issues a redirect on POST — must follow it
+        });
+        const text = await resp.text();
+        let data;
+        try { data = JSON.parse(text); }
+        catch (_) { data = { raw: text }; }
+        return corsResponse(data, resp.ok ? 200 : resp.status);
+      } catch (err) {
+        return corsResponse({ error: 'Apps Script proxy failed', message: err.message }, 500);
+      }
+    }
+
     // ── Static assets — pass everything else through ─────────────────
     return env.ASSETS.fetch(request);
   },
