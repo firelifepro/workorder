@@ -449,6 +449,12 @@ const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://ww
 
 let accessToken = null;
 let tokenClient = null;
+// ── Shared Apps Script logging endpoint ─────────────────────────────────────
+// Same web app URL used by the work order page — paste it here too so the
+// invoice page can also write to the system log sheet.
+const APPS_SCRIPT_URL    = ''; // ← paste your Apps Script Web App URL here
+const APPS_SCRIPT_SECRET = 'flips-2026-secret';
+
 let allDocs = [];        // { id, name, modifiedTime, amount, client }
 let qbAccessToken = null;
 let qbRealmId = null;
@@ -551,19 +557,56 @@ async function loadDocs() {
 }
 
 // Try to pull TOTAL TO INVOICE and CLIENT from each doc
+// ─────────────────────────────────────────────────────────
+// SHEET LOGGER — mirrors the one in the work order page
+// ─────────────────────────────────────────────────────────
+async function logToSheet(action, detail, status, error) {
+  if (!APPS_SCRIPT_URL) { console.log('[LOG]', action, detail, status, error || ''); return; }
+  const entry = { source: 'create-invoices-page', action, detail: String(detail || ''), status: status || 'INFO', error: String(error || '') };
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: APPS_SCRIPT_SECRET, action: 'log', log: entry })
+    });
+  } catch(_) { /* never block on logging */ }
+}
+
 async function enrichDocsInBackground() {
-  for (let doc of allDocs) {
-    if (doc.mimeType !== 'application/vnd.google-apps.document') continue;
+  const docList = allDocs.filter(d => d.mimeType === 'application/vnd.google-apps.document');
+  await logToSheet('ENRICH_START', `Enriching ${docList.length} doc(s) from folder`, 'INFO');
+  let enriched = 0, failed = 0;
+
+  for (let doc of docList) {
     try {
       const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
-      if (!res.ok) continue;
+      if (!res.ok) {
+        await logToSheet('ENRICH_FETCH_FAIL', `Doc: ${doc.name} | HTTP ${res.status}`, 'ERROR');
+        failed++;
+        continue;
+      }
       const data = await res.json();
       const text = extractText(data);
+
+      // Log a snippet of the extracted text for debugging
+      const snippet = text.replace(/\s+/g, ' ').trim().substring(0, 120);
+      await logToSheet('ENRICH_TEXT_SAMPLE', `Doc: ${doc.name} | Text[0-120]: ${snippet}`, 'INFO');
+
       doc.amount = parseAmount(text);
       doc.client = parseClient(text);
-      renderDocList(allDocs); // re-render with enriched data
-    } catch(e) { /* skip */ }
+
+      await logToSheet('ENRICH_PARSED',
+        `Doc: ${doc.name} | Client: "${doc.client || '(none)'}" | Amount: "${doc.amount || '(none)'}"`,
+        doc.client || doc.amount ? 'OK' : 'WARN');
+
+      renderDocList(allDocs);
+      enriched++;
+    } catch(e) {
+      await logToSheet('ENRICH_EXCEPTION', `Doc: ${doc.name}`, 'ERROR', e.message);
+      failed++;
+    }
   }
+  await logToSheet('ENRICH_COMPLETE', `Done — ${enriched} enriched, ${failed} failed`, enriched > 0 ? 'OK' : 'WARN');
 }
 
 function extractText(docData) {
@@ -779,6 +822,8 @@ async function createInvoices() {
 }
 
 async function createQBInvoice(doc) {
+  await logToSheet('QB_INVOICE_START',
+    `Doc: ${doc.name} | Client: ${doc.client || '(none)'} | Amount: ${doc.amount || '(none)'}`, 'INFO');
   const env = document.getElementById('qb-env').value;
   const dueDays = parseInt(document.getElementById('qb-due-days').value) || 30;
   const baseUrl = env === 'production'
@@ -826,6 +871,7 @@ async function createQBInvoice(doc) {
 
 async function findOrCreateCustomer(baseUrl, customerName) {
   if (!customerName) customerName = 'Unknown Customer';
+  await logToSheet('QB_CUSTOMER_LOOKUP', `Looking up QB customer: "${customerName}"`, 'INFO');
   // Search for existing customer
   try {
     const q = encodeURIComponent(`SELECT * FROM Customer WHERE DisplayName = '${customerName.replace("'", "\\'")}'`);
@@ -835,10 +881,14 @@ async function findOrCreateCustomer(baseUrl, customerName) {
     if (res.ok) {
       const data = await res.json();
       const customers = data?.QueryResponse?.Customer;
-      if (customers && customers.length > 0) return { value: customers[0].Id, name: customers[0].DisplayName };
+      if (customers && customers.length > 0) {
+        await logToSheet('QB_CUSTOMER_FOUND', `Found existing QB customer: "${customers[0].DisplayName}" (ID: ${customers[0].Id})`, 'OK');
+        return { value: customers[0].Id, name: customers[0].DisplayName };
+      }
     }
   } catch(e) { /* fall through to create */ }
 
+  await logToSheet('QB_CUSTOMER_CREATE', `No existing QB customer found for "${customerName}" — creating new`, 'INFO');
   // Create new customer
   const res = await fetch(`${baseUrl}/customer?minorversion=70`, {
     method: 'POST',
