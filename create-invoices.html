@@ -314,7 +314,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
-  <h1>🔥 Fire Life Protection – Create Invoices7</h1>
+  <h1>🔥 Fire Life Protection – Create Invoices</h1>
   <div class="top-bar-nav">
     <a href="index.html" class="nav-link">📋 Work Order</a>
     <a href="create-invoices.html" class="nav-link active">🧾 Create Invoices</a>
@@ -347,7 +347,6 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   <div class="section-header">
     <span>📁 Work Orders Ready to Invoice &nbsp;<small style="font-weight:400;opacity:.75;">(from Google Drive → x -TestInvoice)</small></span>
     <button id="refresh-btn" onclick="loadDocs()" style="font-size:0.75rem;padding:4px 10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;cursor:pointer;">⟳ Refresh</button>
-    <button onclick="createTestDoc()" style="font-size:0.75rem;padding:4px 10px;background:rgba(255,200,0,0.25);border:1px solid rgba(255,200,0,0.5);color:#ffe082;border-radius:4px;cursor:pointer;margin-left:6px;">🧪 Create Test Doc</button>
   </div>
 
   <div id="filter-bar">
@@ -463,40 +462,39 @@ function initGoogle() {
   if (!apiKey || !clientId) { toast('⚠ Enter both API Key and OAuth Client ID'); return; }
   localStorage.setItem('flips_api_key', apiKey);
   localStorage.setItem('flips_client_id', clientId);
-  ensureGSILoaded(() => startTokenClient(clientId, 'consent'));
+
+  // Load GSI + gapi if not already loaded
+  if (typeof google === 'undefined') {
+    loadScript('https://accounts.google.com/gsi/client', () =>
+      loadScript('https://apis.google.com/js/api.js', () => startGapi(apiKey, clientId))
+    );
+  } else {
+    startGapi(apiKey, clientId);
+  }
 }
 
-function ensureGSILoaded(cb) {
-  if (typeof google !== 'undefined' && google.accounts) { cb(); return; }
+function loadScript(src, cb) {
   const s = document.createElement('script');
-  s.src = 'https://accounts.google.com/gsi/client';
-  s.onload = cb;
-  s.onerror = () => toast('⚠ Failed to load Google sign-in library');
+  s.src = src; s.onload = cb;
   document.head.appendChild(s);
 }
 
-function startTokenClient(clientId, prompt) {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: GOOGLE_SCOPES,
-    callback: async (resp) => {
-      if (resp.error) {
-        if (prompt === 'none') { console.warn('Auto-connect silent fail:', resp.error); }
-        else { setConnStatus('❌ Auth error: ' + resp.error, '#ff7777'); }
-        return;
+function startGapi(apiKey, clientId) {
+  gapi.load('client', async () => {
+    await gapi.client.init({ apiKey, discoveryDocs: [] });
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: GOOGLE_SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setConnStatus('❌ Auth error: ' + resp.error, '#ff7777'); return; }
+        accessToken = resp.access_token;
+        gapi.client.setToken({ access_token: accessToken });
+        setConnStatus('✓ Connected', '#7fff7f');
+        loadDocs();
       }
-      accessToken = resp.access_token;
-      localStorage.setItem('flips_access_token', accessToken);
-      localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
-      setConnStatus('✓ Connected', '#7fff7f');
-      loadDocs();
-    },
-    error_callback: (err) => {
-      if (prompt !== 'none') setConnStatus('❌ ' + (err.message || err.type), '#ff7777');
-      else console.warn('Auto-connect error:', err.type || err.message);
-    }
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   });
-  tokenClient.requestAccessToken({ prompt });
 }
 
 function setConnStatus(msg, color) {
@@ -561,81 +559,46 @@ async function enrichDocsInBackground() {
       if (!res.ok) continue;
       const data = await res.json();
       const text = extractText(data);
-      const wo = parseWorkOrder(text);
-      doc.parsed = wo;
-      doc.amount = wo.amount;
-      doc.client = wo.client || doc.name;
-      renderDocList(allDocs);
+      doc.amount = parseAmount(text);
+      doc.client = parseClient(text);
+      renderDocList(allDocs); // re-render with enriched data
     } catch(e) { /* skip */ }
   }
 }
 
 function extractText(docData) {
-  let out = '';
-  const content = docData?.body?.content || [];
-  for (const block of content) {
-    for (const elem of (block.paragraph?.elements || [])) {
-      out += (elem.textRun?.content || '');
+  // Recursively walk all blocks including table cells.
+  // Work order fields all live inside tables so this is essential.
+  function walk(blocks) {
+    let out = '';
+    for (const block of (blocks || [])) {
+      if (block.paragraph) {
+        for (const elem of (block.paragraph.elements || [])) {
+          out += (elem.textRun?.content || '');
+        }
+      }
+      if (block.table) {
+        for (const row of (block.table.tableRows || [])) {
+          for (const cell of (row.tableCells || [])) {
+            out += walk(cell.content);
+          }
+        }
+      }
     }
+    return out;
   }
-  return out;
-}
-
-function parseField(text, label) {
-  const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const m = text.match(new RegExp(esc + '\\s*:?\\s*([^\\n\\r]+)', 'i'));
-  if (!m) return '';
-  return m[1].replace(/\s{3,}.*$/, '').trim();
+  return walk(docData?.body?.content || []);
 }
 
 function parseAmount(text) {
-  const m = text.match(/Total to Invoice[^\d$]*(\$?[\d,]+\.?\d*)/i);
-  return m ? m[1].replace(/[$,]/g, '') : null;
+  // Look for "Total to Invoice" line
+  const m = text.match(/total\s+to\s+invoice[^\d$]*(\$?[\d,]+\.?\d*)/i);
+  return m ? m[1].replace(/,/g, '') : null;
 }
 
 function parseClient(text) {
-  return parseField(text, 'Client / Company');
-}
-
-function parseServices(text) {
-  const services = [];
-  const re = /[\u2611\u2713\u2714]\s*([^\n\r\u2610\u2611\u2713\u2714]{3,60})/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const s = m[1].trim().replace(/\s+/g, ' ');
-    if (s) services.push(s);
-  }
-  if (services.length === 0) {
-    ['Fire Alarm Inspection','Sprinkler Inspection','Extinguisher Inspection',
-     'Emergency Exit Light Inspection','5-Year Internal Pipe Inspection',
-     '5-Year FDC Hydrostatic Test','3-Year Dry Pipe Test','Annual Backflow Prevention Test',
-     'Deficiency Correction','Repair / Service Call','New Installation',
-     'Compliance Report','Monitoring Setup / Change','Sub-Contractor Work',
-     'Walk-Through / Consultation'
-    ].forEach(k => { if (text.includes(k)) services.push(k); });
-  }
-  return services;
-}
-
-function parseWorkDescription(text) {
-  const m = text.match(/Description of Work Requested[:\s]*([\s\S]*?)(?=FIRE SYSTEM INFORMATION|SUB-CONTRACTOR|NOTES|FLIPS EXPENSES|COMPLETION|$)/i);
-  if (!m) return '';
-  return m[1].replace(/[\n\r]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-}
-
-function parseWorkOrder(text) {
-  return {
-    client:        parseField(text, 'Client / Company'),
-    billingEmail:  parseField(text, 'Billing Email'),
-    propertyName:  parseField(text, 'Property Name'),
-    address:       parseField(text, 'Service Address'),
-    cityStateZip:  parseField(text, 'City / State / Zip'),
-    lineNumber:    parseField(text, 'Line #'),
-    dateCompleted: parseField(text, 'Date Completed'),
-    services:      parseServices(text),
-    workDesc:      parseWorkDescription(text),
-    amount:        parseAmount(text),
-  };
+  const m = text.match(/client\s*\/\s*company[:\s]+([^\n\r]+)/i);
+  return m ? m[1].trim() : null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -718,17 +681,19 @@ function getCheckedIds() {
 function connectQuickBooks() {
   const clientId = document.getElementById('qb-client-id').value.trim();
   if (!clientId) { toast('⚠ Enter your QuickBooks Client ID'); return; }
-  localStorage.setItem('qb_client_id_saved', clientId);
   const env = document.getElementById('qb-env').value;
-  const redirectUri = encodeURIComponent('https://workorder.firelifepro.workers.dev/create-invoices');
+  const redirectUri = encodeURIComponent(location.href.split('?')[0]);
   const scope = encodeURIComponent('com.intuit.quickbooks.accounting');
   const state = Math.random().toString(36).slice(2);
-  localStorage.setItem('qb_state', state);
-  localStorage.setItem('qb_client_id', clientId);
-  localStorage.setItem('qb_env', env);
+  sessionStorage.setItem('qb_state', state);
+  sessionStorage.setItem('qb_client_id', clientId);
+  sessionStorage.setItem('qb_client_secret', document.getElementById('qb-client-secret').value.trim());
+  sessionStorage.setItem('qb_env', env);
 
-  // Redirect current tab — avoids popup blockers and cross-tab storage issues
-  window.location.href = `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&redirect_uri=${encodeURIComponent('https://workorder.firelifepro.workers.dev/create-invoices')}&response_type=code&scope=${scope}&state=${state}`;
+  const authUrl = `https://appcenter.intuit.com/connect/oauth2?` +
+    `client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code` +
+    `&scope=${scope}&state=${state}`;
+  window.open(authUrl, 'qb-auth', 'width=600,height=700');
 }
 
 // Handle QB redirect (called if this page is the redirect target)
@@ -737,10 +702,11 @@ async function handleQBCallback() {
   const code = params.get('code');
   const state = params.get('state');
   const realmId = params.get('realmId');
-  if (!code || state !== localStorage.getItem('qb_state')) return;
+  if (!code || state !== sessionStorage.getItem('qb_state')) return;
 
-  const clientId = localStorage.getItem('qb_client_id');
-  const env = localStorage.getItem('qb_env') || 'sandbox';
+  const clientId = sessionStorage.getItem('qb_client_id');
+  const clientSecret = sessionStorage.getItem('qb_client_secret');
+  const env = sessionStorage.getItem('qb_env') || 'sandbox';
   const redirectUri = location.href.split('?')[0];
 
   document.getElementById('qb-status').textContent = 'Exchanging token…';
@@ -749,7 +715,7 @@ async function handleQBCallback() {
     const resp = await fetch('/api/qb-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: 'https://workorder.firelifepro.workers.dev/create-invoices' })
+      body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: redirectUri })
     });
     if (!resp.ok) throw new Error(await resp.text());
     const data = await resp.json();
@@ -786,21 +752,19 @@ async function createInvoices() {
     const doc = allDocs.find(d => d.id === id);
     if (!doc) continue;
     try {
-      // Full parse if background enrichment hasn't run yet
-      if (!doc.parsed || !doc.parsed.client) {
+      // Re-read doc content if not enriched
+      if (!doc.amount || !doc.client) {
         const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
         if (res.ok) {
           const data = await res.json();
           const text = extractText(data);
-          const wo = parseWorkOrder(text);
-          doc.parsed = wo;
-          doc.amount = wo.amount || doc.amount;
-          doc.client = wo.client || doc.name;
+          doc.amount = doc.amount || parseAmount(text);
+          doc.client = doc.client || parseClient(text) || doc.name;
         }
       }
 
       const invoiceResult = await createQBInvoice(doc);
-      results.push({ doc, status: 'ok', invoiceId: invoiceResult.Id, invoiceNum: invoiceResult.DocNumber, invoiceAmount: invoiceResult.TotalAmt, link: buildQBLink(invoiceResult.Id) });
+      results.push({ doc, status: 'ok', invoiceId: invoiceResult.id, invoiceNum: invoiceResult.DocNumber, link: buildQBLink(invoiceResult.id) });
       toast(`✅ Invoice created: ${doc.name}`);
     } catch(e) {
       results.push({ doc, status: 'error', message: e.message });
@@ -815,91 +779,74 @@ async function createInvoices() {
 }
 
 async function createQBInvoice(doc) {
+  const env = document.getElementById('qb-env').value;
   const dueDays = parseInt(document.getElementById('qb-due-days').value) || 30;
-  const wo = doc.parsed || {};
-  const clientName   = wo.client       || doc.client || doc.name;
-  const billingEmail = wo.billingEmail || '';
-  const address      = wo.address      || '';
-  const cityStateZip = wo.cityStateZip || '';
-  const services     = wo.services     || [];
-  const workDesc     = wo.workDesc     || '';
-  const amount       = parseFloat(wo.amount || doc.amount) || 0;
+  const baseUrl = env === 'production'
+    ? `https://quickbooks.api.intuit.com/v3/company/${qbRealmId}`
+    : `https://sandbox-quickbooks.api.intuit.com/v3/company/${qbRealmId}`;
 
-  const custRef = await findOrCreateCustomer(clientName, billingEmail);
+  // Find or create the customer
+  const custRef = await findOrCreateCustomer(baseUrl, doc.client || doc.name);
 
   const today = new Date();
   const due = new Date(today); due.setDate(due.getDate() + dueDays);
   const fmt = d => d.toISOString().split('T')[0];
 
-  const location = [address, cityStateZip].filter(Boolean).join(', ');
-  const svcLine  = services.length ? services.join(', ') : '';
-  const description = [
-    location ? `Job Location: ${location}` : '',
-    svcLine  ? `Work Performed: ${svcLine}` : '',
-    workDesc ? workDesc : '',
-  ].filter(Boolean).join('\n') || doc.name;
-
+  const amount = parseFloat(doc.amount) || 0;
   const body = {
     Line: [{
       Amount: amount,
       DetailType: 'SalesItemLineDetail',
-      SalesItemLineDetail: { ItemRef: { value: '1', name: 'Services' }, Qty: 1, UnitPrice: amount },
-      Description: description
+      SalesItemLineDetail: {
+        ItemRef: { value: '1', name: 'Services' },
+        Qty: 1,
+        UnitPrice: amount
+      },
+      Description: doc.name
     }],
     CustomerRef: custRef,
     TxnDate: fmt(today),
     DueDate: fmt(due),
-    PrivateNote: `Work Order: ${doc.name} | Drive ID: ${doc.id}`,
-    CustomerMemo: { value: description }
+    PrivateNote: `Created from Work Order: ${doc.name} (Google Drive ID: ${doc.id})`
   };
 
-  const data = await qbApi('POST', '/invoice?minorversion=70', body);
-  if (!data.Invoice) throw new Error('Invoice creation failed: ' + JSON.stringify(data));
+  const res = await fetch(`${baseUrl}/invoice?minorversion=70`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${qbAccessToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
   return data.Invoice;
 }
 
-async function qbApi(method, path, payload) {
-  const env = document.getElementById('qb-env').value;
-  const res = await fetch('/api/qb-api', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ access_token: qbAccessToken, realm_id: qbRealmId, method, path, payload, env })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.message || 'QB API error');
-  return data;
-}
-
-async function findOrCreateCustomer(customerName, billingEmail) {
+async function findOrCreateCustomer(baseUrl, customerName) {
   if (!customerName) customerName = 'Unknown Customer';
-  // 1. Match by billing email (most reliable)
-  if (billingEmail) {
-    try {
-      const q = encodeURIComponent(`SELECT * FROM Customer WHERE PrimaryEmailAddr = '${billingEmail.replace(/'/g, "")}'`);
-      const data = await qbApi('GET', `/query?query=${q}&minorversion=70`);
-      const customers = data?.QueryResponse?.Customer;
-      if (customers && customers.length > 0) {
-        console.log('✓ QB matched by email:', customers[0].DisplayName);
-        return { value: customers[0].Id, name: customers[0].DisplayName };
-      }
-    } catch(e) { /* fall through */ }
-  }
-  // 2. Match by display name
+  // Search for existing customer
   try {
-    const q = encodeURIComponent(`SELECT * FROM Customer WHERE DisplayName = '${customerName.replace(/'/g, "")}'`);
-    const data = await qbApi('GET', `/query?query=${q}&minorversion=70`);
-    const customers = data?.QueryResponse?.Customer;
-    if (customers && customers.length > 0) {
-      console.log('✓ QB matched by name:', customers[0].DisplayName);
-      return { value: customers[0].Id, name: customers[0].DisplayName };
+    const q = encodeURIComponent(`SELECT * FROM Customer WHERE DisplayName = '${customerName.replace("'", "\\'")}'`);
+    const res = await fetch(`${baseUrl}/query?query=${q}&minorversion=70`, {
+      headers: { 'Authorization': `Bearer ${qbAccessToken}`, 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const customers = data?.QueryResponse?.Customer;
+      if (customers && customers.length > 0) return { value: customers[0].Id, name: customers[0].DisplayName };
     }
-  } catch(e) { /* fall through */ }
-  // 3. Create new customer
-  const newCust = { DisplayName: customerName };
-  if (billingEmail) newCust.PrimaryEmailAddr = { Address: billingEmail };
-  const data = await qbApi('POST', '/customer?minorversion=70', newCust);
-  if (!data.Customer) throw new Error('Could not create QB customer: ' + JSON.stringify(data));
-  console.log('✓ QB customer created:', data.Customer.DisplayName);
+  } catch(e) { /* fall through to create */ }
+
+  // Create new customer
+  const res = await fetch(`${baseUrl}/customer?minorversion=70`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${qbAccessToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ DisplayName: customerName })
+  });
+  if (!res.ok) throw new Error('Could not create QB customer: ' + await res.text());
+  const data = await res.json();
   return { value: data.Customer.Id, name: data.Customer.DisplayName };
 }
 
@@ -917,10 +864,8 @@ function showResults(results) {
   card.style.display = 'block';
   const tbody = document.getElementById('results-body');
   tbody.innerHTML = results.map(r => {
-    const wo = r.doc.parsed || {};
-    const client = wo.client || r.doc.client || '—';
-    const rawAmt = wo.amount || r.doc.amount || r.invoiceAmount;
-    const amt = rawAmt ? `$${parseFloat(rawAmt).toLocaleString('en-US',{minimumFractionDigits:2})}` : '—';
+    const amt = r.doc.amount ? `$${parseFloat(r.doc.amount).toLocaleString('en-US',{minimumFractionDigits:2})}` : '—';
+    const client = r.doc.client || '—';
     const badge = r.status === 'ok'
       ? `<span class="badge badge-ok">✓ Created</span>`
       : `<span class="badge badge-err">✗ Error</span>`;
@@ -980,16 +925,13 @@ function escHtml(str) {
 // ON LOAD
 // ─────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
+  // Restore credentials
   const k = localStorage.getItem('flips_api_key');
-  const cl = localStorage.getItem('flips_client_id');
+  const c = localStorage.getItem('flips_client_id');
   if (k) document.getElementById('api-key').value = k;
-  if (cl) document.getElementById('client-id').value = cl;
+  if (c) document.getElementById('client-id').value = c;
 
-  // Restore QB client ID
-  const savedQbId = localStorage.getItem('qb_client_id_saved');
-  if (savedQbId) document.getElementById('qb-client-id').value = savedQbId;
-
-  // Restore QB token
+  // Restore QB token if previously stored
   const savedToken = localStorage.getItem('qb_access_token');
   const savedRealm = localStorage.getItem('qb_realm_id');
   if (savedToken) {
@@ -999,104 +941,14 @@ window.addEventListener('load', () => {
     document.getElementById('qb-status').style.color = '#1fb272';
   }
 
-  // Redirect URI display
-  document.getElementById('redirect-uri').textContent = 'https://workorder.firelifepro.workers.dev/create-invoices';
+  // Set redirect URI hint
+  document.getElementById('redirect-uri').textContent = location.href.split('?')[0];
 
-  // Handle QB OAuth callback from redirect
+  // Handle QB OAuth callback
   if (location.search.includes('code=')) handleQBCallback();
 
   updateSelectedCount();
-
-  // Auto-connect Google: reuse cached token if still valid (no popup needed)
-  if (k && cl) {
-    const cachedToken = localStorage.getItem('flips_access_token');
-    const tokenExpiry = parseInt(localStorage.getItem('flips_token_expiry') || '0');
-    if (cachedToken && Date.now() < tokenExpiry) {
-      accessToken = cachedToken;
-      setConnStatus('✓ Connected', '#7fff7f');
-      loadDocs();
-    }
-  }
 });
-
-// ─────────────────────────────────────────────────────────
-// CREATE TEST DOC — creates a sample work order in x -TestInvoice
-// ─────────────────────────────────────────────────────────
-async function createTestDoc() {
-  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
-  toast('Creating test work order…');
-
-  let folderId = null;
-  try {
-    const q = encodeURIComponent("name = 'x -TestInvoice' and mimeType = 'application/vnd.google-apps.folder'");
-    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true`);
-    const data = await res.json();
-    folderId = data.files?.[0]?.id || null;
-  } catch(e) {}
-
-  const testHtml = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:10pt;margin:18px;">
-<h2 style="color:#2e6da4;">WORK ORDER</h2>
-<table style="border-collapse:collapse;width:100%;">
-<tr><th colspan="4" style="background:#2e6da4;color:white;padding:4px 8px;text-align:left;">WORK ORDER INFORMATION</th></tr>
-<tr><td style="padding:3px 6px;font-weight:bold;">Date Completed:</td><td>03/09/2026</td><td style="font-weight:bold;">Line #:</td><td>999</td></tr>
-</table><br>
-<table style="border-collapse:collapse;width:100%;">
-<tr><th colspan="4" style="background:#2e6da4;color:white;padding:4px 8px;text-align:left;">CLIENT &amp; PROPERTY INFORMATION</th></tr>
-<tr><td style="padding:3px 6px;font-weight:bold;">Client / Company:</td><td>Pinecrest Property Management</td><td style="font-weight:bold;">Property Name:</td><td>Pinecrest Apartments</td></tr>
-<tr><td style="padding:3px 6px;font-weight:bold;">Service Address:</td><td>2620 W. Bellview Ave</td><td style="font-weight:bold;">City / State / Zip:</td><td>Littleton, CO 80123</td></tr>
-<tr><td style="padding:3px 6px;font-weight:bold;">Contact Email:</td><td>contact@pinecrest.test</td><td style="font-weight:bold;">Billing Email:</td><td>billing@pinecrest.test</td></tr>
-</table><br>
-<table style="border-collapse:collapse;width:100%;">
-<tr><th colspan="4" style="background:#2e6da4;color:white;padding:4px 8px;text-align:left;">SCOPE OF WORK</th></tr>
-<tr><th colspan="4" style="background:#e8eef5;padding:3px 8px;text-align:left;">Service Type(s) — check all that apply:</th></tr>
-<tr>
-  <td style="padding:3px 6px;">☑ Annual Backflow Prevention Test</td>
-  <td>☐ Fire Alarm Inspection</td>
-  <td>☐ Sprinkler Inspection</td>
-  <td>☐ Extinguisher Inspection</td>
-</tr>
-<tr><th colspan="4" style="background:#e8eef5;padding:3px 8px;text-align:left;">Description of Work Requested:</th></tr>
-<tr><td colspan="4" style="padding:3px 6px;">Performed annual backflow prevention test on two devices at main mechanical room. Both devices tested and passed. Tagged and certified.</td></tr>
-</table><br>
-<table style="border-collapse:collapse;width:100%;">
-<tr><th colspan="4" style="background:#2e6da4;color:white;padding:4px 8px;text-align:left;">FLIPS EXPENSES</th></tr>
-<tr><td style="padding:3px 6px;font-weight:bold;">Labor Rate:</td><td>☑ $135.00/hr</td><td style="font-weight:bold;">Hours:</td><td>2 hrs</td></tr>
-<tr><td style="padding:3px 6px;font-weight:bold;">Trip Charge:</td><td>☑ $90.00</td><td></td><td>$90.00</td></tr>
-<tr><td colspan="2" style="padding:3px 6px;font-weight:bold;">Total to Invoice</td><td style="font-weight:bold;">=</td><td style="font-weight:bold;">$360.00</td></tr>
-</table>
-<p style="text-align:center;font-size:8pt;color:#666;font-style:italic;">Confidential — For Internal Use Only — Fire Life Protection Systems</p>
-</body></html>`;
-
-  const boundary = 'flips_' + Date.now();
-  const meta = JSON.stringify({
-    name: 'Line 999 - Pinecrest Apartments - Annual Backflow Prevention Test - 03-09-2026',
-    mimeType: 'application/vnd.google-apps.document',
-    parents: folderId ? [folderId] : []
-  });
-  const body = `--${boundary}
-Content-Type: application/json; charset=UTF-8
-
-${meta}
---${boundary}
-Content-Type: text/html
-
-${testHtml}
---${boundary}--`;
-
-  try {
-    const res = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
-      { method: 'POST', headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': `multipart/related; boundary=${boundary}` }, body }
-    );
-    if (!res.ok) throw new Error(await res.text());
-    const doc = await res.json();
-    toast('✅ Test doc created! Refreshing…');
-    setTimeout(loadDocs, 1500);
-  } catch(e) {
-    toast('❌ Failed: ' + e.message);
-    console.error(e);
-  }
-}
 </script>
 </body>
 </html>
