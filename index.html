@@ -532,9 +532,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     </tr>
     <tr>
       <td class="label-cell">Sub-Contractor Contact:</td>
-      <td class="value-cell"><input type="text" id="sub-contact"></td>
-      <td class="label-cell">Sub-Contractor Amount:</td>
-      <td class="value-cell"><input type="text" id="sub-amount" placeholder="$"></td>
+      <td class="value-cell" colspan="3"><input type="text" id="sub-contact" style="width:100%;"></td>
     </tr>
   </table>
 
@@ -556,6 +554,12 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-col-header" style="width:45%;">Description</td>
       <td class="exp-col-header" style="width:10%;text-align:center;">Quantity</td>
       <td class="exp-col-header" style="width:22%;">Total Amount</td>
+    </tr>
+    <!-- Sub-Contractor Amount -->
+    <tr>
+      <td class="exp-label">Sub-Contractor</td>
+      <td class="value-cell" colspan="2"><input type="text" id="sub-amount-label" placeholder="Sub-contractor name / description" style="width:100%;"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-amount" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="calcTotal()"></td>
     </tr>
     <!-- Materials -->
     <tr>
@@ -1032,8 +1036,9 @@ function onPropertySelect() {
 let manualTotal = false;
 
 function calcTotal() {
-  const matAmt  = parseFloat(document.getElementById('mat-total').value) || 0;
-  const miscAmt = parseFloat(document.getElementById('misc-total').value) || 0;
+  const subAmt  = parseFloat(document.getElementById('sub-amount').value)  || 0;
+  const matAmt  = parseFloat(document.getElementById('mat-total').value)   || 0;
+  const miscAmt = parseFloat(document.getElementById('misc-total').value)  || 0;
 
   // Trip charge: checkbox sets the field, but field is also directly editable
   const tripCb = document.getElementById('trip-cb').checked;
@@ -1041,11 +1046,11 @@ function calcTotal() {
     const cur = parseFloat(document.getElementById('trip-total').value);
     if (!cur) document.getElementById('trip-total').value = '90.00';
   }
-  const tripAmt = parseFloat(document.getElementById('trip-total').value) || 0;
-  
+  const tripAmt  = parseFloat(document.getElementById('trip-total').value) || 0;
   const laborAmt = parseFloat(document.getElementById('labor-total').value) || 0;
+
   if (!manualTotal) {
-    document.getElementById('grand-total').value = (matAmt + laborAmt + tripAmt + miscAmt).toFixed(2);
+    document.getElementById('grand-total').value = (subAmt + matAmt + laborAmt + tripAmt + miscAmt).toFixed(2);
   }
   manualTotal = false;
 }
@@ -1100,6 +1105,7 @@ function collectForm() {
 
   return {
     'DATE COMPLETED':       fmtDate(v('date-requested')),  // field renamed to Date Completed
+    'DATE COMPLETED ISO':   v('date-requested'),  // raw YYYY-MM-DD for inspection schedule
     'DATE REQUIRED':        fmtDate(v('date-required')),
     'LINE #':               v('wo-number'),
     'PRIORITY':             r('priority'),
@@ -1131,7 +1137,7 @@ function collectForm() {
     'SUB-CONTRACTOR':       v('sub-name'),
     'SUB-CONTRACTOR INVOICE #': v('sub-invoice'),
     'SUB-CONTRACTOR CONTACT':   v('sub-contact'),
-    'SUB-CONTRACTOR AMOUNT':    v('sub-amount'),
+    'SUB-CONTRACTOR AMOUNT':    '$' + (v('sub-amount') || '0.00'),
     'NOTES / DEFICIENCIES':     v('notes-deficiencies'),
     'MATERIALS DESCRIPTION':    v('mat-desc'),
     'MATERIALS QTY':            v('mat-qty'),
@@ -1538,6 +1544,7 @@ function buildWorkOrderHTML(d) {
   // ── 7. FLIPS Expenses ────────────────────────────────────────────
   html += tbl(
     hdr('FLIPS EXPENSES') +
+    tr(lbl('Sub-Contractor:'), val(d['SUB-CONTRACTOR AMOUNT']), lbl(''), val('')) +
     tr(td('Expense Name',S.ehdr), td('Description',S.ehdr), td('Quantity',S.ehdr), td('Total Amount',S.ehdr)) +
     tr(lbl('Materials'), val(d['MATERIALS DESCRIPTION']), val(d['MATERIALS QTY']), val(d['MATERIALS TOTAL'])) +
     tr(lbl('Labor Rate'),
@@ -1735,7 +1742,7 @@ async function logToSheet(action, detail, status, error) {
 async function updateInspectionSchedule(data) {
 
   const propertyName  = data['PROPERTY NAME']   || '';
-  const dateCompleted = data['DATE COMPLETED']   || '';
+  const dateCompleted = data['DATE COMPLETED ISO'] || data['DATE COMPLETED'] || '';
   const svcRaw        = data['SERVICES']         || '';
   const lineNum       = data['LINE #']           || '';
 
@@ -1834,12 +1841,20 @@ async function updateInspectionSchedule(data) {
   }
 }
 
-// Parse "MM/DD/YYYY" or "M/D/YYYY" date string → ISO "YYYY-MM-DD"
+// Parse date string → ISO "YYYY-MM-DD"
+// Handles: YYYY-MM-DD (native date input), MM/DD/YYYY, "Mar 12, 2026"
 function parseDisplayDate(str) {
   if (!str || str === 'N/A') return null;
-  const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!m) return null;
-  return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  str = str.trim();
+  // Already ISO: 2026-03-12
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // MM/DD/YYYY
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  // "Mar 12, 2026" or "March 12, 2026" — let JS Date parse it
+  const d = new Date(str);
+  if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  return null;
 }
 </script>
 </body>
