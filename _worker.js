@@ -99,8 +99,9 @@ export default {
           method,
           headers: {
             'Authorization': `Bearer ${access_token}`,
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
+            // Only set Content-Type when sending a body — QB rejects it on GET
+            ...(payload ? { 'Content-Type': 'application/json' } : {}),
           },
         };
         if (payload) fetchOpts.body = JSON.stringify(payload);
