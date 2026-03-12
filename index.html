@@ -1276,10 +1276,22 @@ async function createDoc() {
     await applyCompletionChecklists(newId);
 
     const url = `https://docs.google.com/document/d/${newId}/edit`;
-    setStatus('submit-status', '✓ Work order saved!', 'ok');
     const lnk = document.getElementById('doc-link');
     lnk.href = url; lnk.style.display = 'inline-block';
     toast('✓ Saved: ' + docName);
+
+    // Write client + amount as Drive file properties so create-invoices
+    // can read them instantly from the file list without opening each doc.
+    setStatus('submit-status', '✓ Work order saved!', 'ok');
+    const clientVal  = data['PROPERTY NAME'] || '';
+    const amountVal  = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g,'') : '';
+    if (clientVal || amountVal) {
+      apiFetch(
+        `https://www.googleapis.com/drive/v3/files/${newId}?supportsAllDrives=true`,
+        'PATCH',
+        { appProperties: { flips_client: clientVal, flips_amount: amountVal } }
+      ).catch(() => {}); // non-blocking, best-effort
+    }
 
     // Update inspection schedule (non-blocking — runs in background)
     updateInspectionSchedule(data);
