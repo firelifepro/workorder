@@ -762,7 +762,6 @@ function connectQuickBooks() {
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('qb_state', state);
   sessionStorage.setItem('qb_client_id', clientId);
-  sessionStorage.setItem('qb_client_secret', document.getElementById('qb-client-secret').value.trim());
   sessionStorage.setItem('qb_env', env);
 
   const authUrl = `https://appcenter.intuit.com/connect/oauth2?` +
@@ -780,7 +779,6 @@ async function handleQBCallback() {
   if (!code || state !== sessionStorage.getItem('qb_state')) return;
 
   const clientId = sessionStorage.getItem('qb_client_id');
-  const clientSecret = sessionStorage.getItem('qb_client_secret');
   const env = sessionStorage.getItem('qb_env') || 'sandbox';
   const redirectUri = location.href.split('?')[0];
 
@@ -910,7 +908,15 @@ async function findOrCreateCustomer(customerName, env) {
 // Refresh the QB access token using the stored refresh token
 async function refreshQBToken() {
   const refreshToken = localStorage.getItem('qb_refresh_token');
-  if (!refreshToken) throw new Error('No refresh token stored — please reconnect QuickBooks');
+  if (!refreshToken) {
+    // Clear stale token so the UI prompts reconnect instead of looping
+    localStorage.removeItem('qb_access_token');
+    localStorage.removeItem('qb_expires_at');
+    qbAccessToken = null;
+    document.getElementById('qb-status').textContent = '⚠ QB session expired — click Connect QuickBooks to reconnect';
+    document.getElementById('qb-status').style.color = '#c0392b';
+    throw new Error('No refresh token — please reconnect QuickBooks');
+  }
   const resp = await fetch('/api/qb-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
