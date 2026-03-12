@@ -796,8 +796,12 @@ async function handleQBCallback() {
     const data = await resp.json();
     qbAccessToken = data.access_token;
     qbRealmId = realmId;
-    localStorage.setItem('qb_access_token', qbAccessToken);
-    localStorage.setItem('qb_realm_id', qbRealmId);
+    // QB access tokens last 1 hour; refresh tokens last 100 days
+    const expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000; // 60s buffer
+    localStorage.setItem('qb_access_token',  qbAccessToken);
+    localStorage.setItem('qb_realm_id',      qbRealmId);
+    localStorage.setItem('qb_refresh_token', data.refresh_token || '');
+    localStorage.setItem('qb_expires_at',    String(expiresAt));
     document.getElementById('qb-status').textContent = '✓ QuickBooks connected';
     document.getElementById('qb-status').style.color = '#1fb272';
     // Clean URL
@@ -903,9 +907,32 @@ async function findOrCreateCustomer(customerName, env) {
   return { value: data.Customer.Id, name: data.Customer.DisplayName };
 }
 
+// Refresh the QB access token using the stored refresh token
+async function refreshQBToken() {
+  const refreshToken = localStorage.getItem('qb_refresh_token');
+  if (!refreshToken) throw new Error('No refresh token stored — please reconnect QuickBooks');
+  const resp = await fetch('/api/qb-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
+  });
+  if (!resp.ok) throw new Error('Token refresh failed: ' + await resp.text());
+  const data = await resp.json();
+  if (!data.access_token) throw new Error('No access_token in refresh response');
+  qbAccessToken = data.access_token;
+  const expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+  localStorage.setItem('qb_access_token',  qbAccessToken);
+  localStorage.setItem('qb_expires_at',    String(expiresAt));
+  if (data.refresh_token) localStorage.setItem('qb_refresh_token', data.refresh_token);
+  const mins = Math.round((expiresAt - Date.now()) / 60000);
+  document.getElementById('qb-status').textContent = `✓ QuickBooks connected (~${mins}m remaining)`;
+  document.getElementById('qb-status').style.color = '#1fb272';
+  console.log('[QB] Token refreshed — expires in ~' + mins + ' minutes');
+}
+
 // Route all QB API calls through the Cloudflare Worker (/api/qb-api) — never call QB directly from the browser.
 async function qbProxy(method, path, env, payload) {
-  const res = await fetch('/api/qb-api', {
+  const makeRequest = async () => fetch('/api/qb-api', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -917,6 +944,17 @@ async function qbProxy(method, path, env, payload) {
       ...(payload ? { payload } : {})
     })
   });
+
+  let res = await makeRequest();
+
+  // If 401, attempt one silent token refresh then retry
+  if (res.status === 401) {
+    console.warn('[QB] 401 received — attempting token refresh');
+    toast('⏳ QB token expired — refreshing…');
+    await refreshQBToken();
+    res = await makeRequest();
+  }
+
   if (!res.ok) throw new Error(`QB proxy HTTP ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -1003,14 +1041,28 @@ window.addEventListener('load', () => {
   if (k) document.getElementById('api-key').value = k;
   if (c) document.getElementById('client-id').value = c;
 
-  // Restore QB token if previously stored
-  const savedToken = localStorage.getItem('qb_access_token');
-  const savedRealm = localStorage.getItem('qb_realm_id');
-  if (savedToken) {
+  // Restore QB token — auto-refresh if expired
+  const savedToken   = localStorage.getItem('qb_access_token');
+  const savedRealm   = localStorage.getItem('qb_realm_id');
+  const savedExpiry  = parseInt(localStorage.getItem('qb_expires_at') || '0');
+  const savedRefresh = localStorage.getItem('qb_refresh_token');
+  if (savedToken && savedRealm) {
     qbAccessToken = savedToken;
-    qbRealmId = savedRealm;
-    document.getElementById('qb-status').textContent = '✓ QuickBooks connected (saved session)';
-    document.getElementById('qb-status').style.color = '#1fb272';
+    qbRealmId     = savedRealm;
+    if (savedExpiry && Date.now() > savedExpiry && savedRefresh) {
+      // Token is expired — try to refresh silently on page load
+      document.getElementById('qb-status').textContent = '⏳ QB token expired — refreshing…';
+      document.getElementById('qb-status').style.color = '#888';
+      refreshQBToken().catch(() => {
+        document.getElementById('qb-status').textContent = '⚠ QB session expired — please reconnect';
+        document.getElementById('qb-status').style.color = '#c0392b';
+        qbAccessToken = null;
+      });
+    } else {
+      const mins = savedExpiry ? Math.max(0, Math.round((savedExpiry - Date.now()) / 60000)) : '?';
+      document.getElementById('qb-status').textContent = `✓ QuickBooks connected (~${mins}m remaining)`;
+      document.getElementById('qb-status').style.color = '#1fb272';
+    }
   }
 
   // Set redirect URI hint
