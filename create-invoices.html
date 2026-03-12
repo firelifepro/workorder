@@ -628,13 +628,27 @@ function extractText(docData) {
     }
     return out;
   }
-  return walk(docData?.body?.content || []);
+  const fullText = walk(docData?.body?.content || []);
+  // Log a window around "Total to Invoice" so we can see the exact format
+  const idx = fullText.search(/total\s+to\s+invoice/i);
+  if (idx >= 0) {
+    console.log('[extractText] Total area (chars ' + idx + '-' + (idx+60) + '):', JSON.stringify(fullText.slice(idx, idx + 60)));
+  } else {
+    console.warn('[extractText] "Total to Invoice" not found in doc text');
+  }
+  return fullText;
 }
 
 function parseAmount(text) {
-  // Look for "Total to Invoice" line
-  const m = text.match(/total\s+to\s+invoice[^\d$]*(\$?[\d,]+\.?\d*)/i);
-  return m ? m[1].replace(/,/g, '') : null;
+  // "Total to Invoice" then optional whitespace/symbols, then the number.
+  // The $ sign may be in a separate table cell so treat it as optional noise.
+  // Works for: "Total to Invoice\n=\n$936.50"
+  //            "Total to Invoice\n=\n$\n936.50"  ($ and digits split by newline)
+  //            "Total to Invoice = $936.50"
+  const m = text.match(/total[\s\S]{0,30}?to[\s\S]{0,30}?invoice[\s\S]{0,40}?(\d[\d,]*\.\d{2})/i);
+  if (!m) return null;
+  const val = m[1].replace(/,/g, '');
+  return val && parseFloat(val) > 0 ? val : null;
 }
 
 function parseClient(text) {
