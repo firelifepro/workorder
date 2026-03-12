@@ -380,9 +380,11 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="label-cell">Billing Email:</td>
       <td class="value-cell"><input type="email" id="billing-email"></td>
     </tr>
-     <tr>
-	  <td class="label-cell">Contact Email:</td>
+    <tr>
+      <td class="label-cell">Contact Email:</td>
       <td class="value-cell"><input type="email" id="contact-email"></td>
+      <td class="label-cell">FLPS Account #:</td>
+      <td class="value-cell"><input type="text" id="flps-acct-num" placeholder="e.g. 7"></td>
     </tr>
     <tr>
       <td class="label-cell">Access / Entry Info:</td>
@@ -909,6 +911,7 @@ function onPropertySelect() {
 
   // Standard fills
   fill('client-company',  'property management','management company','management','client','company');
+  fill('flps-acct-num',   'flps internal account number','internal account number','account number','account no','acct');
   fill('billing-email',   'billing email');
   fill('access-info',     'access','entry','lockbox','gate code','access info','entry info');
   fill('monitoring-co',   'monitoring company','alarm company','monitoring');
@@ -1114,6 +1117,7 @@ function collectForm() {
     'SCHEDULED DATE':       fmtDate(v('scheduled-date')),
     'CLIENT / COMPANY':     v('client-company'),
     'PROPERTY NAME':        document.getElementById('property-select').value || '',
+    'FLPS ACCT #':          v('flps-acct-num'),
     'SERVICE ADDRESS':      v('service-address'),
     'CITY / STATE / ZIP':   v('city-state-zip'),
     'PROPERTY CONTACT':     v('property-contact'),
@@ -1289,7 +1293,11 @@ async function createDoc() {
       apiFetch(
         `https://www.googleapis.com/drive/v3/files/${newId}?supportsAllDrives=true`,
         'PATCH',
-        { appProperties: { flips_client: clientVal, flips_amount: amountVal } }
+        { appProperties: {
+            flips_client:    clientVal,
+            flips_amount:    amountVal,
+            flips_acct_num:  data['FLPS ACCT #'] || '',
+          } }
       ).catch(() => {}); // non-blocking, best-effort
     }
 
@@ -1483,6 +1491,7 @@ function buildWorkOrderHTML(d) {
   html += tbl(
     hdr('CLIENT &amp; PROPERTY INFORMATION') +
     tr(lbl('Client / Company:'), val(v(d['CLIENT / COMPANY'])), lbl('Property Name:'), val(v(d['PROPERTY NAME']))) +
+    tr(lbl('FLPS Account #:'), val(d['FLPS ACCT #']), lbl(''), val('')) +
     tr(lbl('Service Address:'), val(v(d['SERVICE ADDRESS'])), lbl('City / State / Zip:'), val(v(d['CITY / STATE / ZIP']))) +
     tr(lbl('Property Contact:'), val(v(d['PROPERTY CONTACT'])), lbl('Contact Phone:'), val(v(d['CONTACT PHONE']))) +
     tr(lbl('Contact Email:'), val(v(d['CONTACT EMAIL'])), lbl('Billing Email:'), val(v(d['BILLING EMAIL']))) +
