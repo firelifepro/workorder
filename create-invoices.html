@@ -1111,19 +1111,15 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
     }
   } catch(e) { /* fall through to create */ }
 
-  // ── 3. Create new customer with FLPS Account Number custom field ──────────
-  await logToSheet('QB_CUSTOMER_CREATE',
-    `Creating new QB customer: "${customerName}"${acctNum ? ` (FLPS #${acctNum})` : ''}`, 'INFO');
-  const newCust = {
-    DisplayName: customerName,
-    ...(acctNum ? {
-      CustomField: [{ Name: QB_ACCT_CUSTOM_FIELD, Type: 'StringType', StringValue: String(acctNum) }]
-    } : {})
-  };
-  const data = await qbProxy('POST', `/customer?minorversion=70`, env, newCust);
-  if (!data.Customer) throw new Error('Could not create QB customer: ' + JSON.stringify(data.Fault || data));
-  return { value: data.Customer.Id, name: data.Customer.DisplayName };
+  // ── 3. No match found — fail gracefully so user can fix it in QB ────────
+  const hint = acctNum
+    ? `No QB customer found with FLPS Account # ${acctNum} or name "${customerName}". Please add this customer in QuickBooks and set their "FLPS Account Number" custom field to ${acctNum}.`
+    : `No QB customer found matching "${customerName}". Please add this customer in QuickBooks first.`;
+  await logToSheet('QB_CUSTOMER_NOT_FOUND', hint, 'WARN');
+  throw new Error(hint);
 }
+
+
 
 // Refresh the QB access token using the stored refresh token
 async function refreshQBToken() {
