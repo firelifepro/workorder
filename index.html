@@ -1306,6 +1306,9 @@ async function createDoc() {
         errMsg = errJson.error?.message || errJson.error?.status || JSON.stringify(errJson);
       } catch(_) { try { errMsg = await uploadRes.text(); } catch(_2) {} }
       console.error('[createDoc] Drive upload error', uploadRes.status, errMsg);
+      console.error('[createDoc] safeHtml length:', safeHtml.length);
+      console.error('[createDoc] safeHtml first 2000 chars:', safeHtml.substring(0, 2000));
+      console.error('[createDoc] safeHtml last 500 chars:', safeHtml.slice(-500));
       throw new Error(`Drive upload ${uploadRes.status}: ${errMsg}`);
     }
     const { id: newId, parents } = await uploadRes.json();
