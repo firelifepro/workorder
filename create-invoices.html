@@ -1075,22 +1075,38 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
     await logToSheet('QB_CUSTOMER_LOOKUP',
       `Looking up QB customer by FLPS Account Number: "${acctNum}" (${customerName})`, 'INFO');
     try {
-      // QB doesn't support querying custom fields directly via SQL —
-      // fetch all active customers and filter client-side by custom field value.
-      // Use a name-hint query first to narrow results when possible.
       const q = `SELECT * FROM Customer MAXRESULTS 1000`;
       const data = await qbProxy('GET', `/query?query=${encodeURIComponent(q)}&minorversion=70`, env);
       const customers = data?.QueryResponse?.Customer || [];
+
+      // Debug: log the first customer's raw CustomField data so we can see what QB returns
+      if (customers.length > 0) {
+        const sample = customers[0];
+        await logToSheet('QB_CUSTOM_FIELD_DEBUG',
+          `Sample customer "${sample.DisplayName}" CustomField: ${JSON.stringify(sample.CustomField || [])}`, 'INFO');
+      }
+
       const match = customers.find(cust =>
-        (cust.CustomField || []).some(cf =>
-          cf.Name === QB_ACCT_CUSTOM_FIELD && String(cf.StringValue).trim() === String(acctNum).trim()
-        )
+        (cust.CustomField || []).some(cf => {
+          const nameMatch  = cf.Name === QB_ACCT_CUSTOM_FIELD;
+          const valueMatch = String(cf.StringValue || '').trim() === String(acctNum).trim();
+          return nameMatch && valueMatch;
+        })
       );
       if (match) {
         await logToSheet('QB_CUSTOMER_FOUND',
           `Found by acct# ${acctNum}: "${match.DisplayName}" (ID: ${match.Id})`, 'OK');
         return { value: match.Id, name: match.DisplayName };
       }
+
+      // Log what custom fields we actually see across all customers to diagnose
+      const cfSummary = customers
+        .filter(c => c.CustomField && c.CustomField.length > 0)
+        .map(c => `${c.DisplayName}: ${JSON.stringify(c.CustomField)}`)
+        .join(' | ');
+      await logToSheet('QB_CUSTOM_FIELD_DEBUG',
+        `Customers with any CustomField (${customers.filter(c=>c.CustomField?.length).length}/${customers.length}): ${cfSummary || 'none'}`, 'INFO');
+
       await logToSheet('QB_CUSTOMER_LOOKUP',
         `No QB customer found with FLPS Account Number "${acctNum}" — falling back to name`, 'WARN');
     } catch(e) {
