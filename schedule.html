@@ -11,6 +11,31 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
 
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-field select { width: auto; cursor: pointer; }
+.conn-field select option { background: #1a1a2e; color: white; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-btn.green { background: #1fb272; }
+.conn-btn.green:hover { background: #27ae60; }
+.conn-btn.grey { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+.conn-btn.grey:hover { background: rgba(255,255,255,0.25); }
+.conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; margin: 0 4px; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
 /* ── Top bar ── */
 #top-bar {
   background: #1a1a2e; color: white; padding: 12px 20px;
@@ -116,7 +141,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 
 <div id="top-bar">
   <div class="nav-hamburger">
-    <button class="hamburger-btn" onclick="toggleNav(this)" title="Navigation menu">☰</button>
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
     <div class="nav-menu" id="nav-menu">
       <a href="index.html">📋 Work Order</a>
       <a href="create-invoices.html">🧾 Create QB Invoices</a>
@@ -125,16 +150,21 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
     </div>
   </div>
   <h1>📅 Inspection Schedule</h1>
-  <div class="top-input">
-    <label>API Key:</label>
-    <input type="password" id="api-key" placeholder="AIzaSy...">
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com">
+    </div>
+    <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
   </div>
-  <div class="top-input">
-    <label>OAuth Client ID:</label>
-    <input type="text" id="client-id" placeholder="123456...apps.googleusercontent.com">
-  </div>
-  <button id="connect-btn" onclick="initGoogle()">🔗 Connect</button>
-  <div id="conn-status"></div>
 </div>
 
 <div id="content">
@@ -479,8 +509,12 @@ function showEmpty(msg) {
 // ── Helpers ────────────────────────────────────────────────
 function setStatus(msg, cls) {
   const el = document.getElementById('conn-status');
-  el.textContent = msg;
-  el.style.color = cls === 'ok' ? '#7fff7f' : cls === 'err' ? '#ff7777' : '#ccc';
+  el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
+  el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn');
+  if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+}
+function toggleDrawer() {
+  document.getElementById('conn-drawer').classList.toggle('open');
 }
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -507,7 +541,7 @@ window.addEventListener('load', () => {
       setStatus('✓ Connected', 'ok');
       loadSchedule();
     } else {
-      setStatus('⚠ Session expired — click Connect', 'err');
+      setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open');
     }
   }
 });
