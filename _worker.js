@@ -3,8 +3,10 @@
 // Cloudflare Worker — handles API routes and serves static assets.
 //
 // Environment variables (set in Cloudflare dashboard → Worker → Settings → Variables):
-//   QB_CLIENT_ID      — your QB OAuth2 Client ID
-//   QB_CLIENT_SECRET  — your QB OAuth2 Client Secret
+//   QB_CLIENT_ID          — sandbox QB OAuth2 Client ID
+//   QB_CLIENT_SECRET      — sandbox QB OAuth2 Client Secret
+//   QB_CLIENT_ID_PROD     — production QB OAuth2 Client ID
+//   QB_CLIENT_SECRET_PROD — production QB OAuth2 Client Secret
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CORS_HEADERS = {
@@ -42,10 +44,13 @@ export default {
       const { grant_type, code, refresh_token, redirect_uri } = body;
       if (!grant_type) return corsResponse({ error: 'Missing grant_type' }, 400);
 
-      const QB_CLIENT_ID     = env.QB_CLIENT_ID;
-      const QB_CLIENT_SECRET = env.QB_CLIENT_SECRET;
+      // Pick sandbox or production credentials based on env field in request
+      const isProd = body.env === 'production';
+      const QB_CLIENT_ID     = isProd ? env.QB_CLIENT_ID_PROD     : env.QB_CLIENT_ID;
+      const QB_CLIENT_SECRET = isProd ? env.QB_CLIENT_SECRET_PROD : env.QB_CLIENT_SECRET;
       if (!QB_CLIENT_ID || !QB_CLIENT_SECRET) {
-        return corsResponse({ error: 'QB_CLIENT_ID or QB_CLIENT_SECRET not configured' }, 500);
+        const which = isProd ? 'QB_CLIENT_ID_PROD / QB_CLIENT_SECRET_PROD' : 'QB_CLIENT_ID / QB_CLIENT_SECRET';
+        return corsResponse({ error: `${which} not configured in Cloudflare env vars` }, 500);
       }
 
       const params = new URLSearchParams();
