@@ -66,6 +66,16 @@ body {
   transition: all 0.15s;
 }
 .nav-link:hover { background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.5); }
+/* ── Hamburger nav ── */
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; }
+.nav-menu a:last-child { border-bottom: none; }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
 
 /* ── Setup guide ── */
 #setup-guide {
@@ -277,8 +287,16 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- TOP BAR -->
 <div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html" class="active">📋 Work Order</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="clients.html">👥 Client Management</a>
+    </div>
+  </div>
   <h1>🔥 Fire Life Protection – Work Order Form</h1>
-  <a href="create-invoices.html" class="nav-link">🧾 Create QB Invoices</a>
   <div class="top-input">
     <label>API Key:</label>
     <input type="password" id="api-key" placeholder="AIzaSy...">
@@ -704,6 +722,18 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 <script src="https://accounts.google.com/gsi/client"></script>
 
 <script>
+
+// ── Hamburger nav ──────────────────────────────────────────
+function toggleNav() {
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-hamburger')) {
+    const m = document.getElementById('nav-menu');
+    if (m) m.classList.remove('open');
+  }
+});
+
 // ─────────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────────
