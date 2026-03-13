@@ -18,6 +18,31 @@ body {
   padding: 20px;
 }
 
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-field select { width: auto; cursor: pointer; }
+.conn-field select option { background: #1a1a2e; color: white; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-btn.green { background: #1fb272; }
+.conn-btn.green:hover { background: #27ae60; }
+.conn-btn.grey { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+.conn-btn.grey:hover { background: rgba(255,255,255,0.25); }
+.conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; margin: 0 4px; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
 /* ── Top bar ── */
 #top-bar {
   background: #1a1a2e;
@@ -334,24 +359,41 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <a href="clients.html">👥 Client Management</a>
     </div>
   </div>
-  <h1>🔥 Fire Life Protection – Create Invoices</h1>
-  <div class="top-bar-nav">
-    <a href="index.html" class="nav-link">📋 Work Order</a>
-    <a href="create-invoices.html" class="nav-link active">🧾 Create Invoices</a>
+  <h1>🧾 Fire Life Protection – Create Invoices</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <span id="qb-status-pill" class="conn-status-pill warn">QB not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com">
+    </div>
+    <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <div class="conn-divider"></div>
+    <div class="conn-field">
+      <label>QB Client ID</label>
+      <input type="text" id="qb-client-id" placeholder="AB…QB OAuth2 client ID" style="width:200px;">
+    </div>
+    <div class="conn-field">
+      <label>QB Environment</label>
+      <select id="qb-env"><option value="sandbox">Sandbox</option><option value="production">Production</option></select>
+    </div>
+    <div class="conn-field">
+      <label>Due Days</label>
+      <input type="number" id="qb-due-days" value="30" min="0" max="365" style="width:65px;">
+    </div>
+    <button class="conn-btn green" onclick="connectQuickBooks()">🔗 Connect QuickBooks</button>
+    <button class="conn-btn grey" onclick="refreshQBCustomers()" title="Clear QB customer cache">↺ Customers</button>
   </div>
-  <div class="top-input">
-    <label>API Key:</label>
-    <input type="password" id="api-key" placeholder="AIzaSy...">
-  </div>
-  <div class="top-input">
-    <label>OAuth Client ID:</label>
-    <input type="text" id="client-id" placeholder="123456...apps.googleusercontent.com">
-  </div>
-  <button id="connect-btn" onclick="initGoogle()">🔗 Connect</button>
-  <div id="conn-status"></div>
 </div>
 
-<!-- SETUP GUIDE -->
+<!-- SETUP GUIDE commented out
 <details id="setup-guide">
   <summary>⚙️ Setup instructions — click to expand</summary>
   <div class="guide-body">
@@ -391,42 +433,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   </div>
 </div>
 
-<!-- QUICKBOOKS SETTINGS CARD -->
-<div class="card" id="qb-card">
-  <div class="section-header"><span>⚡ QuickBooks Connection</span></div>
-  <div class="card-body">
-    <div class="field-row">
-      <div class="field-group">
-        <label>QB Client ID</label>
-        <input type="text" id="qb-client-id" class="wide" placeholder="AB...your QB OAuth2 client ID">
-      </div>
-      <div class="field-group" style="font-size:0.75rem;color:#888;align-self:flex-end;padding-bottom:8px;">
-        🔒 Client Secret is stored securely in Netlify environment variables
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field-group">
-        <label>Environment</label>
-        <select id="qb-env" class="med">
-          <option value="sandbox">Sandbox (testing)</option>
-          <option value="production">Production</option>
-        </select>
-      </div>
-      <div class="field-group">
-        <label>Default Due Days</label>
-        <input type="number" id="qb-due-days" class="med" value="30" min="0" max="365">
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:10px;">
-        <button onclick="refreshQBCustomers()" style="background:#555;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:0.78rem;cursor:pointer;white-space:nowrap;" title="Clear the cached QB customer list so it re-fetches next time you create an invoice">↺ Refresh Customers</button>
-    <button onclick="connectQuickBooks()" style="background:#1fb272;color:white;border:none;padding:7px 16px;border-radius:4px;font-size:0.82rem;font-weight:600;cursor:pointer;">🔗 Connect QuickBooks</button>
-        <span id="qb-status" style="font-size:0.78rem;color:#888;"></span>
-      </div>
-    </div>
-    <div style="padding:8px 0 2px;font-size:0.75rem;color:#888;">
-      Redirect URI to register in your QB app: <code id="redirect-uri"></code>
-    </div>
-  </div>
-</div>
+<!-- QB redirect URI hint -->
+<div style="padding:4px 20px 8px;font-size:0.72rem;color:#888;">QB Redirect URI: <code id="redirect-uri"></code> &nbsp;·&nbsp; <span id="qb-status" style="display:none;"></span></div>
 
 <!-- ACTION BAR -->
 <div class="card">
@@ -544,8 +552,18 @@ function startGapi(apiKey, clientId) {
 
 function setConnStatus(msg, color) {
   const el = document.getElementById('conn-status');
-  el.textContent = msg;
-  el.style.color = color || '#7fff7f';
+  const isOk = msg.startsWith('✓');
+  el.textContent = isOk ? '✓ Google connected' : msg;
+  el.className = 'conn-status-pill ' + (isOk ? 'ok' : 'err');
+  if (isOk) document.getElementById('conn-drawer').classList.remove('open');
+}
+function setQBStatusPill(msg, cls) {
+  const pill = document.getElementById('qb-status-pill');
+  if (pill) { pill.textContent = msg; pill.className = 'conn-status-pill ' + (cls || 'warn'); }
+  if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+}
+function toggleDrawer() {
+  document.getElementById('conn-drawer').classList.toggle('open');
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1186,8 +1204,7 @@ async function refreshQBToken() {
     localStorage.removeItem('qb_access_token');
     localStorage.removeItem('qb_expires_at');
     qbAccessToken = null;
-    document.getElementById('qb-status').textContent = '⚠ QB session expired — click Connect QuickBooks to reconnect';
-    document.getElementById('qb-status').style.color = '#c0392b';
+    setQBStatusPill('QB session expired', 'err'); document.getElementById('conn-drawer').classList.add('open');
     throw new Error('No refresh token — please reconnect QuickBooks');
   }
   const resp = await fetch('/api/qb-token', {
@@ -1204,8 +1221,7 @@ async function refreshQBToken() {
   localStorage.setItem('qb_expires_at',    String(expiresAt));
   if (data.refresh_token) localStorage.setItem('qb_refresh_token', data.refresh_token);
   const mins = Math.round((expiresAt - Date.now()) / 60000);
-  document.getElementById('qb-status').textContent = `✓ QuickBooks connected (~${mins}m remaining)`;
-  document.getElementById('qb-status').style.color = '#1fb272';
+  setQBStatusPill(`✓ QB (~${mins}m)`, 'ok');
   console.log('[QB] Token refreshed — expires in ~' + mins + ' minutes');
 }
 
