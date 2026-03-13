@@ -456,6 +456,13 @@ let tokenClient = null;
 const APPS_SCRIPT_URL    = ''; // ← PASTE WEB APP URL HERE
 const APPS_SCRIPT_SECRET = 'flips-2026-secret'; // must match setSecret() in Apps Script
 
+// ── Log verbosity ────────────────────────────────────────────────────────────
+// 'NORMAL'  — only logs WO/invoice creation and errors (production default)
+// 'VERBOSE' — logs every step (use when debugging a specific issue)
+// Change this constant and redeploy, or use browser console to override:
+//   flipsLogLevel = 'VERBOSE'  /  flipsLogLevel = 'NORMAL'
+let flipsLogLevel = 'NORMAL';
+
 let allDocs = [];        // { id, name, modifiedTime, amount, client }
 let qbAccessToken = null;
 let qbRealmId = null;
@@ -569,8 +576,14 @@ async function loadDocs() {
 // SHEET LOGGER — mirrors the one in the work order page
 // ─────────────────────────────────────────────────────────
 function logToSheet(action, detail, status, error) {
-  // Fire-and-forget — never awaited, never blocks the user-facing flow.
-  const entry = { source: 'create-invoices-page', action, detail: String(detail || ''), status: status || 'INFO', error: String(error || '') };
+  // Fire-and-forget — never blocks the user-facing flow.
+  // Respects flipsLogLevel: in NORMAL mode only WARN, ERROR, and key OK events
+  // are sent to the sheet. Set flipsLogLevel = 'VERBOSE' in the browser console
+  // to temporarily enable full logging without redeploying.
+  const s = String(status || 'INFO').toUpperCase();
+  const isKeyEvent = ['WO_SAVED','INVOICE_CREATED','QB_INVOICE_CREATED'].includes(action);
+  if (flipsLogLevel !== 'VERBOSE' && s === 'INFO' && !isKeyEvent) return;
+  const entry = { source: 'create-invoices-page', action, detail: String(detail || ''), status: s, error: String(error || '') };
   fetch('/api/apps-script', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -962,6 +975,7 @@ async function createInvoices() {
     try {
       const invoiceResult = await createQBInvoice(doc);
       results.push({ doc, status: 'ok', invoiceId: invoiceResult.Id, invoiceNum: invoiceResult.DocNumber, link: buildQBLink(invoiceResult.Id) });
+      logToSheet('INVOICE_CREATED', `Invoice #${invoiceResult.DocNumber} created for ${doc.client || doc.name} — $${doc.amount}`, 'OK');
       toast(`✅ Invoice created: ${doc.name}`);
     } catch(e) {
       results.push({ doc, status: 'error', message: e.message });
