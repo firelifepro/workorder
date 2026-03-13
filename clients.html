@@ -472,8 +472,7 @@ async function createQBCustomer(idx) {
   if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
   try {
     // Build customer object from Sheet data
-    const billLines = (row.billTo || '').split(/
-/).map(l => l.trim()).filter(Boolean);
+    const billLines = (row.billTo || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
     const nameParts = row.contact ? row.contact.split(/\s+/) : [];
     const customer = {
       DisplayName:    row.name,
