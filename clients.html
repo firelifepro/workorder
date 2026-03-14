@@ -183,8 +183,14 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
     <button class="conn-btn" onclick="initGoogle()">🔗 Connect Google</button>
     <div class="conn-divider"></div>
     <div class="conn-field">
-      <label>QB Client ID</label>
-      <input type="text" id="qb-client-id" placeholder="AB…QB OAuth2 client ID" style="width:200px;">
+      <label>QB Client ID (Sandbox)</label>
+      <input type="text" id="qb-client-id-sandbox" placeholder="AB…sandbox client ID" style="width:200px;"
+             oninput="saveQBClientIds()">
+    </div>
+    <div class="conn-field">
+      <label>QB Client ID (Production)</label>
+      <input type="text" id="qb-client-id-prod" placeholder="AB…production client ID" style="width:200px;"
+             oninput="saveQBClientIds()">
     </div>
     <div class="conn-field">
       <label>QB Environment</label>
@@ -327,7 +333,7 @@ async function googleFetch(url) {
 // ── QB Auth ────────────────────────────────────────────────
 function connectQuickBooks() {
   const env      = document.getElementById('qb-env').value;
-  const clientId = document.getElementById('qb-client-id').value.trim() || localStorage.getItem('qb_client_id') || '';
+  const clientId = getQBClientId();
   if (!clientId) { toast('⚠ Enter your QuickBooks Client ID in Connection settings'); document.getElementById('conn-drawer').classList.add('open'); return; }
   // Reuse stored QB tokens only if env matches current dropdown selection
   const stored = loadQBTokens(env);
@@ -347,7 +353,7 @@ function connectQuickBooks() {
   const base     = env === 'production' ? 'https://appcenter.intuit.com/connect/oauth2' : 'https://appcenter.intuit.com/connect/oauth2';
   sessionStorage.setItem('qb_state', state);
   sessionStorage.setItem('qb_env', env);
-  localStorage.setItem('qb_client_id', clientId);
+  saveQBClientIds();
   sessionStorage.setItem('qb_client_id', clientId);
   window.location.href = `${base}?client_id=${clientId}&response_type=code&scope=${scope}&redirect_uri=${redirect}&state=${state}`;
 }
@@ -407,6 +413,26 @@ function saveQBTokens(data, expiresAt, realmId, env) {
   localStorage.setItem('qb_env',                  env);
   if (data.refresh_token) localStorage.setItem('qb_refresh_token_' + env, data.refresh_token);
 }
+
+function saveQBClientIds() {
+  const sb   = document.getElementById('qb-client-id-sandbox');
+  const prod = document.getElementById('qb-client-id-prod');
+  if (sb?.value.trim())   localStorage.setItem('qb_client_id_sandbox',    sb.value.trim());
+  if (prod?.value.trim()) localStorage.setItem('qb_client_id_production', prod.value.trim());
+}
+function getQBClientId() {
+  const env = document.getElementById('qb-env').value;
+  const key = 'qb_client_id_' + env;
+  // also check legacy single key for backward compat
+  return localStorage.getItem(key) || localStorage.getItem('qb_client_id') || '';
+}
+function restoreQBClientIds() {
+  const sb   = document.getElementById('qb-client-id-sandbox');
+  const prod = document.getElementById('qb-client-id-prod');
+  if (sb)   sb.value   = localStorage.getItem('qb_client_id_sandbox')    || localStorage.getItem('qb_client_id') || '';
+  if (prod) prod.value = localStorage.getItem('qb_client_id_production') || '';
+}
+
 function loadQBTokens(env) {
   return {
     token:   localStorage.getItem('qb_access_token_' + env),
@@ -737,12 +763,7 @@ window.addEventListener('load', async () => {
     setQBStatus(`✓ QB connected (~${mins}m remaining)`, 'ok');
   }
 
-  // Restore QB client ID field
-  const savedQbClientId = localStorage.getItem('qb_client_id');
-  if (savedQbClientId) {
-    const el = document.getElementById('qb-client-id');
-    if (el) el.value = savedQbClientId;
-  }
+  restoreQBClientIds();
 
   // Handle QB OAuth callback
   if (window.location.search.includes('code=')) {
