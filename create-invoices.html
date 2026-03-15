@@ -788,12 +788,20 @@ function parseCitySt(text) {
 }
 
 function parseDateCompleted(text) {
-  // Find "Date Completed:" label and grab the value on the same line
+  // "Date Completed:" appears as a label in the doc — find the occurrence
+  // that has an actual date value after it (not just whitespace or another label).
   const marker = 'Date Completed:';
-  const idx = text.indexOf(marker);
-  if (idx < 0) return null;
-  const after = text.slice(idx + marker.length).split(/[\r\n]/)[0].trim();
-  return after || null;
+  let searchFrom = 0;
+  while (true) {
+    const idx = text.indexOf(marker, searchFrom);
+    if (idx < 0) return null;
+    const after = text.slice(idx + marker.length).split(/[\r\n]/)[0].trim();
+    // A real date value: contains a digit or month name
+    if (after && /[0-9]|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(after)) {
+      return after;
+    }
+    searchFrom = idx + marker.length;
+  }
 }
 
 function parseWorkDesc(text) {
@@ -804,68 +812,30 @@ function parseWorkDesc(text) {
 }
 
 function parseScope(text) {
-  const CHECK = '\u2611'; // ☑
+  // Read from the "Originally Selected Work Scope Items:" section in the doc.
+  // This section is written by buildWorkOrderHTML as bullet lines (• item)
+  // so it's already accurate and requires no checkbox re-parsing.
+  const marker = 'List of Selected Work Scope Items to be included in QB Invoice:';
+  const markerIdx = text.indexOf(marker);
+  if (markerIdx < 0) {
+    // Older doc without the section — fall back to empty (invoice will just skip bullets)
+    return [];
+  }
+  const section = text.slice(markerIdx + marker.length);
+  // Next section header ends the block
+  const endMatch = section.search(/\n[A-Z][A-Z ]{3,}[\n\r]/);
+  const block = endMatch >= 0 ? section.slice(0, endMatch) : section;
 
-  // Isolate SCOPE OF WORK section
-  const scopeMatch = text.match(/SCOPE OF WORK([\s\S]*?)(?=FIRE SYSTEM INFORMATION|SUB-CONTRACTOR|NOTES \/|FLIPS EXPENSES|COMPLETION)/i);
-  const scopeText  = scopeMatch ? scopeMatch[1] : text;
-
-  const FREQ_BEARING = ['Fire Alarm Inspection','Sprinkler Inspection','Extinguisher Inspection','Emergency Exit Light Inspection'];
-  const SERVICE_TYPES = [
-    ...FREQ_BEARING,
-    '5-Year Internal Pipe Inspection',
-    '5-Year FDC Hydrostatic Test',
-    '3-Year Dry Pipe Test',
-    'Annual Backflow Prevention Test',
-    'Deficiency Correction',
-    'Repair / Service Call',
-    'New Installation',
-    'Compliance Report',
-    'Monitoring Setup / Change',
-    'Sub-Contractor Work',
-    'Walk-Through / Consultation',
-  ];
-  const FREQUENCIES = ['Semi Annual', 'Annual', 'Quarterly', 'Monthly'];
-
-  // Helper: is "☑ <label>" present in a block of text?
-  const isChecked = (block, label) =>
-    block.includes(CHECK + ' ' + label) || block.includes(CHECK + label);
-
-  const results = [];
-
-  for (const svcType of SERVICE_TYPES) {
-    if (!isChecked(scopeText, svcType)) continue;
-
-    let freq = '';
-    if (FREQ_BEARING.includes(svcType)) {
-      // The SERVICES field written into the doc stores "Fire Alarm \u2013 Semi Annual" etc.
-      // Use that as the authoritative frequency source — it's clean text, no regex needed.
-      const prefix = svcType === 'Emergency Exit Light Inspection' ? 'Exit Light'
-                   : svcType.replace(' Inspection', '');
-      for (const f of FREQUENCIES) {
-        if (text.includes(prefix + ' \u2013 ' + f) || text.includes(prefix + ' - ' + f)) {
-          freq = f;
-          break;
-        }
-      }
-      // Fallback: find a checked frequency anywhere in scope section
-      if (!freq) {
-        for (const f of FREQUENCIES) {
-          if (isChecked(scopeText, f)) { freq = f; break; }
-        }
-      }
+  // Extract bullet lines: lines starting with • or - after whitespace
+  const items = [];
+  for (const line of block.split(/[\r\n]/)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('\u2022') || trimmed.startsWith('\u2013') || trimmed.startsWith('-')) {
+      const item = trimmed.replace(/^[\u2022\u2013\-]\s*/, '').trim();
+      if (item && item.toLowerCase() !== 'none selected') items.push(item);
     }
-    results.push(freq ? svcType + ' (' + freq + ')' : svcType);
   }
-
-  // Handle "Other:" service
-  const otherIdx = scopeText.indexOf(CHECK + ' Other');
-  if (otherIdx >= 0) {
-    const after = scopeText.slice(otherIdx + (CHECK + ' Other').length).split(/[\n\r]/)[0].replace(/^[:\s]+/, '').trim();
-    if (after) results.push('Other: ' + after);
-  }
-
-  return results;
+  return items;
 }
 
 // ─────────────────────────────────────────────────────────
