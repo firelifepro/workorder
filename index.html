@@ -1916,7 +1916,7 @@ function buildWorkOrderHTML(d) {
   html += tbl(
     hdr('FIRE SYSTEM INFORMATION') +
     tr(lbl('System Type:'),
-       val(['Wet','Dry','Pre-Action','Deluge','Glycol'].map(t=>chk(d['SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
+       val(['Wet','Dry','Pre-Action','Deluge','Glycol','Nitrogen'].map(t=>chk(d['SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
        lbl('Panel Manufacturer:'), val(d['PANEL MANUFACTURER'])) +
     tr(lbl('Panel System Type:'),
        val(['Conventional','Addressable'].map(t=>chk(d['PANEL SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
