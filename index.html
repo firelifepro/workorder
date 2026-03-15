@@ -1648,7 +1648,22 @@ async function createDoc() {
     updateInspectionSchedule(data);
 
   } catch(e) {
-    setStatus('submit-status', '✗ ' + e.message, 'err');
+    // Make auth errors human-readable; collapse technical details
+    let errMsg = e.message;
+    let errDetail = '';
+    if (e.message.includes('401') || e.message.toLowerCase().includes('authentication') || e.message.toLowerCase().includes('credential')) {
+      errMsg = '⚠ Google session expired — please reconnect';
+      errDetail = e.message;
+      setStatus('conn-status', '⚠ Session expired', 'warn');
+      document.getElementById('conn-drawer').classList.add('open');
+    } else if (e.message.includes('403')) {
+      errMsg = '⚠ Permission denied — check Google Drive access';
+      errDetail = e.message;
+    }
+    const detailHtml = errDetail
+      ? ` <details style="display:inline;font-size:0.75rem;"><summary style="cursor:pointer;color:#888;">details</summary><span style="font-size:0.72rem;color:#c0392b;word-break:break-all;">${errDetail}</span></details>`
+      : '';
+    document.getElementById('submit-status').innerHTML = `<span style="color:#c0392b;">${errMsg}</span>${detailHtml}`;
     console.error(e);
   } finally {
     btn.disabled = false; btn.classList.remove('loading');
@@ -1946,7 +1961,12 @@ function buildWorkOrderHTML(d) {
        val(d['LABOR TOTAL'])) +
     tr(lbl('Trip Charge'), val(chk(d['TRIP CHARGE']==='$90.00','$90.00')), val(''), val(d['TRIP CHARGE']==='$90.00'?d['TRIP CHARGE']:'')) +
     tr(lbl('Misc'), val(d['MISC DESCRIPTION']), val(''), val(d['MISC TOTAL'])) +
-    tr(lbl('Compliance Report'), val(d['COMPLIANCE REPORT'] === 'Yes' ? (d['COMPLIANCE DESC'] || 'Yes') : '☐ Not required'), val(''), val(d['COMPLIANCE REPORT'] === 'Yes' ? d['COMPLIANCE AMOUNT'] : '')) +
+    tr(lbl('Compliance Report'),
+       val(d['COMPLIANCE REPORT'] === 'Yes'
+         ? '☑ ' + (d['COMPLIANCE DESC'] || 'Compliance Report')
+         : '☐ Not required'),
+       val(''),
+       val(d['COMPLIANCE REPORT'] === 'Yes' ? d['COMPLIANCE AMOUNT'] : '')) +
     tr(`<td colspan="2" style="${S.lbl}">Total to Invoice</td>`,
        `<td style="${S.lbl}text-align:center;">=</td>`,
        `<td style="${S.lbl}font-size:10pt;">${d['TOTAL TO INVOICE']||'&nbsp;'}</td>`)
