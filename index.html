@@ -535,12 +535,6 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
         </div>
       </td>
     </tr>
-    <tr>
-      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="5-Year Internal Pipe Inspection"> 5-Year Internal Pipe Inspection</label></div></td>
-      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="5-Year FDC Hydrostatic Test"> 5-Year FDC Hydrostatic Test</label></div></td>
-      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="3-Year Dry Pipe Test"> 3-Year Dry Pipe Test</label></div></td>
-      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Annual Backflow Prevention Test"> Annual Backflow Prevention Test</label></div></td>
-    </tr>
     <!-- Hood, Fire Pump, Jockey Pump inspections -->
     <tr>
       <td class="value-cell" style="width:25%;">
@@ -571,6 +565,12 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="value-cell"></td>
     </tr>
     <tr>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="5-Year Internal Pipe Inspection"> 5-Year Internal Pipe Inspection</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="5-Year FDC Hydrostatic Test"> 5-Year FDC Hydrostatic Test</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="3-Year Dry Pipe Test"> 3-Year Dry Pipe Test</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Annual Backflow Prevention Test"> Annual Backflow Prevention Test</label></div></td>
+    </tr>
+    <tr>
       <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Deficiency Correction"> Deficiency Correction</label></div></td>
       <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Repair / Service Call"> Repair / Service Call</label></div></td>
       <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="New Installation"> New Installation</label></div></td>
@@ -587,7 +587,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
         </div>
       </td>
     </tr>
-    <tr><td colspan="4" class="subheader-row">Description of Work Requested:</td></tr>
+    <tr><td colspan="4" class="subheader-row" style="background:#f0f0f0;font-style:italic;color:#333;">Description of Work Requested <em style="font-size:8pt;font-weight:400;">(This will show to the customer on the invoice)</em>:</td></tr>
     <tr>
       <td colspan="4" class="value-cell"><textarea id="work-description" style="min-height:65px;"></textarea></td>
     </tr>
@@ -673,24 +673,21 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     </tr>
   </table>
 
-  <!-- ══ FLIPS EXPENSES ══ -->
-  <table class="wo-table">
-    <tr><td colspan="4" class="section-header">FLIPS EXPENSES</td></tr>
+  <!-- ══ FLPS EXPENSES ══ -->
+  <table class="wo-table" id="expenses-table">
+    <tr><td colspan="4" class="section-header">FLPS EXPENSES</td></tr>
     <tr>
       <td class="exp-col-header" style="width:15%;">Expense Name</td>
       <td class="exp-col-header" style="width:45%;">Description</td>
       <td class="exp-col-header" style="width:10%;text-align:center;">Quantity</td>
       <td class="exp-col-header" style="width:22%;">Total Amount</td>
     </tr>
-    <!-- Sub-Contractor Amount — dynamic rows -->
-    <tr id="sub-rows-container">
-      <!-- Rows injected by JS -->
-    </tr>
-    <tr>
+    <!-- Sub-Contractor Amount — dynamic rows injected here by addSubRow() -->
+    <tr id="sub-add-row">
       <td colspan="4" style="padding:2px 4px;">
         <button type="button" onclick="addSubRow()"
           style="font-size:0.78rem;padding:3px 10px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;">
-          + Add Sub-Contractor Line
+          + Add Another Sub-Contractor
         </button>
       </td>
     </tr>
@@ -1237,27 +1234,20 @@ function onPropertySelect() {
 let subRowCount = 0;
 
 function addSubRow(labelVal, amountVal) {
-  const tbody = document.getElementById('sub-rows-container');
-  // Remove empty-state placeholder if present
-  if (tbody.querySelector('td[colspan="4"]')) tbody.innerHTML = '';
-  const idx = ++subRowCount;
+  const n = ++subRowCount;
   const tr = document.createElement('tr');
-  tr.id = 'sub-row-' + idx;
-  tr.innerHTML = `
-    <td class="exp-label" style="white-space:nowrap;">
-      Sub-Contractor
-      <button type="button" onclick="removeSubRow(${idx})"
-        style="margin-left:4px;background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button>
-    </td>
-    <td class="value-cell" colspan="2">
-      <input type="text" id="sub-label-${idx}" value="${labelVal||''}" placeholder="Sub-contractor name / description" style="width:100%;">
-    </td>
-    <td class="value-cell">
-      <span class="dollar-prefix">$</span>
-      <input type="number" id="sub-amt-${idx}" value="${amountVal||''}" min="0" step="0.01"
-             style="width:calc(100% - 14px);" oninput="calcTotal()">
-    </td>`;
-  tbody.appendChild(tr);
+  tr.id = 'sub-row-' + n;
+  tr.innerHTML =
+    '<td class="exp-label" style="white-space:nowrap;">Sub-Contractor ' +
+    '<button type="button" onclick="removeSubRow(' + n + ')" ' +
+    'style="margin-left:4px;background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
+    '<td class="value-cell"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
+    '<td class="value-cell" style="text-align:center;"></td>' +
+    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
+    '<input type="number" id="sub-amt-' + n + '" value="' + (amountVal||'') + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="calcTotal()"></td>';
+  // Insert before the "Add Another Sub-Contractor" button row
+  const addBtnRow = document.getElementById('sub-add-row');
+  addBtnRow.parentNode.insertBefore(tr, addBtnRow);
   calcTotal();
 }
 
@@ -1526,10 +1516,10 @@ async function createDoc() {
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
     return;
   }
-  if (compliCb?.checked && !(parseFloat(compliAmt?.value) > 0)) {
+  if (compliCb?.checked && (compliAmt?.value === '' || compliAmt?.value === null || compliAmt?.value === undefined)) {
     compliAmt.classList.add('field-error');
     compliAmt.focus();
-    toast('⚠ Enter a Compliance Report amount');
+    toast('⚠ Enter a Compliance Report amount (0 is allowed)');
     return;
   }
   if (compliAmt) compliAmt.classList.remove('field-error');
