@@ -787,6 +787,15 @@ function parseCitySt(text) {
   return m ? m[1].trim() : null;
 }
 
+function parseDateCompleted(text) {
+  // Find "Date Completed:" label and grab the value on the same line
+  const marker = 'Date Completed:';
+  const idx = text.indexOf(marker);
+  if (idx < 0) return null;
+  const after = text.slice(idx + marker.length).split(/[\r\n]/)[0].trim();
+  return after || null;
+}
+
 function parseWorkDesc(text) {
   // Grab text after "Description of Work Requested:" header, up to next section header
   const m = text.match(/Description\s+of\s+Work\s+Requested[:\s]*([\s\S]*?)(?=FIRE SYSTEM INFORMATION|SUB-CONTRACTOR|NOTES \/|FLIPS EXPENSES|COMPLETION|$)/i);
@@ -966,9 +975,11 @@ async function handleQBCallback() {
   if (!code || state !== sessionStorage.getItem('qb_state')) return;
 
   const clientId = sessionStorage.getItem('qb_client_id');
-  const env = sessionStorage.getItem('qb_env') || 'sandbox';
+  // Fall back to localStorage in case sessionStorage was cleared during redirect
+  const env = sessionStorage.getItem('qb_env') || localStorage.getItem('qb_env') || 'sandbox';
   const redirectUri = 'https://workorder.firelifepro.workers.dev/create-invoices.html';
 
+  console.log('[QB callback] env:', env, '| realmId:', realmId, '| clientId from session:', clientId);
   setQBStatusPill('⏳ Exchanging token…', 'warn');
   try {
     const resp = await fetch('/api/qb-token', {
@@ -1036,7 +1047,8 @@ async function createInvoices() {
   for (const doc of docs) {
     try {
       const invoiceResult = await createQBInvoice(doc);
-      results.push({ doc, status: 'ok', invoiceId: invoiceResult.Id, invoiceNum: invoiceResult.DocNumber, link: buildQBLink(invoiceResult.Id) });
+      const qbLinks = buildQBLink(invoiceResult.Id);
+      results.push({ doc, status: 'ok', invoiceId: invoiceResult.Id, invoiceNum: invoiceResult.DocNumber, link: qbLinks.invoice, linkHome: qbLinks.home });
       logToSheet('INVOICE_CREATED', `Invoice #${invoiceResult.DocNumber} created for ${doc.client || doc.name} — $${doc.amount}`, 'OK');
       toast(`✅ Invoice created: ${doc.name}`);
     } catch(e) {
@@ -1069,6 +1081,7 @@ async function createQBInvoice(doc) {
   const addrParts   = [doc.svcAddr, doc.citySt].filter(Boolean);
   const locationStr = addrParts.length ? addrParts.join('\n') : (doc.client || doc.name);
   let lineDesc = `Job Location - ${locationStr}`;
+  if (doc.dateCompleted) lineDesc += `\nDate Work Completed: ${doc.dateCompleted}`;
 
   // Lines 2+: Scope of work bullets (one per line)
   const scopeLines = (doc.scope || []);
@@ -1330,8 +1343,8 @@ async function qbProxy(method, path, env, payload) {
 
 function buildQBLink(invoiceId) {
   const env = document.getElementById('qb-env').value;
-  if (env === 'production') return `https://app.qbo.intuit.com/app/invoice?txnId=${invoiceId}`;
-  return `https://app.sandbox.qbo.intuit.com/app/invoice?txnId=${invoiceId}`;
+  const base = env === 'production' ? 'https://app.qbo.intuit.com' : 'https://app.sandbox.qbo.intuit.com';
+  return { invoice: `${base}/app/invoice?txnId=${invoiceId}`, home: `${base}/app/homepage` };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1349,7 +1362,16 @@ function showResults(results) {
       ? `<span class="badge badge-ok">✓ Created</span>`
       : `<span class="badge badge-err">✗ Error</span>`;
     const link = r.status === 'ok'
-      ? `<a class="result-link" href="${r.link}" target="_blank">#${r.invoiceNum || r.invoiceId} ↗</a>`
+      ? `<span style="display:flex;flex-direction:column;gap:3px;">
+           <a class="result-link" href="${r.link}" target="qb-invoice-${r.invoiceId}"
+              title="Click to open invoice (if QB asks you to log in, do so then click again)"
+              style="font-size:0.82rem;">#${r.invoiceNum || r.invoiceId} Open Invoice ↗</a>
+           <a href="${r.linkHome}" target="qb-session"
+              style="font-size:0.72rem;color:#888;text-decoration:none;"
+              title="Opens QuickBooks to establish your session — click this first if the invoice link shows a blank page">
+             🔑 Open QB first (if needed)
+           </a>
+         </span>`
       : `<span style="color:#c0392b;font-size:0.78rem;">${escHtml(r.message||'')}</span>`;
     return `<tr>
       <td>${escHtml(r.doc.name)}</td>
