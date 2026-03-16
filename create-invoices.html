@@ -1034,6 +1034,7 @@ async function createInvoices() {
         doc.citySt    = doc.citySt    || parseCitySt(text);
         doc.scope     = parseScope(text);
         doc.workDesc  = parseWorkDesc(text);
+        doc.dateCompleted = parseDateCompleted(text);
       }
     } catch(_) { /* if fetch fails, createQBInvoice will surface the missing data */ }
   }));
