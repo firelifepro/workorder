@@ -788,17 +788,25 @@ function parseCitySt(text) {
 }
 
 function parseDateCompleted(text) {
-  // "Date Completed:" appears as a label in the doc — find the occurrence
-  // that has an actual date value after it (not just whitespace or another label).
+  // "Date Completed:" label and its value may be in adjacent table cells,
+  // which extractText renders separated by a newline. So the value can be
+  // on the same line OR the immediately following line.
   const marker = 'Date Completed:';
   let searchFrom = 0;
   while (true) {
     const idx = text.indexOf(marker, searchFrom);
     if (idx < 0) return null;
-    const after = text.slice(idx + marker.length).split(/[\r\n]/)[0].trim();
-    // A real date value: contains a digit or month name
-    if (after && /[0-9]|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(after)) {
-      return after;
+    // Look at the rest of the same line, then the next line
+    const rest = text.slice(idx + marker.length);
+    const lines = rest.split(/[\r\n]/).map(l => l.trim()).filter((_, i) => i < 3);
+    for (const line of lines) {
+      if (line && /[0-9]|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(line)) {
+        // Make sure it's not another label (labels are all-caps or contain ':')
+        if (!/^[A-Z\s#\/]+:/.test(line)) {
+          console.log('[parseDateCompleted] found:', line);
+          return line;
+        }
+      }
     }
     searchFrom = idx + marker.length;
   }
@@ -1032,9 +1040,13 @@ async function createInvoices() {
         doc.billEmail = doc.billEmail || parseBillingEmail(text);
         doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
         doc.citySt    = doc.citySt    || parseCitySt(text);
-        doc.scope     = parseScope(text);
-        doc.workDesc  = parseWorkDesc(text);
-        doc.dateCompleted = parseDateCompleted(text);
+        doc.scope          = parseScope(text);
+        doc.workDesc       = parseWorkDesc(text);
+        doc.dateCompleted  = parseDateCompleted(text);
+        // Debug: log text around Date Completed
+        const dcIdx = text.indexOf('Date Completed:');
+        if (dcIdx >= 0) console.log('[date debug] context:', JSON.stringify(text.slice(dcIdx, dcIdx + 80)));
+        else console.warn('[date debug] Date Completed: not found in doc text');
       }
     } catch(_) { /* if fetch fails, createQBInvoice will surface the missing data */ }
   }));
