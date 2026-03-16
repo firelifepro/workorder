@@ -805,8 +805,10 @@ function parseDateCompleted(text) {
 }
 
 function parseWorkDesc(text) {
-  // Grab text after "Description of Work Requested:" header, up to next section header
-  const m = text.match(/Description\s+of\s+Work\s+Requested[:\s]*([\s\S]*?)(?=FIRE SYSTEM INFORMATION|SUB-CONTRACTOR|NOTES \/|FLIPS EXPENSES|COMPLETION|$)/i);
+  // Grab text after "Description of Work Requested:" up to the next section.
+  // Must stop before "List of Selected Work Scope Items" so that section
+  // doesn't bleed into the work description.
+  const m = text.match(/Description\s+of\s+Work\s+Requested[:\s]*([\s\S]*?)(?=List of Selected Work Scope Items|FIRE SYSTEM INFORMATION|SUB-CONTRACTOR|NOTES \/|FLIPS EXPENSES|COMPLETION|$)/i);
   if (!m) return '';
   return m[1].replace(/^[\s\n\r]+|[\s\n\r]+$/g, '').trim();
 }
@@ -826,16 +828,39 @@ function parseScope(text) {
   const endMatch = section.search(/\n[A-Z][A-Z ]{3,}[\n\r]/);
   const block = endMatch >= 0 ? section.slice(0, endMatch) : section;
 
-  // Extract bullet lines: lines starting with • or - after whitespace
-  const items = [];
+  // Extract bullet lines: lines starting with • after whitespace
+  const raw = [];
   for (const line of block.split(/[\r\n]/)) {
     const trimmed = line.trim();
-    if (trimmed.startsWith('\u2022') || trimmed.startsWith('\u2013') || trimmed.startsWith('-')) {
-      const item = trimmed.replace(/^[\u2022\u2013\-]\s*/, '').trim();
-      if (item && item.toLowerCase() !== 'none selected') items.push(item);
+    if (trimmed.startsWith('\u2022')) {
+      const item = trimmed.replace(/^\u2022\s*/, '').trim();
+      if (item && item.toLowerCase() !== 'none selected') raw.push(item);
     }
   }
-  return items;
+
+  // Convert raw checkbox values to clean display format for QB invoice.
+  // "Fire Alarm – Annual"  →  "Fire Alarm Inspection (Annual)"
+  // "Hood Inspection – Semi Annual"  →  "Hood Inspection (Semi Annual)"
+  // "5-Year Internal Pipe Inspection"  →  unchanged (no freq)
+  const FREQ_LABEL_MAP = {
+    'fire alarm':    'Fire Alarm Inspection',
+    'sprinkler':     'Sprinkler Inspection',
+    'extinguisher':  'Extinguisher Inspection',
+    'exit light':    'Emergency Exit Light Inspection',
+    'hood inspection':         'Hood Inspection',
+    'fire pump inspection':    'Fire Pump Inspection',
+    'jockey pump inspection':  'Jockey Pump Inspection',
+  };
+  return raw.map(item => {
+    const dashIdx = item.indexOf(' \u2013 ');
+    if (dashIdx >= 0) {
+      const prefix = item.slice(0, dashIdx).trim().toLowerCase();
+      const freq   = item.slice(dashIdx + 3).trim();
+      const label  = FREQ_LABEL_MAP[prefix] || item.slice(0, dashIdx).trim();
+      return label + ' (' + freq + ')';
+    }
+    return item; // no dash = no frequency (5-Year etc.) — keep as-is
+  });
 }
 
 // ─────────────────────────────────────────────────────────
