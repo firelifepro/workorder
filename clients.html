@@ -642,7 +642,7 @@ async function createQBCustomer(idx) {
       FamilyName:       familyName,
       PrimaryEmailAddr: row.billEmail ? { Address: row.billEmail } : undefined,
       AlternatePhone:   row.acct     ? { FreeFormNumber: row.acct } : undefined,
-      Notes:            row.address  ? 'Service Address: ' + row.address : undefined,
+      Notes:            row.address,
       BillAddr:         billAddr,
     };
     // Remove undefined keys
