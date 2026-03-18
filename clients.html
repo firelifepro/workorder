@@ -403,7 +403,6 @@ async function refreshQBToken() {
 
 
 // ── QB storage key helpers — namespaced per environment ───────────────────────
-// Prevents sandbox tokens from contaminating production and vice versa.
 function qbKey(key) {
   const env = localStorage.getItem('qb_env') || 'sandbox';
   return key + '_' + env;
@@ -423,13 +422,9 @@ function saveQBClientIds() {
   if (prod?.value.trim()) localStorage.setItem('qb_client_id_production', prod.value.trim());
 }
 function getQBClientId() {
-  // Always read from the env-specific field — never fall back to legacy key
-  // which could be the wrong environment's client ID.
   const env = document.getElementById('qb-env').value;
-  // Try the namespaced key first, then the input field directly as fallback
   const stored = localStorage.getItem('qb_client_id_' + env);
   if (stored) return stored;
-  // Read from the visible input fields
   const el = env === 'production'
     ? document.getElementById('qb-client-id-prod')
     : document.getElementById('qb-client-id-sandbox');
@@ -491,7 +486,6 @@ async function loadSheetClients() {
   const iBillTo  = col(['bill to','invoice info']);
   const iBillEm  = col(['billing email','bill email']);
   const iContact = col(['property manager contact','contact']);
-  // Use exact match for 'property manager' to avoid matching 'property manager contact'
   const iManager = headers.findIndex(h => h === 'property manager' || h === 'property manager name');
 
   sheetClients = [];
@@ -522,7 +516,6 @@ async function reconcile(force = false) {
     if (!sheetClients.length) await loadSheetClients();
     await loadQBCustomers();
 
-    // Build a map: normalised acct# → QB customer
     const qbByPhone = new Map();
     const qbByName  = new Map();
     for (const c of qbCustomers) {
@@ -531,20 +524,16 @@ async function reconcile(force = false) {
       qbByName.set(c.DisplayName.toLowerCase(), c);
     }
 
-    // Matched QB customers (to find QB-only later)
     const matchedQbIds = new Set();
 
     reconciled = sheetClients.map(sc => {
       let qb = null;
-      // 1. Match by acct# in QB AlternatePhone
       if (sc.acct && qbByPhone.has(sc.acct)) qb = qbByPhone.get(sc.acct);
-      // 2. Fallback: name match
       if (!qb) qb = qbByName.get(sc.name.toLowerCase()) || null;
       if (qb) matchedQbIds.add(qb.Id);
       return { ...sc, qb, matchType: qb ? (qbByPhone.has(sc.acct) ? 'phone' : 'name') : null };
     });
 
-    // QB-only rows (in QB but not in sheet)
     const qbOnly = qbCustomers.filter(c => !matchedQbIds.has(c.Id)).map(c => ({
       name: '', acct: '', address: '', mgmt: '', billTo: '', billEmail: '', contact: '',
       qb: c, matchType: 'qbonly'
@@ -569,11 +558,6 @@ async function createQBCustomer(idx) {
   const btn = document.querySelector(`[data-create="${idx}"]`);
   if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
   try {
-    // Build customer object from Sheet data
-
-    // Name: prefer the dedicated "Property Manager" column (clean name only).
-    // Fall back to contact column but strip email/phone — take only the first
-    // two whitespace-separated tokens that don't contain @ or digits.
     let givenName = '', familyName = '';
     const managerRaw = (row.manager || '').trim();
     if (managerRaw) {
@@ -581,33 +565,22 @@ async function createQBCustomer(idx) {
       givenName  = parts[0] || '';
       familyName = parts.slice(1).join(' ') || '';
     } else if (row.contact) {
-      // Contact field may be "Aaron Ojala aaron@email.com 720-xxx-xxxx"
-      // Extract only the name tokens (no @ and no digit-heavy tokens)
       const tokens = row.contact.split(/\s+/)
         .filter(t => !t.includes('@') && !/\d{3}/.test(t));
       givenName  = tokens[0] || '';
       familyName = tokens.slice(1).join(' ') || '';
     }
 
-    // Bill-To address: split on newlines, then try to detect city/state/zip
-    // on the last line so QB can store it in structured fields.
     const billLines = (row.billTo || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
     let billAddr = undefined;
     if (billLines.length) {
-      // Scan all lines for "City, ST ZIP" or "City ST ZIP" pattern —
-      // it may not be the last line (e.g. "Suite B Carlsbad, CA 92008" on same line)
       let cityLineIdx = -1;
       let cityMatch = null;
       for (let li = billLines.length - 1; li >= 0; li--) {
-        // Try "...City, ST ZIP" — city may follow other text on the same line
         const m = billLines[li].match(/([A-Za-z][^,]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\s*$/);
         if (m) { cityLineIdx = li; cityMatch = m; break; }
       }
       if (cityMatch) {
-        // Lines before the city line become address lines
-        const addrLines = [...billLines];
-        // If city was embedded in a line with other content (e.g. "Suite B Carlsbad, CA 92008"),
-        // split that line: everything before the city match goes into an address line
         const cityLine = billLines[cityLineIdx];
         const cityStart = cityLine.search(/[A-Za-z][^,]+,\s*[A-Z]{2}\s+\d{5}/);
         const streetPart = cityStart > 0 ? cityLine.slice(0, cityStart).trim() : null;
@@ -626,7 +599,6 @@ async function createQBCustomer(idx) {
           Country: 'US',
         };
       } else {
-        // No parseable city/state/zip — just use line slots
         billAddr = {
           Line1: billLines[0] || '', Line2: billLines[1] || '',
           Line3: billLines[2] || '', Line4: billLines[3] || '',
@@ -653,7 +625,6 @@ async function createQBCustomer(idx) {
     if (!created) throw new Error('No customer in response');
 
     toast(`✓ Created QB customer: ${created.DisplayName}`);
-    // Update reconciled row
     reconciled[idx].qb = created;
     reconciled[idx].matchType = 'phone';
     qbCustomers.push(created);
@@ -696,10 +667,8 @@ async function saveMapping() {
     const updated = result?.Customer;
     if (!updated) throw new Error('No customer in response');
     reconciled[idx].qb = updated;
-    // Re-match
     const acct = reconciled[idx].acct;
     reconciled[idx].matchType = (acct && updated.AlternatePhone?.FreeFormNumber === acct) ? 'phone' : 'name';
-    // Update qbCustomers array
     const qi = qbCustomers.findIndex(c => c.Id === qbId);
     if (qi >= 0) qbCustomers[qi] = updated;
     toast(`✓ QB phone field updated to "${newPhone}"`);
@@ -828,7 +797,6 @@ window.addEventListener('load', async () => {
   if (k) document.getElementById('api-key').value = k;
   if (c) document.getElementById('client-id').value = c;
 
-  // Restore Google token
   if (k && c) {
     const tok    = localStorage.getItem('flips_access_token');
     const expiry = parseInt(localStorage.getItem('flips_token_expiry') || '0');
@@ -841,8 +809,6 @@ window.addEventListener('load', async () => {
     }
   }
 
-  // Restore QB token (env-namespaced)
-  // Restore QB env dropdown, then load the matching token for that env
   const storedQbEnv = localStorage.getItem('qb_env') || 'sandbox';
   const envSel = document.getElementById('qb-env');
   if (envSel) envSel.value = storedQbEnv;
@@ -855,12 +821,10 @@ window.addEventListener('load', async () => {
 
   restoreQBClientIds();
 
-  // Handle QB OAuth callback
   if (window.location.search.includes('code=')) {
     await handleQBCallback();
   }
 
-  // Auto-reconcile if both are connected
   if (accessToken && qbAccessToken && sheetClients.length) {
     reconcile();
   }
