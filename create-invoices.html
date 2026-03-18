@@ -400,21 +400,10 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   </div>
 </div>
 
-<!-- SETUP GUIDE commented out
-<details id="setup-guide">
-  <summary>⚙️ Setup instructions — click to expand</summary>
-  <div class="guide-body">
-    <div class="step"><div class="step-n">1</div><div>Enter your <strong>Google API Key</strong> and <strong>OAuth Client ID</strong> (same ones used on the Work Order page), then click <strong>Connect</strong>. The page will sign you in and load all docs from the <code>x -TestInvoice</code> folder in your Google Drive.</div></div>
-    <div class="step"><div class="step-n">2</div><div>For QuickBooks, go to <a href="https://developer.intuit.com" target="_blank">developer.intuit.com</a>, create an app, and copy your <strong>Client ID</strong> and <strong>Client Secret</strong> into the QuickBooks section below. Set the redirect URI to this page's URL.</div></div>
-    <div class="step"><div class="step-n">3</div><div>Click <strong>Connect QuickBooks</strong> to authorise. Once connected, select the work order docs to invoice and click <strong>Create Selected Invoices</strong>.</div></div>
-    <div class="step"><div class="step-n">💡</div><div>Each checked work order doc is read, key billing fields are extracted (client, amount, line items), and a draft invoice is created in QuickBooks under the matching customer.</div></div>
-  </div>
-</details>
-
 <!-- WORK ORDER DOCS CARD -->
 <div class="card">
   <div class="section-header">
-    <span>📁 Work Orders Ready to Invoice &nbsp;<small style="font-weight:400;opacity:.75;">(from Google Drive → x -TestInvoice)</small></span>
+    <span>📁 Work Orders Ready to Invoice</span>
     <button id="refresh-btn" onclick="loadDocs()" style="font-size:0.75rem;padding:4px 10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;cursor:pointer;">⟳ Refresh</button>
   </div>
 
@@ -478,7 +467,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 // ─────────────────────────────────────────────────────────
 // CONSTANTS & STATE
 // ─────────────────────────────────────────────────────────
-const FOLDER_NAME = 'x -TestInvoice';
+const FOLDER_NAME = '2 - Ready to Invoice';
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/documents.readonly';
 
 
@@ -566,7 +555,6 @@ function setConnStatus(msg, color) {
 function setQBStatusPill(msg, cls) {
   const pill = document.getElementById('qb-status-pill');
   if (!pill) return;
-  // Append env label when connected so it's obvious which environment is active
   let label = msg;
   if (cls === 'ok') {
     const env = localStorage.getItem('qb_env') || document.getElementById('qb-env')?.value || '';
@@ -614,8 +602,6 @@ async function loadDocs() {
       name: f.name,
       modifiedTime: f.modifiedTime,
       mimeType: f.mimeType,
-      // Populated instantly from Drive metadata for files saved by FLIPS —
-      // no doc fetch needed for these. Older files fall through to enrichment.
       amount:    f.appProperties?.flips_amount    || null,
       client:    f.appProperties?.flips_client    || null,
       acctNum:   f.appProperties?.flips_acct_num  || null,
@@ -635,15 +621,10 @@ async function loadDocs() {
   }
 }
 
-// Try to pull TOTAL TO INVOICE and CLIENT from each doc
 // ─────────────────────────────────────────────────────────
-// SHEET LOGGER — mirrors the one in the work order page
+// SHEET LOGGER
 // ─────────────────────────────────────────────────────────
 function logToSheet(action, detail, status, error) {
-  // Fire-and-forget — never blocks the user-facing flow.
-  // Respects flipsLogLevel: in NORMAL mode only WARN, ERROR, and key OK events
-  // are sent to the sheet. Set flipsLogLevel = 'VERBOSE' in the browser console
-  // to temporarily enable full logging without redeploying.
   const s = String(status || 'INFO').toUpperCase();
   const isKeyEvent = ['WO_SAVED','INVOICE_CREATED','QB_INVOICE_CREATED'].includes(action);
   if (flipsLogLevel !== 'VERBOSE' && s === 'INFO' && !isKeyEvent) return;
@@ -656,12 +637,9 @@ function logToSheet(action, detail, status, error) {
 }
 
 async function enrichDocsInBackground() {
-  // Only fetch doc content for files that don't already have metadata from appProperties.
-  // Files saved by FLIPS after this update will have flips_client / flips_amount set
-  // on the Drive file itself and won't need to be opened at all.
   const docList = allDocs.filter(d =>
     d.mimeType === 'application/vnd.google-apps.document' &&
-    (!d.client || !d.amount)   // skip if already populated from appProperties
+    (!d.client || !d.amount)
   );
 
   if (docList.length === 0) {
@@ -690,7 +668,6 @@ async function enrichDocsInBackground() {
       doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
       doc.citySt    = doc.citySt    || parseCitySt(text);
 
-      // Back-fill the Drive appProperties so this doc won't need fetching next time
       if (doc.amount || doc.client) {
         apiFetch(
           `https://www.googleapis.com/drive/v3/files/${doc.id}?supportsAllDrives=true`,
@@ -719,8 +696,6 @@ async function enrichDocsInBackground() {
 }
 
 function extractText(docData) {
-  // Recursively walk all blocks including table cells.
-  // Work order fields all live inside tables so this is essential.
   function walk(blocks) {
     let out = '';
     for (const block of (blocks || [])) {
@@ -740,7 +715,6 @@ function extractText(docData) {
     return out;
   }
   const fullText = walk(docData?.body?.content || []);
-  // Log a window around "Total to Invoice" so we can see the exact format
   const idx = fullText.search(/total\s+to\s+invoice/i);
   if (idx >= 0) {
     console.log('[extractText] Total area (chars ' + idx + '-' + (idx+60) + '):', JSON.stringify(fullText.slice(idx, idx + 60)));
@@ -751,11 +725,6 @@ function extractText(docData) {
 }
 
 function parseAmount(text) {
-  // "Total to Invoice" then optional whitespace/symbols, then the number.
-  // The $ sign may be in a separate table cell so treat it as optional noise.
-  // Works for: "Total to Invoice\n=\n$936.50"
-  //            "Total to Invoice\n=\n$\n936.50"  ($ and digits split by newline)
-  //            "Total to Invoice = $936.50"
   const m = text.match(/total[\s\S]{0,30}?to[\s\S]{0,30}?invoice[\s\S]{0,40}?(\d[\d,]*\.\d{2})/i);
   if (!m) return null;
   const val = m[1].replace(/,/g, '');
@@ -788,20 +757,15 @@ function parseCitySt(text) {
 }
 
 function parseDateCompleted(text) {
-  // "Date Completed:" label and its value may be in adjacent table cells,
-  // which extractText renders separated by a newline. So the value can be
-  // on the same line OR the immediately following line.
   const marker = 'Date Completed:';
   let searchFrom = 0;
   while (true) {
     const idx = text.indexOf(marker, searchFrom);
     if (idx < 0) return null;
-    // Look at the rest of the same line, then the next line
     const rest = text.slice(idx + marker.length);
     const lines = rest.split(/[\r\n]/).map(l => l.trim()).filter((_, i) => i < 3);
     for (const line of lines) {
       if (line && /[0-9]|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(line)) {
-        // Make sure it's not another label (labels are all-caps or contain ':')
         if (!/^[A-Z\s#\/]+:/.test(line)) {
           console.log('[parseDateCompleted] found:', line);
           return line;
@@ -813,30 +777,21 @@ function parseDateCompleted(text) {
 }
 
 function parseWorkDesc(text) {
-  // Grab text after "Description of Work Requested:" up to the next section.
-  // Must stop before "List of Selected Work Scope Items" so that section
-  // doesn't bleed into the work description.
   const m = text.match(/Description\s+of\s+Work\s+Requested[:\s]*([\s\S]*?)(?=List of Selected Work Scope Items|FIRE SYSTEM INFORMATION|SUB-CONTRACTOR|NOTES \/|FLIPS EXPENSES|COMPLETION|$)/i);
   if (!m) return '';
   return m[1].replace(/^[\s\n\r]+|[\s\n\r]+$/g, '').trim();
 }
 
 function parseScope(text) {
-  // Read from the "Originally Selected Work Scope Items:" section in the doc.
-  // This section is written by buildWorkOrderHTML as bullet lines (• item)
-  // so it's already accurate and requires no checkbox re-parsing.
   const marker = 'List of Selected Work Scope Items to be included in QB Invoice:';
   const markerIdx = text.indexOf(marker);
   if (markerIdx < 0) {
-    // Older doc without the section — fall back to empty (invoice will just skip bullets)
     return [];
   }
   const section = text.slice(markerIdx + marker.length);
-  // Next section header ends the block
   const endMatch = section.search(/\n[A-Z][A-Z ]{3,}[\n\r]/);
   const block = endMatch >= 0 ? section.slice(0, endMatch) : section;
 
-  // Extract bullet lines: lines starting with • after whitespace
   const raw = [];
   for (const line of block.split(/[\r\n]/)) {
     const trimmed = line.trim();
@@ -846,10 +801,6 @@ function parseScope(text) {
     }
   }
 
-  // Convert raw checkbox values to clean display format for QB invoice.
-  // "Fire Alarm – Annual"  →  "Fire Alarm Inspection (Annual)"
-  // "Hood Inspection – Semi Annual"  →  "Hood Inspection (Semi Annual)"
-  // "5-Year Internal Pipe Inspection"  →  unchanged (no freq)
   const FREQ_LABEL_MAP = {
     'fire alarm':    'Fire Alarm Inspection',
     'sprinkler':     'Sprinkler Inspection',
@@ -867,7 +818,7 @@ function parseScope(text) {
       const label  = FREQ_LABEL_MAP[prefix] || item.slice(0, dashIdx).trim();
       return label + ' (' + freq + ')';
     }
-    return item; // no dash = no frequency (5-Year etc.) — keep as-is
+    return item;
   });
 }
 
@@ -906,7 +857,7 @@ function renderDocList(docs) {
     </div>`;
   }).join('');
 
-  onCheckChange(); // update counts
+  onCheckChange();
 }
 
 function showPlaceholder(html) {
@@ -963,13 +914,11 @@ function connectQuickBooks() {
   sessionStorage.setItem('qb_env', env);
   saveQBClientIds();
   localStorage.setItem('qb_env', env);
-  // Redirect current tab — Intuit sends the code back here via redirect
   window.location.href = `https://appcenter.intuit.com/connect/oauth2?` +
     `client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code` +
     `&scope=${scope}&state=${state}`;
 }
 
-// Handle QB redirect (called if this page is the redirect target)
 async function handleQBCallback() {
   const params = new URLSearchParams(location.search);
   const code = params.get('code');
@@ -978,7 +927,6 @@ async function handleQBCallback() {
   if (!code || state !== sessionStorage.getItem('qb_state')) return;
 
   const clientId = sessionStorage.getItem('qb_client_id');
-  // Fall back to localStorage in case sessionStorage was cleared during redirect
   const env = sessionStorage.getItem('qb_env') || localStorage.getItem('qb_env') || 'sandbox';
   const redirectUri = 'https://workorder.firelifepro.workers.dev/create-invoices.html';
 
@@ -998,11 +946,9 @@ async function handleQBCallback() {
     saveQBTokens(data, expiresAt, realmId, env);
     const mins = Math.round((expiresAt - Date.now()) / 60000);
     setQBStatusPill(`✓ QB (~${mins}m)`, 'ok');
-    // Clean URL and restore page state
     history.replaceState({}, '', location.pathname);
     updateSelectedCount();
     toast('✅ QuickBooks connected!');
-    // If we got here via clients.html redirect, go back there
     const returnTo = sessionStorage.getItem('qb_return_to');
     if (returnTo) { sessionStorage.removeItem('qb_return_to'); window.location.href = returnTo; }
   } catch(e) {
@@ -1023,9 +969,6 @@ async function createInvoices() {
   setActionStatus('Creating invoices…', '');
   const results = [];
 
-  // ── Fetch all doc content in parallel, then create invoices sequentially ──
-  // Parallel fetch dramatically speeds up batches (5 docs = 5x faster).
-  // Invoice creation stays sequential to avoid QB rate-limit issues.
   const docs = ids.map(id => allDocs.find(d => d.id === id)).filter(Boolean);
 
   await Promise.all(docs.map(async doc => {
@@ -1043,7 +986,6 @@ async function createInvoices() {
         doc.scope          = parseScope(text);
         doc.workDesc       = parseWorkDesc(text);
         doc.dateCompleted  = parseDateCompleted(text);
-        // Debug: log text around Date Completed
         const dcIdx = text.indexOf('Date Completed:');
         if (dcIdx >= 0) console.log('[date debug] context:', JSON.stringify(text.slice(dcIdx, dcIdx + 80)));
         else console.warn('[date debug] Date Completed: not found in doc text');
@@ -1051,7 +993,6 @@ async function createInvoices() {
     } catch(_) { /* if fetch fails, createQBInvoice will surface the missing data */ }
   }));
 
-  // QB invoice creation stays sequential — avoid rate limits
   for (const doc of docs) {
     try {
       const invoiceResult = await createQBInvoice(doc);
@@ -1084,25 +1025,20 @@ async function createQBInvoice(doc) {
   const fmt   = d => d.toISOString().split('T')[0];
   const amount = parseFloat(doc.amount) || 0;
 
-  // ── Build invoice line description ────────────────────────────────────
-  // Line 1: Job Location
   const addrParts   = [doc.svcAddr, doc.citySt].filter(Boolean);
   const locationStr = addrParts.length ? addrParts.join('\n') : (doc.client || doc.name);
   let lineDesc = `Job Location - ${locationStr}`;
   if (doc.dateCompleted) lineDesc += `\nDate Work Completed: ${doc.dateCompleted}`;
 
-  // Lines 2+: Scope of work bullets (one per line)
   const scopeLines = (doc.scope || []);
   if (scopeLines.length) {
     lineDesc += '\n' + scopeLines.map(s => `• ${s}`).join('\n');
   }
 
-  // Final line: Description of Work Requested (if any)
   if (doc.workDesc && doc.workDesc.trim()) {
     lineDesc += '\n' + doc.workDesc.trim();
   }
 
-  // ── Bill-To address ───────────────────────────────────────────────────
   const billToLines = (doc.billTo || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
   const billAddr = billToLines.length ? {
     Line1: billToLines[0] || '',
@@ -1112,7 +1048,6 @@ async function createQBInvoice(doc) {
     Line5: billToLines[4] || '',
   } : undefined;
 
-  // ── Look up the QB "Services" item ID (cached after first call) ───────
   const itemRef = await getServicesItemRef(env);
 
   const payload = {
@@ -1122,7 +1057,7 @@ async function createQBInvoice(doc) {
       SalesItemLineDetail: {
         ItemRef: itemRef,
         Qty: 1,
-        UnitPrice: amount   // rate = total amount, qty 1
+        UnitPrice: amount
       },
       Description: lineDesc
     }],
@@ -1139,7 +1074,6 @@ async function createQBInvoice(doc) {
   return data.Invoice;
 }
 
-// ── Cache the QB "Services" item ref so we only look it up once ──────────
 let _servicesItemRef = null;
 async function getServicesItemRef(env) {
   if (_servicesItemRef) return _servicesItemRef;
@@ -1155,16 +1089,9 @@ async function getServicesItemRef(env) {
   } catch(e) {
     logToSheet('QB_ITEM_LOOKUP', `Services item lookup failed: ${e.message} — using ID 1`, 'WARN');
   }
-  // Fallback to ID 1 if lookup fails
   return { value: '1', name: 'Services' };
 }
 
-// ── QB Custom Field name — must match exactly what you created in QBO ──────
-
-// ─────────────────────────────────────────────────────────
-// REFRESH CUSTOMER CACHE — clears the in-memory QB customer
-// cache so the next findOrCreateCustomer call re-fetches all.
-// ─────────────────────────────────────────────────────────
 function refreshQBCustomers() {
   delete findOrCreateCustomer._cache;
   toast('↺ QB customer list will refresh on next invoice creation');
@@ -1177,9 +1104,6 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
   logToSheet('QB_CUSTOMER_LOOKUP',
     `Looking up QB customer: acct#${acctNum || 'n/a'}, name="${customerName}"`, 'INFO');
 
-  // Fetch all customers once and cache for the session — QB doesn't support
-  // WHERE AcctNum = '...' in queries, so we filter client-side.
-  // AcctNum (the QB "Other" / "Account no." field) does appear in the response object.
   if (!findOrCreateCustomer._cache) {
     try {
       const q    = `SELECT * FROM Customer MAXRESULTS 1000`;
@@ -1194,10 +1118,6 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
   }
   const all = findOrCreateCustomer._cache;
 
-  // ── 1. Match by AcctNum (Additional info → "Account no.") ──────────────────
-  // Also checks AlternatePhone as a fallback since QB's "Other" field on the
-  // main contact screen maps there. The correct field is AcctNum, found under
-  // Customer → Edit → Additional info tab → "Account no." field.
   if (acctNum) {
     const acctStr = String(acctNum).trim();
     const match = all.find(c =>
@@ -1211,7 +1131,6 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
     }
   }
 
-  // ── 2. Exact DisplayName match ────────────────────────────────────────────
   const exact = all.find(c => c.DisplayName === customerName);
   if (exact) {
     logToSheet('QB_CUSTOMER_FOUND',
@@ -1219,7 +1138,6 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
     return { value: exact.Id, name: exact.DisplayName };
   }
 
-  // ── 3. No match — fail gracefully ────────────────────────────────────────
   const hint = acctNum
     ? `No QB customer found with Account No. "${acctNum}" or name "${customerName}". ` +
       `In QuickBooks, open the customer → Additional info tab → set "Account no." to ${acctNum}.`
@@ -1228,13 +1146,9 @@ async function findOrCreateCustomer(customerName, env, acctNum) {
   throw new Error(hint);
 }
 
-
-
-// Refresh the QB access token using the stored refresh token
 async function refreshQBToken() {
   const refreshToken = localStorage.getItem('qb_refresh_token');
   if (!refreshToken) {
-    // Clear stale token so the UI prompts reconnect instead of looping
     localStorage.removeItem('qb_access_token');
     localStorage.removeItem('qb_expires_at');
     qbAccessToken = null;
@@ -1259,9 +1173,6 @@ async function refreshQBToken() {
   console.log('[QB] Token refreshed — expires in ~' + mins + ' minutes');
 }
 
-
-// ── QB storage key helpers — namespaced per environment ───────────────────────
-// Prevents sandbox tokens from contaminating production and vice versa.
 function qbKey(key) {
   const env = localStorage.getItem('qb_env') || 'sandbox';
   return key + '_' + env;
@@ -1281,13 +1192,9 @@ function saveQBClientIds() {
   if (prod?.value.trim()) localStorage.setItem('qb_client_id_production', prod.value.trim());
 }
 function getQBClientId() {
-  // Always read from the env-specific field — never fall back to legacy key
-  // which could be the wrong environment's client ID.
   const env = document.getElementById('qb-env').value;
-  // Try the namespaced key first, then the input field directly as fallback
   const stored = localStorage.getItem('qb_client_id_' + env);
   if (stored) return stored;
-  // Read from the visible input fields
   const el = env === 'production'
     ? document.getElementById('qb-client-id-prod')
     : document.getElementById('qb-client-id-sandbox');
@@ -1299,7 +1206,6 @@ function restoreQBClientIds() {
   if (sb)   sb.value   = localStorage.getItem('qb_client_id_sandbox')    || localStorage.getItem('qb_client_id') || '';
   if (prod) prod.value = localStorage.getItem('qb_client_id_production') || '';
 }
-
 
 function clearQBTokens() {
   ['sandbox','production'].forEach(env => {
@@ -1320,7 +1226,6 @@ function loadQBTokens(env) {
   };
 }
 
-// Route all QB API calls through the Cloudflare Worker (/api/qb-api) — never call QB directly from the browser.
 async function qbProxy(method, path, env, payload) {
   const makeRequest = async () => fetch('/api/qb-api', {
     method: 'POST',
@@ -1337,7 +1242,6 @@ async function qbProxy(method, path, env, payload) {
 
   let res = await makeRequest();
 
-  // If 401, attempt one silent token refresh then retry
   if (res.status === 401) {
     console.warn('[QB] 401 received — attempting token refresh');
     toast('⏳ QB token expired — refreshing…');
@@ -1453,18 +1357,15 @@ function escHtml(str) {
 // ON LOAD
 // ─────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  // Restore credentials
   const k = localStorage.getItem('flips_api_key');
   const c = localStorage.getItem('flips_client_id');
   if (k) document.getElementById('api-key').value = k;
   if (c) document.getElementById('client-id').value = c;
 
-  // Auto-connect Google if we have a cached valid token — same as index.html
   if (k && c) {
     const cachedToken  = localStorage.getItem('flips_access_token');
     const tokenExpiry  = parseInt(localStorage.getItem('flips_token_expiry') || '0');
     if (cachedToken && Date.now() < tokenExpiry) {
-      // Silently init GIS and restore token — no popup
       loadScript('https://accounts.google.com/gsi/client', () => {
         loadScript('https://apis.google.com/js/api.js', () => {
           gapi.load('client', async () => {
@@ -1494,10 +1395,8 @@ window.addEventListener('load', () => {
     }
   }
 
-  // Restore QB token — auto-refresh if expired
   restoreQBClientIds();
 
-  // Restore QB — env-namespaced so sandbox/production never mix
   const qbEnvStored = localStorage.getItem('qb_env') || 'sandbox';
   const qbEnvSel = document.getElementById('qb-env');
   if (qbEnvSel) qbEnvSel.value = qbEnvStored;
@@ -1517,8 +1416,6 @@ window.addEventListener('load', () => {
     }
   }
 
-
-  // Handle QB OAuth callback
   if (location.search.includes('code=')) handleQBCallback();
 
   updateSelectedCount();
