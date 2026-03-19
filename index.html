@@ -449,6 +449,18 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     <tr>
       <td class="label-cell">Property Name:</td>
       <td colspan="3" class="value-cell">
+        <div style="position:relative;margin-bottom:3px;">
+          <input type="text" id="prop-search"
+            placeholder="🔍 Type to filter properties…"
+            oninput="filterPropertyDropdown(this.value)"
+            onkeydown="if(event.key==='Escape'){clearPropertySearch();}"
+            autocomplete="off"
+            style="width:100%;font-size:9pt;border:1px solid #bbb;border-radius:3px;padding:3px 22px 3px 5px;outline:none;font-family:inherit;color:#000;background:#fff;">
+          <span id="prop-search-clear"
+            onclick="clearPropertySearch()"
+            title="Clear search"
+            style="display:none;position:absolute;right:5px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;font-size:11px;line-height:1;">✕</span>
+        </div>
         <select id="property-select" onchange="onPropertySelect()" style="width:100%;font-size:9pt;">
           <option value="">— Connect to Google to load properties —</option>
         </select>
@@ -1068,6 +1080,49 @@ function buildDropdown() {
     sel.appendChild(o);
   });
   toast('✓ Loaded ' + Object.keys(clientData).length + ' properties');
+  // Clear any stale search when list reloads
+  clearPropertySearch();
+}
+
+function filterPropertyDropdown(query) {
+  const sel   = document.getElementById('property-select');
+  const clear = document.getElementById('prop-search-clear');
+  const q = query.trim().toLowerCase();
+  clear.style.display = q ? 'block' : 'none';
+
+  // Rebuild options filtered by query
+  sel.innerHTML = '';
+  const names = Object.keys(clientData).sort();
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = q ? `— ${names.filter(n => n.toLowerCase().includes(q)).length} match${names.filter(n => n.toLowerCase().includes(q)).length !== 1 ? 'es' : ''} —` : '— Select property —';
+  sel.appendChild(placeholder);
+
+  let firstMatch = null;
+  names.forEach(name => {
+    if (!q || name.toLowerCase().includes(q)) {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+      if (!firstMatch) firstMatch = name;
+    }
+  });
+
+  // Auto-select if exactly one match
+  if (firstMatch && sel.options.length === 2) {
+    sel.value = firstMatch;
+    onPropertySelect();
+  }
+}
+
+function clearPropertySearch() {
+  const input = document.getElementById('prop-search');
+  const clear = document.getElementById('prop-search-clear');
+  if (!input) return;
+  input.value = '';
+  clear.style.display = 'none';
+  filterPropertyDropdown('');
+  input.focus();
 }
 
 // ─────────────────────────────────────────────────────────
