@@ -150,6 +150,89 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 /* ── Toast ── */
 #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 9999; white-space: nowrap; }
 #toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Field comparison drawer ── */
+#compare-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 8000; }
+#compare-overlay.open { display: block; }
+#compare-drawer {
+  position: fixed; top: 0; right: -540px; width: 540px; height: 100vh;
+  background: white; box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+  z-index: 8001; display: flex; flex-direction: column;
+  transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
+  font-size: 0.83rem;
+}
+#compare-drawer.open { right: 0; }
+#compare-drawer-header {
+  background: #1a1a2e; color: white; padding: 14px 18px;
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+#compare-drawer-header h2 { font-size: 0.95rem; font-weight: 600; flex: 1; }
+#compare-drawer-header .drawer-close {
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+  color: white; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 0.85rem;
+}
+#compare-drawer-header .drawer-close:hover { background: rgba(255,255,255,0.22); }
+#compare-drawer-subhead {
+  padding: 8px 18px; background: #f5f7fa; border-bottom: 1px solid #e0e0e0;
+  font-size: 0.75rem; color: #555; display: flex; gap: 16px; flex-shrink: 0;
+}
+#compare-drawer-subhead .match-pill {
+  display: inline-block; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 0.72rem;
+}
+#compare-scroll { flex: 1; overflow-y: auto; padding: 0 0 12px 0; }
+.cmp-section-hdr {
+  background: #f0f4fa; border-top: 1px solid #dde3ee; border-bottom: 1px solid #dde3ee;
+  padding: 6px 18px; font-size: 0.72rem; font-weight: 700; color: #2e6da4;
+  text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;
+}
+.cmp-row {
+  display: grid; grid-template-columns: 140px 1fr 1fr;
+  border-bottom: 1px solid #f0f0f0; min-height: 36px;
+}
+.cmp-row:hover { background: #fafbff; }
+.cmp-row.mismatch { background: #fff8f0; }
+.cmp-row.mismatch:hover { background: #fff3e0; }
+.cmp-row.empty-both { opacity: 0.5; }
+.cmp-cell {
+  padding: 7px 10px; display: flex; align-items: flex-start;
+  font-size: 0.8rem; line-height: 1.4; word-break: break-word;
+}
+.cmp-cell.field-name {
+  font-weight: 600; color: #444; font-size: 0.75rem;
+  background: #f9fafb; border-right: 1px solid #eee; padding-left: 18px;
+}
+.cmp-cell.sheet-val { border-right: 1px solid #eee; color: #1a1a2e; }
+.cmp-cell.qb-val { color: #1a4080; }
+.cmp-cell .val-empty { color: #bbb; font-style: italic; font-size: 0.75rem; }
+.cmp-cell .val-mismatch { color: #c0392b; font-weight: 600; }
+.cmp-match-icon { font-size: 0.8rem; margin-right: 4px; flex-shrink: 0; }
+.cmp-col-headers {
+  display: grid; grid-template-columns: 140px 1fr 1fr;
+  background: #2e6da4; color: white; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0;
+}
+.cmp-col-hdr { padding: 6px 10px; }
+.cmp-col-hdr:first-child { padding-left: 18px; }
+#compare-drawer-footer {
+  border-top: 2px solid #e0e0e0; padding: 12px 18px;
+  display: flex; gap: 10px; align-items: center; flex-shrink: 0; background: #fafafa;
+  flex-wrap: wrap;
+}
+.drawer-btn {
+  border: none; border-radius: 5px; padding: 8px 18px; font-size: 0.82rem;
+  font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px;
+}
+.drawer-btn.push-qb { background: #2e6da4; color: white; }
+.drawer-btn.push-qb:hover { background: #4a86e8; }
+.drawer-btn.push-qb:disabled { opacity: 0.45; cursor: not-allowed; }
+.drawer-btn.secondary { background: #f0f0f0; color: #333; border: 1px solid #ccc; }
+.drawer-btn.secondary:hover { background: #e0e0e0; }
+#drawer-status { font-size: 0.78rem; color: #555; flex: 1; }
+#drawer-status.ok  { color: #2e7d32; font-weight: 600; }
+#drawer-status.err { color: #c0392b; font-weight: 600; }
+.legend { display: flex; gap: 12px; font-size: 0.72rem; color: #777; flex-wrap: wrap; padding: 6px 18px 0; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -243,23 +326,40 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
   </div>
 </div>
 
-<!-- Edit mapping modal -->
-<div class="modal-bg" id="edit-modal">
-  <div class="modal">
-    <h3>Edit QB Phone Mapping</h3>
-    <p>The QB "Other" / Alternate Phone field is used to match this client to QuickBooks. Enter the FLPS Account # to set the mapping.</p>
-    <label>QB Customer</label>
-    <input type="text" id="modal-qb-name" readonly style="background:#f5f5f5;color:#555;">
-    <label>FLPS Account # (set in QB Alternate Phone field)</label>
-    <input type="text" id="modal-phone-val" placeholder="e.g. 3">
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save"   onclick="saveMapping()">Save</button>
-    </div>
+<!-- Edit Mapping button now opens the slide-out comparison drawer -->
+
+<div id="toast"></div>
+
+<!-- ── Field Comparison Drawer ── -->
+<div id="compare-overlay" onclick="closeDrawerCompare()"></div>
+<div id="compare-drawer">
+  <div id="compare-drawer-header">
+    <h2 id="drawer-title">Field Comparison</h2>
+    <button class="drawer-close" onclick="closeDrawerCompare()">✕ Close</button>
+  </div>
+  <div id="compare-drawer-subhead">
+    <span id="drawer-match-info"></span>
+    <span id="drawer-mismatch-count"></span>
+  </div>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:#fff8f0;border:1px solid #f0c080;"></span> Mismatch</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#e8f5e9;border:1px solid #a5d6a7;"></span> Match</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#f9fafb;border:1px solid #eee;"></span> Empty / not set</span>
+  </div>
+  <div class="cmp-col-headers">
+    <div class="cmp-col-hdr">Field</div>
+    <div class="cmp-col-hdr">📋 Google Sheet</div>
+    <div class="cmp-col-hdr">📘 QuickBooks</div>
+  </div>
+  <div id="compare-scroll"></div>
+  <div id="compare-drawer-footer">
+    <button class="drawer-btn push-qb" id="btn-push-qb" onclick="pushToQB()">
+      ⬆ Push Sheet → QB
+    </button>
+    <span id="drawer-status"></span>
   </div>
 </div>
 
-<div id="toast"></div>
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
 const SHEET_ID           = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
@@ -274,7 +374,7 @@ let qbRealmId      = null;
 let sheetClients   = [];   // from Google Sheet
 let qbCustomers    = [];   // from QB
 let reconciled     = [];   // merged view
-let editingQbId    = null; // QB customer being edited in modal
+let drawerRowIdx    = null; // active drawer row index (set by openEditModal)
 
 // ── Nav ────────────────────────────────────────────────────
 function toggleNav() {
@@ -636,49 +736,213 @@ async function createQBCustomer(idx) {
   }
 }
 
-// ── Edit phone mapping modal ────────────────────────────────
-function openEditModal(idx) {
-  const row = reconciled[idx];
-  if (!row?.qb) return;
-  editingQbId = { idx, qbId: row.qb.Id, qbSyncToken: row.qb.SyncToken };
-  document.getElementById('modal-qb-name').value   = row.qb.DisplayName;
-  document.getElementById('modal-phone-val').value = row.qb.AlternatePhone?.FreeFormNumber || '';
-  document.getElementById('edit-modal').classList.add('open');
+// ── Field Comparison Drawer ────────────────────────────────
+// Maps Sheet fields → QB fields for side-by-side comparison
+const FIELD_MAP = [
+  // section, label, sheet getter, qb getter
+  { section: 'Identity' },
+  { label: 'Display Name',      sheet: r => r.name,       qb: r => r.qb?.DisplayName },
+  { label: 'Company Name',      sheet: r => r.mgmt,       qb: r => r.qb?.CompanyName },
+  { label: 'FLPS Acct # (Alternate Phone)', sheet: r => r.acct, qb: r => r.qb?.AlternatePhone?.FreeFormNumber },
+  { section: 'Contact' },
+  { label: 'First Name',        sheet: r => extractGiven(r),   qb: r => r.qb?.GivenName },
+  { label: 'Last Name',         sheet: r => extractFamily(r),  qb: r => r.qb?.FamilyName },
+  { label: 'Billing Email',     sheet: r => r.billEmail,  qb: r => r.qb?.PrimaryEmailAddr?.Address },
+  { section: 'Address (Bill To)' },
+  { label: 'Bill Line 1',       sheet: r => billLine(r, 0), qb: r => r.qb?.BillAddr?.Line1 },
+  { label: 'Bill Line 2',       sheet: r => billLine(r, 1), qb: r => r.qb?.BillAddr?.Line2 },
+  { label: 'Bill Line 3',       sheet: r => billLine(r, 2), qb: r => r.qb?.BillAddr?.Line3 },
+  { label: 'City',              sheet: r => billCity(r),   qb: r => r.qb?.BillAddr?.City },
+  { label: 'State',             sheet: r => billState(r),  qb: r => r.qb?.BillAddr?.CountrySubDivisionCode },
+  { label: 'ZIP',               sheet: r => billZip(r),    qb: r => r.qb?.BillAddr?.PostalCode },
+  { section: 'Service / Notes' },
+  { label: 'Service Address',   sheet: r => r.address,    qb: r => r.qb?.Notes },
+];
+
+// Helpers to extract name parts from sheet row (mirrors createQBCustomer logic)
+function extractGiven(row) {
+  const raw = (row.manager || '').trim();
+  if (raw) return raw.split(/\s+/)[0] || '';
+  if (row.contact) {
+    const tokens = row.contact.split(/\s+/).filter(t => !t.includes('@') && !/\d{3}/.test(t));
+    return tokens[0] || '';
+  }
+  return '';
 }
-function closeModal() {
-  document.getElementById('edit-modal').classList.remove('open');
-  editingQbId = null;
+function extractFamily(row) {
+  const raw = (row.manager || '').trim();
+  if (raw) return raw.split(/\s+/).slice(1).join(' ') || '';
+  if (row.contact) {
+    const tokens = row.contact.split(/\s+/).filter(t => !t.includes('@') && !/\d{3}/.test(t));
+    return tokens.slice(1).join(' ') || '';
+  }
+  return '';
 }
 
-async function saveMapping() {
-  if (!editingQbId) return;
-  const { idx, qbId, qbSyncToken } = editingQbId;
-  const newPhone = document.getElementById('modal-phone-val').value.trim();
-  const env = document.getElementById('qb-env').value;
-  const saveBtn = document.querySelector('.btn-save');
-  saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
-  try {
-    const payload = {
-      Id: qbId, SyncToken: qbSyncToken,
-      sparse: true,
-      AlternatePhone: { FreeFormNumber: newPhone }
+// Bill-To address parsing helpers (mirrors createQBCustomer)
+function parseBillAddr(row) {
+  const billLines = (row.billTo || '').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+  if (!billLines.length) return {};
+  let cityLineIdx = -1, cityMatch = null;
+  for (let li = billLines.length - 1; li >= 0; li--) {
+    const m = billLines[li].match(/([A-Za-z][^,]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\s*$/);
+    if (m) { cityLineIdx = li; cityMatch = m; break; }
+  }
+  if (cityMatch) {
+    const cityLine = billLines[cityLineIdx];
+    const cityStart = cityLine.search(/[A-Za-z][^,]+,\s*[A-Z]{2}\s+\d{5}/);
+    const streetPart = cityStart > 0 ? cityLine.slice(0, cityStart).trim() : null;
+    const addrLines = [...billLines.slice(0, cityLineIdx), ...(streetPart ? [streetPart] : [])].filter(Boolean);
+    return {
+      line1: addrLines[0] || '', line2: addrLines[1] || '', line3: addrLines[2] || '',
+      city: cityMatch[1].trim(), state: cityMatch[2], zip: cityMatch[3]
     };
+  }
+  return { line1: billLines[0] || '', line2: billLines[1] || '', line3: billLines[2] || '' };
+}
+function billLine(row, n) { return parseBillAddr(row)[['line1','line2','line3'][n]] || ''; }
+function billCity(row)  { return parseBillAddr(row).city  || ''; }
+function billState(row) { return parseBillAddr(row).state || ''; }
+function billZip(row)   { return parseBillAddr(row).zip   || ''; }
+
+let drawerIdx = null;
+
+function openEditModal(idx) {
+  const row = reconciled[idx];
+  if (!row) return;
+  drawerIdx = idx;
+
+  // Header
+  const name = row.name || row.qb?.DisplayName || 'Unknown';
+  document.getElementById('drawer-title').textContent = name;
+
+  // Subhead match info
+  const matchLabel = row.matchType === 'phone' ? '✓ Matched by Acct #'
+                   : row.matchType === 'name'  ? '✓ Matched by Name'
+                   : row.matchType === 'qbonly' ? '⚠ QB Only — no Sheet match'
+                   : '✗ Not in QB';
+  const matchCls = (row.matchType === 'phone' || row.matchType === 'name') ? 'badge-matched'
+                 : row.matchType === 'qbonly' ? 'badge-qbonly' : 'badge-unmatched';
+  document.getElementById('drawer-match-info').innerHTML =
+    `<span class="match-pill badge ${matchCls}">${matchLabel}</span>`;
+
+  // Build comparison rows
+  let html = '';
+  let mismatches = 0;
+
+  for (const def of FIELD_MAP) {
+    if (def.section) {
+      html += `<div class="cmp-section-hdr">${def.section}</div>`;
+      continue;
+    }
+    const sv = (def.sheet(row) || '').trim();
+    const qv = (def.qb(row)   || '').trim();
+    const both = sv || qv;
+    const match = sv.toLowerCase() === qv.toLowerCase();
+    if (!match && both) mismatches++;
+
+    const rowCls = !match && both ? 'mismatch' : (!both ? 'empty-both' : '');
+    const icon   = !both ? '' : match ? '<span class="cmp-match-icon" style="color:#2e7d32;">✓</span>' : '<span class="cmp-match-icon" style="color:#c0392b;">≠</span>';
+
+    const svHtml = sv ? `${icon}${escHtml(sv)}` : `<span class="val-empty">—</span>`;
+    const qvHtml = qv
+      ? (match ? escHtml(qv) : `<span class="val-mismatch">${escHtml(qv)}</span>`)
+      : `<span class="val-empty">—</span>`;
+
+    html += `<div class="cmp-row ${rowCls}">
+      <div class="cmp-cell field-name">${def.label}</div>
+      <div class="cmp-cell sheet-val">${svHtml}</div>
+      <div class="cmp-cell qb-val">${qvHtml}</div>
+    </div>`;
+  }
+
+  document.getElementById('compare-scroll').innerHTML = html;
+  document.getElementById('drawer-mismatch-count').textContent =
+    mismatches > 0 ? `⚠ ${mismatches} mismatch${mismatches > 1 ? 'es' : ''}` : '✓ All fields match';
+  document.getElementById('drawer-mismatch-count').style.color = mismatches > 0 ? '#c0392b' : '#2e7d32';
+
+  // Show/hide push button — only if QB record exists
+  const pushBtn = document.getElementById('btn-push-qb');
+  pushBtn.style.display = row.qb ? 'flex' : 'none';
+  document.getElementById('drawer-status').textContent = '';
+  document.getElementById('drawer-status').className = '';
+
+  // Open
+  document.getElementById('compare-overlay').classList.add('open');
+  document.getElementById('compare-drawer').classList.add('open');
+}
+
+function closeDrawerCompare() {
+  document.getElementById('compare-overlay').classList.remove('open');
+  document.getElementById('compare-drawer').classList.remove('open');
+  drawerIdx = null;
+}
+
+// ── Push Sheet → QB ─────────────────────────────────────────
+async function pushToQB() {
+  if (drawerIdx === null) return;
+  const row = reconciled[drawerIdx];
+  if (!row?.qb) return;
+  const env = document.getElementById('qb-env').value;
+  const btn = document.getElementById('btn-push-qb');
+  const status = document.getElementById('drawer-status');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  status.textContent = ''; status.className = '';
+
+  try {
+    // Build name parts
+    const givenName  = extractGiven(row);
+    const familyName = extractFamily(row);
+
+    // Build bill address
+    const ba = parseBillAddr(row);
+    const billAddr = (ba.line1 || ba.city) ? {
+      Line1: ba.line1 || '', Line2: ba.line2 || '', Line3: ba.line3 || '',
+      City:  ba.city  || '',
+      CountrySubDivisionCode: ba.state || '',
+      PostalCode: ba.zip || '',
+      Country: 'US',
+    } : undefined;
+
+    const payload = {
+      Id:          row.qb.Id,
+      SyncToken:   row.qb.SyncToken,
+      sparse:      true,
+      DisplayName: row.name      || row.qb.DisplayName,
+      CompanyName: row.mgmt      || row.qb.CompanyName  || '',
+      GivenName:   givenName,
+      FamilyName:  familyName,
+      ...(row.billEmail ? { PrimaryEmailAddr: { Address: row.billEmail } } : {}),
+      ...(row.acct      ? { AlternatePhone:   { FreeFormNumber: row.acct } } : {}),
+      Notes:       row.address || '',
+      ...(billAddr ? { BillAddr: billAddr } : {}),
+    };
+
     const result = await qbProxy('POST', '/customer?minorversion=70', env, payload);
     const updated = result?.Customer;
-    if (!updated) throw new Error('No customer in response');
-    reconciled[idx].qb = updated;
-    const acct = reconciled[idx].acct;
-    reconciled[idx].matchType = (acct && updated.AlternatePhone?.FreeFormNumber === acct) ? 'phone' : 'name';
-    const qi = qbCustomers.findIndex(c => c.Id === qbId);
+    if (!updated) throw new Error('No Customer in response');
+
+    // Update local state
+    reconciled[drawerIdx].qb = updated;
+    reconciled[drawerIdx].matchType = row.acct && updated.AlternatePhone?.FreeFormNumber === row.acct ? 'phone' : 'name';
+    const qi = qbCustomers.findIndex(c => c.Id === row.qb.Id);
     if (qi >= 0) qbCustomers[qi] = updated;
-    toast(`✓ QB phone field updated to "${newPhone}"`);
-    closeModal();
+
+    status.textContent = '✓ QB updated successfully';
+    status.className = 'ok';
+    toast(`✓ QB updated: ${updated.DisplayName}`);
     updateSummary();
     renderTable();
+
+    // Refresh the comparison view with updated data
+    openEditModal(drawerIdx);
+
   } catch(e) {
-    toast('✗ Save failed: ' + e.message);
+    status.textContent = '✗ ' + e.message;
+    status.className = 'err';
+    toast('✗ Push failed: ' + e.message);
   } finally {
-    saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+    btn.disabled = false; btn.textContent = '⬆ Push Sheet → QB';
   }
 }
 
