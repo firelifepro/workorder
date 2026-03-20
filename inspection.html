@@ -393,6 +393,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
             <label>Property Contact</label>
             <input type="text" id="property-contact">
           </div>
+          <div class="field-group">
+            <label>Last Inspection Date</label>
+            <input type="date" id="last-insp-date" readonly style="background:#f1f5f9;color:var(--slate);cursor:default;" title="Auto-populated from last saved inspection">
+          </div>
+          <div class="field-group">
+            <label>Last Inspector</label>
+            <input type="text" id="last-insp-inspector" readonly style="background:#f1f5f9;color:var(--slate);cursor:default;">
+          </div>
         </div>
       </div>
     </div>
@@ -569,8 +577,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
           Generate a professional PDF report formatted for upload to <strong>The Compliance Engine (Brycer)</strong> at <em>thecomplianceengine.com</em>. After downloading, log in to TCE and attach this PDF to the appropriate system record.
         </p>
         <div class="btn-row">
-          <button class="btn-primary fire" onclick="generatePDF()">📄 Download PDF Report</button>
-          <button class="btn-primary green" onclick="saveToCloud()">☁ Save to Drive</button>
+          <button class="btn-primary fire" onclick="generatePDF(false)">📄 Download PDF Report</button>
+          <button class="btn-primary fire" style="background:#b45309;" onclick="generatePDF(true)">☁ Save PDF to Drive</button>
+          <button class="btn-primary green" onclick="saveInspectionToDrive()">💾 Save Inspection Data</button>
           <button class="btn-secondary" onclick="goStep(3)">← Back to Inspection</button>
         </div>
         <div id="pdf-status" style="margin-top:8px;font-size:0.8rem;color:var(--green);"></div>
@@ -780,17 +789,49 @@ function onPropertySelect() {
   fill('city-state-zip', 'city','zip');
   fill('property-contact', 'property manager','contact name');
 
-  // Load saved building config if exists
+  // Clear last-inspection display while searching
+  const liEl   = document.getElementById('last-insp-date');
+  const liInsp = document.getElementById('last-insp-inspector');
+  if (liEl)   { liEl.value = ''; liEl.placeholder = 'Searching Drive…'; }
+  if (liInsp) liInsp.value = '';
+  window._prevInspectionData = null;
+
+  // Load saved building system config (local cache)
   const saved = loadBuildingConfig(propName);
   if (saved && saved.systems) {
     activeSystems = new Set(saved.systems);
     document.querySelectorAll('.sys-toggle').forEach(el => {
       el.classList.toggle('active', activeSystems.has(el.dataset.sys));
     });
-    if (saved.systems.length > 0) toast('✓ Loaded saved system config for this building');
   } else {
     activeSystems = new Set();
     document.querySelectorAll('.sys-toggle').forEach(el => el.classList.remove('active'));
+  }
+
+  // Load previous inspection from Drive (async, non-blocking)
+  if (accessToken) {
+    loadLatestInspection(propName).then(prevData => {
+      if (!prevData) {
+        if (liEl) { liEl.value = ''; liEl.placeholder = 'No previous inspection'; }
+        return;
+      }
+      if (liEl && prevData.inspection?.date) liEl.value = prevData.inspection.date;
+      if (liInsp && prevData.inspection?.inspectorName) liInsp.value = prevData.inspection.inspectorName;
+      window._prevInspectionData = prevData;
+      // Restore systems from previous if nothing saved locally
+      if (prevData.systems && prevData.systems.length > 0 && (!saved || !saved.systems || saved.systems.length === 0)) {
+        activeSystems = new Set(prevData.systems);
+        document.querySelectorAll('.sys-toggle').forEach(el => {
+          el.classList.toggle('active', activeSystems.has(el.dataset.sys));
+        });
+        saveBuildingConfig();
+      }
+      toast('✓ Previous inspection found — data will pre-fill when you proceed');
+    }).catch(() => {
+      if (liEl) liEl.placeholder = 'Search failed';
+    });
+  } else {
+    if (liEl) liEl.placeholder = 'Connect Google to search';
   }
 }
 
@@ -844,6 +885,22 @@ function buildInspectionForms() {
   if (activeSystems.has('gas-detection'))     container.appendChild(buildGasDetectionPanel());
   if (activeSystems.has('special-suppression')) container.appendChild(buildSpecialSuppressionPanel());
   if (activeSystems.has('backflow'))          container.appendChild(buildBackflowPanel());
+
+  // Restore previous inspection data (typed fields only — NOT pass/fail states)
+  const prev = window._prevInspectionData;
+  if (prev) {
+    // Restore panel field values
+    restorePanelFields(prev);
+    // Restore extinguisher rows (clear defaults first, then repopulate)
+    if (prev.extinguishers && prev.extinguishers.length > 0) {
+      const tbody = document.getElementById('ext-tbody');
+      if (tbody) { tbody.innerHTML = ''; extRowCount = 0; }
+      prev.extinguishers.forEach(ext => {
+        addExtRow(ext.location, ext.type, ext.size, ext.mfrDate, ext.pressure);
+      });
+    }
+    toast('✓ Previous inspection data pre-filled — check PASS/FAIL for each item');
+  }
 
   goStep(3);
 }
@@ -1255,29 +1312,33 @@ function buildExtinguisherPanel() {
       <textarea id="ext-notes" rows="2"></textarea>
     </div>`;
   const panel = makePanel('extinguisher', '🧯', 'Portable Fire Extinguishers (NFPA 10)', extTable);
-  // Add initial rows after panel created
-  setTimeout(() => { addExtRow(); addExtRow(); }, 10);
+  // Add initial rows only if no previous inspection data present
+  setTimeout(() => {
+    const tbody = document.getElementById('ext-tbody');
+    if (tbody && tbody.rows.length === 0) {
+      addExtRow(); addExtRow();
+    }
+  }, 20);
   return panel;
 }
 
 let extRowCount = 0;
-function addExtRow() {
+function addExtRow(prefillLoc, prefillType, prefillSize, prefillMfr, prefillPsi) {
   extRowCount++;
   const n = extRowCount;
   const tbody = document.getElementById('ext-tbody');
   if (!tbody) return;
   const tr = document.createElement('tr');
   tr.id = 'ext-row-' + n;
+  const typeOptions = ['ABC Dry Chem','CO2','Water','Wet Chemical','Halon','Clean Agent','Class D','Class K'];
+  const typeOpts = typeOptions.map(t => `<option${t === (prefillType||'ABC Dry Chem') ? ' selected' : ''}>${t}</option>`).join('');
   tr.innerHTML = `
     <td style="text-align:center;font-weight:600;color:var(--slate);font-size:0.75rem;">${n}</td>
-    <td><input type="text" id="ext-loc-${n}" placeholder="Room, Floor, Area"></td>
-    <td><select id="ext-type-${n}" style="min-width:80px;">
-      <option>ABC Dry Chem</option><option>CO2</option><option>Water</option>
-      <option>Wet Chemical</option><option>Halon</option><option>Clean Agent</option><option>Class D</option><option>Class K</option>
-    </select></td>
-    <td><input type="text" id="ext-size-${n}" placeholder="2.5 lb / 2A:10BC"></td>
-    <td><input type="month" id="ext-mfr-${n}"></td>
-    <td><input type="text" id="ext-psi-${n}" placeholder="In range?" style="width:65px;"></td>
+    <td><input type="text" id="ext-loc-${n}" value="${(prefillLoc||'').replace(/"/g,'&quot;')}" placeholder="Room, Floor, Area"></td>
+    <td><select id="ext-type-${n}" style="min-width:80px;">${typeOpts}</select></td>
+    <td><input type="text" id="ext-size-${n}" value="${(prefillSize||'').replace(/"/g,'&quot;')}" placeholder="2.5 lb / 2A:10BC"></td>
+    <td><input type="month" id="ext-mfr-${n}" value="${prefillMfr||''}"></td>
+    <td><input type="text" id="ext-psi-${n}" value="${(prefillPsi||'').replace(/"/g,'&quot;')}" placeholder="In range?" style="width:65px;"></td>
     <td>
       <div class="pf-group">
         <button class="pf-btn pass" onclick="setPFTable(this,'ext-seal-${n}','PASS')">✓</button>
@@ -1667,67 +1728,234 @@ function initSig() {
 function clearSig() { if (sigCtx) sigCtx.clearRect(0,0,500,100); sigHasData = false; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SAVE TO DRIVE
+// DRIVE FOLDER MANAGEMENT
+// Finds or creates a named folder, with caching to avoid repeated API calls.
 // ─────────────────────────────────────────────────────────────────────────────
-async function saveToCloud() {
-  if (!accessToken) { toast('⚠ Connect Google first'); return; }
-  const propName = document.getElementById('property-select').value || 'Unknown';
-  const today = new Date().toISOString().split('T')[0];
-  const fileName = `FLIPS Inspection Report - ${propName} - ${today}.json`;
-  const reportData = collectAllData();
-  const content = JSON.stringify(reportData, null, 2);
-  const blob = new Blob([content], { type: 'application/json' });
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const base64 = reader.result.split(',')[1];
-    const meta = JSON.stringify({ name: fileName, mimeType: 'application/json' });
-    const boundary = '-------inspection';
-    const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\nContent-Transfer-Encoding: base64\r\n\r\n${base64}\r\n--${boundary}--`;
-    const res = await googleFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', 'POST', null);
-    // Use raw fetch for multipart
-    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': `multipart/related; boundary="-------inspection"` },
-      body
-    });
-    if (uploadRes.ok) { toast('✓ Saved to Google Drive'); document.getElementById('pdf-status').textContent = '✓ Saved to Drive: ' + fileName; }
-    else toast('✗ Drive save failed');
-  };
-  reader.readAsDataURL(blob);
+const FOLDER_CACHE = {};
+
+async function findOrCreateFolder(name, parentId) {
+  const cacheKey = name + (parentId || '');
+  if (FOLDER_CACHE[cacheKey]) return FOLDER_CACHE[cacheKey];
+
+  // Search for existing folder
+  let q = `mimeType="application/vnd.google-apps.folder" and name="${name}" and trashed=false`;
+  if (parentId) q += ` and "${parentId}" in parents`;
+  const searchRes = await googleFetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}` +
+    `&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives`
+  );
+  if (!searchRes.ok) throw new Error('Folder search failed: ' + searchRes.status);
+  const searchJson = await searchRes.json();
+  if (searchJson.files && searchJson.files.length > 0) {
+    FOLDER_CACHE[cacheKey] = searchJson.files[0].id;
+    return searchJson.files[0].id;
+  }
+
+  // Create the folder
+  const createBody = { name, mimeType: 'application/vnd.google-apps.folder' };
+  if (parentId) createBody.parents = [parentId];
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(createBody)
+  });
+  if (!createRes.ok) throw new Error('Folder create failed: ' + createRes.status);
+  const created = await createRes.json();
+  FOLDER_CACHE[cacheKey] = created.id;
+  return created.id;
+}
+
+async function driveUploadFile(fileName, mimeType, content, folderId, existingFileId) {
+  // content = string for JSON, base64 for binary
+  const isBase64 = mimeType === 'application/pdf';
+  const boundary = '-------flipsUpload314159';
+  const meta = JSON.stringify({ name: fileName, mimeType, ...(folderId && !existingFileId ? { parents: [folderId] } : {}) });
+
+  let bodyParts, contentType;
+  if (isBase64) {
+    bodyParts = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n${content}\r\n--${boundary}--`;
+  } else {
+    bodyParts = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n${content}\r\n--${boundary}--`;
+  }
+  contentType = `multipart/related; boundary="${boundary}"`;
+
+  const url = existingFileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart&supportsAllDrives=true`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true`;
+  const method = existingFileId ? 'PATCH' : 'POST';
+
+  const res = await fetch(url, {
+    method, headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': contentType },
+    body: bodyParts
+  });
+  if (!res.ok) throw new Error('Upload failed: ' + res.status + ' ' + await res.text());
+  return await res.json();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COLLECT ALL FORM DATA
+// FIND LATEST INSPECTION FOR A PROPERTY
+// Searches FLPS Software Inspection Data folder for files matching the property.
+// Uses Drive appProperties metadata so we never have to read file content.
+// ─────────────────────────────────────────────────────────────────────────────
+async function findLatestInspectionFile(propName) {
+  try {
+    const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
+    const safeSearch = propName.replace(/'/g, "\\'");
+    const q = `"${folderId}" in parents and trashed=false and appProperties has { key='flips_insp_property' and value='${safeSearch}' }`;
+    const res = await googleFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}` +
+      `&fields=files(id,name,appProperties,modifiedTime)&orderBy=modifiedTime+desc&pageSize=10`
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const files = json.files || [];
+    if (files.length === 0) return null;
+    // Return the most recent
+    return files[0];
+  } catch(e) {
+    console.warn('[findLatestInspection] error:', e.message);
+    return null;
+  }
+}
+
+async function loadLatestInspection(propName) {
+  const file = await findLatestInspectionFile(propName);
+  if (!file) return null;
+  try {
+    const res = await googleFetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) {
+    console.warn('[loadLatestInspection] read error:', e.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAVE INSPECTION JSON TO DRIVE
+// ─────────────────────────────────────────────────────────────────────────────
+async function saveInspectionToDrive() {
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  const btn = event.target; btn.disabled = true; btn.textContent = '⏳ Saving…';
+  try {
+    const data = collectAllData();
+    const propName = data.property.name || 'Unknown';
+    const dateStr  = data.inspection.date || new Date().toISOString().split('T')[0];
+    const fileName = `FLIPS_Insp_${propName.replace(/[^a-zA-Z0-9]/g,'_').slice(0,50)}_${dateStr}.json`;
+
+    const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
+
+    // Check if a file for this property+date already exists (update vs create)
+    const existing = await findLatestInspectionFile(propName);
+    const existingId = (existing && existing.appProperties?.flips_insp_date === dateStr) ? existing.id : null;
+
+    const content = JSON.stringify(data, null, 2);
+    const uploaded = await driveUploadFile(fileName, 'application/json', content, folderId, existingId);
+
+    // Write metadata as appProperties for fast search
+    await fetch(`https://www.googleapis.com/drive/v3/files/${uploaded.id}?supportsAllDrives=true`, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appProperties: {
+        flips_insp_property: propName,
+        flips_insp_date:     dateStr,
+        flips_insp_type:     data.inspection.reportType || '',
+        flips_insp_status:   data.overallStatus || '',
+        flips_insp_inspector:data.inspection.inspectorName || '',
+        flips_insp_version:  '2.0'
+      }})
+    });
+
+    document.getElementById('pdf-status').textContent = `✓ Inspection data saved to Drive: ${fileName}`;
+    toast('✓ Inspection saved to FLPS Software Inspection Data');
+  } catch(e) {
+    toast('✗ Save failed: ' + e.message);
+    document.getElementById('pdf-status').textContent = '✗ Save error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save Inspection Data';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COLLECT ALL FORM DATA  (complete snapshot for save/restore)
 // ─────────────────────────────────────────────────────────────────────────────
 function collectAllData() {
   const v = id => (document.getElementById(id)?.value || '').trim();
+
+  // Collect ALL input/select/textarea values from the inspection panels
+  const fieldData = {};
+  document.querySelectorAll('#sys-forms input, #sys-forms select, #sys-forms textarea').forEach(el => {
+    if (el.id && el.type !== 'button') fieldData[el.id] = el.value;
+  });
+  // Also step-1 fields
+  ['client-company','service-address','city-state-zip','property-contact',
+   'insp-date','report-type','inspector-name','inspector-cert','company-name',
+   'company-license','nfpa-ref','weather'].forEach(id => {
+    fieldData[id] = v(id);
+  });
+
+  // Collect pass/fail row states
+  const pfStates = {};
+  document.querySelectorAll('.inspect-row[data-val]').forEach(row => {
+    pfStates[row.id] = {
+      val: row.dataset.val,
+      defic: document.getElementById('defic-txt-' + row.id.replace('row-',''))?.value || ''
+    };
+  });
+
+  // Collect deficiency list (for summary)
   const deficiencies = [];
   document.querySelectorAll('.inspect-row').forEach(row => {
     if (row.dataset.val === 'FAIL') {
       const id = row.id.replace('row-','');
       const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
-      const desc = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
+      const desc  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
       deficiencies.push({ item: label, description: desc });
     }
   });
+
+  // Extinguishers
   const extinguishers = [];
   for (let i = 1; i <= extRowCount; i++) {
     if (document.getElementById('ext-row-' + i)) {
       extinguishers.push({
-        location: v('ext-loc-' + i), type: v('ext-type-' + i),
-        size: v('ext-size-' + i), mfrDate: v('ext-mfr-' + i),
-        pressure: v('ext-psi-' + i), seal: v('ext-seal-' + i),
-        label: v('ext-label-' + i), overall: v('ext-overall-' + i)
+        rowNum: i,
+        location: v('ext-loc-' + i),
+        type:     (document.getElementById('ext-type-' + i)?.value || ''),
+        size:     v('ext-size-' + i),
+        mfrDate:  v('ext-mfr-' + i),
+        pressure: v('ext-psi-' + i),
+        seal:     v('ext-seal-' + i),
+        label:    v('ext-label-' + i),
+        overall:  v('ext-overall-' + i)
       });
     }
   }
+
   return {
-    meta: { generatedAt: new Date().toISOString(), version: '1.0' },
-    property: { name: v('property-select') || document.getElementById('property-select').options[document.getElementById('property-select').selectedIndex]?.text, company: v('client-company'), address: v('service-address'), cityStateZip: v('city-state-zip'), contact: v('property-contact') },
-    inspection: { date: v('insp-date'), reportType: v('report-type'), inspectorName: v('inspector-name'), inspectorCert: v('inspector-cert'), companyName: v('company-name'), companyLicense: v('company-license'), nfpaRef: v('nfpa-ref'), weather: v('weather') },
-    systems: [...activeSystems],
+    meta: { generatedAt: new Date().toISOString(), version: '2.0' },
+    property: {
+      name:        document.getElementById('property-select')?.value || '',
+      company:     v('client-company'),
+      address:     v('service-address'),
+      cityStateZip:v('city-state-zip'),
+      contact:     v('property-contact')
+    },
+    inspection: {
+      date:         v('insp-date'),
+      reportType:   v('report-type'),
+      inspectorName:v('inspector-name'),
+      inspectorCert:v('inspector-cert'),
+      companyName:  v('company-name'),
+      companyLicense:v('company-license'),
+      nfpaRef:      v('nfpa-ref'),
+      weather:      v('weather')
+    },
+    systems:      [...activeSystems],
     overallStatus,
     generalNotes: v('general-notes'),
+    fieldData,
+    pfStates,
     deficiencies,
     extinguishers,
     signature: { name: v('sig-name'), date: v('sig-date'), hasDrawnSig: sigHasData }
@@ -1735,312 +1963,622 @@ function collectAllData() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GENERATE PDF
+// RESTORE FORM DATA from a saved inspection
+// Restores all typed fields + extinguisher rows.
+// Does NOT restore pass/fail states (new inspection = fresh assessment).
 // ─────────────────────────────────────────────────────────────────────────────
-function generatePDF() {
+function restoreInspectionData(data) {
+  if (!data) return;
+
+  // Restore step-1 fields (but NOT insp-date — that should be today)
+  const skip = new Set(['insp-date']);
+  if (data.fieldData) {
+    Object.entries(data.fieldData).forEach(([id, val]) => {
+      if (skip.has(id)) return;
+      const el = document.getElementById(id);
+      if (el && el.type !== 'button') el.value = val;
+    });
+  }
+
+  // Restore notes fields directly too
+  if (data.inspection) {
+    const map = {
+      'inspector-name':    data.inspection.inspectorName,
+      'inspector-cert':    data.inspection.inspectorCert,
+      'company-name':      data.inspection.companyName,
+      'company-license':   data.inspection.companyLicense,
+      'nfpa-ref':          data.inspection.nfpaRef,
+    };
+    Object.entries(map).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el && val) el.value = val;
+    });
+  }
+
+  // Restore general notes
+  if (data.generalNotes) {
+    const el = document.getElementById('general-notes');
+    if (el) el.value = data.generalNotes;
+  }
+
+  // Restore overall status (user can change it)
+  if (data.overallStatus) setOverallStatus(data.overallStatus);
+}
+
+// Called after forms are built to restore panel field values
+function restorePanelFields(data) {
+  if (!data?.fieldData) return;
+  const skip = new Set(['insp-date']);
+  Object.entries(data.fieldData).forEach(([id, val]) => {
+    if (skip.has(id)) return;
+    const el = document.getElementById(id);
+    if (el && el.type !== 'button' && !el.closest('#step-1')) {
+      // For selects restore by value
+      if (el.tagName === 'SELECT') {
+        const opt = [...el.options].find(o => o.value === val);
+        if (opt) el.value = val;
+      } else {
+        el.value = val;
+      }
+    }
+  });
+}
+
+// Restore extinguisher rows from saved data
+function restoreExtinguishers(extData) {
+  if (!extData || extData.length === 0) return;
+  // Clear the default empty rows first
+  const tbody = document.getElementById('ext-tbody');
+  if (tbody) tbody.innerHTML = '';
+  extRowCount = 0;
+  extData.forEach(ext => {
+    addExtRow(ext.location, ext.type, ext.size, ext.mfrDate, ext.pressure, ext.seal, ext.label, ext.overall);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENERATE PDF  (saveToDrive=false → download, true → upload to Drive)
+// ─────────────────────────────────────────────────────────────────────────────
+async function generatePDF(saveToDrive) {
   const data = collectAllData();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
-  const W = 215.9, M = 14; // page width, margin
-  const usableW = W - (M * 2);
-  let y = M;
+  const W = 215.9, ML = 14, MR = 14;
+  const usableW = W - ML - MR;
+  let y = 0;
 
-  const fonts = { normal: 9, small: 7.5, label: 7, heading: 10, title: 13, section: 8 };
+  // ── Font sizes ──
+  const FS = { title: 13, heading: 10.5, body: 9, small: 8, label: 7, tiny: 6.5 };
+
+  // ── Color helpers ──
+  const C = {
+    navy:    [13, 27, 42],
+    navy2:   [30, 48, 74],
+    blue:    [37, 99, 235],
+    white:   [255,255,255],
+    slate:   [100,116,139],
+    light:   [248,250,252],
+    border:  [226,232,240],
+    green:   [22,163,74],
+    red:     [220,38,38],
+    amber:   [180,100,0],
+    passGrn: [240,253,244],
+    failRed: [254,242,242],
+    passTxt: [20,120,50],
+    failTxt: [180,20,20],
+  };
+  const setFill  = (c) => doc.setFillColor(...c);
+  const setDraw  = (c) => doc.setDrawColor(...c);
+  const setTxt   = (c) => doc.setTextColor(...c);
+  const setFont  = (s, w) => { doc.setFontSize(s); doc.setFont('helvetica', w||'normal'); };
+
+  // ── Status color ──
+  const statusC = data.overallStatus === 'COMPLIANT' ? C.green :
+                  data.overallStatus === 'IMPAIRED'  ? C.red   : C.amber;
+
+  // ── Page footer helper ──
+  function drawPageFooter() {
+    const pg = doc.internal.getCurrentPageInfo().pageNumber;
+    setFont(FS.tiny); setTxt([160,160,160]);
+    doc.text('Upload to The Compliance Engine (Brycer) at thecomplianceengine.com', ML, 274);
+    doc.text(`Generated by FLIPS  |  ${new Date().toLocaleString()}`, W - MR, 274, { align:'right' });
+    setTxt([180,180,180]);
+    // page number added after all pages are done
+  }
+
+  // ── Page header (for continuation pages) ──
+  function drawContinuationHeader() {
+    setFill(C.navy); doc.rect(0, 0, W, 12, 'F');
+    setTxt(C.white); setFont(FS.small, 'bold');
+    doc.text('FIRE LIFE PROTECTION SYSTEMS  |  INSPECTION REPORT (continued)', ML, 8);
+    setTxt(statusC); setFont(FS.small, 'bold');
+    doc.text(data.property.name || '', W - MR, 8, { align:'right' });
+    y = 18;
+  }
 
   function checkPage(needed) {
-    if (y + (needed||15) > 270) { doc.addPage(); y = M; drawHeader(); }
-  }
-
-  function drawHeader() {
-    doc.setFillColor(13, 27, 42);
-    doc.rect(0, 0, W, 22, 'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(12); doc.setFont('helvetica','bold');
-    doc.text('FIRE LIFE PROTECTION SYSTEMS', M, 10);
-    doc.setFontSize(7.5); doc.setFont('helvetica','normal');
-    doc.text('Fire Inspection & Protection Services', M, 15.5);
-    doc.setFontSize(8.5); doc.setFont('helvetica','bold');
-    const statusColor = data.overallStatus === 'COMPLIANT' ? [22,163,74] : data.overallStatus === 'IMPAIRED' ? [220,38,38] : [217,119,6];
-    doc.setTextColor(...statusColor);
-    doc.text(data.overallStatus || 'STATUS PENDING', W - M, 10, { align: 'right' });
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text('INSPECTION, TESTING & MAINTENANCE REPORT', W - M, 15.5, { align: 'right' });
-    y = 28;
-  }
-
-  function sectionHdr(title) {
-    checkPage(10);
-    doc.setFillColor(30, 48, 74);
-    doc.rect(M, y, usableW, 6, 'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(fonts.section); doc.setFont('helvetica','bold');
-    doc.text(title.toUpperCase(), M + 3, y + 4);
-    y += 8; doc.setTextColor(0,0,0);
-  }
-
-  function kvPair(label, value, x, colW) {
-    doc.setFontSize(fonts.label); doc.setFont('helvetica','bold');
-    doc.setTextColor(100,116,139);
-    doc.text(label + ':', x, y);
-    doc.setFont('helvetica','normal');
-    doc.setTextColor(0,0,0);
-    doc.setFontSize(fonts.normal);
-    const lines = doc.splitTextToSize(value || '—', colW - 22);
-    doc.text(lines, x + 22, y);
-    return lines.length * 4;
-  }
-
-  function twoCol(pairs) {
-    const half = usableW / 2;
-    let maxH = 0;
-    pairs.forEach((pair, i) => {
-      const x = M + (i % 2) * (half + 2);
-      if (i % 2 === 0 && i > 0) y += maxH + 2;
-      const h = kvPair(pair[0], pair[1], x, half);
-      if (h > maxH) maxH = h;
-    });
-    y += maxH + 3;
-  }
-
-  function inspRow(label, result, deficDesc) {
-    checkPage(8);
-    const resultColor = result === 'PASS' ? [22,163,74] : result === 'FAIL' ? [220,38,38] : [100,116,139];
-    doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal');
-    doc.setTextColor(30,30,30);
-    const lines = doc.splitTextToSize(label, usableW - 26);
-    doc.text(lines, M, y + 0.5);
-    if (result) {
-      doc.setFillColor(...resultColor);
-      doc.roundedRect(W - M - 18, y - 3, 18, 5.5, 1, 1, 'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(fonts.label); doc.setFont('helvetica','bold');
-      doc.text(result, W - M - 9, y + 0.8, { align: 'center' });
+    if (y + (needed || 14) > 266) {
+      drawPageFooter();
+      doc.addPage();
+      drawContinuationHeader();
     }
-    y += lines.length * 3.8 + 1;
-    if (result === 'FAIL' && deficDesc) {
-      doc.setFillColor(254,242,242);
-      doc.rect(M + 4, y - 1, usableW - 4, 5, 'F');
-      doc.setTextColor(180,0,0);
-      doc.setFontSize(fonts.label); doc.setFont('helvetica','italic');
-      const dlines = doc.splitTextToSize('⚠ ' + deficDesc, usableW - 10);
-      doc.text(dlines, M + 6, y + 2.5);
-      y += dlines.length * 3.5 + 2;
-      doc.setTextColor(0,0,0);
-    }
-    doc.setDrawColor(230,232,235);
-    doc.line(M, y, M + usableW, y);
-    y += 1.5;
   }
 
-  // ── Render ──
-  drawHeader();
+  // ══════════════════════════════════════════════════════════
+  // PAGE 1 HEADER BLOCK
+  // ══════════════════════════════════════════════════════════
+  setFill(C.navy); doc.rect(0, 0, W, 26, 'F');
+  setTxt(C.white); setFont(FS.title, 'bold');
+  doc.text('FIRE LIFE PROTECTION SYSTEMS', ML, 12);
+  setFont(FS.small); doc.setFont('helvetica','normal');
+  doc.text('Fire Inspection & Protection Services', ML, 19);
 
-  // Property & Inspection block
-  doc.setFillColor(248,250,252);
-  doc.rect(M, y, usableW, 32, 'F');
-  doc.setDrawColor(226,232,240);
-  doc.rect(M, y, usableW, 32, 'S');
-  const py = y + 5;
-  doc.setFontSize(fonts.heading); doc.setFont('helvetica','bold'); doc.setTextColor(13,27,42);
-  const propName = data.property.name || 'Property Not Selected';
-  doc.text(propName, M + 4, py);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
-  doc.text([data.property.address, data.property.cityStateZip].filter(Boolean).join(' · '), M + 4, py + 5);
-  doc.text('Contact: ' + (data.property.contact || '—') + '   Company: ' + (data.property.company || '—'), M + 4, py + 10);
+  setTxt(statusC); setFont(FS.heading, 'bold');
+  doc.text(data.overallStatus || 'STATUS PENDING', W - MR, 11, { align:'right' });
+  setTxt(C.white); setFont(FS.tiny);
+  doc.text('INSPECTION, TESTING & MAINTENANCE REPORT', W - MR, 17, { align:'right' });
+  y = 32;
 
-  const rCol = W - M - 80;
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('INSPECTION DATE', rCol, py);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','bold'); doc.setTextColor(13,27,42);
-  doc.text(data.inspection.date || '—', rCol, py + 5);
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('REPORT TYPE', rCol, py + 11);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(13,27,42);
-  doc.text(data.inspection.reportType || '—', rCol, py + 16);
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('NFPA STANDARDS', rCol, py + 22);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(13,27,42);
-  doc.text(data.inspection.nfpaRef || 'NFPA 72, 25', rCol, py + 27);
-  y += 36;
+  // ══════════════════════════════════════════════════════════
+  // PROPERTY INFO BLOCK — dynamic height, no overlap
+  // ══════════════════════════════════════════════════════════
+  const propName   = data.property.name || 'Property Not Selected';
+  const addrLine   = [data.property.address, data.property.cityStateZip].filter(Boolean).join(', ');
+  const contactLine= 'Contact: ' + (data.property.contact || '—') + '   |   Company: ' + (data.property.company || '—');
 
-  // Inspector info
-  twoCol([
+  // Left column
+  setFont(FS.heading,'bold'); setTxt(C.navy);
+  const propNameLines = doc.splitTextToSize(propName, 120);
+  doc.text(propNameLines, ML + 3, y + 7);
+  let leftH = propNameLines.length * 5.5 + 7;
+  setFont(FS.body); setTxt([70,70,70]);
+  doc.text(addrLine, ML + 3, y + leftH + 1);
+  leftH += 5;
+  setFont(FS.small); setTxt([90,90,90]);
+  const clines = doc.splitTextToSize(contactLine, 120);
+  doc.text(clines, ML + 3, y + leftH + 1);
+  leftH += clines.length * 4.2 + 2;
+
+  // Right column (always 4 rows × ~6mm each = 28mm)
+  const rCol = ML + 130;
+  const rColW = usableW - 130;
+  const kvRight = (lbl, val, ry) => {
+    setFont(FS.label,'bold'); setTxt(C.slate);
+    doc.text(lbl, rCol, y + ry);
+    setFont(FS.body,'normal'); setTxt(C.navy);
+    doc.text(String(val||'—'), rCol, y + ry + 4.5);
+  };
+  kvRight('INSPECTION DATE',   data.inspection.date || '—',            5);
+  kvRight('REPORT TYPE',       data.inspection.reportType || '—',      16);
+  kvRight('NFPA STANDARDS',    data.inspection.nfpaRef || 'NFPA 72, 25', 27);
+
+  const blockH = Math.max(leftH + 4, 38);
+  setFill(C.light); setDraw(C.border);
+  doc.rect(ML, y, usableW, blockH, 'FD');
+  // Redraw text on top of box (jsPDF draws box over text, so re-apply)
+  setFont(FS.heading,'bold'); setTxt(C.navy);
+  doc.text(propNameLines, ML + 3, y + 7);
+  let lh2 = propNameLines.length * 5.5 + 7;
+  setFont(FS.body); setTxt([70,70,70]);
+  doc.text(addrLine, ML + 3, y + lh2 + 1);
+  lh2 += 5;
+  setFont(FS.small); setTxt([90,90,90]);
+  doc.text(clines, ML + 3, y + lh2 + 1);
+  // Divider line
+  setDraw([200,210,220]); doc.line(ML + 128, y + 2, ML + 128, y + blockH - 2);
+  kvRight('INSPECTION DATE',   data.inspection.date || '—',            5);
+  kvRight('REPORT TYPE',       data.inspection.reportType || '—',      16);
+  kvRight('NFPA STANDARDS',    data.inspection.nfpaRef || 'NFPA 72, 25', 27);
+  y += blockH + 4;
+
+  // ── Inspector row ──
+  const inspItems = [
     ['Inspector', data.inspection.inspectorName],
-    ['License / Cert #', data.inspection.inspectorCert],
+    ['License/Cert', data.inspection.inspectorCert],
     ['Company', data.inspection.companyName],
-    ['Company License', data.inspection.companyLicense],
+    ['Co. License', data.inspection.companyLicense],
     ['Weather', data.inspection.weather],
-    ['Systems Inspected', data.systems.join(', ')],
-  ]);
+  ];
+  const colW5 = usableW / inspItems.length;
+  inspItems.forEach((item, i) => {
+    const ix = ML + i * colW5;
+    setFont(FS.tiny,'bold'); setTxt(C.slate);
+    doc.text(item[0].toUpperCase(), ix, y + 3.5);
+    setFont(FS.small,'normal'); setTxt(C.navy);
+    const vlines = doc.splitTextToSize(item[1]||'—', colW5 - 2);
+    doc.text(vlines, ix, y + 8);
+  });
+  // Systems inspected row
+  setFont(FS.tiny,'bold'); setTxt(C.slate);
+  doc.text('SYSTEMS INSPECTED', ML, y + 15);
+  setFont(FS.small,'normal'); setTxt(C.navy);
+  const sysNames = { 'fire-alarm':'Fire Alarm','sprinkler':'Sprinkler','fire-pump':'Fire Pump',
+    'standpipe':'Standpipe','hood':'Kitchen Hood','extinguisher':'Extinguishers',
+    'hydrant':'Hydrants','bda':'BDA/Radio','smoke-control':'Smoke Control',
+    'gas-detection':'Gas Detection','special-suppression':'Special Suppression','backflow':'Backflow' };
+  const sysList = data.systems.map(s => sysNames[s]||s).join('  |  ');
+  const syslines = doc.splitTextToSize(sysList, usableW);
+  doc.text(syslines, ML, y + 20);
+  y += 25 + (syslines.length > 1 ? (syslines.length-1)*4 : 0);
+  setDraw(C.border); doc.line(ML, y, ML + usableW, y); y += 5;
 
-  // ── Deficiency Summary ──
+  // ══════════════════════════════════════════════════════════
+  // DEFICIENCY SUMMARY (if any)
+  // ══════════════════════════════════════════════════════════
   if (data.deficiencies.length > 0) {
-    checkPage(20);
-    doc.setFillColor(254,226,226);
-    doc.rect(M, y, usableW, 7, 'F');
-    doc.setTextColor(185,28,28); doc.setFontSize(fonts.section); doc.setFont('helvetica','bold');
-    doc.text('⚠  DEFICIENCIES FOUND: ' + data.deficiencies.length + ' ITEM(S)', M + 3, y + 4.5);
-    y += 9;
+    checkPage(data.deficiencies.length * 8 + 16);
+    setFill([254,226,226]); setDraw([220,38,38]);
+    const defBlockH = data.deficiencies.length * 7 + 12;
+    doc.roundedRect(ML, y, usableW, defBlockH, 1.5, 1.5, 'FD');
+    setFont(FS.body,'bold'); setTxt([185,28,28]);
+    doc.text('DEFICIENCIES FOUND: ' + data.deficiencies.length + ' ITEM(S) REQUIRING ATTENTION', ML + 4, y + 7);
+    let dy = y + 13;
     data.deficiencies.forEach(d => {
-      checkPage(10);
-      doc.setFillColor(255,241,242);
-      doc.rect(M, y, usableW, 6, 'F');
-      doc.setTextColor(180,20,20); doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal');
-      const dtext = doc.splitTextToSize('• ' + d.item + (d.description ? ': ' + d.description : ''), usableW - 4);
-      doc.text(dtext, M + 3, y + 4);
-      y += dtext.length * 3.8 + 2;
+      setFont(FS.small,'bold'); setTxt([180,20,20]);
+      const dtxt = doc.splitTextToSize('- ' + d.item + (d.description ? ': ' + d.description : ''), usableW - 8);
+      doc.text(dtxt, ML + 5, dy);
+      dy += dtxt.length * 4;
     });
-    y += 3;
+    y += defBlockH + 6;
   }
 
-  // ── System Inspection Results ──
-  const systemLabels = {
-    'fire-alarm': ['🔔 FIRE ALARM SYSTEM (NFPA 72)', ['fa-panel-cond','fa-battery','fa-batt-date','fa-ac-power','fa-tamper','fa-trouble','fa-smoke-test','fa-heat-test','fa-pull-test','fa-duct-smoke','fa-co','fa-horns','fa-horn-sync','fa-mass-notif','fa-valve-super','fa-waterflow','fa-monitoring-test','fa-annunciator','fa-elevator','fa-door-release','fa-suppression-rel','fa-tags','fa-logbook']],
-    'sprinkler':  ['💧 SPRINKLER SYSTEM (NFPA 25)', ['sp-main-drain','sp-control-valve','sp-os-y','sp-piv','sp-check-valve','sp-gauges','sp-waterflow','sp-waterflow-cs','sp-heads-visual','sp-heads-clearance','sp-spare-heads','sp-head-type-match','sp-pipe-visual','sp-hanger-spacing','sp-pipe-support','sp-air-pressure','sp-dp-valve','sp-low-air','sp-quick-open','sp-5yr-pipe','sp-5yr-fdc','sp-gauges-5yr']],
-    'fire-pump':  ['🔄 FIRE PUMP (NFPA 25 Ch. 8)', ['fp-controller-cond','fp-controller-auto','fp-jockey-type','fp-jockey-cycles','fp-churn-test','fp-flow-test','fp-diesel-start','fp-diesel-fuel','fp-diesel-battery','fp-diesel-coolant','fp-diesel-run','fp-power-fail-alarm','fp-phase-alarm','fp-room-temp','fp-suction-valve']],
-    'standpipe':  ['🚿 STANDPIPE SYSTEM (NFPA 25)', ['std-fdc','std-fdc-sign','std-hose-valves','std-prv','std-check-valve','std-flow-test','std-hose-cond','std-nozzle','std-cabinet']],
-    'hood':       ['🍳 KITCHEN HOOD SUPPRESSION (NFPA 17A)', ['hood-cylinder-wt','hood-pull-station','hood-auto-detect','hood-micro-switch','hood-nozzle-cond','hood-nozzle-coverage','hood-duct-protected','hood-gas-shutoff','hood-power-shutoff','hood-fa-integration','hood-ansul-reset','hood-grease-buildup','hood-filter-cond','hood-service-tag']],
-    'hydrant':    ['🔴 PRIVATE HYDRANTS (NFPA 25)', ['hy-caps','hy-drainage','hy-painted','hy-clearance','hy-operation','hy-gate-valve','hy-outlet-threads','hy-flow-test']],
-    'bda':        ['📡 BDA / EMERGENCY RADIO (NFPA 72 Ch. 24)', ['bda-uplink','bda-downlink','bda-coverage','bda-power','bda-backup-power','bda-donor-antenna','bda-internal-antenna','bda-alarms','bda-fa-interface','bda-permit','bda-coverage-map']],
-    'smoke-control': ['💨 SMOKE CONTROL (NFPA 92)', ['sc-fans-op','sc-cfm','sc-pressure','sc-dampers-op','sc-fire-dampers','sc-damper-access','sc-control-panel','sc-fa-integration','sc-override','sc-detector-input']],
-    'gas-detection': ['⚗️ GAS DETECTION', ['gd-sensor-test','gd-alarm-test','gd-gas-shutoff','gd-ventilation','gd-power','gd-backup','gd-control-panel','gd-fa-integration','gd-calibration-cert']],
-    'special-suppression': ['🧪 SPECIAL SUPPRESSION (NFPA 2001)', ['ss-agent-wt','ss-detection','ss-pull','ss-abort','ss-discharge-time','ss-nozzles','ss-coverage','ss-room-integrity','ss-hvac-shutoff','ss-power-shutoff','ss-fa-integration','ss-recharge-cert']],
-    'backflow':   ['🔁 BACKFLOW PREVENTION', ['bf-test','bf-passed','bf-casing','bf-shutoffs','bf-clearance','bf-freeze']],
+  // ══════════════════════════════════════════════════════════
+  // SECTION HEADER
+  // ══════════════════════════════════════════════════════════
+  function sectionHdr(title) {
+    checkPage(12);
+    setFill(C.navy2); doc.rect(ML, y, usableW, 7, 'F');
+    setTxt(C.white); setFont(FS.small,'bold');
+    doc.text(title, ML + 3, y + 4.8);
+    y += 9; setTxt([20,20,20]);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // DATA FIELD ROW — renders key/value pairs in columns
+  // ══════════════════════════════════════════════════════════
+  function dataFieldRow(fields) {
+    // fields: array of {label, id} — reads value from DOM
+    if (!fields || fields.length === 0) return;
+    const colN = Math.min(fields.length, 3);
+    const cw   = usableW / colN;
+    let maxLines = 1;
+    fields.forEach((f, i) => {
+      const x = ML + (i % colN) * cw;
+      if (i > 0 && i % colN === 0) { y += maxLines * 4.5 + 2; maxLines = 1; }
+      setFont(FS.tiny,'bold'); setTxt(C.slate);
+      doc.text((f.label||'').toUpperCase(), x, y);
+      const val = document.getElementById(f.id)?.value?.trim() || '—';
+      setFont(FS.small,'normal'); setTxt([30,30,30]);
+      const vl = doc.splitTextToSize(val, cw - 3);
+      doc.text(vl, x, y + 4);
+      if (vl.length > maxLines) maxLines = vl.length;
+    });
+    y += maxLines * 4.5 + 4;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // INSPECTION RESULT ROW
+  // ══════════════════════════════════════════════════════════
+  function inspRow(label, result, deficDesc) {
+    checkPage(result === 'FAIL' && deficDesc ? 14 : 8);
+    const bgColor = result === 'PASS' ? C.passGrn : result === 'FAIL' ? C.failRed :
+                    result === 'N/A'  ? [248,250,252] : [255,255,255];
+    setFill(bgColor); doc.rect(ML, y, usableW, 7, 'F');
+    setDraw(C.border); doc.line(ML, y + 7, ML + usableW, y + 7);
+
+    // Label
+    setFont(FS.small,'normal'); setTxt([25,25,25]);
+    const labelLines = doc.splitTextToSize(label, usableW - 26);
+    doc.text(labelLines, ML + 2, y + 4.8);
+
+    // Result badge
+    if (result) {
+      const badgeC = result === 'PASS' ? C.green : result === 'FAIL' ? C.red : C.slate;
+      setFill(badgeC);
+      doc.roundedRect(W - MR - 20, y + 1, 20, 5, 1, 1, 'F');
+      setTxt(C.white); setFont(FS.tiny,'bold');
+      doc.text(result, W - MR - 10, y + 4.8, { align:'center' });
+    }
+    y += labelLines.length > 1 ? labelLines.length * 4 + 2 : 8;
+
+    if (result === 'FAIL' && deficDesc) {
+      checkPage(8);
+      setFill([255,236,236]); doc.rect(ML + 3, y, usableW - 3, 6.5, 'F');
+      setTxt([160,10,10]); setFont(FS.tiny,'italic');
+      const dl = doc.splitTextToSize('Deficiency: ' + deficDesc, usableW - 10);
+      doc.text(dl, ML + 5, y + 4);
+      y += dl.length * 3.8 + 2.5;
+    }
+    setTxt([20,20,20]);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // SYSTEM-SPECIFIC DATA FIELDS MAP
+  // ══════════════════════════════════════════════════════════
+  const systemDataFields = {
+    'fire-alarm': [
+      [{label:'Panel Manufacturer',id:'fa-mfr'},{label:'Panel Model',id:'fa-model'},{label:'Serial #',id:'fa-serial'}],
+      [{label:'Panel Type',id:'fa-type'},{label:'# Zones/Loops',id:'fa-zones'},{label:'Year Installed',id:'fa-year'}],
+      [{label:'Monitoring Company',id:'fa-monitoring'},{label:'Monitoring Account #',id:'fa-monacct'},{label:'Battery Install Date',id:'fa-batt-replace-date'}],
+      [{label:'# Smoke Detectors',id:'fa-smoke-count'},{label:'# Heat Detectors',id:'fa-heat-count'},{label:'# Pull Stations',id:'fa-pull-count'}],
+      [{label:'Previous Inspection',id:'fa-last-insp'},{label:'Prior Defic. Corrected',id:'fa-defic-from-last'}],
+    ],
+    'sprinkler': [
+      [{label:'System Type',id:'sp-type'},{label:'Manufacturer',id:'sp-mfr'},{label:'Year Installed',id:'sp-year'}],
+      [{label:'Total Heads',id:'sp-heads'},{label:'Coverage (sq ft)',id:'sp-coverage'},{label:'Hazard Class',id:'sp-hazard'}],
+      [{label:'Water Supply',id:'sp-water-src'},{label:'Static PSI',id:'sp-static-psi'},{label:'Residual PSI',id:'sp-residual-psi'}],
+      [{label:'Waterflow Time (sec)',id:'sp-wf-time'},{label:'Spare Head Types',id:'sp-spare-types'},{label:'5-Year Items Next Due',id:'sp-5yr-due'}],
+      [{label:'Last Trip Test Date',id:'sp-trip-date'},{label:'Trip Pressure (PSI)',id:'sp-trip-psi'}],
+    ],
+    'fire-pump': [
+      [{label:'Manufacturer',id:'fp-mfr'},{label:'Model',id:'fp-model'},{label:'Serial #',id:'fp-serial'}],
+      [{label:'Driver Type',id:'fp-type'},{label:'Rated GPM',id:'fp-rated-gpm'},{label:'Rated PSI',id:'fp-rated-psi'}],
+      [{label:'RPM',id:'fp-rpm'},{label:'Horsepower',id:'fp-hp'},{label:'Year Installed',id:'fp-year'}],
+      [{label:'Jockey Start PSI',id:'fp-jockey-start'},{label:'Jockey Stop PSI',id:'fp-jockey-stop'}],
+      [{label:'Churn Suction PSI',id:'fp-churn-suction'},{label:'Churn Discharge PSI',id:'fp-churn-discharge'},{label:'Churn RPM',id:'fp-churn-rpm'}],
+      [{label:'Churn Voltage',id:'fp-churn-volts'},{label:'Churn Amps',id:'fp-churn-amps'}],
+      [{label:'Flow GPM',id:'fp-flow-gpm'},{label:'Flow Suction PSI',id:'fp-flow-suction'},{label:'Flow Discharge PSI',id:'fp-flow-discharge'}],
+      [{label:'Flow RPM',id:'fp-flow-rpm'},{label:'Flow Voltage',id:'fp-flow-volts'},{label:'Flow Amps',id:'fp-flow-amps'}],
+      [{label:'Oil Pressure PSI',id:'fp-diesel-oil'},{label:'Coolant Temp F',id:'fp-diesel-temp'},{label:'Engine Hours',id:'fp-diesel-hours'}],
+    ],
+    'standpipe': [
+      [{label:'Class',id:'std-class'},{label:'System Type',id:'std-type'},{label:'# Standpipes',id:'std-count'}],
+      [{label:'# Floors',id:'std-floors'},{label:'# Hose Stations',id:'std-hose-stations'}],
+      [{label:'PRV Static PSI',id:'std-prv-static'},{label:'PRV Residual PSI',id:'std-prv-residual'}],
+      [{label:'Flow Test PSI',id:'std-flow-psi'},{label:'Flow GPM',id:'std-flow-gpm'},{label:'Last Flow Test',id:'std-flow-date'}],
+    ],
+    'hood': [
+      [{label:'Manufacturer',id:'hood-mfr'},{label:'Model/Cylinder',id:'hood-model'},{label:'Year Installed',id:'hood-install'}],
+      [{label:'Agent Type',id:'hood-agent'},{label:'# Nozzles',id:'hood-nozzle-count'},{label:'Last Service',id:'hood-last-service'}],
+      [{label:'Cylinder Weight (actual)',id:'hood-cyl-wt-actual'},{label:'Min. Acceptable Weight',id:'hood-cyl-wt-min'}],
+      [{label:'Next Service Due',id:'hood-next-service'},{label:'Tag Color/ID',id:'hood-tag-color'}],
+    ],
+    'hydrant': [
+      [{label:'# Hydrants',id:'hy-count'},{label:'Hydrant Type',id:'hy-type'},{label:'Last Flow Test',id:'hy-last-flow'}],
+      [{label:'Flow Static PSI',id:'hy-flow-static'},{label:'Flow Residual PSI',id:'hy-flow-residual'},{label:'Flow GPM',id:'hy-flow-gpm'}],
+    ],
+    'bda': [
+      [{label:'Manufacturer',id:'bda-mfr'},{label:'Model',id:'bda-model'},{label:'Year Installed',id:'bda-install'}],
+      [{label:'Frequencies',id:'bda-freqs'},{label:'Floors/Areas Covered',id:'bda-coverage-floors'},{label:'AHJ Cert/FCC License',id:'bda-ahj-cert'}],
+      [{label:'Min Signal (dBm)',id:'bda-min-signal'},{label:'Worst Coverage Location',id:'bda-worst-loc'},{label:'Next Test Date',id:'bda-next-test'}],
+    ],
+    'smoke-control': [
+      [{label:'System Type',id:'sc-type'},{label:'# Zones',id:'sc-zones'},{label:'Year Installed',id:'sc-year'}],
+      [{label:'# Fans',id:'sc-fans'},{label:'# Dampers',id:'sc-dampers'},{label:'Pressure Differential',id:'sc-pressure-val'}],
+    ],
+    'gas-detection': [
+      [{label:'Manufacturer',id:'gd-mfr'},{label:'Model',id:'gd-model'},{label:'Gas Type',id:'gd-gas-type'}],
+      [{label:'# Sensors',id:'gd-sensor-count'},{label:'# Zones',id:'gd-zones'},{label:'Year Installed',id:'gd-install-date'}],
+      [{label:'Low Alarm Setpoint',id:'gd-alarm-setpoint-lo'},{label:'High Alarm Setpoint',id:'gd-alarm-setpoint-hi'}],
+      [{label:'Sensor Age/Last Replaced',id:'gd-sensor-age'},{label:'Next Replacement Due',id:'gd-sensor-due'}],
+    ],
+    'special-suppression': [
+      [{label:'System Type',id:'ss-type'},{label:'Manufacturer',id:'ss-mfr'},{label:'Protected Area',id:'ss-area'}],
+      [{label:'Agent Name',id:'ss-agent'},{label:'# Cylinders',id:'ss-cylinders'},{label:'Year Installed',id:'ss-install'}],
+      [{label:'Actual Weight (lbs)',id:'ss-actual-wt'},{label:'Min. Required (lbs)',id:'ss-min-wt'},{label:'Cylinder PSI',id:'ss-pressure'}],
+      [{label:'Last Full Service',id:'ss-last-service'},{label:'Next Service Due',id:'ss-next-service'}],
+    ],
+    'backflow': [
+      [{label:'Manufacturer',id:'bf-mfr'},{label:'Model',id:'bf-model'},{label:'Serial #',id:'bf-serial'}],
+      [{label:'Device Type',id:'bf-type'},{label:'Size',id:'bf-size'},{label:'Location',id:'bf-location'}],
+      [{label:'Check 1 Open PSI',id:'bf-check1-open'},{label:'Check 1 Close PSI',id:'bf-check1-close'}],
+      [{label:'Check 2 Open PSI',id:'bf-check2-open'},{label:'Check 2 Close PSI',id:'bf-check2-close'}],
+      [{label:'RV Diff PSI',id:'bf-rv-open'},{label:'Test Date',id:'bf-test-date'}],
+      [{label:"Tester's Cert #",id:'bf-cert-number'},{label:'Cert. Expiration',id:'bf-cert-exp'}],
+    ],
   };
 
+  // ══════════════════════════════════════════════════════════
+  // INSPECTION ITEM IDS PER SYSTEM
+  // ══════════════════════════════════════════════════════════
+  const systemInspItems = {
+    'fire-alarm':['fa-panel-cond','fa-battery','fa-batt-date','fa-ac-power','fa-tamper','fa-trouble','fa-smoke-test','fa-heat-test','fa-pull-test','fa-duct-smoke','fa-co','fa-horns','fa-horn-sync','fa-mass-notif','fa-valve-super','fa-waterflow','fa-monitoring-test','fa-annunciator','fa-elevator','fa-door-release','fa-suppression-rel','fa-tags','fa-logbook'],
+    'sprinkler': ['sp-main-drain','sp-control-valve','sp-os-y','sp-piv','sp-check-valve','sp-gauges','sp-waterflow','sp-waterflow-cs','sp-heads-visual','sp-heads-clearance','sp-spare-heads','sp-head-type-match','sp-pipe-visual','sp-hanger-spacing','sp-pipe-support','sp-air-pressure','sp-dp-valve','sp-low-air','sp-quick-open','sp-5yr-pipe','sp-5yr-fdc','sp-gauges-5yr'],
+    'fire-pump': ['fp-controller-cond','fp-controller-auto','fp-jockey-type','fp-jockey-cycles','fp-churn-test','fp-flow-test','fp-diesel-start','fp-diesel-fuel','fp-diesel-battery','fp-diesel-coolant','fp-diesel-run','fp-power-fail-alarm','fp-phase-alarm','fp-room-temp','fp-suction-valve'],
+    'standpipe': ['std-fdc','std-fdc-sign','std-hose-valves','std-prv','std-check-valve','std-flow-test','std-hose-cond','std-nozzle','std-cabinet'],
+    'hood':      ['hood-cylinder-wt','hood-pull-station','hood-auto-detect','hood-micro-switch','hood-nozzle-cond','hood-nozzle-coverage','hood-duct-protected','hood-gas-shutoff','hood-power-shutoff','hood-fa-integration','hood-ansul-reset','hood-grease-buildup','hood-filter-cond','hood-service-tag'],
+    'extinguisher':['ext-mounted','ext-signage','ext-6yr','ext-hydro'],
+    'hydrant':   ['hy-caps','hy-drainage','hy-painted','hy-clearance','hy-operation','hy-gate-valve','hy-outlet-threads','hy-flow-test'],
+    'bda':       ['bda-uplink','bda-downlink','bda-coverage','bda-power','bda-backup-power','bda-donor-antenna','bda-internal-antenna','bda-alarms','bda-fa-interface','bda-permit','bda-coverage-map'],
+    'smoke-control':['sc-fans-op','sc-cfm','sc-pressure','sc-dampers-op','sc-fire-dampers','sc-damper-access','sc-control-panel','sc-fa-integration','sc-override','sc-detector-input'],
+    'gas-detection':['gd-sensor-test','gd-alarm-test','gd-gas-shutoff','gd-ventilation','gd-power','gd-backup','gd-control-panel','gd-fa-integration','gd-calibration-cert'],
+    'special-suppression':['ss-agent-wt','ss-detection','ss-pull','ss-abort','ss-discharge-time','ss-nozzles','ss-coverage','ss-room-integrity','ss-hvac-shutoff','ss-power-shutoff','ss-fa-integration','ss-recharge-cert'],
+    'backflow':  ['bf-test','bf-passed','bf-casing','bf-shutoffs','bf-clearance','bf-freeze'],
+  };
+
+  const systemTitles = {
+    'fire-alarm':          'FIRE ALARM SYSTEM  (NFPA 72)',
+    'sprinkler':           'SPRINKLER SYSTEM  (NFPA 25)',
+    'fire-pump':           'FIRE PUMP  (NFPA 25 Ch. 8)',
+    'standpipe':           'STANDPIPE SYSTEM  (NFPA 25 Ch. 6)',
+    'hood':                'KITCHEN HOOD SUPPRESSION  (NFPA 17A)',
+    'extinguisher':        'PORTABLE FIRE EXTINGUISHERS  (NFPA 10)',
+    'hydrant':             'PRIVATE HYDRANTS  (NFPA 25 Ch. 7)',
+    'bda':                 'BDA / EMERGENCY RADIO COMMUNICATION  (NFPA 72 Ch. 24)',
+    'smoke-control':       'SMOKE CONTROL SYSTEM  (NFPA 92)',
+    'gas-detection':       'GAS DETECTION SYSTEM',
+    'special-suppression': 'SPECIAL SUPPRESSION SYSTEM  (NFPA 2001 / 11 / 17)',
+    'backflow':            'BACKFLOW PREVENTION DEVICE',
+  };
+
+  const notesIds = {
+    'fire-alarm':'fa-notes','sprinkler':'sp-notes','fire-pump':'fp-notes',
+    'standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
+    'bda':'bda-notes','smoke-control':'sc-notes','gas-detection':'gd-notes',
+    'special-suppression':'ss-notes','backflow':'bf-notes','extinguisher':'ext-notes',
+  };
+
+  // ── Render each system ──
   data.systems.forEach(sys => {
-    const sysInfo = systemLabels[sys];
-    if (!sysInfo) return;
-    const [title, items] = sysInfo;
+    const title = systemTitles[sys] || sys.toUpperCase();
     sectionHdr(title);
-    items.forEach(id => {
-      const row = document.getElementById('row-' + id);
-      if (!row) return;
-      const labelEl = row.querySelector('.inspect-label');
-      const label = labelEl?.childNodes[0]?.textContent?.trim() || id;
-      const result = row.dataset.val || '';
-      const deficDesc = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
-      if (result) inspRow(label, result, deficDesc);
-    });
-    // Key data fields for each system
-    const notesId = sys.replace('-','') + '-notes' in document.getElementById ? sys.replace('-','') + '-notes' : null;
-    const notesEl = document.getElementById(sys.replace(/-([a-z])/g, (_,c) => c.toUpperCase()).replace(/([A-Z])/g, '-$1').toLowerCase().replace('--','-') + 'notes') || document.getElementById(sys.replace('-','') + '-notes');
-    if (notesEl?.value?.trim()) {
-      checkPage(10);
-      doc.setFontSize(fonts.small); doc.setFont('helvetica','italic'); doc.setTextColor(80,80,80);
-      const nlines = doc.splitTextToSize('Notes: ' + notesEl.value.trim(), usableW - 4);
-      doc.text(nlines, M + 2, y);
-      y += nlines.length * 3.5 + 3;
-      doc.setTextColor(0,0,0);
+
+    // Data fields
+    const dFields = systemDataFields[sys];
+    if (dFields) {
+      dFields.forEach(row => dataFieldRow(row));
     }
-    y += 3;
+
+    // Inspection rows
+    const items = systemInspItems[sys] || [];
+    if (items.length > 0) {
+      checkPage(10);
+      // Sub-header
+      setFill([240,244,252]); doc.rect(ML, y, usableW, 5.5, 'F');
+      setFont(FS.tiny,'bold'); setTxt([50,80,130]);
+      doc.text('INSPECTION RESULTS', ML + 2, y + 4);
+      y += 7;
+
+      items.forEach(id => {
+        const row = document.getElementById('row-' + id);
+        if (!row) return;
+        const label  = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
+        const result = row.dataset.val || '';
+        const defic  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
+        inspRow(label, result, defic);
+      });
+    }
+
+    // Notes
+    const notesId  = notesIds[sys];
+    const notesVal = notesId ? document.getElementById(notesId)?.value?.trim() : '';
+    if (notesVal) {
+      checkPage(10);
+      setFill([255,253,235]); setDraw([254,215,0]);
+      const nl = doc.splitTextToSize('Notes: ' + notesVal, usableW - 6);
+      const nh = nl.length * 4 + 5;
+      doc.rect(ML, y, usableW, nh, 'FD');
+      setFont(FS.small,'italic'); setTxt([92,70,0]);
+      doc.text(nl, ML + 3, y + 4.5);
+      y += nh + 3;
+    }
+
+    y += 4;
   });
 
-  // Extinguisher table
-  if (activeSystems.has('extinguisher')) {
-    sectionHdr('🧯 PORTABLE FIRE EXTINGUISHERS (NFPA 10)');
-    const extCols = ['#','Location','Type','Size','Mfr Date','Pressure','Seal/Pin','Label','Result'];
-    const extColW = [8, 40, 32, 22, 20, 18, 16, 16, 18];
-    let tx = M;
-    extCols.forEach((col, i) => {
-      doc.setFillColor(30,48,74); doc.rect(tx, y, extColW[i], 6, 'F');
-      doc.setTextColor(255,255,255); doc.setFontSize(fonts.label); doc.setFont('helvetica','bold');
-      doc.text(col, tx + 1.5, y + 4);
-      tx += extColW[i];
-    });
+  // ── Extinguisher per-unit table ──
+  if (activeSystems.has('extinguisher') && data.extinguishers.length > 0) {
+    checkPage(20);
+    setFill([240,244,252]); doc.rect(ML, y, usableW, 5.5, 'F');
+    setFont(FS.tiny,'bold'); setTxt([50,80,130]);
+    doc.text('EXTINGUISHER UNIT DETAIL', ML + 2, y + 4);
     y += 7;
+
+    const cols = ['#','Location','Type','Size','Mfr Date','Pressure','Seal','Label','Result'];
+    const cws  = [8, 42, 32, 22, 20, 18, 14, 14, 18];
+    // Header
+    setFill(C.navy2);
+    doc.rect(ML, y, usableW, 6, 'F');
+    let tx = ML;
+    cols.forEach((c, i) => {
+      setFont(FS.tiny,'bold'); setTxt(C.white);
+      doc.text(c, tx + 1.5, y + 4.2);
+      tx += cws[i];
+    });
+    y += 6.5;
+
     data.extinguishers.forEach((ext, idx) => {
       checkPage(8);
-      tx = M;
-      const rowData = [String(idx+1), ext.location, ext.type, ext.size, ext.mfrDate, ext.pressure, ext.seal||'—', ext.label||'—', ext.overall||'—'];
-      const bgColor = ext.overall === 'FAIL' ? [254,242,242] : ext.overall === 'PASS' ? [240,253,244] : [248,250,252];
-      doc.setFillColor(...bgColor);
-      doc.rect(M, y, usableW, 6, 'F');
-      rowData.forEach((cell, i) => {
-        doc.setTextColor(30,30,30); doc.setFontSize(fonts.label); doc.setFont('helvetica','normal');
-        const truncated = String(cell||'').slice(0, extColW[i] > 20 ? 22 : 12);
-        doc.text(truncated, tx + 1.5, y + 4);
-        tx += extColW[i];
+      const rowBg = ext.overall === 'FAIL' ? C.failRed : ext.overall === 'PASS' ? C.passGrn : C.light;
+      setFill(rowBg); doc.rect(ML, y, usableW, 6, 'F');
+      setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+      const cells = [String(idx+1), ext.location||'', ext.type||'', ext.size||'', ext.mfrDate||'', ext.pressure||'', ext.seal||'—', ext.label||'—', ext.overall||'—'];
+      let cx = ML;
+      cells.forEach((cell, i) => {
+        setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+        doc.text(String(cell).slice(0, cws[i] > 18 ? 20 : 10), cx + 1.5, y + 4.2);
+        cx += cws[i];
       });
-      doc.setDrawColor(226,232,240);
-      doc.line(M, y + 6, M + usableW, y + 6);
-      y += 7;
+      y += 6.5;
     });
-    y += 3;
+    y += 4;
   }
 
-  // General Notes
+  // ── General Notes ──
   if (data.generalNotes) {
+    checkPage(20);
     sectionHdr('GENERAL NOTES & RECOMMENDATIONS');
-    checkPage(12);
-    doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
-    const lines = doc.splitTextToSize(data.generalNotes, usableW);
-    doc.text(lines, M, y);
-    y += lines.length * 4 + 4;
+    setFont(FS.body,'normal'); setTxt([30,30,30]);
+    const glines = doc.splitTextToSize(data.generalNotes, usableW - 2);
+    doc.text(glines, ML, y);
+    y += glines.length * 4.5 + 6;
   }
 
-  // Overall Status Block
-  checkPage(25);
-  const statusBg = data.overallStatus === 'COMPLIANT' ? [240,253,244] : data.overallStatus === 'IMPAIRED' ? [254,242,242] : [255,251,235];
-  const statusBorder = data.overallStatus === 'COMPLIANT' ? [22,163,74] : data.overallStatus === 'IMPAIRED' ? [220,38,38] : [217,119,6];
-  doc.setFillColor(...statusBg);
-  doc.setDrawColor(...statusBorder);
-  doc.roundedRect(M, y, usableW, 16, 2, 2, 'FD');
-  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...statusBorder);
-  doc.text('OVERALL SYSTEM STATUS: ' + (data.overallStatus || 'NOT SET'), M + 5, y + 10);
-  y += 20;
+  // ── Overall Status ──
+  checkPage(22);
+  const stBg     = data.overallStatus === 'COMPLIANT' ? [240,253,244] : data.overallStatus === 'IMPAIRED' ? [254,242,242] : [255,251,235];
+  const stBorder = data.overallStatus === 'COMPLIANT' ? C.green : data.overallStatus === 'IMPAIRED' ? C.red : C.amber;
+  setFill(stBg); setDraw(stBorder);
+  doc.roundedRect(ML, y, usableW, 14, 2, 2, 'FD');
+  setFont(FS.heading,'bold'); setTxt(stBorder);
+  doc.text('OVERALL SYSTEM STATUS: ' + (data.overallStatus || 'NOT SET'), ML + 5, y + 9);
+  y += 18;
 
-  // Certification / Signature block
-  checkPage(30);
-  doc.setFillColor(248,250,252); doc.setDrawColor(226,232,240);
-  doc.rect(M, y, usableW, 30, 'FD');
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('INSPECTOR CERTIFICATION', M + 3, y + 5);
-  doc.setFontSize(fonts.small); doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
-  const certText = 'I certify that this fire protection system has been inspected, tested, and maintained in accordance with applicable NFPA standards and local codes. All test results are accurately documented herein.';
-  const certLines = doc.splitTextToSize(certText, usableW - 6);
-  doc.text(certLines, M + 3, y + 9);
+  // ── Signature / Certification ──
+  checkPage(38);
+  setFill(C.light); setDraw(C.border);
+  doc.rect(ML, y, usableW, 36, 'FD');
+  setFont(FS.tiny,'bold'); setTxt(C.slate);
+  doc.text('INSPECTOR CERTIFICATION', ML + 3, y + 5.5);
+  setFont(FS.tiny,'normal'); setTxt([60,60,60]);
+  const certTxt = 'I certify that this fire protection system has been inspected, tested, and maintained in accordance with applicable NFPA standards and local codes. All test results are accurately documented herein.';
+  const certLines = doc.splitTextToSize(certTxt, 120);
+  doc.text(certLines, ML + 3, y + 10);
 
   if (sigHasData) {
     const canvas = document.getElementById('sig-canvas');
     const sigData = canvas.toDataURL('image/png');
-    doc.addImage(sigData, 'PNG', M + 3, y + 16, 60, 12);
+    doc.addImage(sigData, 'PNG', ML + 3, y + 18, 55, 14);
+  } else {
+    setDraw([180,180,180]); doc.line(ML + 3, y + 30, ML + 60, y + 30);
+    setFont(FS.tiny); setTxt([160,160,160]); doc.text('Signature', ML + 3, y + 34);
   }
-  const sigRight = W - M - 80;
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('INSPECTOR NAME', sigRight, y + 8);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
-  doc.text(data.signature.name || '________________', sigRight, y + 13);
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('LICENSE / CERT #', sigRight, y + 19);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
-  doc.text(data.inspection.inspectorCert || '________________', sigRight, y + 24);
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','bold'); doc.setTextColor(100,116,139);
-  doc.text('DATE SIGNED', sigRight + 40, y + 19);
-  doc.setFontSize(fonts.normal); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
-  doc.text(data.signature.date || '________________', sigRight + 40, y + 24);
-  y += 34;
 
-  // Footer
-  doc.setFontSize(fonts.label); doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
-  doc.text('Upload this report to The Compliance Engine (Brycer) at thecomplianceengine.com', M, 274, { maxWidth: usableW / 2 });
-  doc.text('Generated by FLIPS · ' + new Date().toLocaleString(), W - M, 274, { align: 'right' });
+  const sr = ML + 130;
+  const fields3 = [['INSPECTOR NAME', data.signature.name||'________________', 0],
+                   ['LICENSE / CERT #', data.inspection.inspectorCert||'________________', 11],
+                   ['DATE SIGNED', data.signature.date||'________________', 22]];
+  fields3.forEach(([lbl,val,off]) => {
+    setFont(FS.tiny,'bold'); setTxt(C.slate); doc.text(lbl, sr, y + 6 + off);
+    setFont(FS.small,'normal'); setTxt(C.navy); doc.text(val, sr, y + 11 + off);
+  });
+  y += 40;
 
-  // Page numbers
+  // ── Footers & page numbers ──
+  drawPageFooter();
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFontSize(fonts.label); doc.setTextColor(150,150,150);
-    doc.text(`Page ${i} of ${pageCount}`, W / 2, 279, { align: 'center' });
+    setFont(FS.tiny); setTxt([160,160,160]);
+    doc.text(`Page ${i} of ${pageCount}`, W / 2, 279, { align:'center' });
   }
 
-  const propSlug = (data.property.name || 'inspection').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+  // ── Save or download ──
+  const propSlug = (data.property.name || 'inspection').replace(/[^a-zA-Z0-9]/g,'_').slice(0,50);
   const dateSlug = data.inspection.date || new Date().toISOString().split('T')[0];
   const filename = `FLIPS_Inspection_${propSlug}_${dateSlug}.pdf`;
-  doc.save(filename);
-  document.getElementById('pdf-status').textContent = '✓ PDF downloaded: ' + filename + ' — Upload to thecomplianceengine.com';
-  toast('✓ PDF downloaded!');
+
+  if (saveToDrive) {
+    if (!accessToken) { toast('⚠ Connect Google first'); doc.save(filename); return; }
+    const btn = document.querySelector('[onclick="generatePDF(true)"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving PDF…'; }
+    try {
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const pdfFolderId = await findOrCreateFolder('FLPS Previous Inspections');
+      await driveUploadFile(filename, 'application/pdf', pdfBase64, pdfFolderId, null);
+      document.getElementById('pdf-status').textContent = `✓ PDF saved to "FLPS Previous Inspections": ${filename}`;
+      toast('✓ PDF saved to Drive!');
+    } catch(e) {
+      toast('✗ PDF Drive save failed: ' + e.message);
+      doc.save(filename); // fallback to download
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '☁ Save PDF to Drive'; }
+    }
+  } else {
+    doc.save(filename);
+    document.getElementById('pdf-status').textContent = `✓ Downloaded: ${filename}  —  Upload to thecomplianceengine.com`;
+    toast('✓ PDF downloaded!');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
