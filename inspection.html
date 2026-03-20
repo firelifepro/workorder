@@ -161,11 +161,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 
 /* ── INSPECTION ROWS ── */
 .inspect-row {
-  display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px;
-  align-items: start; padding: 8px 0; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.inspect-row-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
 }
 .inspect-row:last-child { border-bottom: none; }
-.inspect-label { font-size: 0.82rem; font-weight: 500; color: var(--navy); padding-top: 6px; }
+.inspect-label { font-size: 0.82rem; font-weight: 500; color: var(--navy); padding-top: 4px; flex: 1; min-width: 0; }
 .inspect-label small { display: block; font-size: 0.7rem; color: var(--slate); font-weight: 400; margin-top: 1px; }
 
 /* Radio button groups */
@@ -184,7 +187,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 .pf-btn.na.selected    { background: var(--na-bg);   box-shadow: 0 0 0 2px var(--na-ring); }
 
 .deficiency-row {
-  grid-column: span 4; margin-top: 4px; display: none;
+  margin-top: 2px; display: none;
 }
 .deficiency-row.show { display: flex; gap: 6px; }
 .deficiency-row input {
@@ -324,13 +327,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 
 /* ── SIGNATURE WARNING ── */
 .sig-warning { background: #fef3c7; border: 1.5px solid var(--amber); border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; color: #92400e; font-weight: 600; margin-bottom: 10px; display: none; }
+@media (max-width: 600px) {
   .field-grid { grid-template-columns: 1fr; }
   .field-grid.cols-3 { grid-template-columns: 1fr 1fr; }
   .field-group.span-2 { grid-column: span 1; }
   #systems-grid { grid-template-columns: repeat(3, 1fr); }
-  .inspect-row { grid-template-columns: 1fr; }
-  .pf-group { justify-content: flex-start; }
-  .deficiency-row { grid-column: span 1; }
+  .inspect-row-top { flex-wrap: wrap; }
+  .pf-group { flex-shrink: 0; }
 }
 </style>
 </head>
@@ -471,7 +474,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
 
     <div class="btn-row">
-      <button class="btn-primary" onclick="goStep(2)">Next: Select Systems →</button>
+      <button class="btn-primary" onclick="goStep(2)">Next: Systems →</button>
     </div>
   </div>
 
@@ -603,6 +606,19 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
 
     <div class="card">
+      <div class="card-header"><span class="icon">📸</span><span>Inspection Photos</span></div>
+      <div class="card-body">
+        <p style="font-size:0.78rem;color:var(--slate);margin-bottom:10px;">Take photos or upload images from your camera roll. Add a note to each photo — all photos are included in the PDF report.</p>
+        <div id="photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:10px;"></div>
+        <label class="add-photo-btn" style="display:flex;align-items:center;gap:8px;background:#eff6ff;border:1.5px dashed var(--blue2);border-radius:8px;padding:12px 16px;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--blue);width:fit-content;">
+          📸 Add Photo / Take Picture
+          <input type="file" id="photo-input" accept="image/*" multiple capture="environment" style="display:none;" onchange="handlePhotoUpload(this)">
+        </label>
+        <div id="photo-count" style="font-size:0.72rem;color:var(--slate);margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-header"><span class="icon">✍️</span><span>Inspector Signature</span></div>
       <div class="card-body">
         <p style="font-size:0.78rem;color:var(--slate);margin-bottom:8px;">Sign below to certify this inspection report:</p>
@@ -618,19 +634,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
             <input type="date" id="sig-date">
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="icon">📸</span><span>Inspection Photos</span></div>
-      <div class="card-body">
-        <p style="font-size:0.78rem;color:var(--slate);margin-bottom:10px;">Take photos or upload images from your camera roll. Add a note to each photo — all photos are included in the PDF report.</p>
-        <div id="photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:10px;"></div>
-        <label class="add-photo-btn" style="display:flex;align-items:center;gap:8px;background:#eff6ff;border:1.5px dashed var(--blue2);border-radius:8px;padding:12px 16px;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--blue);width:fit-content;">
-          📸 Add Photo / Take Picture
-          <input type="file" id="photo-input" accept="image/*" multiple capture="environment" style="display:none;" onchange="handlePhotoUpload(this)">
-        </label>
-        <div id="photo-count" style="font-size:0.72rem;color:var(--slate);margin-top:6px;"></div>
       </div>
     </div>
 
@@ -1070,11 +1073,13 @@ function makeRow(itemId, label, sublabel, opts) {
   const naBtn = extra.noNA ? '' : `<button class="pf-btn na" onclick="setPF(this,'${itemId}','N/A')">N/A</button>`;
   return `
     <div class="inspect-row" id="row-${itemId}">
-      <div class="inspect-label">${label}${sublabel ? `<small>${sublabel}</small>` : ''}</div>
-      <div class="pf-group">
-        <button class="pf-btn pass" onclick="setPF(this,'${itemId}','PASS')">PASS</button>
-        <button class="pf-btn fail" onclick="setPF(this,'${itemId}','FAIL')">FAIL</button>
-        ${naBtn}
+      <div class="inspect-row-top">
+        <div class="inspect-label">${label}${sublabel ? `<small>${sublabel}</small>` : ''}</div>
+        <div class="pf-group">
+          <button class="pf-btn pass" onclick="setPF(this,'${itemId}','PASS')">PASS</button>
+          <button class="pf-btn fail" onclick="setPF(this,'${itemId}','FAIL')">FAIL</button>
+          ${naBtn}
+        </div>
       </div>
       <div class="deficiency-row" id="defic-${itemId}">
         <input type="text" id="defic-txt-${itemId}" placeholder="Describe deficiency / location…" oninput="updateDeficiencySummary()">
@@ -1492,10 +1497,11 @@ function addExtRow(prefillLoc, prefillType, prefillSize, prefillMfr, prefillPsi)
     </td>
     <td>
       <div class="pf-group">
-        <button class="pf-btn pass" onclick="setPFTable(this,'ext-overall-${n}','PASS')">PASS</button>
-        <button class="pf-btn fail" onclick="setPFTable(this,'ext-overall-${n}','FAIL')">FAIL</button>
+        <button class="pf-btn pass" onclick="setPFTable(this,'ext-overall-${n}','PASS')" title="Override: PASS">PASS</button>
+        <button class="pf-btn fail" onclick="setPFTable(this,'ext-overall-${n}','FAIL')" title="Override: FAIL">FAIL</button>
       </div>
       <input type="hidden" id="ext-overall-${n}">
+      <div style="font-size:0.6rem;color:var(--slate);margin-top:2px;" id="ext-override-note-${n}"></div>
     </td>
     <td><button class="remove-row-btn" onclick="document.getElementById('ext-row-${n}').remove()">✕</button></td>`;
   tbody.appendChild(tr);
@@ -1507,6 +1513,58 @@ function setPFTable(btn, id, val) {
   const group = btn.closest('.pf-group');
   group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
+
+  // Auto-logic: if seal or label changed, update overall (unless user manually set overall)
+  if (id.startsWith('ext-seal-') || id.startsWith('ext-label-')) {
+    const n = id.replace('ext-seal-', '').replace('ext-label-', '');
+    autoSetExtOverall(n);
+  }
+  // Mark overall as manually set so auto-logic won't overwrite it
+  if (id.startsWith('ext-overall-')) {
+    const n = id.replace('ext-overall-', '');
+    const row = document.getElementById('ext-row-' + n);
+    if (row) row.dataset.manualOverall = 'true';
+    const note = document.getElementById('ext-override-note-' + n);
+    if (note) note.textContent = '(manually set)';
+  }
+}
+
+// Auto-set the Overall result based on Seal/Pin and Label results
+// Rules:
+//   - Either seal OR label = FAIL  →  overall = FAIL  (auto)
+//   - Both seal AND label = PASS   →  overall = PASS  (auto, if not manually overridden)
+//   - User can always click Overall to override
+function autoSetExtOverall(n) {
+  const row = document.getElementById('ext-row-' + n);
+  if (row?.dataset.manualOverall === 'true') return; // user set it, don't override
+
+  const sealVal  = document.getElementById('ext-seal-' + n)?.value  || '';
+  const labelVal = document.getElementById('ext-label-' + n)?.value || '';
+  if (!sealVal && !labelVal) return; // nothing set yet
+
+  let autoVal = '';
+  if (sealVal === 'FAIL' || labelVal === 'FAIL') {
+    autoVal = 'FAIL';
+  } else if (sealVal === 'PASS' && labelVal === 'PASS') {
+    autoVal = 'PASS';
+  }
+  if (!autoVal) return;
+
+  // Apply to the overall hidden input and button
+  const overallInput = document.getElementById('ext-overall-' + n);
+  if (overallInput) overallInput.value = autoVal;
+  const overallGroup = overallInput?.closest('td')?.querySelector('.pf-group');
+  if (overallGroup) {
+    overallGroup.querySelectorAll('.pf-btn').forEach(b => {
+      b.classList.toggle('selected',
+        (autoVal === 'PASS' && b.classList.contains('pass')) ||
+        (autoVal === 'FAIL' && b.classList.contains('fail'))
+      );
+    });
+  }
+  // Clear the "(manually set)" note since this is auto
+  const note = document.getElementById('ext-override-note-' + n);
+  if (note) note.textContent = '';
 }
 
 function buildHydrantPanel() {
@@ -2098,7 +2156,8 @@ async function saveInspectionToDrive() {
     const data = collectAllData();
     const propName = data.property.name || 'Unknown';
     const dateStr  = data.inspection.date || todayMT();
-    const fileName = `FLPS_Insp_${propName.replace(/[^a-zA-Z0-9]/g,'_').slice(0,50)}_${dateStr}.json`;
+    const fileSlug = buildFileSlug(data);
+    const fileName = `FLPS_Insp_${fileSlug}_${dateStr}.json`;
 
     const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
 
@@ -2882,6 +2941,15 @@ function todayMT() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' }); // en-CA gives YYYY-MM-DD
 }
 
+// Build a safe filename slug from property name + service address
+// e.g. "Skyline Apts" + "123 Main St" → "Skyline_Apts_123_Main_St"
+function buildFileSlug(data) {
+  const name = (data?.property?.name || 'inspection').trim();
+  const addr = (data?.property?.address || '').trim();
+  const combined = addr ? `${name} ${addr}` : name;
+  return combined.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g,'').slice(0, 70);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PHOTO MANAGEMENT
 // Photos stored as array of { dataUrl, note } in module-level array.
@@ -2975,7 +3043,7 @@ async function saveAndDownload() {
     setStatus2('Building PDF…', 'var(--slate)');
     pdfDoc = await buildPDFDoc();
     const data = collectAllData();
-    const propSlug = (data.property.name || 'inspection').replace(/[^a-zA-Z0-9]/g,'_').slice(0,50);
+    const propSlug = buildFileSlug(data);
     const dateSlug = data.inspection.date || todayMT();
     filename = `FLPS_Inspection_${propSlug}_${dateSlug}.pdf`;
 
