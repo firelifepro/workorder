@@ -312,7 +312,18 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 .section-toggle.collapsed .toggle-arr { transform: rotate(-90deg); }
 .section-content.hidden { display: none; }
 
-@media (max-width: 600px) {
+/* ── PHOTOS ── */
+.photo-card { position: relative; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--border); background: #f8fafc; }
+.photo-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+.photo-note-wrap { padding: 6px 8px; }
+.photo-note-input { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 5px 7px; font-size: 0.75rem; font-family: inherit; color: var(--navy); resize: none; min-height: 44px; background: white; }
+.photo-note-input:focus { border-color: var(--blue); background: #eff6ff; outline: none; }
+.photo-remove { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.55); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.photo-remove:hover { background: var(--red); }
+.photo-num { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.5); color: white; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+
+/* ── SIGNATURE WARNING ── */
+.sig-warning { background: #fef3c7; border: 1.5px solid var(--amber); border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; color: #92400e; font-weight: 600; margin-bottom: 10px; display: none; }
   .field-grid { grid-template-columns: 1fr; }
   .field-grid.cols-3 { grid-template-columns: 1fr 1fr; }
   .field-group.span-2 { grid-column: span 1; }
@@ -405,23 +416,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
             <label>Property Contact</label>
             <input type="text" id="property-contact">
           </div>
-        </div>
-        <!-- Previous inspection info banner — populated async after property select -->
-        <div id="prev-insp-banner" style="display:none;margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid var(--blue);border-radius:6px;padding:8px 12px;font-size:0.78rem;color:#1e40af;">
-          <span style="font-weight:700;">↩ Previous inspection on file:</span>
-          <span id="prev-insp-summary"></span>
-        </div>
-        <div id="prev-insp-searching" style="display:none;margin-top:10px;font-size:0.75rem;color:var(--slate);font-style:italic;">
-          ⏳ Searching Drive for previous inspection…
-        </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="icon">📋</span><span>Inspection Details</span></div>
-      <div class="card-body">
-        <div class="field-grid">
           <div class="field-group">
             <label>Date of Inspection</label>
             <input type="date" id="insp-date">
@@ -463,6 +457,15 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
             <label>Weather Conditions</label>
             <input type="text" id="weather" placeholder="Clear, 65°F">
           </div>
+        </div>
+        <!-- Previous inspection info banner — populated async after property select -->
+        <div id="prev-insp-banner" style="display:none;margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid var(--blue);border-radius:6px;padding:8px 12px;font-size:0.78rem;color:#1e40af;">
+          <span style="font-weight:700;">↩ Previous inspection on file:</span>
+          <span id="prev-insp-summary"></span>
+        </div>
+        <div id="prev-insp-searching" style="display:none;margin-top:10px;font-size:0.75rem;color:var(--slate);font-style:italic;">
+          ⏳ Searching Drive for previous inspection…
+        </div>
         </div>
       </div>
     </div>
@@ -553,7 +556,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 
     <div class="btn-row">
       <button class="btn-secondary" onclick="goStep(1)">← Back</button>
-      <button class="btn-primary" onclick="buildInspectionForms()">Next: Inspect →</button>
+      <button class="btn-primary" onclick="buildInspectionForms()">Begin Inspection →</button>
       <span id="save-indicator">✓ Saved</span>
     </div>
   </div>
@@ -569,8 +572,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
     <div id="sys-forms"></div>
     <div class="btn-row">
-      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
-      <button class="btn-primary" onclick="goStep(4)">Next: Review & Sign →</button>
+      <button class="btn-secondary" onclick="goStep(2)">← Systems</button>
+      <button class="btn-primary" onclick="goStep(4)">Review & Sign →</button>
     </div>
   </div>
 
@@ -618,19 +621,31 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-header"><span class="icon">📸</span><span>Inspection Photos</span></div>
+      <div class="card-body">
+        <p style="font-size:0.78rem;color:var(--slate);margin-bottom:10px;">Take photos or upload images from your camera roll. Add a note to each photo — all photos are included in the PDF report.</p>
+        <div id="photo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:10px;"></div>
+        <label class="add-photo-btn" style="display:flex;align-items:center;gap:8px;background:#eff6ff;border:1.5px dashed var(--blue2);border-radius:8px;padding:12px 16px;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--blue);width:fit-content;">
+          📸 Add Photo / Take Picture
+          <input type="file" id="photo-input" accept="image/*" multiple capture="environment" style="display:none;" onchange="handlePhotoUpload(this)">
+        </label>
+        <div id="photo-count" style="font-size:0.72rem;color:var(--slate);margin-top:6px;"></div>
+      </div>
+    </div>
+
     <div class="card" style="border-color:var(--fire);background:#fff7ed;">
-      <div class="card-header" style="background:var(--fire);"><span class="icon">📄</span><span>Generate Inspection Report PDF</span></div>
+      <div class="card-header" style="background:var(--fire);"><span class="icon">📄</span><span>Save &amp; Download Report</span></div>
       <div class="card-body">
         <p style="font-size:0.82rem;color:#92400e;margin-bottom:12px;">
-          Generate a professional PDF report formatted for upload to <strong>The Compliance Engine (Brycer)</strong> at <em>thecomplianceengine.com</em>. After downloading, log in to TCE and attach this PDF to the appropriate system record.
+          Saves inspection data to <strong>FLPS Software Inspection Data</strong>, saves the PDF to <strong>FLPS Previous Inspections</strong>, and downloads the PDF to this device for upload to <strong>The Compliance Engine (Brycer)</strong>.
         </p>
+        <div id="sig-warning" class="sig-warning">⚠ Please sign the report above before saving. Draw your signature in the signature box and enter your printed name.</div>
         <div class="btn-row">
-          <button class="btn-primary fire" onclick="generatePDF(false)">📄 Download PDF Report</button>
-          <button class="btn-primary fire" style="background:#b45309;" onclick="generatePDF(true)">☁ Save PDF to Drive</button>
-          <button class="btn-primary green" onclick="saveInspectionToDrive()">💾 Save Inspection Data</button>
+          <button class="btn-primary fire" id="save-download-btn" onclick="saveAndDownload()">📄 Save &amp; Download PDF</button>
           <button class="btn-secondary" onclick="goStep(3)">← Back to Inspection</button>
         </div>
-        <div id="pdf-status" style="margin-top:8px;font-size:0.8rem;color:var(--green);"></div>
+        <div id="pdf-status" style="margin-top:10px;font-size:0.8rem;color:var(--green);line-height:1.6;"></div>
       </div>
     </div>
   </div>
@@ -682,8 +697,8 @@ function goStep(n) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (n === 3) updateDeficiencySummary();
   if (n === 4) {
-    const today = new Date().toISOString().split('T')[0];
-    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = today;
+    const todayStr = todayMT();
+    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     updateDeficiencySummary();
   }
 }
@@ -2082,7 +2097,7 @@ async function saveInspectionToDrive() {
   try {
     const data = collectAllData();
     const propName = data.property.name || 'Unknown';
-    const dateStr  = data.inspection.date || new Date().toISOString().split('T')[0];
+    const dateStr  = data.inspection.date || todayMT();
     const fileName = `FLPS_Insp_${propName.replace(/[^a-zA-Z0-9]/g,'_').slice(0,50)}_${dateStr}.json`;
 
     const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
@@ -2286,9 +2301,9 @@ function restoreExtinguishers(extData) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GENERATE PDF  (saveToDrive=false → download, true → upload to Drive)
+// BUILD PDF DOC  — returns a jsPDF instance (caller handles save/upload)
 // ─────────────────────────────────────────────────────────────────────────────
-async function generatePDF(saveToDrive) {
+async function buildPDFDoc() {
   const data = collectAllData();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
@@ -2793,6 +2808,60 @@ async function generatePDF(saveToDrive) {
   });
   y += 40;
 
+  // ── Photos page ──
+  if (inspectionPhotos.length > 0) {
+    drawPageFooter();
+    doc.addPage();
+    drawContinuationHeader();
+    sectionHdr('INSPECTION PHOTOS');
+
+    const photoColW = (usableW - 6) / 2;
+    let col = 0;
+    let rowStartY = y;
+    const photoH = 60; // image height mm
+    const noteH  = 12;
+    const cellH  = photoH + noteH + 8;
+
+    for (let i = 0; i < inspectionPhotos.length; i++) {
+      const photo = inspectionPhotos[i];
+      const px = ML + col * (photoColW + 6);
+      checkPage(cellH + 5);
+      if (col === 0) rowStartY = y;
+
+      try {
+        // Detect image format from data URL
+        const fmt = photo.dataUrl.startsWith('data:image/png') ? 'PNG' :
+                    photo.dataUrl.startsWith('data:image/gif') ? 'GIF' : 'JPEG';
+        doc.addImage(photo.dataUrl, fmt, px, y, photoColW, photoH);
+      } catch(e) {
+        setFill([240,240,240]); doc.rect(px, y, photoColW, photoH, 'F');
+        setTxt([150,150,150]); setFont(FS.small); doc.text('Image error', px + photoColW/2, y + photoH/2, {align:'center'});
+      }
+
+      // Photo number badge
+      setFill([0,0,0]); doc.roundedRect(px + 2, y + 2, 16, 5, 1, 1, 'F');
+      setTxt([255,255,255]); setFont(FS.tiny,'bold');
+      doc.text(`Photo ${i+1}`, px + 10, y + 5.5, {align:'center'});
+
+      // Note
+      if (photo.note) {
+        setFill([255,253,235]); doc.rect(px, y + photoH, photoColW, noteH, 'F');
+        setTxt([92,70,0]); setFont(FS.tiny,'italic');
+        const nl = doc.splitTextToSize(photo.note, photoColW - 4);
+        doc.text(nl, px + 2, y + photoH + 4);
+      } else {
+        setFill([248,250,252]); doc.rect(px, y + photoH, photoColW, noteH, 'F');
+        setTxt([160,160,160]); setFont(FS.tiny,'italic');
+        doc.text('No note', px + 2, y + photoH + 4);
+      }
+      setDraw(C.border); doc.rect(px, y, photoColW, photoH + noteH, 'S');
+
+      col++;
+      if (col >= 2) { col = 0; y += cellH + 4; }
+    }
+    if (col > 0) y += cellH + 4; // finish partial row
+  }
+
   // ── Footers & page numbers ──
   drawPageFooter();
   const pageCount = doc.internal.getNumberOfPages();
@@ -2802,31 +2871,170 @@ async function generatePDF(saveToDrive) {
     doc.text(`Page ${i} of ${pageCount}`, W / 2, 279, { align:'center' });
   }
 
-  // ── Save or download ──
-  const propSlug = (data.property.name || 'inspection').replace(/[^a-zA-Z0-9]/g,'_').slice(0,50);
-  const dateSlug = data.inspection.date || new Date().toISOString().split('T')[0];
-  const filename = `FLPS_Inspection_${propSlug}_${dateSlug}.pdf`;
+  return doc;  // caller handles save/upload
+}
 
-  if (saveToDrive) {
-    if (!accessToken) { toast('⚠ Connect Google first'); doc.save(filename); return; }
-    const btn = document.querySelector('[onclick="generatePDF(true)"]');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving PDF…'; }
-    try {
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
-      const pdfFolderId = await findOrCreateFolder('FLPS Previous Inspections');
-      await driveUploadFile(filename, 'application/pdf', pdfBase64, pdfFolderId, null);
-      document.getElementById('pdf-status').textContent = `✓ PDF saved to "FLPS Previous Inspections": ${filename}`;
-      toast('✓ PDF saved to Drive!');
-    } catch(e) {
-      toast('✗ PDF Drive save failed: ' + e.message);
-      doc.save(filename); // fallback to download
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '☁ Save PDF to Drive'; }
+// ─────────────────────────────────────────────────────────────────────────────
+// MOUNTAIN TIME DATE HELPER
+// Returns today's date in YYYY-MM-DD in America/Denver timezone
+// ─────────────────────────────────────────────────────────────────────────────
+function todayMT() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Denver' }); // en-CA gives YYYY-MM-DD
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHOTO MANAGEMENT
+// Photos stored as array of { dataUrl, note } in module-level array.
+// Included in PDF and serialized to JSON save.
+// ─────────────────────────────────────────────────────────────────────────────
+const inspectionPhotos = []; // { dataUrl, note }
+
+function handlePhotoUpload(input) {
+  const files = [...(input.files || [])];
+  if (!files.length) return;
+  let loaded = 0;
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      inspectionPhotos.push({ dataUrl: e.target.result, note: '' });
+      loaded++;
+      if (loaded === files.length) renderPhotoGrid();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = ''; // allow re-selecting same file
+}
+
+function renderPhotoGrid() {
+  const grid = document.getElementById('photo-grid');
+  const countEl = document.getElementById('photo-count');
+  if (!grid) return;
+  grid.innerHTML = inspectionPhotos.map((p, i) => `
+    <div class="photo-card">
+      <img src="${p.dataUrl}" alt="Photo ${i+1}" loading="lazy">
+      <span class="photo-num">Photo ${i+1}</span>
+      <button class="photo-remove" onclick="removePhoto(${i})" title="Remove photo">✕</button>
+      <div class="photo-note-wrap">
+        <textarea class="photo-note-input" placeholder="Add a note for this photo…"
+          oninput="inspectionPhotos[${i}].note=this.value"
+          rows="2">${escHtml(p.note)}</textarea>
+      </div>
+    </div>`).join('');
+  if (countEl) countEl.textContent = inspectionPhotos.length
+    ? `${inspectionPhotos.length} photo${inspectionPhotos.length > 1 ? 's' : ''} attached`
+    : '';
+}
+
+function removePhoto(idx) {
+  inspectionPhotos.splice(idx, 1);
+  renderPhotoGrid();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAVE & DOWNLOAD  (combined: save JSON to Drive + save PDF to Drive + download)
+// ─────────────────────────────────────────────────────────────────────────────
+async function saveAndDownload() {
+  // ── 1. Signature check ──────────────────────────────────────────────────────
+  const sigNameVal = (document.getElementById('sig-name')?.value || '').trim();
+  const warnEl     = document.getElementById('sig-warning');
+
+  // Auto-fill inspector name from signature name if blank
+  const inspNameEl = document.getElementById('inspector-name');
+  if (inspNameEl && !inspNameEl.value.trim() && sigNameVal) {
+    inspNameEl.value = sigNameVal;
+  }
+  // Auto-fill sig-name from inspector name if sig-name blank
+  const sigNameEl = document.getElementById('sig-name');
+  const inspNameVal = (document.getElementById('inspector-name')?.value || '').trim();
+  if (sigNameEl && !sigNameEl.value.trim() && inspNameVal) {
+    sigNameEl.value = inspNameVal;
+  }
+
+  const finalSigName = (document.getElementById('sig-name')?.value || '').trim();
+  if (!sigHasData && !finalSigName) {
+    if (warnEl) warnEl.style.display = 'block';
+    document.getElementById('sig-canvas')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  if (warnEl) warnEl.style.display = 'none';
+
+  // ── 2. Button state ─────────────────────────────────────────────────────────
+  const btn = document.getElementById('save-download-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+  const statusEl = document.getElementById('pdf-status');
+  const setStatus2 = (msg, color) => { if (statusEl) { statusEl.innerHTML += `<div style="color:${color||'inherit'}">${msg}</div>`; } };
+  if (statusEl) statusEl.innerHTML = '';
+
+  let pdfDoc = null;
+  let filename = '';
+  let jsonSaveOk = false;
+
+  try {
+    // ── 3. Build the PDF ───────────────────────────────────────────────────────
+    setStatus2('Building PDF…', 'var(--slate)');
+    pdfDoc = await buildPDFDoc();
+    const data = collectAllData();
+    const propSlug = (data.property.name || 'inspection').replace(/[^a-zA-Z0-9]/g,'_').slice(0,50);
+    const dateSlug = data.inspection.date || todayMT();
+    filename = `FLPS_Inspection_${propSlug}_${dateSlug}.pdf`;
+
+    // ── 4. Save JSON inspection data to Drive ──────────────────────────────────
+    if (accessToken) {
+      try {
+        setStatus2('Saving inspection data…', 'var(--slate)');
+        const propName = data.property.name || 'Unknown';
+        const dateStr  = data.inspection.date || todayMT();
+        const jsonFileName = `FLPS_Insp_${propSlug}_${dateStr}.json`;
+        const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
+        const existing = await findLatestInspectionFile(propName);
+        const existingId = (existing && existing.appProperties?.flips_insp_date === dateStr) ? existing.id : null;
+        const content = JSON.stringify({ ...data, photos: inspectionPhotos.map(p => ({ note: p.note })) }, null, 2);
+        const uploaded = await driveUploadFile(jsonFileName, 'application/json', content, folderId, existingId);
+        await fetch(`https://www.googleapis.com/drive/v3/files/${uploaded.id}?supportsAllDrives=true`, {
+          method: 'PATCH',
+          headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appProperties: {
+            flips_insp_property: propName,
+            flips_insp_date:     dateStr,
+            flips_insp_type:     data.inspection.reportType || '',
+            flips_insp_status:   data.overallStatus || '',
+            flips_insp_inspector:data.inspection.inspectorName || finalSigName || '',
+            flips_insp_version:  '2.0'
+          }})
+        });
+        jsonSaveOk = true;
+        setStatus2('✓ Inspection data saved to FLPS Software Inspection Data', 'var(--green)');
+      } catch(e) {
+        setStatus2('⚠ JSON save failed: ' + e.message + ' (PDF still downloading)', 'var(--amber)');
+      }
+
+      // ── 5. Save PDF to Drive ─────────────────────────────────────────────────
+      try {
+        setStatus2('Saving PDF to Drive…', 'var(--slate)');
+        const pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
+        const pdfFolderId = await findOrCreateFolder('FLPS Previous Inspections');
+        await driveUploadFile(filename, 'application/pdf', pdfBase64, pdfFolderId, null);
+        setStatus2('✓ PDF saved to FLPS Previous Inspections', 'var(--green)');
+      } catch(e) {
+        setStatus2('⚠ PDF Drive save failed: ' + e.message + ' (still downloading locally)', 'var(--amber)');
+      }
+    } else {
+      setStatus2('⚠ Not connected to Google — skipping Drive saves', 'var(--amber)');
     }
-  } else {
-    doc.save(filename);
-    document.getElementById('pdf-status').textContent = `✓ Downloaded: ${filename}  —  Upload to thecomplianceengine.com`;
-    toast('✓ PDF downloaded!');
+
+    // ── 6. Download PDF locally ────────────────────────────────────────────────
+    pdfDoc.save(filename);
+    setStatus2(`✓ Downloaded: ${filename}`, 'var(--green)');
+    setStatus2('Upload to thecomplianceengine.com to complete reporting.', 'var(--slate)');
+    toast('✓ Report saved & downloaded!');
+
+  } catch(e) {
+    setStatus2('✗ Error: ' + e.message, 'var(--red)');
+    toast('✗ Save failed: ' + e.message);
+    if (pdfDoc) { try { pdfDoc.save(filename || 'inspection.pdf'); } catch(_) {} }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Save & Download PDF'; }
   }
 }
 
@@ -2856,7 +3064,7 @@ window.addEventListener('load', () => {
   if (k) document.getElementById('api-key').value = k;
   if (c) document.getElementById('client-id').value = c;
 
-  document.getElementById('insp-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('insp-date').value = todayMT();
 
   if (k && c) {
     const cachedToken  = localStorage.getItem('flips_access_token');
