@@ -791,7 +791,7 @@ const FIELD_MAP = [
     label: 'CC Email',
     gsLabel: 'GS: Property Manager Contact info → first email',
     qbLabel: 'QB: Notes (cc: ... portion)',
-    sheet: r => extractFirstEmail(r.contact),
+    sheet: r => { const cc = extractFirstEmail(r.contact); const bill = (r.billEmail||'').trim(); return (cc && (!bill || cc.toLowerCase() !== bill.toLowerCase())) ? cc : ''; },
     qb:    r => parseCCEmailFromNotes(r.qb?.Notes),
   },
 
