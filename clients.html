@@ -839,7 +839,6 @@ async function createQBCustomer(idx) {
       DisplayName:      row.name.replace(/\n/g,' ').trim(),
       CompanyName:      row.mgmt || '',
       PrimaryEmailAddr: row.billEmail  ? { Address: row.billEmail }           : undefined,
-      BillEmailCc:      ccEmail ? { Address: ccEmail } : undefined,
       Notes:            row.manager    || '',
       AlternatePhone: acctStr ? { FreeFormNumber: acctStr } : undefined,
       BillAddr:         billAddr,
@@ -1025,7 +1024,7 @@ async function pushToQB() {
     `Push Google Sheet → QuickBooks for:\n"${row.qb.DisplayName}"\n\n` +
     `This will OVERWRITE the following QB fields with sheet values:\n` +
     `  • Display Name\n  • Company Name\n  • Notes (Property Manager)\n` +
-    `  • Billing Email\n  • CC Email / BillEmailCc (attempt)\n  • Alternate Phone (FLPS Acct #)\n` +
+    `  • Billing Email\n  • Alternate Phone (FLPS Acct #)\n` +
     `  • Billing Address (Line1/2, City, State, ZIP, Country/Service Addr)` +
     nameWarning +
     `\n\nProceed?`
@@ -1057,7 +1056,6 @@ async function pushToQB() {
       FamilyName:  '',
       Notes:            row.manager || '',
       PrimaryEmailAddr: row.billEmail ? { Address: row.billEmail } : (row.qb.PrimaryEmailAddr || undefined),
-      BillEmailCc:      ccEmail ? { Address: ccEmail } : undefined,
       AlternatePhone:   acctStr ? { FreeFormNumber: acctStr } : (row.qb.AlternatePhone || undefined),
       BillAddr:         billAddr,
     });
