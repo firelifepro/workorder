@@ -802,17 +802,17 @@ const FIELD_MAP = [
 
   { section: 'Billing Address (from Bill To / Invoice Info)' },
   {
-    label: 'Street 1 (c/o line)',
-    gsLabel: 'GS: Bill To → c/o line (if present)',
+    label: 'Street 1',
+    gsLabel: 'GS: Bill To → c/o line or street (QB packs Line1 first)',
     qbLabel: 'QB: BillAddr.Line1',
-    sheet: r => parseBillTo(r.billTo).addr1,
+    sheet: r => { const b = parseBillTo(r.billTo); return b.addr1 || b.addr2 || ''; },
     qb:    r => r.qb?.BillAddr?.Line1 || '',
   },
   {
-    label: 'Street 2 (street address)',
-    gsLabel: 'GS: Bill To → first street line',
+    label: 'Street 2 (only if c/o present)',
+    gsLabel: 'GS: Bill To → street line (when c/o occupies Line1)',
     qbLabel: 'QB: BillAddr.Line2',
-    sheet: r => parseBillTo(r.billTo).addr2,
+    sheet: r => { const b = parseBillTo(r.billTo); return b.addr1 ? (b.addr2 || '') : ''; },
     qb:    r => r.qb?.BillAddr?.Line2 || '',
   },
   {
@@ -850,8 +850,8 @@ async function createQBCustomer(idx) {
     const ba      = parseBillTo(row.billTo);
     const ccEmail = extractFirstEmail(row.contact);
     const billAddr = (ba.addr1 || ba.addr2 || ba.city) ? {
-      Line1:                  ba.addr1 || '',
-      Line2:                  ba.addr2 || '',
+      Line1:                  ba.addr1 || ba.addr2 || '',
+      Line2:                  ba.addr1 ? (ba.addr2 || '') : '',
       City:                   ba.city  || '',
       CountrySubDivisionCode: ba.state || 'CO',
       PostalCode:             ba.zip   || '',
@@ -1076,8 +1076,8 @@ async function pushToQB() {
 
   try {
     const billAddr = (ba.addr1 || ba.addr2 || ba.city) ? {
-      Line1:                  ba.addr1 || '',
-      Line2:                  ba.addr2 || '',
+      Line1:                  ba.addr1 || ba.addr2 || '',
+      Line2:                  ba.addr1 ? (ba.addr2 || '') : '',
       City:                   ba.city  || '',
       CountrySubDivisionCode: ba.state || 'CO',
       PostalCode:             ba.zip   || '',
