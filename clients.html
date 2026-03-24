@@ -695,6 +695,13 @@ function buildNotesField(manager, ccEmail) {
   return mgr || '';
 }
 
+// Parse the CC email out of a QB Notes field encoded by buildNotesField.
+function parseCCEmailFromNotes(notes) {
+  if (!notes) return '';
+  const m = notes.match(/\|\s*cc:\s*([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i);
+  return m ? m[1] : '';
+}
+
 // Build the service address string for QB Country field
 function buildServiceAddressField(row) {
   const addr = (row.address || '').replace(/\n/g, ' ').trim();
@@ -758,9 +765,16 @@ const FIELD_MAP = [
   {
     label: 'Property Manager (Notes)',
     gsLabel: 'GS: Property Manager',
-    qbLabel: 'QB: Notes',
+    qbLabel: 'QB: Notes (manager name portion)',
     sheet: r => r.manager,
+    qb:    r => (r.qb?.Notes || '').replace(/\s*\|\s*cc:.*$/i, '').trim(),
+  },
+  {
+    label: 'Notes (full QB value)',
+    qbLabel: 'QB: Notes',
+    sheet: r => '',
     qb:    r => r.qb?.Notes || '',
+    qbOnly: true,
   },
   {
     label: 'Billing Email',
@@ -772,10 +786,9 @@ const FIELD_MAP = [
   {
     label: 'CC Email',
     gsLabel: 'GS: Property Manager Contact info → first email',
-    qbLabel: 'QB: not stored on Customer object',
+    qbLabel: 'QB: Notes (cc: ... portion)',
     sheet: r => extractFirstEmail(r.contact),
-    qb:    r => '',
-    infoOnly: true,  // QB does not expose CC email on the Customer API entity
+    qb:    r => parseCCEmailFromNotes(r.qb?.Notes),
   },
 
   { section: 'Service Address (QB Country field)' },
@@ -901,6 +914,20 @@ function openEditModal(idx) {
     }
     const sv = (def.sheet(row) || '').trim();
     const qv = (def.qb(row)   || '').trim();
+
+    // qbOnly fields: show current QB value for reference, no sheet equivalent
+    if (def.qbOnly) {
+      const qv = (def.qb(row) || '').trim();
+      const qvHtml = qv
+        ? `<div style="width:100%"><span style="font-size:0.68rem;color:#888;display:block;margin-bottom:1px;">${escHtml(def.qbLabel||'')}</span>${escHtml(qv)}</div>`
+        : `<span class="val-empty">—</span>`;
+      html += `<div class="cmp-row empty-both">
+        <div class="cmp-cell field-name" style="color:#999;">${def.label}</div>
+        <div class="cmp-cell sheet-val"><span style="font-size:0.72rem;color:#aaa;font-style:italic;">stored in QB only</span></div>
+        <div class="cmp-cell qb-val">${qvHtml}</div>
+      </div>`;
+      continue;
+    }
 
     // infoOnly fields: shown for reference but not pushed to QB, never flagged as mismatch
     if (def.infoOnly) {

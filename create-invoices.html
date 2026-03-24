@@ -1026,7 +1026,8 @@ async function createQBInvoice(doc) {
   const dueDays = parseInt(document.getElementById('qb-due-days').value) || 30;
 
   const custRef  = await findOrCreateCustomer(doc.client || doc.name, env, doc.acctNum);
-  const ccEmail  = parseCCEmailFromNotes(custRef.notes);
+  const ccRaw    = parseCCEmailFromNotes(custRef.notes);
+  const ccEmail  = (ccRaw && ccRaw.toLowerCase() !== (doc.billEmail || '').toLowerCase()) ? ccRaw : '';
 
   const today = new Date();
   const due   = new Date(today); due.setDate(due.getDate() + dueDays);
