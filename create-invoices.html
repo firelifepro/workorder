@@ -686,7 +686,7 @@ async function enrichDocsInBackground() {
         ).catch(() => {});
       }
 
-      renderDocList(allDocs);
+      updateDocRow(doc);
       enriched++;
     } catch(e) {
       failed++;
@@ -890,6 +890,33 @@ function renderDocList(docs) {
   }).join('');
 
   onCheckChange();
+}
+
+// Patch a single doc row in-place after enrichment — preserves checkbox state.
+function updateDocRow(doc) {
+  const row = document.getElementById('row-' + doc.id);
+  if (!row) return;
+
+  // Update amount
+  let amountEl = row.querySelector('.doc-amount');
+  const _amt = parseFloat(doc.amount);
+  if (doc.amount && !isNaN(_amt) && _amt > 0) {
+    if (!amountEl) {
+      amountEl = document.createElement('div');
+      amountEl.className = 'doc-amount';
+      row.appendChild(amountEl);
+    }
+    amountEl.textContent = '$' + _amt.toLocaleString('en-US', { minimumFractionDigits: 2 });
+  }
+
+  // Update client in meta line
+  if (doc.client) {
+    const metaEl = row.querySelector('.doc-meta');
+    if (metaEl && !metaEl.textContent.includes(doc.client)) {
+      const date = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      metaEl.innerHTML = `Modified ${date} &middot; ${escHtml(doc.client)}`;
+    }
+  }
 }
 
 function showPlaceholder(html) {
