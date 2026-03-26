@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FLIPS – Fire Sprinkler Inspection</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAIRklEQVR4nJWXa4xV1RmGn2+tfW5zZriDQEBKQbReU0NrU4uTyI9G29gf9VBrTJqmVZqm2KRpqybVgTa2sZVSmmpDVUzUtAraeiEktakjokSBwiAIioLAMDPM7ewzM+e6z97r6459GGaGi7qSlZN91uV913d5v7XgMzQFaafV09ZWT3M5q6pGVY3mNlltbfXaafXawHyWPT8tsNFczmLkwtsLYARtazObwH6aveVCg21gVre1Ib/5tcMpW2HmPJLXJ2Ys+oo3Z9YSmdQ8XQUjpUrB9fYfrXYf29XPyPblcBwj6P0PGNasQcB9ZgJKzop5PsIpO+D6WfOvXZm54Us3T/7addPTV10Gs2eiTRlUwFQDZCBPcPBD8tvfKdW27/xP/oMdf10Kr2IEdbdaYXP0aSyCgmhbm0GgHS47uuDazf2/WK1hR4cWSwUtBMXQLxXq+UJ/mB/sjbvfF/pFv+7XRsLhyrDW3z+k/uqH9Oii67a0w5UIaC5n9RMsThsYkXjOHqbc3XPbnSPh3g71gxGXHx4M8z0nnd/Tqf6pk+r3do3vp7rU7+nUfE+nyxcGQr9eiuoHDmjP7SvLHUxaBaCqMpHE6IeCiIiuUk39eNqljy9s+9kdwQ+/Q+hcJCNFi7FgznMA50Ak7jESRBHanI08z7PJDf/g2Jq1T64sfHjXNpFQVUVARwk0WMmLMOmKRUtfWPznB28cvvmG0PUOWgHBXCD0owhpzqJhCEH9DIkGMQU1F02PWl5+zfto1a/+feTE3hU3QRFQAY13zuWMgFty8TXrL9nw8I1DN7cG2t3viTHnB1cFVWT6VOpv7SY6cBhJp+L/TzdjEGNEu/u94VuWB0see/jr8+df/YiAI5czMJrVOQBSc+fODq++1OmAb/EukMaqIIJkM1R+9wilO+9Bspnzz/csOuDb8NorXXr+vDkAXL5JxxBoWDOsB1KuGuwna4hk0pTv+z2VtrXYKy/FLl6IVmrnX2ANUq4YG0ZlAA5ulrMIKMg4H56rRREyuYXK+o3UNj6HTJuKmT8XEhZcBJ53PsogEKmOwxxPQB2jITmxNSJbmrOE73RQXb8RmTENwhBJNEATCbQwND4OJpxQJ4yNI2CR+jkXq0LCA8+CQPXRpyAI4rQ0BtfZA6kU4c4Oym1/RJoy4Cbs08g3N4FBg8Dm+Mc5ZSK+KqSSuCMn0GKF6MNjhNt3Is1ZqIdIU4Zw1z7cxyeov/YW4Zu70EoV7DmyRxWL1sdiTph17kWSShEdPUH10acI/7cf9YeJA1XBWrRcofzzB3Efn8R191Jv3xETjM6Wf1U5VwzEaahGEhjDWVZwDkmnCF7YSvD8VqQ5g4iLzxI5ZFKWcPtOwrf3IC3N1Db8HS1XGJdNSqwLVryxmDGBy3OxLHomEZtuDANV8Dyig4fRvgGi9z6ARJLE9IimxVHs21Ahk4oBsk2Eu/dR39qOtDSPsYKixoL1EgBsyo3RgdUNc9iEOaPSjWYtWhgi2PJfSKdRF6dT0GtIzXFMWhoiCSDSUXXEWmrPvoQGAaNKqsSXFWsS53BBA8vIWVouzVnCvQeIDh3BTkqRaIlinBDqg4bkDEfTJRHqiK3hHNKUIdp7EPf+ESSTPpOWMqbcjiPQsEAY1lWcO6MDqmi9jrvoONQDopohOduRWeDQSJCU4gIhMd1h0sBpa1uLjhQJ9x6AZDJOSQGcEoXjIzMmcHCFAETVWmm0ojVOUntyE+GeA3GhiZRwSMgsjEhMdtgsqAMxYFJKYoaecZ8q7mjnmHorSBAgteoIACtWjJHivj4BcIXhXhkpIp6nOIV0CnfkOMGLr8biovHVTgxkljgSSYfR2Aqp2Q5vikPDhhdF0FJp1PzieSojJaLCcN9YzHExUO/tPRx19ymed2bh7FlQq40Gkm2KC3nT1JDj9Ra6oiyeOhIzdHwZUY21QCR2gefhuvu03tN7+CwXbN62TTHCSKVrd/HdgyLWGAWIIrwrlkAyEWu4BW+yI1IhIwFvVubwXnU6zekamgKbVTgtIyKYJZ+P40gVscYU9x+SYvXkbozEmKcJ5MAJQjfsLry1sytZrQme57RUwfvyNdhFC9ByDdskmGZIOMe+2iwOBVN5eeRzHI2mkMBhWsBmgFqIzJyKd90X4xKd8FyyGkh++86e/bALhFzjqm4a2aFu2TJvhVApvfH2M6ld+4XJLY5agEybQupHd6DFMpI0GBt7Z71/DW9U5nIsbOHBgaVEajBWkYyHGxoh+Y3l2MULoFSGyS0utXu/VN7c8cxKody+bJl3Wm1GY2D1tm1OncrxwpE/nVz3WCEdRkYTntPCMKnbbiH1vW8THBsgqXBcp7CrMouaWgajNLuqszgZZUkaQ9hfwi6cR/qnP0BLFdSzLhU5c3LdY0Od+SPr1Km8vm2bGxcDAGvAISvMN42c6t/yyk9Y94TxZs2INIpUKxWyD91D8vt3UNo/QjoYxhqHNYK1Bmc9bFKpHhhCs1PIbvgt5qIZaLmCvWhmJOs2mt5XXlp1k5EeZIVZc4GXEprLWQT2Zef/IfrbUzqkQT3f06l+X7cWykN66rkXtXjXt/S+5bfrnKvv1blX/VLv/uqtOnTjF7Tzuyt18N19WijmNd91XIc0qEePP617m+atRaC9tfV816VxTTSXswDvNl28rvTwX7RQ9J3f36N+T6f65SEtDPSrv+dt/efzr+sLT2/RgX89q/7O3eoXC1oo9Kvf26WFku9Kax/R/c0L1o8e7JNeRuci0cG0+/tX3Rv4XSeiURJ9XeoPDWpYzmtY8bVQHlF/eDAe6+1Sv/tENHD3fUEH0x44DX6+Z9n/AVIlgBRojGjmAAAAAElFTkSuQmCC">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0d1b2a;--navy2:#162235;--navy3:#1e304a;
+  --blue:#2563eb;--blue2:#3b82f6;
+  --fire:#f97316;--fire2:#fb923c;
+  --red:#dc2626;--green:#16a34a;--amber:#d97706;
+  --slate:#64748b;--light:#f1f5f9;--border:#e2e8f0;
+  --pass-bg:#f0fdf4;--fail-bg:#fef2f2;--na-bg:#f8fafc;
+  --pass-ring:#16a34a;--fail-ring:#dc2626;--na-ring:#94a3b8;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:var(--light);color:var(--navy);min-height:100vh;}
+#top-bar{background:var(--navy);color:white;padding:11px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25);}
+#top-bar h1{font-size:.92rem;font-weight:700;flex:1;letter-spacing:.02em;}
+.nav-hamburger{position:relative;}
+.hamburger-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:1rem;line-height:1;}
+.nav-menu{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--navy2);border:1px solid rgba(255,255,255,.15);border-radius:8px;min-width:230px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:300;overflow:hidden;}
+.nav-menu.open{display:block;}
+.nav-menu a{display:block;padding:10px 16px;color:rgba(255,255,255,.85);text-decoration:none;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);}
+.nav-menu a:hover{background:rgba(255,255,255,.08);color:white;}
+.nav-menu a.active{color:var(--fire2);font-weight:600;}
+#app{max-width:960px;margin:0 auto;padding:16px;}
+/* STEP NAV */
+#step-nav{display:flex;margin-bottom:20px;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);border:1px solid var(--border);}
+.step-tab{flex:1;padding:9px 5px;text-align:center;cursor:pointer;font-size:.67rem;font-weight:600;color:var(--slate);border-right:1px solid var(--border);transition:all .15s;line-height:1.3;}
+.step-tab:last-child{border-right:none;}
+.step-tab.active{background:var(--navy);color:white;}
+.step-tab.done{background:var(--pass-bg);color:var(--green);}
+.step-num{display:block;font-size:.6rem;opacity:.7;margin-bottom:2px;}
+.step-check{display:none;}
+.step-tab.done .step-check{display:inline;}
+.step-tab.done .step-num{display:none;}
+/* CARDS */
+.card{background:white;border-radius:10px;border:1px solid var(--border);box-shadow:0 1px 6px rgba(0,0,0,.06);margin-bottom:14px;overflow:hidden;}
+.card-header{background:var(--navy);color:white;padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:.88rem;font-weight:700;}
+.card-header span{flex:1;}
+.card-body{padding:16px;}
+/* FIELDS */
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field-grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.field-grid.cols-1{grid-template-columns:1fr;}
+.field-group{display:flex;flex-direction:column;gap:4px;}
+.field-group.span-2{grid-column:span 2;}
+.field-group label{font-size:.72rem;font-weight:600;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;}
+.field-group input,.field-group select,.field-group textarea{border:1.5px solid var(--border);border-radius:7px;padding:9px 11px;font-size:.88rem;font-family:inherit;color:var(--navy);outline:none;width:100%;background:white;transition:border-color .15s;}
+.field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--blue);background:#eff6ff;}
+.field-group textarea{resize:vertical;min-height:56px;}
+/* INTERVAL */
+.interval-group{display:flex;gap:8px;flex-wrap:wrap;}
+.interval-btn{padding:8px 18px;border-radius:7px;border:2px solid var(--border);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;background:white;color:var(--slate);transition:all .12s;}
+.interval-btn.selected{border-color:var(--navy);background:var(--navy);color:white;}
+/* CONTACTS */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.contact-block{border:1.5px solid var(--border);border-radius:8px;padding:12px;}
+.contact-block h4{font-size:.75rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid var(--border);}
+/* SECTION */
+.sys-section{font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding-bottom:4px;border-bottom:1.5px solid #bfdbfe;}
+/* DATA ROW */
+.data-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.data-row.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.data-row.cols-1{grid-template-columns:1fr;}
+.data-field{display:flex;flex-direction:column;gap:3px;}
+.data-field label{font-size:.66rem;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;}
+.data-field input,.data-field select,.data-field textarea{border:1.5px solid var(--border);border-radius:6px;padding:7px 9px;font-size:.82rem;font-family:inherit;color:var(--navy);outline:none;width:100%;background:#fafafa;}
+.data-field input:focus,.data-field select:focus,.data-field textarea:focus{border-color:var(--blue);background:#eff6ff;}
+.data-field textarea{resize:vertical;min-height:52px;}
+/* CHECKLIST */
+.cl-section-header{background:var(--navy3);color:white;padding:8px 12px;font-size:.8rem;font-weight:700;border-radius:6px 6px 0 0;margin-bottom:0;}
+.cl-block{border:1.5px solid var(--navy3);border-radius:0 0 8px 8px;overflow:hidden;margin-bottom:14px;}
+.inspect-row{display:flex;flex-direction:column;padding:7px 10px;border-bottom:1px solid var(--border);}
+.inspect-row:last-child{border-bottom:none;}
+.inspect-row:nth-child(even){background:#f8fafc;}
+.inspect-row-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.inspect-label{font-size:.8rem;font-weight:500;color:var(--navy);padding-top:2px;flex:1;min-width:0;line-height:1.35;}
+.yna-group{display:flex;gap:3px;flex-shrink:0;}
+.yna-btn{padding:4px 8px;border-radius:5px;border:1.5px solid var(--border);font-size:.68rem;font-weight:700;cursor:pointer;transition:all .12s;font-family:inherit;background:white;min-width:34px;text-align:center;}
+.yna-btn.y  {border-color:var(--pass-ring);color:var(--pass-ring);}
+.yna-btn.n  {border-color:var(--fail-ring);color:var(--fail-ring);}
+.yna-btn.na,.yna-btn.unk{border-color:var(--na-ring);color:var(--na-ring);}
+.yna-btn.y.selected  {background:var(--pass-bg);box-shadow:0 0 0 2px var(--pass-ring);}
+.yna-btn.n.selected  {background:var(--fail-bg);box-shadow:0 0 0 2px var(--fail-ring);}
+.yna-btn.na.selected,.yna-btn.unk.selected{background:var(--na-bg);box-shadow:0 0 0 2px var(--na-ring);}
+.note-row{display:none;gap:6px;margin-top:4px;align-items:center;}
+.note-row.show{display:flex;}
+.note-badge{background:var(--amber);color:white;font-size:.63rem;font-weight:800;padding:2px 6px;border-radius:8px;white-space:nowrap;flex-shrink:0;}
+.note-input{flex:1;border:1.5px solid #fcd34d;border-radius:5px;padding:5px 8px;font-size:.77rem;font-family:inherit;color:var(--navy);background:#fffbeb;outline:none;}
+.note-input.fail{border-color:var(--fail-ring)!important;background:var(--fail-bg)!important;}
+/* OVERVIEW TABLE */
+.ov-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.ov-table th{background:var(--navy3);color:white;padding:6px 8px;font-size:.67rem;font-weight:700;text-transform:uppercase;text-align:left;}
+.ov-table td{padding:6px 7px;border-bottom:1px solid var(--border);vertical-align:top;}
+.ov-table tr:nth-child(even) td{background:#f8fafc;}
+.ov-table input,.ov-table select{border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:.78rem;font-family:inherit;width:100%;background:white;outline:none;}
+.ov-table input:focus,.ov-table select:focus{border-color:var(--blue);background:#eff6ff;}
+.ov-table .q-label{font-size:.78rem;font-weight:600;min-width:200px;}
+/* DRAIN TABLE */
+.drain-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.drain-table th{background:var(--navy3);color:white;padding:6px 6px;font-size:.66rem;font-weight:700;text-transform:uppercase;text-align:center;}
+.drain-table th.left{text-align:left;}
+.drain-table td{padding:5px 5px;border:1px solid var(--border);text-align:center;}
+.drain-table td.num{font-weight:700;color:var(--slate);width:26px;}
+.drain-table input{border:none;padding:3px 5px;font-size:.78rem;font-family:inherit;width:100%;background:transparent;outline:none;text-align:center;}
+.drain-table input:focus{background:#eff6ff;}
+/* DYN TABLE */
+.dyn-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:4px;}
+.dyn-table th{background:var(--navy3);color:white;padding:6px 7px;font-size:.66rem;font-weight:700;text-transform:uppercase;text-align:left;}
+.dyn-table td{padding:5px 5px;border-bottom:1px solid var(--border);vertical-align:top;}
+.dyn-table input,.dyn-table select{border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:.78rem;font-family:inherit;width:100%;background:white;outline:none;}
+.dyn-table input:focus,.dyn-table select:focus{border-color:var(--blue);background:#eff6ff;}
+.del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:.95rem;padding:2px 4px;}
+.add-row-btn{background:#eff6ff;color:var(--blue);border:1.5px dashed var(--blue2);border-radius:6px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;width:100%;}
+/* SIG */
+.sig-canvas{border:2px solid var(--border);border-radius:8px;background:white;cursor:crosshair;display:block;width:100%;max-width:480px;height:90px;touch-action:none;}
+.sig-clear{background:none;border:1px solid var(--border);border-radius:5px;padding:4px 12px;font-size:.75rem;cursor:pointer;color:var(--slate);font-family:inherit;margin-top:6px;}
+.sig-pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+/* BUTTONS */
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.btn-primary{background:var(--navy);color:white;border:none;padding:12px 24px;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;transition:background .15s;}
+.btn-primary:hover{background:var(--navy3);}
+.btn-primary.fire{background:var(--fire);}
+.btn-primary.fire:hover{background:var(--fire2);}
+.btn-primary.green{background:var(--green);}
+.btn-secondary{background:white;color:var(--navy);border:1.5px solid var(--border);padding:11px 20px;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue);}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:white;padding:10px 20px;border-radius:8px;font-size:.85rem;box-shadow:0 4px 20px rgba(0,0,0,.35);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+@media(max-width:640px){
+  .field-grid{grid-template-columns:1fr;}
+  .field-grid.cols-3{grid-template-columns:1fr 1fr;}
+  .field-group.span-2{grid-column:span 1;}
+  .contact-grid{grid-template-columns:1fr;}
+  .sig-pair{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="inspection-hood.html">🍳 Kitchen Hood Inspection</a>
+      <a href="inspection-fire-alarm.html">🔔 Fire Alarm Inspection</a>
+      <a href="inspection-sprinkler.html" class="active">💧 Fire Sprinkler Inspection</a>
+    </div>
+  </div>
+  <h1>💧 Fire Sprinkler Inspection Report</h1>
+  <button class="btn-secondary" style="font-size:.72rem;padding:4px 10px;" onclick="autoSave()">💾 Save</button>
+</div>
+
+<div id="app">
+
+  <div id="step-nav">
+    <div class="step-tab active" data-step="1" onclick="goStep(1)"><span class="step-num">1</span><span class="step-check">✓</span>Job Info</div>
+    <div class="step-tab" data-step="2" onclick="goStep(2)"><span class="step-num">2</span><span class="step-check">✓</span>System Overview</div>
+    <div class="step-tab" data-step="3" onclick="goStep(3)"><span class="step-num">3</span><span class="step-check">✓</span>Inspection Checklists</div>
+    <div class="step-tab" data-step="4" onclick="goStep(4)"><span class="step-num">4</span><span class="step-check">✓</span>Drain Tests &amp; Findings</div>
+    <div class="step-tab" data-step="5" onclick="goStep(5)"><span class="step-num">5</span><span class="step-check">✓</span>Sign &amp; Export</div>
+  </div>
+
+  <!-- ══ STEP 1 ══ -->
+  <div id="step-1">
+    <div class="card">
+      <div class="card-header"><span>📋 Job Header</span></div>
+      <div class="card-body">
+        <div class="field-grid cols-3">
+          <div class="field-group span-2"><label>Building / Property Name</label><input type="text" id="building-name"></div>
+          <div class="field-group"><label>Job Number</label><input type="text" id="job-number"></div>
+          <div class="field-group span-2"><label>Street, City, State, ZIP</label><input type="text" id="site-address"></div>
+          <div class="field-group"><label>PO Number (if any)</label><input type="text" id="po-number"></div>
+          <div class="field-group"><label>Date Performed</label><input type="date" id="insp-date"></div>
+          <div class="field-group"><label>Inspector(s) Initials</label><input type="text" id="inspector-initials"></div>
+          <div class="field-group"><label>Jurisdiction</label><input type="text" id="jurisdiction"></div>
+        </div>
+        <div class="sys-section">Inspection Interval</div>
+        <div class="interval-group" id="interval-group">
+          <button class="interval-btn" onclick="setIval('Annual')">Annual</button>
+          <button class="interval-btn" onclick="setIval('Semi-Annual')">Semi-Annual</button>
+          <button class="interval-btn" onclick="setIval('Quarterly')">Quarterly</button>
+          <button class="interval-btn" onclick="setIval('3-Year')">3-Year</button>
+          <button class="interval-btn" onclick="setIval('5-Year')">5-Year</button>
+        </div>
+        <input type="hidden" id="insp-interval">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span>📞 Site Contact Information</span></div>
+      <div class="card-body">
+        <div class="contact-grid">
+          <div class="contact-block">
+            <h4>Primary Contact</h4>
+            <div class="field-grid cols-1" style="gap:8px;">
+              <div class="field-group"><label>Name</label><input type="text" id="primary-name"></div>
+              <div class="field-group"><label>Title</label><input type="text" id="primary-title"></div>
+              <div class="field-group"><label>Phone</label><input type="tel" id="primary-phone"></div>
+              <div class="field-group"><label>Email</label><input type="email" id="primary-email"></div>
+            </div>
+          </div>
+          <div class="contact-block">
+            <h4>Secondary Contact</h4>
+            <div class="field-grid cols-1" style="gap:8px;">
+              <div class="field-group"><label>Name</label><input type="text" id="secondary-name"></div>
+              <div class="field-group"><label>Title</label><input type="text" id="secondary-title"></div>
+              <div class="field-group"><label>Phone</label><input type="tel" id="secondary-phone"></div>
+              <div class="field-group"><label>Email</label><input type="email" id="secondary-email"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn-primary" onclick="goStep(2)">Next: System Overview →</button></div>
+  </div>
+
+  <!-- ══ STEP 2 ══ -->
+  <div id="step-2" style="display:none;">
+
+    <div class="card">
+      <div class="card-header"><span>🖥️ Main Fire Alarm Panel Information</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <div class="sys-section">Panel</div>
+            <div class="data-row cols-1"><div class="data-field"><label>Make</label><input type="text" id="panel-make"></div></div>
+            <div class="data-row cols-1"><div class="data-field"><label>Model</label><input type="text" id="panel-model"></div></div>
+            <div class="data-row cols-1"><div class="data-field"><label>Location</label><input type="text" id="panel-location"></div></div>
+          </div>
+          <div>
+            <div class="sys-section">Monitoring</div>
+            <div class="data-row cols-1"><div class="data-field"><label>Company</label><input type="text" id="monitor-company"></div></div>
+            <div class="data-row cols-1"><div class="data-field"><label>Phone</label><input type="tel" id="monitor-phone"></div></div>
+            <div class="data-row cols-1"><div class="data-field"><label>Account #</label><input type="text" id="monitor-account"></div></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;">
+          <div class="data-field"><label>Panel Testing / Disable Instructions</label><textarea id="panel-instructions" rows="4" placeholder="Steps to disable/re-enable panel…"></textarea></div>
+          <div class="data-field"><label>Site Specific Instructions</label><textarea id="site-instructions" rows="4" placeholder="Site access, special procedures…"></textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>🗂️ Existing Sprinkler System(s) Overview</span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="ov-table">
+          <thead>
+            <tr>
+              <th style="min-width:240px;">Question</th>
+              <th style="width:70px;">Y / N / NA</th>
+              <th style="width:50px;">#</th>
+              <th style="width:110px;">Inspecting Now?</th>
+              <th>Locations / Notes</th>
+            </tr>
+          </thead>
+          <tbody id="overview-tbody"></tbody>
+        </table>
+        <div class="data-row cols-1" style="margin-top:12px;">
+          <div class="data-field"><label>Onsite Sprinkler Head Types / Models (if present)</label><input type="text" id="head-types" placeholder="e.g. Tyco, Viking, Central — pendent, upright, sidewall…"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>📅 3 &amp; 5 Year — Previous Inspection Year (if applicable)</span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="ov-table">
+          <thead>
+            <tr>
+              <th style="min-width:200px;">Service</th>
+              <th style="width:90px;">Applicable?</th>
+              <th style="width:110px;">Last Year Performed</th>
+              <th style="width:100px;">Next Year Due</th>
+              <th style="width:110px;">Inspecting Now?</th>
+              <th>Location / Notes</th>
+            </tr>
+          </thead>
+          <tbody id="multiyear-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goStep(1)">← Back</button>
+      <button class="btn-primary" onclick="goStep(3)">Next: Inspection Checklists →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 3 ══ -->
+  <div id="step-3" style="display:none;">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <!-- PRE INSPECTION -->
+      <div>
+        <div class="cl-section-header">Pre-Inspection <span style="font-size:.68rem;font-weight:400;opacity:.8;">(Y / N / UNK)</span></div>
+        <div class="cl-block" id="pre-block"></div>
+      </div>
+      <!-- FIRE DEPT CONNECTIONS -->
+      <div>
+        <div class="cl-section-header">Fire Dept Connections <span style="font-size:.68rem;font-weight:400;opacity:.8;">(Y / N / NA)</span></div>
+        <div class="cl-block" id="fdc-block"></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+      <!-- VALVES / GAGES -->
+      <div>
+        <div class="cl-section-header">Valves / Gages <span style="font-size:.68rem;font-weight:400;opacity:.8;">(Y / N / NA)</span></div>
+        <div class="cl-block" id="valves-block"></div>
+      </div>
+      <!-- SPRINKLER HEADS -->
+      <div>
+        <div class="cl-section-header">Sprinkler Heads / Components <span style="font-size:.68rem;font-weight:400;opacity:.8;">(Y / N / NA)</span></div>
+        <div class="cl-block" id="heads-block"></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+      <!-- VISIBLE PIPE -->
+      <div>
+        <div class="cl-section-header">Visible Pipe <span style="font-size:.68rem;font-weight:400;opacity:.8;">(Y / N / NA)</span></div>
+        <div class="cl-block" id="pipe-block"></div>
+      </div>
+      <!-- MAIN DRAIN OBSERVATIONS -->
+      <div>
+        <div class="cl-section-header">Main Drain Observations <span style="font-size:.68rem;font-weight:400;opacity:.8;">(Y / N / NA)</span></div>
+        <div class="cl-block" id="drain-obs-block"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:.72rem;color:var(--slate);">
+      Y = Passed Inspection &nbsp;|&nbsp; N = Failed Inspection &nbsp;|&nbsp; NA / UNK = Not Applicable / Unknown
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
+      <button class="btn-primary" onclick="goStep(4)">Next: Drain Tests &amp; Findings →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 4 ══ -->
+  <div id="step-4" style="display:none;">
+
+    <div class="card">
+      <div class="card-header"><span>📊 Main Drain Test Results</span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="drain-table" id="drain-table">
+          <thead>
+            <tr>
+              <th class="left" style="width:26px;">#</th>
+              <th class="left">System Location</th>
+              <th style="width:80px;">Static (PSI)</th>
+              <th style="width:80px;">Resid (PSI)</th>
+              <th style="width:80px;">Post (PSI)</th>
+              <th class="left" style="width:26px;">#</th>
+              <th class="left">System Location</th>
+              <th style="width:80px;">Static (PSI)</th>
+              <th style="width:80px;">Resid (PSI)</th>
+              <th style="width:80px;">Post (PSI)</th>
+            </tr>
+          </thead>
+          <tbody id="drain-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>⚠️ Wet Sprinkler Deficiency List</span></div>
+      <div class="card-body">
+        <table class="dyn-table">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:120px;">Severity</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="defic-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addDeficRow()">＋ Add Deficiency</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>📝 General Notes &amp; Site Observations</span></div>
+      <div class="card-body">
+        <table class="dyn-table">
+          <thead><tr><th style="width:32px;">#</th><th>Note / Observation</th><th style="width:120px;">Severity</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="notes-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addNoteRow()">＋ Add Note</button>
+        <div style="margin-top:12px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:10px 14px;font-size:.75rem;color:var(--slate);line-height:1.5;">
+          Listed above are any General Notes to report. This section also contains any issues that were found during inspections and either require a substantial investment to correct (permits, engineering, etc.) than the above-listed deficiencies, or may have been previously approved in its as-is condition by the Authority Having Jurisdiction. Please contact our office if you would like information, consultation, or services for any items contained therein.
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goStep(3)">← Back</button>
+      <button class="btn-primary" onclick="goStep(5)">Next: Sign &amp; Export →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 5 ══ -->
+  <div id="step-5" style="display:none;">
+    <div class="card">
+      <div class="card-header"><span>✍️ Signatures</span></div>
+      <div class="card-body">
+        <div class="sig-pair">
+          <div>
+            <div class="sys-section">Owner / Technician Signature</div>
+            <canvas class="sig-canvas" id="sig-owner" width="480" height="90"></canvas>
+            <button class="sig-clear" onclick="clearSig('owner')">Clear</button>
+            <div class="field-group" style="margin-top:10px;"><label>Date</label><input type="date" id="sig-owner-date"></div>
+          </div>
+          <div>
+            <div class="sys-section">Client Signature</div>
+            <canvas class="sig-canvas" id="sig-client" width="480" height="90"></canvas>
+            <button class="sig-clear" onclick="clearSig('client')">Clear</button>
+            <div class="field-group" style="margin-top:10px;"><label>Date</label><input type="date" id="sig-client-date"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span>📄 Export</span></div>
+      <div class="card-body">
+        <div class="btn-row">
+          <button class="btn-primary fire" onclick="exportPDF()">📄 Export PDF Report</button>
+          <button class="btn-primary green" onclick="autoSave()">💾 Save Draft</button>
+          <button class="btn-secondary" onclick="newReport()">🔄 New Report</button>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="goStep(4)">← Back</button></div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ─── DATA DEFINITIONS ───
+const OVERVIEW_QUESTIONS = [
+  'Wet system(s) present? If yes, riser count & location(s)',
+  'Dry system(s) present? If yes, count & location(s)',
+  'Fire pump(s) present? If yes, count & location(s)',
+  'Test header(s) present? If yes, count & location(s)',
+  'FDC present? If yes, count & location(s)',
+  'PRV valve(s) present? If yes, count & location(s)',
+  'Antifreeze system(s) present? If yes, count & location(s)',
+  'Standpipe(s) present? If yes, type & location(s)',
+  'Deluge valve(s) present? If yes, count & location(s)',
+];
+
+const MULTIYEAR_SERVICES = [
+  'Dry Valve (3-Year Full Trip)',
+  'Roof Top Flow (5-Year)',
+  'FDC Hydrostatic (5-Year)',
+  'Internal Piping (5-Year)',
+  'Standpipe (5-Year)',
+];
+
+const PRE_CHECKS = [
+  'Is the building occupied?',
+  'Has the occupancy classification and hazard or contents remained the same since last inspection?',
+  'All fire protection systems in service?',
+  'Has the system remained in service without modification since the last inspection?',
+  'Was the system free of actuation of devices or alarms since the last inspection?',
+];
+const FDC_CHECKS = [
+  'FDC connections visible and accessible?',
+  'Couplings/swivels in good condition?',
+  'FDC plugs/caps in place and undamaged?',
+  'FDC gaskets in place and undamaged?',
+  'FDC identification sign(s) in place?',
+  'Check valves not leaking?',
+  'Automatic drain valve in place and operating?',
+];
+const VALVE_CHECKS = [
+  'Control valves supervised/chained?',
+  'Backflow valves in correct position?',
+  'Backflow valves sealed, locked or supervised and accessible?',
+  'Backflow valves free of leaks?',
+  'Backflow valves devices passed test?',
+  'Gauges good condition/within age?',
+  'Gauges showing normal pressure?',
+  'PRV valves open position/not leaking?',
+  'PRV valves handles in good condition?',
+  'Hydraulic nameplate, if provided, securely attached to riser and legible?',
+  'Devices, risers, rooms have signage?',
+];
+const HEAD_CHECKS = [
+  'Spare head box present?',
+  'Head wrench with spare sprinklers?',
+  'Proper number of sprinklers in head box?',
+  'Free of corrosion and damage?',
+  'Free of obstruction to spray pattern?',
+  'Free of foreign materials including paint?',
+  'Sprinklers in service dated 1920 or later?',
+  'Fast response sprinklers 20+ years old replaced or successfully sample tested within last 15 years?',
+  'Standard response sprinklers 50+ years old replaced or successfully sample tested within last 15 years?',
+  'Dry-pendant replaced/tested within 10 years?',
+  'All escutcheons in place/not damaged?',
+];
+const PIPE_CHECKS = [
+  'Good condition/no external corrosion?',
+  'Free of mechanical damage/not leaking?',
+  'Properly aligned/no external loads?',
+  'Visible hangers/braces not damaged?',
+  'Adequate heat in areas with wet piping?',
+];
+const DRAIN_OBS_CHECKS = [
+  'Was flow observed?',
+  'Are results comparable to previous test?',
+  'Flow switch device alarm panel?',
+  'No obstruction observed when flowing?',
+];
+
+const SEV_OPTS = ['','Critical','High','Moderate','Low','Advisory'];
+let currentStep = 1;
+let noteCounter = 0;
+let deficCount = 0, noteCount = 0;
+let sigDraw = {};
+
+// ─── NAV ───
+function toggleNav(){ document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => { if(!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open'); });
+
+function goStep(n) {
+  document.getElementById('step-'+currentStep).style.display='none';
+  document.querySelectorAll('.step-tab').forEach(t=>{
+    const s=+t.dataset.step; t.classList.remove('active','done');
+    if(s<n) t.classList.add('done'); else if(s===n) t.classList.add('active');
+  });
+  currentStep=n;
+  document.getElementById('step-'+n).style.display='';
+  window.scrollTo(0,0);
+}
+
+function setIval(v){
+  document.getElementById('insp-interval').value=v;
+  document.querySelectorAll('#interval-group .interval-btn').forEach(b=>b.classList.toggle('selected',b.textContent===v));
+}
+
+// ─── CHECKLIST BUILDERS ───
+function buildCL(containerId, items, prefix, useUnk) {
+  const c = document.getElementById(containerId);
+  items.forEach((label, i) => {
+    const nid = `${prefix}-note-${i}`;
+    const btns = useUnk
+      ? `<button class="yna-btn y"   onclick="setYNA(this,'${nid}','Y')">Y</button>
+         <button class="yna-btn n"   onclick="setYNA(this,'${nid}','N')">N</button>
+         <button class="yna-btn unk" onclick="setYNA(this,'${nid}','UNK')">UNK</button>`
+      : `<button class="yna-btn y"  onclick="setYNA(this,'${nid}','Y')">Y</button>
+         <button class="yna-btn n"  onclick="setYNA(this,'${nid}','N')">N</button>
+         <button class="yna-btn na" onclick="setYNA(this,'${nid}','NA')">NA</button>`;
+    c.insertAdjacentHTML('beforeend',`
+      <div class="inspect-row">
+        <div class="inspect-row-top">
+          <div class="inspect-label">${label}</div>
+          <div class="yna-group">${btns}</div>
+        </div>
+        <div class="note-row" id="${nid}">
+          <span class="note-badge">Note #—</span>
+          <input class="note-input" type="text" id="${nid}-text" placeholder="Describe finding…">
+        </div>
+      </div>`);
+  });
+}
+
+function setYNA(btn, noteId, val) {
+  btn.closest('.yna-group').querySelectorAll('.yna-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const row = document.getElementById(noteId);
+  if(!row) return;
+  if(val === 'N') {
+    noteCounter++;
+    row.querySelector('.note-badge').textContent = 'Note #'+noteCounter;
+    const inp = row.querySelector('input');
+    inp.classList.add('fail'); inp.placeholder = 'Describe deficiency…';
+    row.classList.add('show');
+  } else {
+    row.classList.remove('show');
+  }
+}
+
+// ─── OVERVIEW TABLE ───
+function buildOverviewTable() {
+  const tbody = document.getElementById('overview-tbody');
+  const ynaOpts = ['','Y','N','NA'].map(o=>`<option>${o}</option>`).join('');
+  const inspOpts = ['','Yes','No'].map(o=>`<option>${o}</option>`).join('');
+  OVERVIEW_QUESTIONS.forEach((q, i) => {
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td class="q-label">${q}</td>
+        <td><select id="ov-yna-${i}">${ynaOpts}</select></td>
+        <td><input type="text" id="ov-num-${i}" placeholder="#"></td>
+        <td><select id="ov-insp-${i}">${inspOpts}</select></td>
+        <td><input type="text" id="ov-notes-${i}"></td>
+      </tr>`);
+  });
+}
+
+function buildMultiyearTable() {
+  const tbody = document.getElementById('multiyear-tbody');
+  const appOpts = ['','Yes','No','N/A'].map(o=>`<option>${o}</option>`).join('');
+  const inspOpts = ['','Yes','No'].map(o=>`<option>${o}</option>`).join('');
+  MULTIYEAR_SERVICES.forEach((svc, i) => {
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td class="q-label">${svc}</td>
+        <td><select id="my-app-${i}">${appOpts}</select></td>
+        <td><input type="text" id="my-last-${i}" placeholder="Year"></td>
+        <td><input type="text" id="my-next-${i}" placeholder="Year"></td>
+        <td><select id="my-insp-${i}">${inspOpts}</select></td>
+        <td><input type="text" id="my-notes-${i}"></td>
+      </tr>`);
+  });
+}
+
+// ─── DRAIN TABLE ───
+function buildDrainTable() {
+  const tbody = document.getElementById('drain-tbody');
+  for(let r=0; r<10; r++) {
+    const left = r+1, right = r+11;
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td class="num">${left}</td>
+        <td><input type="text" id="drain-loc-${left}" style="min-width:80px;"></td>
+        <td><input type="number" id="drain-static-${left}" placeholder="—"></td>
+        <td><input type="number" id="drain-resid-${left}" placeholder="—"></td>
+        <td><input type="number" id="drain-post-${left}" placeholder="—"></td>
+        <td class="num">${right}</td>
+        <td><input type="text" id="drain-loc-${right}" style="min-width:80px;"></td>
+        <td><input type="number" id="drain-static-${right}" placeholder="—"></td>
+        <td><input type="number" id="drain-resid-${right}" placeholder="—"></td>
+        <td><input type="number" id="drain-post-${right}" placeholder="—"></td>
+      </tr>`);
+  }
+}
+
+// ─── DEFIC / NOTES ───
+function addDeficRow() {
+  deficCount++;
+  const n = deficCount;
+  const sevOpts = SEV_OPTS.map(s=>`<option>${s||'— Select —'}</option>`).join('');
+  document.getElementById('defic-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="defic-row-${n}">
+      <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
+      <td><input type="text" id="defic-desc-${n}" placeholder="Describe deficiency and proposed solution…"></td>
+      <td><select id="defic-sev-${n}">${sevOpts}</select></td>
+      <td><button class="del-btn" onclick="document.getElementById('defic-row-${n}').remove()">✕</button></td>
+    </tr>`);
+}
+
+function addNoteRow() {
+  noteCount++;
+  const n = noteCount;
+  const sevOpts = SEV_OPTS.map(s=>`<option>${s||'— Select —'}</option>`).join('');
+  document.getElementById('notes-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="note-row-${n}">
+      <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
+      <td><input type="text" id="note-desc-${n}" placeholder="Note or observation…"></td>
+      <td><select id="note-sev-${n}">${sevOpts}</select></td>
+      <td><button class="del-btn" onclick="document.getElementById('note-row-${n}').remove()">✕</button></td>
+    </tr>`);
+}
+
+// ─── SIGNATURES ───
+function initSig(canvasId, key) {
+  const canvas = document.getElementById(canvasId); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  sigDraw[key] = {ctx, drawing:false};
+  function pos(e){ const r=canvas.getBoundingClientRect(); const s=e.touches?e.touches[0]:e; return{x:(s.clientX-r.left)*(canvas.width/r.width),y:(s.clientY-r.top)*(canvas.height/r.height)}; }
+  canvas.addEventListener('mousedown',  e=>{sigDraw[key].drawing=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
+  canvas.addEventListener('mousemove',  e=>{if(!sigDraw[key].drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#0d1b2a';ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();});
+  canvas.addEventListener('mouseup',    ()=>sigDraw[key].drawing=false);
+  canvas.addEventListener('mouseleave', ()=>sigDraw[key].drawing=false);
+  canvas.addEventListener('touchstart', e=>{e.preventDefault();sigDraw[key].drawing=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);},{passive:false});
+  canvas.addEventListener('touchmove',  e=>{e.preventDefault();if(!sigDraw[key].drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#0d1b2a';ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();},{passive:false});
+  canvas.addEventListener('touchend',   ()=>sigDraw[key].drawing=false);
+}
+function clearSig(key){ const c=document.getElementById(key==='owner'?'sig-owner':'sig-client'); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+
+// ─── HELPERS ───
+function v(id){ const e=document.getElementById(id); return e?e.value:''; }
+function showToast(msg,dur=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
+function newReport(){ if(!confirm('Start a new report? Unsaved data will be lost.')) return; localStorage.removeItem('sp-inspection-draft'); location.reload(); }
+
+function autoSave(){
+  try{ localStorage.setItem('sp-inspection-draft','saved'); showToast('Saved ✓'); }catch(e){ showToast('Save failed'); }
+}
+
+// ─── PDF EXPORT ───
+function exportPDF() {
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'letter'});
+  const PW=612, ML=40, MR=40, MT=40;
+  let y = MT;
+
+  function newPage(){ doc.addPage(); y=MT; }
+  function checkY(need=20){ if(y+need>752) newPage(); }
+
+  function hdr(title, bg=[13,27,42]) {
+    doc.setFillColor(...bg); doc.rect(ML,y,PW-ML-MR,20,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,255,255);
+    doc.text(title, ML+6, y+14); y+=26; doc.setTextColor(13,27,42);
+  }
+
+  function fld(label, val, x, w) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(100,116,139);
+    doc.text(label.toUpperCase(), x, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(13,27,42);
+    doc.text((val||'—').substring(0,45), x, y+9);
+  }
+  function row2(l1,v1,l2,v2){ checkY(26); const w=(PW-ML-MR-10)/2; fld(l1,v1,ML,w); fld(l2,v2,ML+w+10,w); y+=24; }
+  function row3(l1,v1,l2,v2,l3,v3){ checkY(26); const w=(PW-ML-MR-20)/3; fld(l1,v1,ML,w); fld(l2,v2,ML+w+10,w); fld(l3,v3,ML+w*2+20,w); y+=24; }
+
+  // Cover
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(249,115,22);
+  doc.text('FIRE · LIFE · SAFETY', ML, y); y+=10;
+  doc.setFillColor(249,115,22); doc.rect(ML,y,PW-ML-MR,3,'F'); y+=12;
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(13,27,42);
+  doc.text('FIRE SPRINKLER INSPECTION REPORT', ML, y); y+=22;
+
+  hdr('BUILDING INFORMATION');
+  row2('Building / Property Name',v('building-name'),'Jurisdiction',v('jurisdiction'));
+  row2('Address',v('site-address'),'','');
+  row3('Job #',v('job-number'),'PO #',v('po-number'),'Interval',v('insp-interval'));
+  row2('Date Performed',v('insp-date'),'Inspector Initials',v('inspector-initials'));
+
+  hdr('SITE CONTACTS');
+  row3('Primary: Name',v('primary-name'),'Primary: Phone',v('primary-phone'),'Primary: Email',v('primary-email'));
+  row3('Secondary: Name',v('secondary-name'),'Secondary: Phone',v('secondary-phone'),'Secondary: Email',v('secondary-email'));
+
+  // Page 2 — Panel + System Overview
+  newPage();
+  hdr('FIRE ALARM PANEL & MONITORING');
+  row3('Panel Make',v('panel-make'),'Panel Model',v('panel-model'),'Panel Location',v('panel-location'));
+  row3('Monitoring Company',v('monitor-company'),'Monitor Phone',v('monitor-phone'),'Account #',v('monitor-account'));
+
+  if(v('panel-instructions')) {
+    checkY(30); hdr('PANEL TESTING / DISABLE INSTRUCTIONS',[30,48,74]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(13,27,42);
+    const ln=doc.splitTextToSize(v('panel-instructions'),PW-ML-MR);
+    doc.text(ln,ML,y); y+=ln.length*11+8;
+  }
+  if(v('site-instructions')) {
+    checkY(30); hdr('SITE SPECIFIC INSTRUCTIONS',[30,48,74]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(13,27,42);
+    const ln=doc.splitTextToSize(v('site-instructions'),PW-ML-MR);
+    doc.text(ln,ML,y); y+=ln.length*11+8;
+  }
+
+  checkY(40); hdr('EXISTING SPRINKLER SYSTEMS OVERVIEW');
+  const ovCols=[220,50,40,80,PW-ML-MR-390];
+  doc.setFillColor(30,48,74); doc.rect(ML,y,PW-ML-MR,14,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+  ['Question','Y/N/NA','#','Inspecting?','Locations/Notes'].forEach((h,i)=>{ let x=ML; for(let j=0;j<i;j++) x+=ovCols[j]; doc.text(h,x+2,y+10); }); y+=16;
+  OVERVIEW_QUESTIONS.forEach((q,i)=>{
+    checkY(13);
+    const vals=[q,v(`ov-yna-${i}`),v(`ov-num-${i}`),v(`ov-insp-${i}`),v(`ov-notes-${i}`)];
+    if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(ML,y-1,PW-ML-MR,13,'F'); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(13,27,42);
+    let x=ML; vals.forEach((val,ci)=>{ doc.text(String(val||'').substring(0,ci===4?40:ci===0?36:10),x+2,y+9); x+=ovCols[ci]; }); y+=13;
+  });
+  y+=6;
+
+  checkY(50); hdr('3 & 5 YEAR SERVICES');
+  const myCols=[160,70,90,80,80,PW-ML-MR-480];
+  doc.setFillColor(30,48,74); doc.rect(ML,y,PW-ML-MR,14,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+  ['Service','Applicable','Last Year','Next Year','Inspecting?','Location/Notes'].forEach((h,i)=>{ let x=ML; for(let j=0;j<i;j++) x+=myCols[j]; doc.text(h,x+2,y+10); }); y+=16;
+  MULTIYEAR_SERVICES.forEach((svc,i)=>{
+    checkY(13);
+    const vals=[svc,v(`my-app-${i}`),v(`my-last-${i}`),v(`my-next-${i}`),v(`my-insp-${i}`),v(`my-notes-${i}`)];
+    if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(ML,y-1,PW-ML-MR,13,'F'); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(13,27,42);
+    let x=ML; vals.forEach((val,ci)=>{ doc.text(String(val||'').substring(0,20),x+2,y+9); x+=myCols[ci]; }); y+=13;
+  });
+  y+=4;
+  if(v('head-types')){ checkY(20); doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(100,116,139); doc.text('ONSITE SPRINKLER HEAD TYPES/MODELS:',ML,y); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(13,27,42); doc.text(v('head-types'),ML+185,y); y+=16; }
+
+  // Page 3 — Checklists
+  function renderCL(title, prefix, items) {
+    checkY(30); hdr(title.toUpperCase(),[30,48,74]);
+    items.forEach((label,i)=>{
+      checkY(13);
+      const sel=document.querySelector(`#${prefix}-note-${i}`)?.previousElementSibling?.querySelector('.yna-btn.selected');
+      const val=sel?sel.textContent.trim():'';
+      const note=v(`${prefix}-note-${i}-text`);
+      const color=val==='Y'?[22,163,74]:val==='N'?[220,38,38]:[100,116,139];
+      if(items.indexOf(label)%2===0){ doc.setFillColor(248,250,252); doc.rect(ML,y-1,PW-ML-MR,13+(note?10:0),'F'); }
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...color);
+      doc.text(`[${val||' '}]`,ML,y+9);
+      doc.setFont('helvetica','normal'); doc.setTextColor(13,27,42);
+      doc.text(label.substring(0,90),ML+22,y+9);
+      y+=13;
+      if(note){ doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(220,38,38); doc.text('  → '+note,ML+22,y+7); y+=10; }
+    });
+    y+=6;
+  }
+
+  newPage();
+  renderCL('Pre-Inspection (Y / N / UNK)', 'pre', PRE_CHECKS);
+  renderCL('Fire Dept Connections', 'fdc', FDC_CHECKS);
+  renderCL('Valves / Gages', 'valves', VALVE_CHECKS);
+
+  newPage();
+  renderCL('Sprinkler Heads / Components', 'heads', HEAD_CHECKS);
+  renderCL('Visible Pipe', 'pipe', PIPE_CHECKS);
+  renderCL('Main Drain Observations', 'drain-obs', DRAIN_OBS_CHECKS);
+
+  // Page — Drain test results
+  newPage();
+  hdr('MAIN DRAIN TEST RESULTS');
+  const drCols=[26,160,68,68,68];
+  const drHdrs=['#','System Location','Static (PSI)','Resid (PSI)','Post (PSI)'];
+  const fullW=(PW-ML-MR);
+  const halfW=fullW/2-5;
+  // Draw two-column header
+  doc.setFillColor(30,48,74); doc.rect(ML,y,fullW,14,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+  let dx=ML; drHdrs.forEach((h,i)=>{ doc.text(h,dx+2,y+10); dx+=drCols[i]; });
+  dx=ML+halfW+10; drHdrs.forEach((h,i)=>{ doc.text(h,dx+2,y+10); dx+=drCols[i]; }); y+=16;
+
+  for(let r=0;r<10;r++){
+    const left=r+1, right=r+11;
+    checkY(13);
+    if(r%2===0){ doc.setFillColor(248,250,252); doc.rect(ML,y-1,fullW,13,'F'); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(13,27,42);
+    const lv=[left,v(`drain-loc-${left}`),v(`drain-static-${left}`),v(`drain-resid-${left}`),v(`drain-post-${left}`)];
+    const rv=[right,v(`drain-loc-${right}`),v(`drain-static-${right}`),v(`drain-resid-${right}`),v(`drain-post-${right}`)];
+    let lx=ML; lv.forEach((val,i)=>{ doc.text(String(val||''),lx+2,y+9); lx+=drCols[i]; });
+    let rx=ML+halfW+10; rv.forEach((val,i)=>{ doc.text(String(val||''),rx+2,y+9); rx+=drCols[i]; });
+    y+=13;
+  }
+  y+=10;
+
+  // Deficiencies
+  hdr('WET SPRINKLER DEFICIENCY LIST');
+  doc.setFillColor(30,48,74); doc.rect(ML,y,fullW,14,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+  doc.text('#',ML+3,y+10); doc.text('Deficiency & Proposed Solution',ML+22,y+10); doc.text('Severity',ML+490,y+10); y+=16;
+  let hasDefic=false;
+  for(let n=1;n<=deficCount;n++){
+    if(!document.getElementById('defic-row-'+n)) continue; hasDefic=true;
+    const desc=v(`defic-desc-${n}`),sev=v(`defic-sev-${n}`);
+    const lines=doc.splitTextToSize(desc,440); checkY(lines.length*11+8);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(13,27,42); doc.text(String(n),ML+3,y+9);
+    doc.setFont('helvetica','normal'); doc.text(lines,ML+22,y+9);
+    const sc={Critical:[220,38,38],High:[234,88,12],Moderate:[217,119,6],Low:[22,163,74],Advisory:[100,116,139]}[sev]||[13,27,42];
+    doc.setFont('helvetica','bold'); doc.setTextColor(...sc); doc.text(sev,ML+490,y+9);
+    doc.setTextColor(13,27,42); y+=lines.length*11+6;
+    doc.setDrawColor(226,232,240); doc.line(ML,y-2,PW-MR,y-2);
+  }
+  if(!hasDefic){ doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(100,116,139); doc.text('No deficiencies recorded.',ML+4,y+10); y+=20; }
+  y+=10;
+
+  // Notes
+  checkY(30); hdr('GENERAL NOTES & SITE OBSERVATIONS',[30,48,74]);
+  for(let n=1;n<=noteCount;n++){
+    if(!document.getElementById('note-row-'+n)) continue;
+    const desc=v(`note-desc-${n}`),sev=v(`note-sev-${n}`);
+    const lines=doc.splitTextToSize(desc,440); checkY(lines.length*11+8);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(13,27,42); doc.text(String(n),ML+3,y+9);
+    doc.setFont('helvetica','normal'); doc.text(lines,ML+22,y+9);
+    const sc={Critical:[220,38,38],High:[234,88,12],Moderate:[217,119,6],Low:[22,163,74],Advisory:[100,116,139]}[sev]||[13,27,42];
+    doc.setFont('helvetica','bold'); doc.setTextColor(...sc); doc.text(sev,ML+490,y+9);
+    doc.setTextColor(13,27,42); y+=lines.length*11+6;
+  }
+
+  // Disclaimer
+  checkY(30); y+=6;
+  doc.setFont('helvetica','italic'); doc.setFontSize(6.5); doc.setTextColor(100,116,139);
+  const disc='Listed above are any General Notes to report. This section also contains any issues found during inspections that either require a substantial investment to correct (permits, engineering, etc.) or may have been previously approved in their as-is condition by the Authority Having Jurisdiction. Please contact our office for information, consultation, or services.';
+  doc.text(doc.splitTextToSize(disc,fullW), ML, y); y+=26;
+
+  // Signatures
+  checkY(80); const sw=(fullW-20)/2;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(100,116,139);
+  doc.text('OWNER / TECHNICIAN SIGNATURE', ML, y);
+  try{ doc.addImage(document.getElementById('sig-owner').toDataURL('image/png'),'PNG',ML,y+4,sw,35); }catch(e){}
+  doc.setDrawColor(200,200,200); doc.line(ML,y+44,ML+sw,y+44);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(13,27,42);
+  doc.text('Date: '+(v('sig-owner-date')||'___________'), ML, y+56);
+  const cx=ML+sw+20;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(100,116,139);
+  doc.text('CLIENT SIGNATURE', cx, y);
+  try{ doc.addImage(document.getElementById('sig-client').toDataURL('image/png'),'PNG',cx,y+4,sw,35); }catch(e){}
+  doc.setDrawColor(200,200,200); doc.line(cx,y+44,cx+sw,y+44);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(13,27,42);
+  doc.text('Date: '+(v('sig-client-date')||'___________'), cx, y+56);
+
+  const fname=`Sprinkler-Inspection-${v('building-name')||'Report'}-${v('insp-date')||'draft'}.pdf`.replace(/[^a-zA-Z0-9\-_.]/g,'_');
+  doc.save(fname);
+  showToast('PDF exported ✓');
+}
+
+// ─── INIT ───
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('insp-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sig-owner-date').value = new Date().toISOString().split('T')[0];
+  buildOverviewTable();
+  buildMultiyearTable();
+  buildCL('pre-block',   PRE_CHECKS,      'pre',      true);
+  buildCL('fdc-block',   FDC_CHECKS,      'fdc',      false);
+  buildCL('valves-block',VALVE_CHECKS,    'valves',   false);
+  buildCL('heads-block', HEAD_CHECKS,     'heads',    false);
+  buildCL('pipe-block',  PIPE_CHECKS,     'pipe',     false);
+  buildCL('drain-obs-block', DRAIN_OBS_CHECKS, 'drain-obs', false);
+  buildDrainTable();
+  initSig('sig-owner','owner');
+  initSig('sig-client','client');
+  setInterval(()=>autoSave(), 60000);
+});
+</script>
+</body>
+</html>
