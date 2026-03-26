@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FLIPS – Portable Fire Extinguisher Inspection</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --navy:#0d1b2a; --navy2:#162235; --navy3:#1e304a;
+  --blue:#2563eb; --blue2:#3b82f6;
+  --fire:#f97316; --fire2:#fb923c;
+  --red:#dc2626; --green:#16a34a; --amber:#d97706;
+  --slate:#64748b; --light:#f1f5f9; --white:#ffffff; --border:#e2e8f0;
+  --pass-bg:#f0fdf4; --fail-bg:#fef2f2; --na-bg:#f8fafc;
+  --pass-ring:#16a34a; --fail-ring:#dc2626; --na-ring:#94a3b8;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{font-size:16px;}
+body{font-family:'DM Sans',sans-serif;background:var(--light);color:var(--navy);min-height:100vh;}
+#top-bar{background:var(--navy);color:white;padding:11px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.25);}
+#top-bar h1{font-size:.92rem;font-weight:700;flex:1;letter-spacing:.02em;}
+.nav-hamburger{position:relative;}
+.hamburger-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:1rem;line-height:1;}
+.nav-menu{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--navy2);border:1px solid rgba(255,255,255,.15);border-radius:8px;min-width:250px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:300;overflow:hidden;}
+.nav-menu.open{display:block;}
+.nav-menu a{display:block;padding:10px 16px;color:rgba(255,255,255,.85);text-decoration:none;font-size:.82rem;border-bottom:1px solid rgba(255,255,255,.07);}
+.nav-menu a:hover{background:rgba(255,255,255,.08);color:white;}
+.nav-menu a.active{color:var(--fire2);font-weight:600;}
+#app{max-width:980px;margin:0 auto;padding:16px;}
+#step-nav{display:flex;margin-bottom:20px;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);border:1px solid var(--border);}
+.step-tab{flex:1;padding:9px 6px;text-align:center;cursor:pointer;font-size:.68rem;font-weight:600;color:var(--slate);border-right:1px solid var(--border);transition:all .15s;line-height:1.3;}
+.step-tab:last-child{border-right:none;}
+.step-tab.active{background:var(--navy);color:white;}
+.step-tab.done{background:var(--pass-bg);color:var(--green);}
+.step-num{display:block;font-size:.6rem;opacity:.7;margin-bottom:2px;}
+.step-check{display:none;}
+.step-tab.done .step-check{display:inline;}
+.step-tab.done .step-num{display:none;}
+.card{background:white;border-radius:10px;border:1px solid var(--border);box-shadow:0 1px 6px rgba(0,0,0,.06);margin-bottom:14px;overflow:hidden;}
+.card-header{background:var(--navy);color:white;padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:.88rem;font-weight:700;}
+.card-header .icon{font-size:1.1rem;}
+.card-header span{flex:1;}
+.card-body{padding:16px;}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field-grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.field-grid.cols-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.field-grid.cols-1{grid-template-columns:1fr;}
+.field-group{display:flex;flex-direction:column;gap:4px;}
+.field-group.span-2{grid-column:span 2;}
+.field-group.span-3{grid-column:span 3;}
+.field-group label{font-size:.72rem;font-weight:600;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;}
+.field-group input,.field-group select,.field-group textarea{border:1.5px solid var(--border);border-radius:7px;padding:9px 11px;font-size:.88rem;font-family:inherit;color:var(--navy);outline:none;width:100%;background:white;transition:border-color .15s;}
+.field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--blue);background:#eff6ff;}
+.field-group textarea{resize:vertical;min-height:56px;}
+.interval-group{display:flex;gap:8px;flex-wrap:wrap;}
+.interval-btn{padding:8px 18px;border-radius:7px;border:2px solid var(--border);font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;background:white;color:var(--slate);transition:all .12s;}
+.interval-btn.selected{border-color:var(--navy);background:var(--navy);color:white;}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.contact-block{border:1.5px solid var(--border);border-radius:8px;padding:12px;}
+.contact-block h4{font-size:.75rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid var(--border);}
+.sys-section{font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding-bottom:4px;border-bottom:1.5px solid #bfdbfe;}
+.dyn-table{width:100%;border-collapse:collapse;font-size:.76rem;margin-top:6px;}
+.dyn-table th{background:var(--navy3);color:white;padding:6px 5px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:left;white-space:nowrap;}
+.dyn-table td{padding:4px 4px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.dyn-table tr:nth-child(even) td{background:#f8fafc;}
+.dyn-table input,.dyn-table select{border:1px solid var(--border);border-radius:4px;padding:4px 5px;font-size:.76rem;font-family:inherit;width:100%;background:white;outline:none;}
+.dyn-table input:focus,.dyn-table select:focus{border-color:var(--blue);background:#eff6ff;}
+.del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:.95rem;padding:2px 4px;}
+.add-row-btn{background:#eff6ff;color:var(--blue);border:1.5px dashed var(--blue2);border-radius:6px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;width:100%;}
+/* Summary table */
+.sum-table{width:100%;border-collapse:collapse;font-size:.76rem;}
+.sum-table th{background:var(--navy3);color:white;padding:6px 8px;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-align:center;}
+.sum-table th.left{text-align:left;}
+.sum-table td{padding:5px 6px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:middle;text-align:center;}
+.sum-table td.row-label{text-align:left;font-weight:700;font-size:.76rem;background:#f8fafc;white-space:nowrap;}
+.sum-table td:last-child{border-right:none;}
+.sum-table tr:last-child td{border-bottom:none;}
+.sum-table input{border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;width:60px;background:white;outline:none;text-align:center;}
+.sum-table input:focus{border-color:var(--blue);background:#eff6ff;}
+/* Q&A */
+.qa-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.qa-table th{background:var(--navy3);color:white;padding:7px 9px;font-size:.68rem;font-weight:700;text-transform:uppercase;text-align:left;}
+.qa-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.qa-table tr:nth-child(even) td{background:#f8fafc;}
+.qa-table td.q-cell{font-size:.8rem;font-weight:500;}
+.qa-table select,.qa-table input{border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-size:.78rem;font-family:inherit;background:white;outline:none;}
+.qa-table select:focus,.qa-table input:focus{border-color:var(--blue);background:#eff6ff;}
+/* Deficiency */
+.defic-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.defic-table th{background:var(--navy3);color:white;padding:7px 9px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-align:left;}
+.defic-table td{padding:6px 6px;border-bottom:1px solid var(--border);vertical-align:top;}
+.defic-table tr:last-child td{border-bottom:none;}
+.defic-table input,.defic-table select{border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:.78rem;font-family:inherit;width:100%;background:white;outline:none;}
+.defic-table input:focus,.defic-table select:focus{border-color:var(--blue);background:#eff6ff;}
+.defic-num{font-size:.78rem;font-weight:700;color:var(--slate);text-align:center;width:28px;}
+.defic-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:2px 5px;}
+.sig-canvas{border:2px solid var(--border);border-radius:8px;background:white;cursor:crosshair;display:block;width:100%;max-width:480px;height:90px;touch-action:none;}
+.sig-clear{background:none;border:1px solid var(--border);border-radius:5px;padding:4px 12px;font-size:.75rem;cursor:pointer;color:var(--slate);font-family:inherit;margin-top:6px;}
+.sig-pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.btn-primary{background:var(--navy);color:white;border:none;padding:12px 24px;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;transition:background .15s;}
+.btn-primary:hover{background:var(--navy3);}
+.btn-primary.fire{background:var(--fire);}
+.btn-primary.fire:hover{background:var(--fire2);}
+.btn-primary.green{background:var(--green);}
+.btn-secondary{background:white;color:var(--navy);border:1.5px solid var(--border);padding:11px 20px;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue);}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:white;padding:10px 20px;border-radius:8px;font-size:.85rem;box-shadow:0 4px 20px rgba(0,0,0,.35);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+.info-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 13px;font-size:.76rem;color:#1e40af;margin-bottom:10px;line-height:1.6;}
+.code-legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.code-chip{background:var(--navy3);color:white;font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:5px;font-family:'DM Mono',monospace;}
+.stat-box{background:#f8fafc;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
+.stat-box .stat-label{font-size:.72rem;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;}
+.stat-box .stat-val{font-size:1.4rem;font-weight:700;color:var(--navy);}
+@media(max-width:640px){
+  .field-grid{grid-template-columns:1fr;}
+  .field-grid.cols-3,.field-grid.cols-4{grid-template-columns:1fr 1fr;}
+  .field-group.span-2,.field-group.span-3{grid-column:span 1;}
+  .contact-grid{grid-template-columns:1fr;}
+  .sig-pair{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="inspection-hood.html">🍳 Kitchen Hood Inspection</a>
+      <a href="inspection-fire-alarm.html">🔔 Fire Alarm Inspection</a>
+      <a href="inspection-sprinkler.html">💧 Sprinkler Inspection</a>
+      <a href="inspection-emergency-lighting.html">💡 Emergency Lighting &amp; Exit Signs</a>
+      <a href="inspection-extinguisher.html" class="active">🧯 Portable Fire Extinguisher</a>
+    </div>
+  </div>
+  <h1>🧯 Portable Fire Extinguisher Inspection</h1>
+  <button class="btn-secondary" style="font-size:.72rem;padding:4px 10px;" onclick="autoSave()">💾 Save</button>
+</div>
+
+<div id="app">
+
+  <div id="step-nav">
+    <div class="step-tab active" data-step="1" onclick="goStep(1)"><span class="step-num">1</span><span class="step-check">✓</span>Job Info</div>
+    <div class="step-tab" data-step="2" onclick="goStep(2)"><span class="step-num">2</span><span class="step-check">✓</span>Unit Inspection</div>
+    <div class="step-tab" data-step="3" onclick="goStep(3)"><span class="step-num">3</span><span class="step-check">✓</span>Summary Sheet</div>
+    <div class="step-tab" data-step="4" onclick="goStep(4)"><span class="step-num">4</span><span class="step-check">✓</span>Deficiencies &amp; Notes</div>
+    <div class="step-tab" data-step="5" onclick="goStep(5)"><span class="step-num">5</span><span class="step-check">✓</span>Sign &amp; Export</div>
+  </div>
+
+  <!-- ══ STEP 1: JOB INFO ══ -->
+  <div id="step-1">
+    <div class="card">
+      <div class="card-header"><span class="icon">📋</span><span>Job Header</span></div>
+      <div class="card-body">
+        <div class="field-grid cols-3">
+          <div class="field-group span-2"><label>Building / Property Name</label><input type="text" id="building-name"></div>
+          <div class="field-group"><label>Job Number</label><input type="text" id="job-number"></div>
+          <div class="field-group span-2"><label>Street, City, State, ZIP</label><input type="text" id="site-address"></div>
+          <div class="field-group"><label>PO Number (if any)</label><input type="text" id="po-number"></div>
+          <div class="field-group"><label>Date Performed</label><input type="date" id="insp-date"></div>
+          <div class="field-group"><label>Inspector(s) Initials</label><input type="text" id="inspector-initials"></div>
+          <div class="field-group"><label>Jurisdiction</label><input type="text" id="jurisdiction"></div>
+        </div>
+        <div class="sys-section">Inspection Interval</div>
+        <div class="interval-group" id="interval-group">
+          <button class="interval-btn" onclick="setIntervalVal('Annual')">Annual</button>
+          <button class="interval-btn" onclick="setIntervalVal('Semi-Annual')">Semi-Annual</button>
+          <button class="interval-btn" onclick="setIntervalVal('Quarterly')">Quarterly</button>
+        </div>
+        <input type="hidden" id="insp-interval">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📞</span><span>Site Contact Information</span></div>
+      <div class="card-body">
+        <div class="contact-grid">
+          <div class="contact-block">
+            <h4>Primary Contact</h4>
+            <div class="field-grid cols-1" style="gap:8px;">
+              <div class="field-group"><label>Name</label><input type="text" id="primary-name"></div>
+              <div class="field-group"><label>Title</label><input type="text" id="primary-title"></div>
+              <div class="field-group"><label>Phone</label><input type="tel" id="primary-phone"></div>
+              <div class="field-group"><label>Email</label><input type="email" id="primary-email"></div>
+            </div>
+          </div>
+          <div class="contact-block">
+            <h4>Secondary Contact</h4>
+            <div class="field-grid cols-1" style="gap:8px;">
+              <div class="field-group"><label>Name</label><input type="text" id="secondary-name"></div>
+              <div class="field-group"><label>Title</label><input type="text" id="secondary-title"></div>
+              <div class="field-group"><label>Phone</label><input type="tel" id="secondary-phone"></div>
+              <div class="field-group"><label>Email</label><input type="email" id="secondary-email"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📖</span><span>NFPA 10 References &amp; Inspection Procedure</span></div>
+      <div class="card-body">
+        <div class="info-note" style="font-size:.74rem;">
+          <strong>NFPA 10 – 2010: §7.1.2, 7.2.2, 7.2.4, 7.3.1</strong> &nbsp;|&nbsp; Frequency: Not more than one year, at time of hydrostatic test, or when indicated by inspection.<br><br>
+          Each unit shall be checked for: <strong>Date of last service · Designated location &amp; no obstruction · Proper height &amp; bracket/cabinet · Cabinet components (glass, mallet, key locks) · Legible nameplate instructions facing outward · Safety seals &amp; tamper indicators intact · Fullness by weight/"hefting" · Physical damage, corrosion, leakage, clogged nozzle · Pressure gauge in operable range · Tires/wheels/carriage/hose/nozzle (wheeled units)</strong>
+        </div>
+        <div class="sys-section">Mounting Style Codes</div>
+        <div class="code-legend">
+          <span class="code-chip">HK = Hook</span><span class="code-chip">FK = Fork</span><span class="code-chip">CAB = Cabinet</span><span class="code-chip">NM = Not Mounted</span>
+        </div>
+        <div class="sys-section">Cabinet Component Codes</div>
+        <div class="code-legend">
+          <span class="code-chip">GLS = Glass</span><span class="code-chip">MLT = Mallet</span><span class="code-chip">SGN = Signage</span><span class="code-chip">MULTI = Missing Various</span>
+        </div>
+        <div class="sys-section">Deficiency Codes</div>
+        <div class="code-legend">
+          <span class="code-chip">MSNG = Missing</span><span class="code-chip">DMG = Damage</span><span class="code-chip">AGE = Age</span><span class="code-chip">OTH = Other / See Notes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row"><button class="btn-primary" onclick="goStep(2)">Next: Unit Inspection →</button></div>
+  </div>
+
+  <!-- ══ STEP 2: UNIT INSPECTION ══ -->
+  <div id="step-2" style="display:none;">
+    <div class="card">
+      <div class="card-header"><span class="icon">🧯</span><span>Fire Extinguisher Inspection Results — NFPA 10</span></div>
+      <div class="card-body">
+        <div id="unit-count-bar" style="display:flex;gap:10px;margin-bottom:12px;">
+          <div class="stat-box" style="flex:1;"><span class="stat-label">Total Units</span><span class="stat-val" id="stat-total">0</span></div>
+          <div class="stat-box" style="flex:1;background:var(--pass-bg);border-color:var(--pass-ring);"><span class="stat-label" style="color:var(--green);">Pass</span><span class="stat-val" style="color:var(--green);" id="stat-pass">0</span></div>
+          <div class="stat-box" style="flex:1;background:var(--fail-bg);border-color:var(--fail-ring);"><span class="stat-label" style="color:var(--red);">Fail</span><span class="stat-val" style="color:var(--red);" id="stat-fail">0</span></div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="dyn-table" id="unit-table">
+            <thead>
+              <tr>
+                <th style="width:42px;">FLR</th>
+                <th style="min-width:120px;">Location</th>
+                <th style="width:72px;">Mount</th>
+                <th style="width:110px;">Cabinet (GLS/MLT/SGN)</th>
+                <th style="width:64px;">MFG Year</th>
+                <th style="width:70px;">Size (lb/gal)</th>
+                <th style="width:90px;">Type</th>
+                <th style="width:80px;">Pass / Fail</th>
+                <th style="width:72px;">Hydro Due</th>
+                <th style="width:80px;">Recharge?</th>
+                <th style="width:80px;">New Unit?</th>
+                <th style="width:58px;">Note #</th>
+                <th style="width:28px;"></th>
+              </tr>
+            </thead>
+            <tbody id="unit-tbody"></tbody>
+          </table>
+        </div>
+        <button class="add-row-btn" onclick="addUnitRow()">＋ Add Extinguisher</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goStep(1)">← Back</button>
+      <button class="btn-primary" onclick="goStep(3)">Next: Summary Sheet →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 3: SUMMARY SHEET ══ -->
+  <div id="step-3" style="display:none;">
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📊</span><span>Deficiency Summary Sheet</span></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
+          <div class="stat-box" style="flex:0 0 auto;min-width:200px;">
+            <span class="stat-label">Total Extinguishers on Report</span>
+            <span class="stat-val" id="sum-total">0</span>
+          </div>
+        </div>
+
+        <div class="sys-section">Specific Services Due Now</div>
+        <div style="overflow-x:auto;">
+          <table class="sum-table" id="svc-table">
+            <thead>
+              <tr>
+                <th class="left" style="width:130px;">Extinguisher Type</th>
+                <th>6-Year Maint</th>
+                <th>Hydrostatic</th>
+                <th>Recharge</th>
+                <th>New Unit</th>
+                <th style="min-width:140px;">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="svc-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="sys-section">Units Not Found During This Inspection</div>
+        <div class="field-grid cols-3" style="gap:10px;">
+          <div class="field-group"><label>Cabinet Mallets Missing</label><input type="number" id="nf-mallets" min="0" placeholder="0"></div>
+          <div class="field-group"><label>Location Signage Missing</label><input type="number" id="nf-signage" min="0" placeholder="0"></div>
+          <div class="field-group"><label>Cabinet Glass (list size)</label><input type="text" id="nf-glass" placeholder="e.g. 2× 4×8"></div>
+        </div>
+
+        <div class="sys-section">Total Services Due Now</div>
+        <div class="field-grid" style="gap:10px;">
+          <div class="field-group"><label>Total Services Due</label><input type="number" id="total-svc-due" min="0" placeholder="0"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">✅</span><span>Inspection Verification Questions</span></div>
+      <div class="card-body">
+        <table class="qa-table">
+          <thead><tr><th>Question</th><th style="width:100px;">Answer</th><th style="width:60px;">#</th></tr></thead>
+          <tbody id="qa-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goStep(2)">← Back</button>
+      <button class="btn-primary" onclick="goStep(4)">Next: Deficiencies &amp; Notes →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 4: DEFICIENCIES & NOTES ══ -->
+  <div id="step-4" style="display:none;">
+
+    <div class="card">
+      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List &amp; Proposed Solutions</span></div>
+      <div class="card-body">
+        <table class="defic-table">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:160px;">Make / Model</th><th style="width:120px;">Severity</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="defic-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addDeficRow()">＋ Add Deficiency</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📝</span><span>General Notes &amp; Site Observations</span></div>
+      <div class="card-body">
+        <table class="defic-table">
+          <thead><tr><th style="width:32px;">#</th><th>Note / Observation</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="notes-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addNoteRow()">＋ Add Note</button>
+        <div style="margin-top:12px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:10px 14px;font-size:.75rem;color:var(--slate);line-height:1.5;">
+          Listed above are any General Notes to report. This section also contains any issues found during inspections that either require a substantial investment to correct (permits, engineering, etc.) or may have been previously approved in their as-is condition by the Authority Having Jurisdiction. Please contact our office for information, consultation, or services for any items contained herein.
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goStep(3)">← Back</button>
+      <button class="btn-primary" onclick="goStep(5)">Next: Sign &amp; Export →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 5: SIGN & EXPORT ══ -->
+  <div id="step-5" style="display:none;">
+    <div class="card">
+      <div class="card-header"><span class="icon">✍️</span><span>Signatures</span></div>
+      <div class="card-body">
+        <div class="sig-pair">
+          <div>
+            <div class="sys-section">Technician Signature</div>
+            <canvas class="sig-canvas" id="sig-tech" width="480" height="90"></canvas>
+            <button class="sig-clear" onclick="clearSig('tech')">Clear</button>
+            <div class="field-group" style="margin-top:10px;"><label>Date</label><input type="date" id="sig-tech-date"></div>
+          </div>
+          <div>
+            <div class="sys-section">Client Signature</div>
+            <canvas class="sig-canvas" id="sig-client" width="480" height="90"></canvas>
+            <button class="sig-clear" onclick="clearSig('client')">Clear</button>
+            <div class="field-group" style="margin-top:10px;"><label>Date</label><input type="date" id="sig-client-date"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📄</span><span>Export</span></div>
+      <div class="card-body">
+        <div class="btn-row">
+          <button class="btn-primary fire" onclick="exportPDF()">📄 Export PDF Report</button>
+          <button class="btn-primary green" onclick="autoSave()">💾 Save Draft</button>
+          <button class="btn-secondary" onclick="newReport()">🔄 New Report</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row"><button class="btn-secondary" onclick="goStep(4)">← Back</button></div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ─── CONSTANTS ───
+const EXT_TYPES = ['ABC','CO2','K Class','Water Cannon','Water Mist','Halon','Halotron','FE36','Foam','BC','Class D','Other'];
+const MOUNT_OPTS = [['','—'],['HK','HK – Hook'],['FK','FK – Fork'],['CAB','CAB – Cabinet'],['NM','NM – Not Mounted']];
+const PF_OPTS_HTML = ['','Pass','Fail','N/A'].map(o=>`<option value="${o}">${o||'— Select —'}</option>`).join('');
+const YN_OPTS_HTML = ['','Yes','No','N/A'].map(o=>`<option value="${o}">${o||'—'}</option>`).join('');
+const SEV_OPTS = ['','Critical','High','Moderate','Low','Advisory'].map(s=>`<option value="${s}">${s||'— Select —'}</option>`).join('');
+
+const SVC_TYPES = ['ABC-2.5LB','ABC-5LB','ABC-10LB','ABC-20LB','CO2','K Class','Water Cannon','Water Mist','Halon','Halotron','FE36','Foam','BC','Class D','Other'];
+
+const QA_QUESTIONS = [
+  'Visual examination performed on all units?',
+  'Monthly inspections or electronic monitoring is being conducted?',
+  'If applicable, all pressure gauges were in the correct range?',
+  'All units were the correct weight?',
+  'All units are visible and/or have correct signage?',
+  'All discharge hoses were inspected for blockage?',
+  'All units are mounted and/or in the correct location?',
+  'All internal maintenance and pressure testing is up to date on all units / or have been swapped out?',
+  'Up-to-date certification tags have been attached to all units?',
+];
+
+// ─── STATE ───
+let currentStep = 1;
+let unitCount = 0, deficCount = 0, noteCount = 0;
+let sigDrawing = {};
+
+// ─── NAV ───
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open'); });
+
+function goStep(n) {
+  document.getElementById('step-' + currentStep).style.display = 'none';
+  document.querySelectorAll('.step-tab').forEach(t => {
+    const s = +t.dataset.step;
+    t.classList.remove('active', 'done');
+    if (s < n) t.classList.add('done');
+    else if (s === n) t.classList.add('active');
+  });
+  currentStep = n;
+  document.getElementById('step-' + n).style.display = '';
+  window.scrollTo(0, 0);
+  if (n === 3) syncSummaryCount();
+}
+
+function setIntervalVal(val) {
+  document.getElementById('insp-interval').value = val;
+  document.querySelectorAll('#interval-group .interval-btn').forEach(b => b.classList.toggle('selected', b.textContent.trim() === val));
+}
+
+// ─── UNIT TABLE ───
+const MOUNT_SEL = MOUNT_OPTS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+const TYPE_SEL  = ['', ...EXT_TYPES].map(t => `<option value="${t}">${t || '—'}</option>`).join('');
+
+function addUnitRow() {
+  unitCount++;
+  const n = unitCount;
+  document.getElementById('unit-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="unit-row-${n}">
+      <td><input type="text" id="u-flr-${n}" placeholder="1"></td>
+      <td><input type="text" id="u-loc-${n}" placeholder="e.g. Lobby by entrance"></td>
+      <td><select id="u-mount-${n}" onchange="toggleCabinet(${n})">${MOUNT_SEL}</select></td>
+      <td><input type="text" id="u-cab-${n}" placeholder="GLS, MLT, SGN" style="opacity:.4;" disabled></td>
+      <td><input type="number" id="u-mfg-${n}" placeholder="2019" min="1950" max="2099"></td>
+      <td><input type="text" id="u-size-${n}" placeholder="10 lb"></td>
+      <td><select id="u-type-${n}">${TYPE_SEL}</select></td>
+      <td><select id="u-pf-${n}" onchange="updateStats()" style="font-weight:700;">${PF_OPTS_HTML}</select></td>
+      <td><input type="number" id="u-hydro-${n}" placeholder="2030" min="1950" max="2099"></td>
+      <td><select id="u-recharge-${n}">${YN_OPTS_HTML}</select></td>
+      <td><select id="u-newunit-${n}">${YN_OPTS_HTML}</select></td>
+      <td><input type="text" id="u-note-${n}" placeholder="#"></td>
+      <td><button class="del-btn" onclick="removeUnit(${n})">✕</button></td>
+    </tr>`);
+  updateStats();
+}
+
+function toggleCabinet(n) {
+  const mount = document.getElementById('u-mount-' + n).value;
+  const cab = document.getElementById('u-cab-' + n);
+  if (mount === 'CAB') { cab.disabled = false; cab.style.opacity = '1'; }
+  else { cab.disabled = true; cab.style.opacity = '.4'; cab.value = ''; }
+}
+
+function removeUnit(n) {
+  const row = document.getElementById('unit-row-' + n);
+  if (row) row.remove();
+  updateStats();
+}
+
+function updateStats() {
+  let total = 0, pass = 0, fail = 0;
+  for (let i = 1; i <= unitCount; i++) {
+    const row = document.getElementById('unit-row-' + i);
+    if (!row) continue;
+    total++;
+    const pf = document.getElementById('u-pf-' + i)?.value || '';
+    if (pf === 'Pass') pass++;
+    if (pf === 'Fail') fail++;
+  }
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-pass').textContent  = pass;
+  document.getElementById('stat-fail').textContent  = fail;
+}
+
+function syncSummaryCount() {
+  let total = 0;
+  for (let i = 1; i <= unitCount; i++) { if (document.getElementById('unit-row-' + i)) total++; }
+  document.getElementById('sum-total').textContent = total;
+}
+
+// ─── DEFICIENCY ROWS ───
+function addDeficRow() {
+  deficCount++;
+  const n = deficCount;
+  document.getElementById('defic-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="defic-row-${n}">
+      <td class="defic-num">${n}</td>
+      <td><input type="text" id="defic-desc-${n}" placeholder="Describe deficiency and proposed solution…"></td>
+      <td><input type="text" id="defic-model-${n}" placeholder="Make / Model"></td>
+      <td><select id="defic-sev-${n}">${SEV_OPTS}</select></td>
+      <td><button class="defic-del" onclick="document.getElementById('defic-row-${n}').remove()">✕</button></td>
+    </tr>`);
+}
+
+function addNoteRow() {
+  noteCount++;
+  const n = noteCount;
+  document.getElementById('notes-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="note-row-${n}">
+      <td class="defic-num">${n}</td>
+      <td><input type="text" id="note-desc-${n}" placeholder="Note or observation…"></td>
+      <td><button class="defic-del" onclick="document.getElementById('note-row-${n}').remove()">✕</button></td>
+    </tr>`);
+}
+
+// ─── BUILD STATIC TABLES ───
+function buildSvcTable() {
+  const tbody = document.getElementById('svc-tbody');
+  SVC_TYPES.forEach((type, i) => {
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td class="row-label">${type}</td>
+        <td><input type="number" id="svc-6yr-${i}" min="0" placeholder="0"></td>
+        <td><input type="number" id="svc-hydro-${i}" min="0" placeholder="0"></td>
+        <td><input type="number" id="svc-recharge-${i}" min="0" placeholder="0"></td>
+        <td><input type="number" id="svc-newunit-${i}" min="0" placeholder="0"></td>
+        <td><input type="text" id="svc-notes-${i}" style="width:100%;" placeholder="Notes…"></td>
+      </tr>`);
+  });
+}
+
+function buildQATable() {
+  const tbody = document.getElementById('qa-tbody');
+  const answerOpts = ['','Yes','No','Partial','N/A'].map(o => `<option value="${o}">${o || '—'}</option>`).join('');
+  QA_QUESTIONS.forEach((q, i) => {
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td class="q-cell">${q}</td>
+        <td><select id="qa-ans-${i}">${answerOpts}</select></td>
+        <td><input type="text" id="qa-num-${i}" placeholder="#" style="width:44px;"></td>
+      </tr>`);
+  });
+}
+
+// ─── SIGNATURES ───
+function initSig(canvasId, key) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  sigDrawing[key] = { ctx, drawing: false };
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * (canvas.width / r.width), y: (src.clientY - r.top) * (canvas.height / r.height) };
+  }
+  canvas.addEventListener('mousedown',  e => { sigDrawing[key].drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener('mousemove',  e => { if (!sigDrawing[key].drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#0d1b2a'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke(); });
+  canvas.addEventListener('mouseup',    () => sigDrawing[key].drawing = false);
+  canvas.addEventListener('mouseleave', () => sigDrawing[key].drawing = false);
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); sigDrawing[key].drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+  canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!sigDrawing[key].drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#0d1b2a'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke(); }, { passive: false });
+  canvas.addEventListener('touchend',   () => sigDrawing[key].drawing = false);
+}
+
+function clearSig(key) {
+  const id = key === 'tech' ? 'sig-tech' : 'sig-client';
+  const c = document.getElementById(id);
+  c.getContext('2d').clearRect(0, 0, c.width, c.height);
+}
+
+// ─── DATA HELPERS ───
+function v(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+
+function collectUnits() {
+  const rows = [];
+  for (let i = 1; i <= unitCount; i++) {
+    if (!document.getElementById('unit-row-' + i)) continue;
+    rows.push({
+      flr: v(`u-flr-${i}`), loc: v(`u-loc-${i}`), mount: v(`u-mount-${i}`), cab: v(`u-cab-${i}`),
+      mfg: v(`u-mfg-${i}`), size: v(`u-size-${i}`), type: v(`u-type-${i}`), pf: v(`u-pf-${i}`),
+      hydro: v(`u-hydro-${i}`), recharge: v(`u-recharge-${i}`), newunit: v(`u-newunit-${i}`), note: v(`u-note-${i}`),
+    });
+  }
+  return rows;
+}
+
+function collectSvcTable() {
+  return SVC_TYPES.map((type, i) => ({
+    type,
+    yr6: v(`svc-6yr-${i}`), hydro: v(`svc-hydro-${i}`), recharge: v(`svc-recharge-${i}`),
+    newunit: v(`svc-newunit-${i}`), notes: v(`svc-notes-${i}`),
+  }));
+}
+
+function collectQA() {
+  return QA_QUESTIONS.map((q, i) => ({ q, ans: v(`qa-ans-${i}`), num: v(`qa-num-${i}`) }));
+}
+
+function collectDefics() {
+  const rows = [];
+  for (let i = 1; i <= deficCount; i++) {
+    if (!document.getElementById('defic-row-' + i)) continue;
+    rows.push({ desc: v(`defic-desc-${i}`), model: v(`defic-model-${i}`), sev: v(`defic-sev-${i}`) });
+  }
+  return rows;
+}
+
+function collectNotes() {
+  const rows = [];
+  for (let i = 1; i <= noteCount; i++) {
+    if (!document.getElementById('note-row-' + i)) continue;
+    rows.push({ desc: v(`note-desc-${i}`) });
+  }
+  return rows;
+}
+
+function collectData() {
+  return {
+    version: 1,
+    buildingName: v('building-name'), jobNumber: v('job-number'), siteAddress: v('site-address'),
+    poNumber: v('po-number'), inspDate: v('insp-date'), initials: v('inspector-initials'),
+    jurisdiction: v('jurisdiction'), interval: v('insp-interval'),
+    primary:   { name: v('primary-name'), title: v('primary-title'), phone: v('primary-phone'), email: v('primary-email') },
+    secondary: { name: v('secondary-name'), title: v('secondary-title'), phone: v('secondary-phone'), email: v('secondary-email') },
+    units: collectUnits(),
+    svcTable: collectSvcTable(),
+    nfMallets: v('nf-mallets'), nfSignage: v('nf-signage'), nfGlass: v('nf-glass'),
+    totalSvcDue: v('total-svc-due'),
+    qa: collectQA(),
+    defics: collectDefics(),
+    notes: collectNotes(),
+    sigTechDate: v('sig-tech-date'), sigClientDate: v('sig-client-date'),
+    _unitCount: unitCount, _deficCount: deficCount, _noteCount: noteCount,
+  };
+}
+
+// ─── SAVE / RESTORE ───
+const STORAGE_KEY = 'ext-inspection-draft';
+
+function autoSave() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(collectData())); showToast('Saved ✓'); }
+  catch(e) { showToast('Save failed'); }
+}
+
+function newReport() {
+  if (!confirm('Start a new report? Unsaved data will be lost.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ─── TOAST ───
+function showToast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ─── PDF EXPORT ───
+function exportPDF() {
+  const data = collectData();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const PW = 612, PH = 792, ML = 36, MR = 36, MT = 36;
+  let y = MT;
+
+  function newPage() { doc.addPage(); y = MT; }
+  function checkY(need = 20) { if (y + need > PH - 36) newPage(); }
+
+  function sectionBar(title, color = [13, 27, 42]) {
+    checkY(24);
+    doc.setFillColor(...color);
+    doc.rect(ML, y, PW - ML - MR, 20, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255, 255, 255);
+    doc.text(title, ML + 6, y + 14);
+    y += 26; doc.setTextColor(13, 27, 42);
+  }
+
+  function drawField(label, val, x, fw) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
+    doc.text(label.toUpperCase(), x, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(13, 27, 42);
+    const lines = doc.splitTextToSize(val || '—', fw - 4);
+    doc.text(lines, x, y + 9);
+    return 9 + lines.length * 10;
+  }
+
+  function row2(l1, v1, l2, v2) {
+    checkY(26);
+    const w = (PW - ML - MR - 10) / 2;
+    const h1 = drawField(l1, v1, ML, w), h2 = drawField(l2, v2, ML + w + 10, w);
+    y += Math.max(h1, h2) + 7;
+  }
+
+  function row3(l1, v1, l2, v2, l3, v3) {
+    checkY(26);
+    const w = (PW - ML - MR - 20) / 3;
+    drawField(l1, v1, ML, w); drawField(l2, v2, ML + w + 10, w); drawField(l3, v3, ML + w * 2 + 20, w);
+    y += 24;
+  }
+
+  // ── Cover ──
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(249, 115, 22);
+  doc.text('FIRE · LIFE · SAFETY', ML, y); y += 8;
+  doc.setFillColor(249, 115, 22); doc.rect(ML, y, PW - ML - MR, 3, 'F'); y += 10;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(13, 27, 42);
+  doc.text('PORTABLE FIRE EXTINGUISHER ANNUAL INSPECTION REPORT', ML, y); y += 6;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+  doc.text('NFPA 10 – 2010: §7.1.2, 7.2.2, 7.2.4, 7.3.1', ML, y + 8); y += 20;
+
+  // Company block
+  doc.setFillColor(240, 249, 255); doc.rect(ML, y, 195, 78, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(13, 27, 42);
+  doc.text('Alan Antonio, C.F.P.S. C.S.P.', ML + 5, y + 12);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
+  ['Fire Protection Engineer','Chief Executive Officer','','Fire Life Protection System, Inc.','8201 Shaffer Pkwy Suite B','Littleton, CO 80127','(303) 726-8847 | (720) 974-1570'].forEach((l, i) => doc.text(l, ML + 5, y + 22 + i * 8.5));
+
+  // Job info block
+  const jx = ML + 205;
+  doc.setFillColor(248, 250, 252); doc.rect(jx, y, PW - jx - MR, 78, 'F');
+  const jFields = [['INTERVAL', data.interval], ['JOB #', data.jobNumber], ['PO #', data.poNumber], ['DATE', data.inspDate], ['INSPECTOR', data.initials], ['JURISDICTION', data.jurisdiction]];
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+  jFields.forEach((f, i) => {
+    doc.setTextColor(100, 116, 139); doc.text(f[0], jx + 6, y + 11 + i * 12);
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(13, 27, 42); doc.text(f[1] || '—', jx + 82, y + 11 + i * 12);
+    doc.setFont('helvetica', 'bold');
+  });
+  y += 88;
+
+  sectionBar('BUILDING INFORMATION');
+  row2('Building / Property Name', data.buildingName, 'Jurisdiction', data.jurisdiction);
+  row2('Street, City, State, ZIP', data.siteAddress, 'Inspection Interval', data.interval);
+
+  sectionBar('SITE CONTACTS');
+  const pc = data.primary, sc = data.secondary;
+  row3('Primary: Name', pc.name, 'Title', pc.title, 'Phone', pc.phone);
+  row2('Primary: Email', pc.email, '', '');
+  row3('Secondary: Name', sc.name, 'Title', sc.title, 'Phone', sc.phone);
+
+  // ── Unit Inspection Table ──
+  if (data.units.length > 0) {
+    newPage();
+    sectionBar('FIRE EXTINGUISHER INSPECTION RESULTS');
+
+    // Stats line
+    const total = data.units.length;
+    const pass = data.units.filter(u => u.pf === 'Pass').length;
+    const fail = data.units.filter(u => u.pf === 'Fail').length;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(13, 27, 42);
+    doc.text(`Total Units: ${total}   Pass: ${pass}   Fail: ${fail}`, ML, y); y += 12;
+
+    const U_COLS = [
+      { label: 'FLR',          x: ML,      w: 28  },
+      { label: 'Location',     x: ML+30,   w: 108 },
+      { label: 'Mount',        x: ML+140,  w: 46  },
+      { label: 'Cabinet',      x: ML+188,  w: 68  },
+      { label: 'MFG Yr',       x: ML+258,  w: 42  },
+      { label: 'Size',         x: ML+302,  w: 44  },
+      { label: 'Type',         x: ML+348,  w: 60  },
+      { label: 'Pass/Fail',    x: ML+410,  w: 54  },
+      { label: 'Hydro Due',    x: ML+466,  w: 44  },
+      { label: 'Recharge',     x: ML+512,  w: 44  },
+      { label: 'New Unit',     x: ML+558,  w: 40  },
+    ];
+    const tableW = PW - ML - MR;
+
+    doc.setFillColor(30, 48, 74); doc.rect(ML, y, tableW, 15, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6); doc.setTextColor(255, 255, 255);
+    U_COLS.forEach(c => doc.text(c.label, c.x + 1, y + 10));
+    y += 17;
+
+    data.units.forEach((u, ri) => {
+      checkY(13);
+      if (ri % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(ML, y - 1, tableW, 13, 'F'); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(13, 27, 42);
+      const vals = [u.flr, u.loc, u.mount, u.cab, u.mfg, u.size, u.type, u.pf, u.hydro, u.recharge, u.newunit];
+      U_COLS.forEach((c, ci) => {
+        const val = vals[ci] || '';
+        if (ci === 7) {
+          const col = val === 'Pass' ? [22,163,74] : val === 'Fail' ? [220,38,38] : [13,27,42];
+          doc.setTextColor(...col); doc.setFont('helvetica', 'bold');
+        } else { doc.setTextColor(13, 27, 42); doc.setFont('helvetica', 'normal'); }
+        doc.text(doc.splitTextToSize(val, c.w - 2)[0] || '', c.x + 1, y + 8);
+      });
+      y += 13;
+    });
+    y += 8;
+  }
+
+  // ── Deficiency Summary Sheet ──
+  newPage();
+  sectionBar('DEFICIENCY SUMMARY SHEET');
+
+  const totalUnits = data.units.length;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(13, 27, 42);
+  doc.text(`Total Number of Extinguishers on This Report: ${totalUnits}`, ML, y); y += 14;
+
+  sectionBar('SPECIFIC SERVICES DUE NOW', [30, 48, 74]);
+  const SVC_COLS = [
+    { label: 'Extinguisher Type', x: ML,      w: 100 },
+    { label: '6-Year Maint',      x: ML+102,  w: 72  },
+    { label: 'Hydrostatic',       x: ML+176,  w: 72  },
+    { label: 'Recharge',          x: ML+250,  w: 72  },
+    { label: 'New Unit',          x: ML+324,  w: 72  },
+    { label: 'Notes',             x: ML+398,  w: PW-MR-ML-398 },
+  ];
+  const svcW = PW - ML - MR;
+  doc.setFillColor(30, 48, 74); doc.rect(ML, y, svcW, 14, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255);
+  SVC_COLS.forEach(c => doc.text(c.label, c.x + 2, y + 10));
+  y += 16;
+
+  data.svcTable.forEach((row, ri) => {
+    const hasData = row.yr6 || row.hydro || row.recharge || row.newunit || row.notes;
+    checkY(12);
+    if (ri % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(ML, y - 1, svcW, 12, 'F'); }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(13, 27, 42);
+    const vals = [row.type, row.yr6, row.hydro, row.recharge, row.newunit, row.notes];
+    SVC_COLS.forEach((c, ci) => { if (ci === 0) doc.setFont('helvetica', 'bold'); else doc.setFont('helvetica', 'normal'); doc.text((vals[ci] || '').toString(), c.x + 2, y + 8); });
+    y += 12;
+  });
+  y += 8;
+
+  // Units not found
+  checkY(30);
+  doc.setFillColor(248, 250, 252); doc.rect(ML, y, PW - ML - MR, 28, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+  doc.text('UNITS NOT FOUND DURING THIS INSPECTION', ML + 4, y + 9);
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(13, 27, 42);
+  doc.text(`Cabinet Mallets: ${data.nfMallets || '—'}   Location Signage: ${data.nfSignage || '—'}   Cabinet Glass: ${data.nfGlass || '—'}`, ML + 4, y + 20);
+  y += 34;
+
+  checkY(20);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(13, 27, 42);
+  doc.text(`TOTAL SERVICES DUE NOW: ${data.totalSvcDue || '—'}`, ML, y); y += 16;
+
+  // Q&A
+  sectionBar('INSPECTION VERIFICATION QUESTIONS', [30, 48, 74]);
+  doc.setFillColor(30, 48, 74); doc.rect(ML, y, PW - ML - MR, 14, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255);
+  doc.text('Question', ML + 3, y + 10);
+  doc.text('Answer', ML + 380, y + 10);
+  doc.text('#', ML + 470, y + 10);
+  y += 16;
+
+  data.qa.forEach((qa, ri) => {
+    checkY(14);
+    if (ri % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(ML, y - 1, PW - ML - MR, 14, 'F'); }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(13, 27, 42);
+    const qLines = doc.splitTextToSize(qa.q, 360);
+    doc.text(qLines[0], ML + 3, y + 9);
+    const ansColor = qa.ans === 'Yes' ? [22,163,74] : qa.ans === 'No' ? [220,38,38] : [13,27,42];
+    doc.setTextColor(...ansColor); doc.setFont('helvetica', 'bold');
+    doc.text(qa.ans || '—', ML + 380, y + 9);
+    doc.setTextColor(13, 27, 42); doc.setFont('helvetica', 'normal');
+    doc.text(qa.num || '', ML + 470, y + 9);
+    y += 14;
+  });
+  y += 8;
+
+  // ── Deficiency List ──
+  if (data.defics.length > 0) {
+    checkY(60);
+    sectionBar('DEFICIENCY LIST & PROPOSED SOLUTIONS');
+    doc.setFillColor(30, 48, 74); doc.rect(ML, y, PW - ML - MR, 14, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255);
+    doc.text('#', ML + 2, y + 10); doc.text('Deficiency & Proposed Solution', ML + 20, y + 10);
+    doc.text('Make / Model', ML + 380, y + 10); doc.text('Severity', ML + 490, y + 10);
+    y += 16;
+    data.defics.forEach((d, ri) => {
+      const lines = doc.splitTextToSize(d.desc || '', 355);
+      const rh = Math.max(1, lines.length) * 10 + 6;
+      checkY(rh);
+      if (ri % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(ML, y - 1, PW - ML - MR, rh, 'F'); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(13, 27, 42);
+      doc.text(String(ri + 1), ML + 2, y + 9);
+      lines.forEach((l, li) => doc.text(l, ML + 20, y + 9 + li * 10));
+      doc.text(doc.splitTextToSize(d.model || '', 105)[0] || '', ML + 380, y + 9);
+      const sevColor = d.sev === 'Critical' ? [220,38,38] : d.sev === 'High' ? [217,119,6] : [13,27,42];
+      doc.setTextColor(...sevColor); doc.setFont('helvetica', 'bold');
+      doc.text(d.sev || '', ML + 490, y + 9);
+      y += rh;
+    });
+    y += 6;
+  }
+
+  // ── General Notes ──
+  if (data.notes.length > 0) {
+    checkY(40);
+    sectionBar('GENERAL NOTES & SITE OBSERVATIONS');
+    data.notes.forEach((n, ri) => {
+      const lines = doc.splitTextToSize(n.desc || '', PW - ML - MR - 22);
+      const rh = Math.max(1, lines.length) * 10 + 5;
+      checkY(rh);
+      if (ri % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(ML, y - 1, PW - ML - MR, rh, 'F'); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(13, 27, 42);
+      doc.text(String(ri + 1), ML + 2, y + 9);
+      lines.forEach((l, li) => doc.text(l, ML + 20, y + 9 + li * 10));
+      y += rh;
+    });
+    y += 4;
+    doc.setFontSize(6.5); doc.setTextColor(100, 116, 139); doc.setFont('helvetica', 'italic');
+    const disclaimer = 'Listed above are any General Notes to report. This section also contains any issues found during inspections that either require a substantial investment to correct (permits, engineering, etc.) or may have been previously approved in their as-is condition by the Authority Having Jurisdiction. Please contact our office for information, consultation, or services for any items contained herein.';
+    const dLines = doc.splitTextToSize(disclaimer, PW - ML - MR);
+    dLines.forEach((l, li) => doc.text(l, ML, y + li * 8));
+    y += dLines.length * 8 + 8;
+  }
+
+  // ── Signatures ──
+  checkY(100);
+  sectionBar('TECHNICIAN CERTIFICATION');
+  y += 10;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(13, 27, 42);
+  doc.text('Technician Signature:', ML, y + 8);
+  doc.line(ML + 115, y + 10, ML + 260, y + 10);
+  doc.text('Date:', ML + 275, y + 8); doc.setFont('helvetica', 'normal'); doc.text(data.sigTechDate || '___________', ML + 302, y + 8);
+  const techCanvas = document.getElementById('sig-tech');
+  try { doc.addImage(techCanvas.toDataURL('image/png'), 'PNG', ML + 115, y - 28, 140, 38); } catch(e) {}
+  y += 34;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+  doc.text('Client Signature:', ML, y + 8);
+  doc.line(ML + 115, y + 10, ML + 260, y + 10);
+  doc.text('Date:', ML + 275, y + 8); doc.setFont('helvetica', 'normal'); doc.text(data.sigClientDate || '___________', ML + 302, y + 8);
+  const clientCanvas = document.getElementById('sig-client');
+  try { doc.addImage(clientCanvas.toDataURL('image/png'), 'PNG', ML + 115, y - 28, 140, 38); } catch(e) {}
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139);
+  doc.text('Fire Life Protection Systems · NFPA 10 Portable Fire Extinguisher Inspection · 8201 Shaffer Pkwy, Ste B, Littleton CO 80127', ML, PH - 18);
+
+  const fname = `PFE-Inspection_${(data.buildingName || 'Report').replace(/\s+/g, '_')}_${data.inspDate || 'NoDate'}.pdf`;
+  doc.save(fname);
+  showToast('PDF exported ✓');
+}
+
+// ─── INIT ───
+function init() {
+  buildSvcTable();
+  buildQATable();
+  initSig('sig-tech', 'tech');
+  initSig('sig-client', 'client');
+
+  // Restore draft
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null) el.value = val; };
+
+    set('building-name', d.buildingName); set('job-number', d.jobNumber); set('site-address', d.siteAddress);
+    set('po-number', d.poNumber); set('insp-date', d.inspDate); set('inspector-initials', d.initials);
+    set('jurisdiction', d.jurisdiction); set('insp-interval', d.interval);
+    if (d.interval) setIntervalVal(d.interval);
+
+    if (d.primary)   { set('primary-name', d.primary.name); set('primary-title', d.primary.title); set('primary-phone', d.primary.phone); set('primary-email', d.primary.email); }
+    if (d.secondary) { set('secondary-name', d.secondary.name); set('secondary-title', d.secondary.title); set('secondary-phone', d.secondary.phone); set('secondary-email', d.secondary.email); }
+
+    if (d.units) d.units.forEach(u => {
+      addUnitRow();
+      const n = unitCount;
+      set(`u-flr-${n}`, u.flr); set(`u-loc-${n}`, u.loc); set(`u-mount-${n}`, u.mount);
+      toggleCabinet(n); set(`u-cab-${n}`, u.cab);
+      set(`u-mfg-${n}`, u.mfg); set(`u-size-${n}`, u.size); set(`u-type-${n}`, u.type);
+      set(`u-pf-${n}`, u.pf); set(`u-hydro-${n}`, u.hydro); set(`u-recharge-${n}`, u.recharge);
+      set(`u-newunit-${n}`, u.newunit); set(`u-note-${n}`, u.note);
+    });
+    updateStats();
+
+    if (d.svcTable) d.svcTable.forEach((row, i) => {
+      set(`svc-6yr-${i}`, row.yr6); set(`svc-hydro-${i}`, row.hydro); set(`svc-recharge-${i}`, row.recharge);
+      set(`svc-newunit-${i}`, row.newunit); set(`svc-notes-${i}`, row.notes);
+    });
+    set('nf-mallets', d.nfMallets); set('nf-signage', d.nfSignage); set('nf-glass', d.nfGlass);
+    set('total-svc-due', d.totalSvcDue);
+
+    if (d.qa) d.qa.forEach((qa, i) => { set(`qa-ans-${i}`, qa.ans); set(`qa-num-${i}`, qa.num); });
+
+    if (d.defics) d.defics.forEach(df => {
+      addDeficRow();
+      const n = deficCount;
+      set(`defic-desc-${n}`, df.desc); set(`defic-model-${n}`, df.model); set(`defic-sev-${n}`, df.sev);
+    });
+    if (d.notes) d.notes.forEach(nt => { addNoteRow(); set(`note-desc-${noteCount}`, nt.desc); });
+
+    set('sig-tech-date', d.sigTechDate); set('sig-client-date', d.sigClientDate);
+  } catch(e) { console.warn('Draft restore failed', e); }
+}
+
+init();
+</script>
+</body>
+</html>
