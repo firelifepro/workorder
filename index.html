@@ -644,16 +644,16 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="value-cell"><input type="text" id="monitoring-acct"></td>
     </tr>
     <tr>
-      <td class="label-cell"># of Sprinkler Heads:</td>
-      <td class="value-cell"><input type="number" id="num-sprinklers" min="0"></td>
-      <td class="label-cell"># of Fire Extinguishers:</td>
-      <td class="value-cell"><input type="number" id="num-extinguishers" min="0"></td>
+      <td class="label-cell">Sprinkler Heads:</td>
+      <td class="value-cell"><input type="text" id="num-sprinklers"></td>
+      <td class="label-cell">Fire Extinguishers:</td>
+      <td class="value-cell"><input type="text" id="num-extinguishers"></td>
     </tr>
     <tr>
-      <td class="label-cell"># of Hydrants:</td>
-      <td class="value-cell"><input type="number" id="num-hydrants" min="0"></td>
-      <td class="label-cell"># of Backflows:</td>
-      <td class="value-cell"><input type="number" id="num-backflows" min="0"></td>
+      <td class="label-cell">Hydrants:</td>
+      <td class="value-cell"><input type="text" id="num-hydrants"></td>
+      <td class="label-cell">Backflows:</td>
+      <td class="value-cell"><input type="text" id="num-backflows"></td>
     </tr>
     <tr>
       <td class="label-cell">Last Inspection Date:</td>
@@ -673,36 +673,36 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     </tr>
   </table>
 
-  <!-- ══ SUB-CONTRACTOR ══ -->
-  <table class="wo-table">
-    <tr><td colspan="4" class="section-header">SUB-CONTRACTOR (IF APPLICABLE)</td></tr>
-    <tr>
-      <td class="label-cell">Sub-Contractor:</td>
-      <td class="value-cell"><input type="text" id="sub-name"></td>
-      <td class="label-cell">Sub-Contractor Invoice #:</td>
-      <td class="value-cell"><input type="text" id="sub-invoice"></td>
-    </tr>
-    <tr>
-      <td class="label-cell">Sub-Contractor Contact:</td>
-      <td class="value-cell" colspan="3"><input type="text" id="sub-contact" style="width:100%;"></td>
-    </tr>
-  </table>
-
   <!-- ══ FLPS EXPENSES ══ -->
   <table class="wo-table" id="expenses-table">
-    <tr><td colspan="4" class="section-header">FLPS EXPENSES</td></tr>
+    <tr><td colspan="6" class="section-header">FLPS EXPENSES</td></tr>
     <tr>
-      <td class="exp-col-header" style="width:15%;">Expense Name</td>
-      <td class="exp-col-header" style="width:45%;">Description</td>
-      <td class="exp-col-header" style="width:10%;text-align:center;">Quantity</td>
-      <td class="exp-col-header" style="width:22%;">Total Amount</td>
+      <td colspan="3" style="padding:5px 6px;white-space:nowrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:700;">
+          <input type="checkbox" id="flat-rate-cb" onchange="onFlatRateChange()">
+          Is this a Fixed Rate?
+        </label>
+      </td>
+      <td colspan="3" style="padding:5px 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:9pt;color:#555;">$</span>
+        <input type="number" id="flat-rate-amount" min="0" step="0.01" style="width:130px;" disabled placeholder="Enter fixed rate" oninput="onFlatRateAmountChange()">
+        <span id="flat-rate-note" style="font-size:0.78rem;color:#c0392b;font-style:italic;display:none;">Total to Invoice locked to fixed rate</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="exp-col-header" style="width:14%;">Expense Name</td>
+      <td class="exp-col-header" style="width:22%;">Description</td>
+      <td class="exp-col-header" style="width:8%;text-align:center;">Qty</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Expense</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Markup&nbsp;(<input type="number" id="markup-pct" value="25" min="0" max="999" step="1" style="width:38px;font-size:0.85em;padding:1px 3px;border:1px solid #aaa;border-radius:2px;font-weight:normal;" oninput="recalcAllMarkups()">%)</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Total</td>
     </tr>
     <!-- Sub-Contractor Amount — dynamic rows injected here by addSubRow() -->
     <tr id="sub-add-row">
-      <td colspan="4" style="padding:2px 4px;">
+      <td colspan="6" style="padding:2px 4px;">
         <button type="button" onclick="addSubRow()"
           style="font-size:0.78rem;padding:3px 10px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;">
-          + Add Another Sub-Contractor
+          + Add Another Sub-Contractor/Vendor
         </button>
       </td>
     </tr>
@@ -711,45 +711,67 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-label">Materials</td>
       <td class="value-cell"><input type="text" id="mat-desc"></td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty" min="0" step="1" style="text-align:center;"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-total" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="calcTotal()"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseChange('mat')"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
-    <!-- Labor Rate -->
+    <!-- Labor 1 -->
     <tr>
-      <td class="exp-label">Labor Rate</td>
+      <td class="exp-label">Labor 1</td>
       <td class="value-cell">
-        <div class="check-group">
-          <label><input type="radio" name="labor-rate" value="$85.00" onclick="hideManualLaborVisability();calcTotal()"> $85.00/hr</label>
-          <label><input type="radio" name="labor-rate" value="$135.00" onclick="hideManualLaborVisability();calcTotal()"> $135.00/hr</label>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:0.78rem;color:#555;">$</span>
+          <input type="number" id="labor1-rate" min="0" step="0.5" value="135" style="width:68px;" oninput="calcLaborRow(1)">
+          <span style="font-size:0.78rem;color:#555;">/hr</span>
         </div>
       </td>
-      <td class="value-cell" style="text-align:center;"><input type="number" id="labor-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" onchange="hideManualLaborVisability();calcLabor(); calcTotal()"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor-total" min="0" step="1" style="width:calc(100% - 14px);" onclick= "showManualLaborVisability();" onchange="calcTotal()">
-      	<span id = "labor-manual" style="display: none;">*manually changed</span>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="labor1-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(1)"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(1)" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Labor 2 -->
+    <tr>
+      <td class="exp-label">Labor 2</td>
+      <td class="value-cell">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:0.78rem;color:#555;">$</span>
+          <input type="number" id="labor2-rate" min="0" step="0.5" value="85" style="width:68px;" oninput="calcLaborRow(2)">
+          <span style="font-size:0.78rem;color:#555;">/hr</span>
+        </div>
       </td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="labor2-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(2)"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(2)" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
     <!-- Trip Charge -->
     <tr>
       <td class="exp-label">Trip Charge</td>
       <td class="value-cell">
         <div class="check-group">
-          <label><input type="checkbox" id="trip-cb" value="$90.00" onchange="clearTrip();calcTotal()"> $90.00</label>
+          <label><input type="checkbox" id="trip-cb" value="$90.00" onchange="onTripChange()"> $90.00</label>
         </div>
       </td>
       <td class="value-cell"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-total" min="0" step="0.01" style="width:calc(100% - 14px);"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onTripMarkupChange()" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
     <!-- Misc -->
     <tr>
       <td class="exp-label">Misc:</td>
       <td class="value-cell"><input type="text" id="misc-desc"></td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="misc-qty" min="0" step="1" style="text-align:center;"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-total" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="calcTotal()"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseChange('misc')"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
     <!-- Compliance Report -->
     <tr id="compliance-row">
       <td class="exp-label">
         <label style="display:flex;align-items:center;gap:5px;font-weight:700;cursor:pointer;">
-          <input type="checkbox" id="compliance-cb" onchange="onComplianceCbChange();calcTotal()">
+          <input type="checkbox" id="compliance-cb" onchange="onComplianceCbChange()">
           Compliance Report
         </label>
       </td>
@@ -758,13 +780,21 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       </td>
       <td class="value-cell">
         <span class="dollar-prefix">$</span>
-        <input type="number" id="compliance-amount" min="0" step="0.01" style="width:calc(100% - 14px);"
-               oninput="calcTotal()" disabled placeholder="Amount">
+        <input type="number" id="compliance-expense" min="0" step="0.01" style="width:calc(100% - 14px);"
+               oninput="onComplianceExpenseChange()" disabled placeholder="Amount">
+      </td>
+      <td class="value-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="compliance-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onComplianceMarkupChange()" disabled placeholder="0">
+      </td>
+      <td class="value-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="compliance-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1" disabled>
       </td>
     </tr>
     <!-- Total -->
     <tr>
-      <td></td><td></td>
+      <td colspan="4"></td>
       <td class="total-label">Total to Invoice =</td>
       <td class="value-cell" style="font-weight:700;"><span class="dollar-prefix">$</span><input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;"></td>
     </tr>
@@ -790,6 +820,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
           <label><input type="radio" name="report-sub" value="Yes"> Yes</label>
           <label><input type="radio" name="report-sub" value="No"> No</label>
           <label><input type="radio" name="report-sub" value="Pending"> Pending</label>
+          <label><input type="radio" name="report-sub" value="N/A"> N/A</label>
         </div>
       </td>
       <td class="label-cell">Invoice #:</td>
@@ -1287,24 +1318,98 @@ function onPropertySelect() {
 // EXPENSE CALC
 
 // ─────────────────────────────────────────────────────────
+// MARKUP HELPERS
+// ─────────────────────────────────────────────────────────
+function getMarkupPct() {
+  return (parseFloat(document.getElementById('markup-pct')?.value) || 0) / 100;
+}
+
+function setMarkupAndTotal(expenseId, markupId, totalId) {
+  const expense = parseFloat(document.getElementById(expenseId)?.value) || 0;
+  const markup  = expense * getMarkupPct();
+  const elM = document.getElementById(markupId);
+  const elT = document.getElementById(totalId);
+  if (elM) elM.value = markup.toFixed(2);
+  if (elT) elT.value = (expense + markup).toFixed(2);
+}
+
+function onExpenseChange(prefix) {
+  setMarkupAndTotal(prefix + '-expense', prefix + '-markup', prefix + '-total');
+  calcTotal();
+}
+
+function recalcAllMarkups() {
+  document.querySelectorAll('[id^="sub-row-"]').forEach(row => {
+    const n = row.id.replace('sub-row-', '');
+    setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
+  });
+  setMarkupAndTotal('mat-expense', 'mat-markup', 'mat-total');
+  setMarkupAndTotal('misc-expense', 'misc-markup', 'misc-total');
+  // Labor, trip, compliance: NOT auto-markup — user enters manually
+  calcTotal();
+}
+
+function onLaborMarkupChange(n) {
+  const expense = parseFloat(document.getElementById('labor' + n + '-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value)  || 0;
+  const totEl   = document.getElementById('labor' + n + '-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+function onTripMarkupChange() {
+  const expense = parseFloat(document.getElementById('trip-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('trip-markup')?.value)  || 0;
+  const totEl   = document.getElementById('trip-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+function onComplianceExpenseChange() {
+  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
+  const totEl   = document.getElementById('compliance-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+function onComplianceMarkupChange() {
+  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
+  const totEl   = document.getElementById('compliance-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+// ─────────────────────────────────────────────────────────
 // DYNAMIC SUB-CONTRACTOR ROWS
 // ─────────────────────────────────────────────────────────
 let subRowCount = 0;
 
-function addSubRow(labelVal, amountVal) {
+function addSubRow(labelVal, expenseVal) {
   const n = ++subRowCount;
   const tr = document.createElement('tr');
   tr.id = 'sub-row-' + n;
   tr.innerHTML =
-    '<td class="exp-label" style="white-space:nowrap;">Sub-Contractor ' +
+    '<td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor ' +
     '<button type="button" onclick="removeSubRow(' + n + ')" ' +
     'style="margin-left:4px;background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
-    '<td class="value-cell" colspan="2"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
+    '<td class="value-cell"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
+    '<td class="value-cell"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-amt-' + n + '" value="' + (amountVal||'') + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="calcTotal()"></td>';
-  // Insert before the "Add Another Sub-Contractor" button row
+    '<input type="number" id="sub-expense-' + n + '" value="' + (expenseVal||'') + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onSubExpenseChange(' + n + ')"></td>' +
+    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
+    '<input type="number" id="sub-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
+    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
+    '<input type="number" id="sub-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
   const addBtnRow = document.getElementById('sub-add-row');
   addBtnRow.parentNode.insertBefore(tr, addBtnRow);
+  if (expenseVal) setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
+  calcTotal();
+}
+
+function onSubExpenseChange(n) {
+  setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
   calcTotal();
 }
 
@@ -1315,13 +1420,14 @@ function removeSubRow(idx) {
 }
 
 function getSubRows() {
-  // Return array of {label, amount} for all current sub rows
   const rows = [];
   document.querySelectorAll('[id^="sub-row-"]').forEach(tr => {
     const n = tr.id.replace('sub-row-', '');
-    const label = document.getElementById('sub-label-' + n)?.value?.trim() || '';
-    const amount = parseFloat(document.getElementById('sub-amt-' + n)?.value) || 0;
-    rows.push({ label, amount });
+    const label   = document.getElementById('sub-label-'   + n)?.value?.trim() || '';
+    const expense = parseFloat(document.getElementById('sub-expense-' + n)?.value) || 0;
+    const markup  = parseFloat(document.getElementById('sub-markup-'  + n)?.value) || 0;
+    const total   = parseFloat(document.getElementById('sub-total-'   + n)?.value) || 0;
+    rows.push({ label, expense, markup, total });
   });
   return rows;
 }
@@ -1330,13 +1436,18 @@ function getSubRows() {
 // COMPLIANCE REPORT
 // ─────────────────────────────────────────────────────────
 function onComplianceCbChange() {
-  const cb   = document.getElementById('compliance-cb');
-  const desc = document.getElementById('compliance-desc');
-  const amt  = document.getElementById('compliance-amount');
-  desc.disabled = !cb.checked;
-  amt.disabled  = !cb.checked;
-  if (!cb.checked) { amt.value = ''; calcTotal(); }
-  // Clear any error state
+  const cb      = document.getElementById('compliance-cb');
+  const desc    = document.getElementById('compliance-desc');
+  const expense = document.getElementById('compliance-expense');
+  const mkup    = document.getElementById('compliance-markup');
+  const tot     = document.getElementById('compliance-total');
+  [desc, expense, mkup, tot].forEach(el => { if (el) el.disabled = !cb.checked; });
+  if (!cb.checked) {
+    if (expense) expense.value = '';
+    if (mkup)    mkup.value    = '';
+    if (tot)     tot.value     = '';
+  }
+  calcTotal();
   const row = document.getElementById('compliance-row');
   if (row) row.style.outline = '';
 }
@@ -1353,64 +1464,76 @@ function hasInspectionChecked() {
 }
 
 // ─────────────────────────────────────────────────────────
-let manualTotal = false;
+// FLAT RATE
+// ─────────────────────────────────────────────────────────
+function setGrandTotalStyle(isFixed) {
+  const el = document.getElementById('grand-total');
+  if (!el) return;
+  el.style.color      = isFixed ? '#c0392b' : '';
+  el.style.fontWeight = isFixed ? '900'     : '700';
+}
+function onFlatRateChange() {
+  const cb    = document.getElementById('flat-rate-cb');
+  const amtEl = document.getElementById('flat-rate-amount');
+  const note  = document.getElementById('flat-rate-note');
+  amtEl.disabled = !cb.checked;
+  if (note) note.style.display = cb.checked ? 'inline' : 'none';
+  setGrandTotalStyle(cb.checked);
+  if (!cb.checked) { amtEl.value = ''; calcTotal(); }
+  else if (amtEl.value) { document.getElementById('grand-total').value = parseFloat(amtEl.value).toFixed(2); }
+}
+function onFlatRateAmountChange() {
+  const amt = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
+  document.getElementById('grand-total').value = amt.toFixed(2);
+}
 
+// ─────────────────────────────────────────────────────────
 function calcTotal() {
-  const subRows  = getSubRows ? getSubRows() : [];
-  const subAmt   = subRows.reduce((s, r) => s + r.amount, 0);
-  const matAmt   = parseFloat(document.getElementById('mat-total').value)   || 0;
-  const miscAmt  = parseFloat(document.getElementById('misc-total').value)  || 0;
+  if (document.getElementById('flat-rate-cb')?.checked) {
+    const flat = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
+    document.getElementById('grand-total').value = flat.toFixed(2);
+    setGrandTotalStyle(true);
+    return;
+  }
+  setGrandTotalStyle(false);
+  const subRows   = getSubRows ? getSubRows() : [];
+  const subAmt    = subRows.reduce((s, r) => s + r.total, 0);
+  const matAmt    = parseFloat(document.getElementById('mat-total')?.value)    || 0;
+  const labor1Amt = parseFloat(document.getElementById('labor1-total')?.value) || 0;
+  const labor2Amt = parseFloat(document.getElementById('labor2-total')?.value) || 0;
+  const tripAmt   = parseFloat(document.getElementById('trip-total')?.value)   || 0;
+  const miscAmt   = parseFloat(document.getElementById('misc-total')?.value)   || 0;
   const compliAmt = document.getElementById('compliance-cb')?.checked
-    ? (parseFloat(document.getElementById('compliance-amount')?.value) || 0) : 0;
-
-  // Trip charge: checkbox sets the field, but field is also directly editable
-  const tripCb = document.getElementById('trip-cb').checked;
-  if (tripCb) {
-    const cur = parseFloat(document.getElementById('trip-total').value);
-    if (!cur) document.getElementById('trip-total').value = '90.00';
-  }
-  const tripAmt  = parseFloat(document.getElementById('trip-total').value) || 0;
-  const laborAmt = parseFloat(document.getElementById('labor-total').value) || 0;
-
-  if (!manualTotal) {
-    document.getElementById('grand-total').value = (subAmt + matAmt + laborAmt + tripAmt + miscAmt + compliAmt).toFixed(2);
-  }
-  manualTotal = false;
-}
-// ─────────────────────────────────────────────────────────
-// CALC Misc
-// ─────────────────────────────────────────────────────────
-function clearTrip(){
-	document.getElementById('trip-total').value = 0;
+    ? (parseFloat(document.getElementById('compliance-total')?.value) || 0) : 0;
+  document.getElementById('grand-total').value = (subAmt + matAmt + labor1Amt + labor2Amt + tripAmt + miscAmt + compliAmt).toFixed(2);
 }
 
-//show the labor changed manually
-function showManualLaborVisability(){
-  // To toggle the div inside the td
-  var element = document.getElementById('labor-manual');
-  if (element.style.display === "none" || element.style.display === "") {
-    element.style.display = "block"; // Use "block" or the div's default display type
-	}
-}
-//show the labor changed manually
-function hideManualLaborVisability(){
-  // To toggle the div inside the td
-  var element = document.getElementById('labor-manual');
-  if (element.style.display === "block" || element.style.display === "") {
-    element.style.display = "none"; // Use "block" or the div's default display type
+function onTripChange() {
+  const cb = document.getElementById('trip-cb');
+  const expEl = document.getElementById('trip-expense');
+  if (cb.checked) {
+    expEl.value = '90.00';
+    // Total = $90 + whatever markup user entered manually
+    const markup = parseFloat(document.getElementById('trip-markup')?.value) || 0;
+    document.getElementById('trip-total').value = (90 + markup).toFixed(2);
+  } else {
+    expEl.value = '';
+    document.getElementById('trip-total').value = '';
   }
+  calcTotal();
 }
 
-
-function calcLabor(){
-  // Labor: rate × qty auto-fills labor-total, but labor-total is also editable
-  const checkedRate = document.querySelector('input[name="labor-rate"]:checked');
-  if (!checkedRate) return; // no rate selected yet — don't overwrite total with NaN
-  const laborRate = parseFloat(checkedRate.value.replace(/^\$/, '')) || 0;
-  const laborQty  = parseFloat(document.getElementById('labor-qty').value) || 0;
-  if (laborRate && laborQty) {
-    document.getElementById('labor-total').value = (laborRate * laborQty).toFixed(2);
-  }
+function calcLaborRow(n) {
+  const rate   = parseFloat(document.getElementById('labor' + n + '-rate')?.value) || 0;
+  const qty    = parseFloat(document.getElementById('labor' + n + '-qty')?.value)  || 0;
+  const expEl  = document.getElementById('labor' + n + '-expense');
+  if (expEl) expEl.value = (rate && qty) ? (rate * qty).toFixed(2) : '';
+  // Total = expense + whatever markup user entered manually (no auto-markup for labor)
+  const expense = parseFloat(expEl?.value) || 0;
+  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value) || 0;
+  const totEl   = document.getElementById('labor' + n + '-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1457,25 +1580,41 @@ function collectForm() {
     '# BACKFLOWS':          v('num-backflows'),
     'LAST INSPECTION DATE': fmtDate(v('last-inspection')),
     'COMPLIANCE DUE DATE':  fmtDate(v('compliance-due')),
-    'SUB-CONTRACTOR':       v('sub-name'),
-    'SUB-CONTRACTOR INVOICE #': v('sub-invoice'),
-    'SUB-CONTRACTOR CONTACT':   v('sub-contact'),
+    'MARKUP PCT':               (v('markup-pct') || '25') + '%',
     'SUB-CONTRACTOR ROWS':      JSON.stringify(getSubRows ? getSubRows() : []),
-    'SUB-CONTRACTOR AMOUNT':    '$' + ((getSubRows ? getSubRows().reduce((s,r)=>s+r.amount,0) : 0) || 0).toFixed(2),
+    'SUB-CONTRACTOR AMOUNT':    '$' + ((getSubRows ? getSubRows().reduce((s,r)=>s+r.total,0) : 0) || 0).toFixed(2),
     'COMPLIANCE REPORT':        document.getElementById('compliance-cb')?.checked ? 'Yes' : 'No',
-    'COMPLIANCE AMOUNT':        document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-amount')?.value)||0).toFixed(2) : '',
+    'COMPLIANCE EXPENSE':       document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-expense')?.value)||0).toFixed(2) : '',
+    'COMPLIANCE MARKUP':        document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-markup')?.value)||0).toFixed(2) : '',
+    'COMPLIANCE TOTAL':         document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-total')?.value)||0).toFixed(2) : '',
     'COMPLIANCE DESC':          document.getElementById('compliance-desc')?.value?.trim() || '',
     'NOTES / DEFICIENCIES':     v('notes-deficiencies'),
     'MATERIALS DESCRIPTION':    v('mat-desc'),
     'MATERIALS QTY':            v('mat-qty'),
-    'MATERIALS TOTAL':          '$' + (v('mat-total') || '0.00'),
-    'LABOR RATE':               r('labor-rate'),
-    'LABOR HOURS':              v('labor-qty'),
-    'LABOR TOTAL':              '$' + (v('labor-total') || '0.00'),
+    'MATERIALS EXPENSE':        '$' + (v('mat-expense') || '0.00'),
+    'MATERIALS MARKUP':         '$' + (v('mat-markup')  || '0.00'),
+    'MATERIALS TOTAL':          '$' + (v('mat-total')   || '0.00'),
+    'LABOR 1 RATE':             v('labor1-rate') ? '$' + v('labor1-rate') + '/hr' : '',
+    'LABOR 1 HOURS':            v('labor1-qty'),
+    'LABOR 1 EXPENSE':          '$' + (v('labor1-expense') || '0.00'),
+    'LABOR 1 MARKUP':           '$' + (v('labor1-markup')  || '0.00'),
+    'LABOR 1 TOTAL':            '$' + (v('labor1-total')   || '0.00'),
+    'LABOR 2 RATE':             v('labor2-rate') ? '$' + v('labor2-rate') + '/hr' : '',
+    'LABOR 2 HOURS':            v('labor2-qty'),
+    'LABOR 2 EXPENSE':          '$' + (v('labor2-expense') || '0.00'),
+    'LABOR 2 MARKUP':           '$' + (v('labor2-markup')  || '0.00'),
+    'LABOR 2 TOTAL':            '$' + (v('labor2-total')   || '0.00'),
     'TRIP CHARGE':              document.getElementById('trip-cb').checked ? '$90.00' : 'N/A',
+    'TRIP EXPENSE':             '$' + (v('trip-expense') || '0.00'),
+    'TRIP MARKUP':              '$' + (v('trip-markup')  || '0.00'),
+    'TRIP TOTAL':               '$' + (v('trip-total')   || '0.00'),
     'MISC DESCRIPTION':         v('misc-desc'),
-    'MISC TOTAL':               '$' + (v('misc-total') || '0.00'),
+    'MISC EXPENSE':             '$' + (v('misc-expense') || '0.00'),
+    'MISC MARKUP':              '$' + (v('misc-markup')  || '0.00'),
+    'MISC TOTAL':               '$' + (v('misc-total')   || '0.00'),
     'TOTAL TO INVOICE':         '$' + (v('grand-total') || '0.00'),
+    'FLAT RATE':                document.getElementById('flat-rate-cb')?.checked ? 'Yes' : 'No',
+    'FLAT RATE AMOUNT':         document.getElementById('flat-rate-cb')?.checked ? '$' + (v('flat-rate-amount') || '0.00') : '',
     'WORK STATUS':              r('work-status'),
     'REPORT SUBMITTED':         r('report-sub'),
     'INVOICE #':                v('invoice-num'),
@@ -1555,7 +1694,7 @@ async function createDoc() {
 
   // ── Validate Compliance Report ───────────────────────────
   const compliCb  = document.getElementById('compliance-cb');
-  const compliAmt = document.getElementById('compliance-amount');
+  const compliAmt = document.getElementById('compliance-expense');
   if (hasInspectionChecked() && !compliCb?.checked) {
     const row = document.getElementById('compliance-row');
     if (row) row.style.outline = '2px solid #e53935';
@@ -1603,7 +1742,9 @@ async function createDoc() {
     : '';
 
   const woNum  = data['LINE #'] || '';
-  const titleParts = [`Line ${woNum}`, property, firstSvc, dateTitle].filter(Boolean);
+  const subRowsForTitle = (() => { try { return JSON.parse(data['SUB-CONTRACTOR ROWS'] || '[]'); } catch(_) { return []; } })();
+  const hasSubForTitle  = subRowsForTitle.some(r => (r.expense || 0) > 0 || (r.total || 0) > 0);
+  const titleParts = [`Line ${woNum}`, property, firstSvc, dateTitle, hasSubForTitle ? 'Sub' : ''].filter(Boolean);
   const docName = titleParts.join(' - ');
 
   const btn = document.getElementById('submit-btn');
@@ -1885,7 +2026,9 @@ function buildWorkOrderHTML(d) {
   const dateTitleStr = rawDateTitle
     ? rawDateTitle.split('-').slice(1).concat(rawDateTitle.split('-')[0]).join('-')
     : '';
-  const titleParts2 = [`Line ${d['LINE #']}`, propTitle, firstSvcTitle, dateTitleStr].filter(Boolean);
+  const subRowsForTitle2 = (() => { try { return JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]'); } catch(_) { return []; } })();
+  const hasSubForTitle2  = subRowsForTitle2.some(r => (r.expense || 0) > 0 || (r.total || 0) > 0);
+  const titleParts2 = [`Line ${d['LINE #']}`, propTitle, firstSvcTitle, dateTitleStr, hasSubForTitle2 ? '-Sub' : ''].filter(Boolean);
   const fullDocTitle = titleParts2.join(' - ');
 
   html += `<h2 style="font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;
@@ -1980,8 +2123,8 @@ function buildWorkOrderHTML(d) {
        val(['Conventional','Addressable'].map(t=>chk(d['PANEL SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
        lbl(''), val('')) +
     tr(lbl('Monitoring Company:'), val(d['MONITORING COMPANY']), lbl('Monitoring Account #:'), val(d['MONITORING ACCOUNT #'])) +
-    tr(lbl('# of Sprinkler Heads:'), val(d['# SPRINKLER HEADS']), lbl('# of Fire Extinguishers:'), val(d['# FIRE EXTINGUISHERS'])) +
-    tr(lbl('# of Hydrants:'), val(d['# HYDRANTS']), lbl('# of Backflows:'), val(d['# BACKFLOWS'])) +
+    tr(lbl('Sprinkler Heads:'), val(d['# SPRINKLER HEADS']), lbl('Fire Extinguishers:'), val(d['# FIRE EXTINGUISHERS'])) +
+    tr(lbl('Hydrants:'), val(d['# HYDRANTS']), lbl('Backflows:'), val(d['# BACKFLOWS'])) +
     tr(lbl('Last Inspection Date:'), val(d['LAST INSPECTION DATE']), lbl('Compliance Due Date:'), val(d['COMPLIANCE DUE DATE']))
   );
   html += '<br>';
@@ -1991,44 +2134,90 @@ function buildWorkOrderHTML(d) {
     tr(`<td style="${S.val}min-height:60px;">${v(d['NOTES / DEFICIENCIES'])}</td>`), 'width:100%;');
   html += '<br>';
 
-  // ── 6. Sub-Contractor ────────────────────────────────────────────
-  html += tbl(
-    hdr('SUB-CONTRACTOR (IF APPLICABLE)') +
-    tr(lbl('Sub-Contractor:'), val(d['SUB-CONTRACTOR']), lbl('Sub-Contractor Invoice #:'), val(d['SUB-CONTRACTOR INVOICE #'])) +
-    tr(lbl('Sub-Contractor Contact:'), val(d['SUB-CONTRACTOR CONTACT']), lbl('Sub-Contractor Amount:'), val(d['SUB-CONTRACTOR AMOUNT']))
-  );
-  html += '<br>';
+  // ── 6. FLPS Expenses ─────────────────────────────────────────────
+  const pdfEhdr = `font-weight:700;font-size:8.5pt;background:#e8f0f8;padding:3px 5px;border:1px solid #bbb;text-align:center;`;
+  const pdfEval = `font-size:9pt;padding:3px 5px;border:1px solid #ddd;text-align:right;`;
+  const pdfElbl = `font-size:9pt;padding:3px 5px;border:1px solid #ddd;font-weight:600;`;
+  const pdfEtxt = `font-size:9pt;padding:3px 5px;border:1px solid #ddd;`;
+  function erow(name, desc, qty, expense, markup, total) {
+    return `<tr>
+      <td style="${pdfElbl}">${name}</td>
+      <td style="${pdfEtxt}">${desc}</td>
+      <td style="${pdfEval}">${qty}</td>
+      <td style="${pdfEval}">${expense}</td>
+      <td style="${pdfEval}">${markup}</td>
+      <td style="${pdfEval}">${total}</td>
+    </tr>`;
+  }
+  html += `<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+    <tr><td colspan="6" style="background:#2e6da4;color:white;font-weight:700;font-size:10pt;padding:4px 6px;">FLPS EXPENSES</td></tr>
+    <tr>
+      <td style="${pdfEhdr}width:14%;">Expense Name</td>
+      <td style="${pdfEhdr}width:22%;">Description</td>
+      <td style="${pdfEhdr}width:8%;">Qty</td>
+      <td style="${pdfEhdr}width:18%;">Expense</td>
+      <td style="${pdfEhdr}width:18%;">Markup (${d['MARKUP PCT']||'25%'})</td>
+      <td style="${pdfEhdr}width:18%;">Total</td>
+    </tr>`;
 
-  // ── 7. FLIPS Expenses ────────────────────────────────────────────
-  html += tbl(
-    hdr('FLPS EXPENSES') +
-    (() => {
-      try {
-        const rows = JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]');
-        if (rows.length === 0) return tr(lbl('Sub-Contractor:'), val(''), lbl(''), val(''));
-        return rows.map((r,i) =>
-          tr(lbl(i===0?'Sub-Contractor:':''), val(r.label||''), val(''), val(r.amount ? '$'+r.amount.toFixed(2) : ''))
-        ).join('');
-      } catch(_) { return tr(lbl('Sub-Contractor:'), val(d['SUB-CONTRACTOR AMOUNT']), lbl(''), val('')); }
-    })() +
-    tr(td('Expense Name',S.ehdr), td('Description',S.ehdr), td('Quantity',S.ehdr), td('Total Amount',S.ehdr)) +
-    tr(lbl('Materials'), val(d['MATERIALS DESCRIPTION']), val(d['MATERIALS QTY']), val(d['MATERIALS TOTAL'])) +
-    tr(lbl('Labor Rate'),
-       val(['$85.00','$135.00'].map(r=>chk(d['LABOR RATE']===r,r+'/hr')).join('&nbsp;&nbsp;')),
-       val((d['LABOR HOURS']||'')+(d['LABOR HOURS']?' hrs':'')),
-       val(d['LABOR TOTAL'])) +
-    tr(lbl('Trip Charge'), val(chk(d['TRIP CHARGE']==='$90.00','$90.00')), val(''), val(d['TRIP CHARGE']==='$90.00'?d['TRIP CHARGE']:'')) +
-    tr(lbl('Misc'), val(d['MISC DESCRIPTION']), val(''), val(d['MISC TOTAL'])) +
-    tr(lbl('Compliance Report'),
-       val(d['COMPLIANCE REPORT'] === 'Yes'
-         ? '☑ ' + (d['COMPLIANCE DESC'] || 'Compliance Report')
-         : '☐ Not required'),
-       val(''),
-       val(d['COMPLIANCE REPORT'] === 'Yes' ? d['COMPLIANCE AMOUNT'] : '')) +
-    tr(`<td colspan="2" style="${S.lbl}">Total to Invoice</td>`,
-       `<td style="${S.lbl}text-align:center;">=</td>`,
-       `<td style="${S.lbl}font-size:10pt;">${d['TOTAL TO INVOICE']||'&nbsp;'}</td>`)
-  );
+  // Sub-contractor rows
+  (() => {
+    try {
+      const rows = JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]');
+      if (rows.length === 0) {
+        html += erow('Sub-Contractor/Vendor', '', '', '', '', '');
+      } else {
+        rows.forEach((r, i) => {
+          html += erow(i===0?'Sub-Contractor/Vendor':'', r.label||'', '',
+            r.expense ? '$'+r.expense.toFixed(2) : '',
+            r.markup  ? '$'+r.markup.toFixed(2)  : '',
+            r.total   ? '$'+r.total.toFixed(2)   : '');
+        });
+      }
+    } catch(_) { html += erow('Sub-Contractor/Vendor', '', '', d['SUB-CONTRACTOR AMOUNT']||'', '', ''); }
+  })();
+
+  html += erow('Materials', d['MATERIALS DESCRIPTION']||'', d['MATERIALS QTY']||'',
+    d['MATERIALS EXPENSE']||'', d['MATERIALS MARKUP']||'', d['MATERIALS TOTAL']||'');
+
+  // Labor 1
+  if (d['LABOR 1 RATE'] || d['LABOR 1 HOURS']) {
+    html += erow('Labor 1',
+      d['LABOR 1 RATE'] ? d['LABOR 1 RATE'] : '',
+      d['LABOR 1 HOURS'] ? d['LABOR 1 HOURS'] + ' hrs' : '',
+      d['LABOR 1 EXPENSE']||'', d['LABOR 1 MARKUP']||'', d['LABOR 1 TOTAL']||'');
+  }
+  // Labor 2
+  if (d['LABOR 2 RATE'] || d['LABOR 2 HOURS']) {
+    html += erow('Labor 2',
+      d['LABOR 2 RATE'] ? d['LABOR 2 RATE'] : '',
+      d['LABOR 2 HOURS'] ? d['LABOR 2 HOURS'] + ' hrs' : '',
+      d['LABOR 2 EXPENSE']||'', d['LABOR 2 MARKUP']||'', d['LABOR 2 TOTAL']||'');
+  }
+
+  html += erow('Trip Charge',
+    chk(d['TRIP CHARGE']==='$90.00','$90.00'), '',
+    d['TRIP CHARGE']==='$90.00' ? (d['TRIP EXPENSE']||'') : '',
+    d['TRIP CHARGE']==='$90.00' ? (d['TRIP MARKUP']||'')  : '',
+    d['TRIP CHARGE']==='$90.00' ? (d['TRIP TOTAL']||'')   : '');
+
+  html += erow('Misc', d['MISC DESCRIPTION']||'', '',
+    d['MISC EXPENSE']||'', d['MISC MARKUP']||'', d['MISC TOTAL']||'');
+
+  html += erow(
+    d['COMPLIANCE REPORT']==='Yes' ? '☑ Compliance Report' : '☐ Compliance Report',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE DESC']||'') : 'Not required',
+    '',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE EXPENSE']||'') : '',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE MARKUP']||'')  : '',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE TOTAL']||'')   : '');
+
+  html += `<tr>
+    <td colspan="4" style="border:none;"></td>
+    <td style="${pdfElbl}text-align:right;">${d['FLAT RATE']==='Yes' ? '★ FIXED RATE =' : 'Total to Invoice ='}</td>
+    <td style="${pdfElbl}font-size:10pt;text-align:right;">${d['TOTAL TO INVOICE']||'&nbsp;'}</td>
+  </tr>`;
+  html += `</table>`;
   html += '<br>';
 
   // ── 8. Completion & Billing ──────────────────────────────────────
@@ -2037,9 +2226,10 @@ function buildWorkOrderHTML(d) {
   // BULLET_CHECKBOX so they become real interactive checkboxes in the Doc.
   html += tbl(
     hdr('COMPLETION &amp; BILLING') +
+    (d['FLAT RATE']==='Yes' ? tr(lbl('★ Fixed Rate Invoice:'), val(d['FLAT RATE AMOUNT']||''), lbl(''), val('')) : '') +
     tr(lbl('Work Status:'), cbOpts(['Complete','Incomplete','Follow-Up Needed']),
        lbl(''), val('')) +
-    tr(lbl('Report Submitted:'), cbOpts(['Yes','No','Pending']),
+    tr(lbl('Report Submitted:'), cbOpts(['Yes','No','Pending','N/A']),
        lbl('Invoice #:'), val(d['INVOICE #'])) +
     tr(lbl('Invoice Date:'), val(d['INVOICE DATE']), lbl('Total Invoice Amount:'), val(d['TOTAL INVOICE AMOUNT'])) +
     tr(lbl('Payment Received:'), cbOpts(['Yes','No','Partial']),
