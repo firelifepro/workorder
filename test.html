@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAIRklEQVR4nJWXa4xV1RmGn2+tfW5zZriDQEBKQbReU0NrU4uTyI9G29gf9VBrTJqmVZqm2KRpqybVgTa2sZVSmmpDVUzUtAraeiEktakjokSBwiAIioLAMDPM7ewzM+e6z97r6499GGaGi7qSlZN91uV913d5v7XgMzQFaafV09ZWT3M5q6pGVY3mNlltbfXaafXawHyWPT8tsNFczmLkwtsLYARtazObwH6aveVCg21gVre1Ib/5tcMpW2HmPJLXJ2Ys+oo3Z9YSmdQ8XQUjpUrB9fYfrXYf29XPyPblcBwj6P0PGNasQcB9ZgJKzop5PsIpO+D6WfOvXZm54Us3T/7addPTV10Gs2eiTRlUwFQDZCBPcPBD8tvfKdW27/xP/oMdf10Kr2IEdbdaYXP0aSyCgmhbm0GgHS47uuDazf2/WK1hR4cWSwUtBMXQLxXq+UJ/mB/sjbvfF/pFv+7XRsLhyrDW3z+k/uqH9Oii67a0w5UIaC5n9RMsThsYkXjOHqbc3XPbnSPh3g71gxGXHx4M8z0nnd/Tqf6pk+r3do3vp7rU7+nUfE+nyxcGQr9eiuoHDmjP7SvLHUxaBaCqMpHE6IeCiIiuUk39eNqljy9s+9kdwQ+/Q+hcJCNFi7FgznMA50Ak7jESRBHanI08z7PJDf/g2Jq1T64sfHjXNpFQVUVARwk0WMmLMOmKRUtfWPznB28cvvmG0PUOWgHBXCD0owhpzqJhCEH9DIkGMQU1F02PWl5+zfto1a/+feTE3hU3QRFQAY13zuWMgFty8TXrL9nw8I1DN7cG2t3viTHnB1cFVWT6VOpv7SY6cBhJp+L/TzdjEGNEu/u94VuWB0see/jr8+df/YiAI5czMJrVOQBSc+fODq++1OmAb/EukMaqIIJkM1R+9wilO+9Bspnzz/csOuDb8NorXXr+vDkAXL5JxxBoWDOsB1KuGuwna4hk0pTv+z2VtrXYKy/FLl6IVmrnX2ANUq4YG0ZlAA5ulrMIKMg4H56rRREyuYXK+o3UNj6HTJuKmT8XEhZcBJ53PsogEKmOwxxPQB2jITmxNSJbmrOE73RQXb8RmTENwhBJNEATCbQwND4OJpxQJ4yNI2CR+jkXq0LCA8+CQPXRpyAI4rQ0BtfZA6kU4c4Oym1/RJoy4Cbs08g3N4FBg8Dm+Mc5ZSK+KqSSuCMn0GKF6MNjhNt3Is1ZqIdIU4Zw1z7cxyeov/YW4Zu70EoV7DmyRxWL1sdiTph17kWSShEdPUH10acI/7cf9YeJA1XBWrRcofzzB3Efn8R191Jv3xETjM6Wf1U5VwzEaahGEhjDWVZwDkmnCF7YSvD8VqQ5g4iLzxI5ZFKWcPtOwrf3IC3N1Db8HS1XGJdNSqwLVryxmDGBy3OxLHomEZtuDANV8Dyig4fRvgGi9z6ARJLE9IimxVHs21Ahk4oBsk2Eu/dR39qOtDSPsYKixoL1EgBsyo3RgdUNc9iEOaPSjWYtWhgi2PJfSKdRF6dT0GtIzXFMWhoiCSDSUXXEWmrPvoQGAaNKqsSXFWsS53BBA8vIWVouzVnCvQeIDh3BTkqRaIlinBDqg4bkDEfTJRHqiK3hHNKUIdp7EPf+ESSTPpOWMqbcjiPQsEAY1lWcO6MDqmi9jvvoONQDopohOduRWeDQSJCU4gIhMd1h0sBpa1uLjhQJ9x6AZDJOSQGcEoXjIzMmcHCFAETVWmm0ojVOUntyE+GeA3GhiZRwSMgsjEhMdtgsqAMxYFJKYoaecZ8q7mjnmHorSBAgteoIACtWjJHivj4BcIXhXhkpIp6nOIV0CnfkOMGLr8biovHVTgxkljgSSYfR2Aqp2Q5vikPDhhdF0FJp1PzieSojJaLCcN9YzHExUO/tPRx19ymed2bh7FlQq40Gkm2KC3nT1JDj9Ra6oiyeOhIzdHwZUY21QCR2gefhuvu03tN7+CwXbN62TTHCSKVrd/HdgyLWGAWIIrwrlkAyEWu4BW+yI1IhIwFvVubwXnU6zekamgKbVTgtIyKYJZ+P40gVscYU9x+SYvXkbozEmKcJ5MAJQjfsLry1sytZrQme57RUwfvyNdhFC9ByDdskmGZIOMe+2iwOBVN5eeRzHI2mkMBhWsBmgFqIzJyKd90X4xKd8FyyGkh++86e/bALhFzjqm4a2aFu2TJvhVApvfH2M6ld+4XJLY5agEybQupHd6DFMpI0GBt7Z71/DW9U5nIsbOHBgaVEajBWkYyHGxoh+Y3l2MULoFSGyS0utXu/VN7c8cxKody+bJl3Wm1GY2D1tm1OncrxwpE/nVz3WCEdRkYTntPCMKnbbiH1vW8THBsgqXBcp7CrMouaWgajNLuqszgZZUkaQ9hfwi6cR/qnP0BLFdSzLhU5c3LdY0Od+SPr1Km8vm2bGxcDAGvAISvMN42c6t/yyk9Y94TxZs2INIpUKxWyD91D8vt3UNo/QjoYxhqHNYK1Bmc9bFKpHhhCs1PIbvgt5qIZaLmCvWhmJOs2mt5XXlp1k5EeZIVZc4GXEprLWQT2Zef/IfrbUzqkQT3f06l+X7cWykN66rkXtXjXt/S+5bfrnKvv1blX/VLv/uqtOnTjF7Tzuyt18N19WijmNd91XIc0qEePP617m+atRaC9tfV816VxTTSXswDvNl28rvTwX7RQ9J3f36N+T6f65SEtDPSrv+dt/efzr+sLT2/RgX89q/7O3eoXC1oo9Kvf26WFku9Kax/R/c0L1o8e7JNeRuci0cG0+/tX3Rv4XSeiURJ9XeoPDWpYzmtY8bVQHlF/eDAe6+1Sv/tENHD3fUEH0x44DX6+Z9n/AVIlgBRojGjmAAAAAElFTkSuQmCC">
+<title>Fire Life Protection – Work Order</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 10pt;
+  background: #e8e8e8;
+  color: #000;
+  padding: 20px;
+}
+
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-field select { width: auto; cursor: pointer; }
+.conn-field select option { background: #1a1a2e; color: white; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-btn.green { background: #1fb272; }
+.conn-btn.green:hover { background: #27ae60; }
+.conn-btn.grey { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+.conn-btn.grey:hover { background: rgba(255,255,255,0.25); }
+.conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; margin: 0 4px; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-status-pill.ok  { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn{ background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+/* toggle button in top bar */
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-field select { width: auto; cursor: pointer; }
+.conn-field select option { background: #1a1a2e; color: white; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-btn.green { background: #1fb272; }
+.conn-btn.green:hover { background: #27ae60; }
+.conn-btn.grey { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+.conn-btn.grey:hover { background: rgba(255,255,255,0.25); }
+.conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; margin: 0 4px; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-field select { width: auto; cursor: pointer; }
+.conn-field select option { background: #1a1a2e; color: white; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-btn.green { background: #1fb272; }
+.conn-btn.green:hover { background: #27ae60; }
+.conn-btn.grey { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+.conn-btn.grey:hover { background: rgba(255,255,255,0.25); }
+.conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; margin: 0 4px; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Top bar ── */
+#top-bar {
+  background: #1a1a2e;
+  color: white;
+  padding: 12px 20px;
+  margin: -20px -20px 20px -20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+#top-bar h1 { font-size: 1rem; font-weight: 600; flex: 1; }
+.top-input { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
+.top-input label { color: #aaa; white-space: nowrap; }
+.top-input input {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  width: 280px;
+}
+.top-input input::placeholder { color: rgba(255,255,255,0.4); }
+#connect-btn {
+  background: #2e6da4;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+#connect-btn:hover { background: #4a86e8; }
+#conn-status { font-size: 0.75rem; color: #7fff7f; min-width: 120px; }
+.nav-link {
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.25);
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.nav-link:hover { background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.5); }
+/* ── Hamburger nav ── */
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; }
+.nav-menu a:last-child { border-bottom: none; }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+
+/* ── Setup guide ── */
+#setup-guide {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-left: 4px solid #f9a825;
+  border-radius: 4px;
+  margin-bottom: 18px;
+  font-size: 0.82rem;
+}
+#setup-guide summary {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #7b5800;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#setup-guide .guide-body { padding: 0 14px 14px; }
+.step { display: flex; gap: 10px; margin-top: 10px; color: #444; line-height: 1.5; }
+.step-n {
+  background: #f9a825; color: white; border-radius: 50%;
+  width: 22px; height: 22px; display: flex; align-items: center;
+  justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+}
+.step a { color: #2e6da4; font-weight: 600; }
+code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; }
+
+/* ── Document wrapper ── */
+#doc-wrapper {
+  background: white;
+  margin: 20px auto 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* ── Section headers ── */
+.section-header {
+  background: #2e6da4;
+  color: white;
+  font-weight: 700;
+  font-size: 10pt;
+  padding: 5px 6px;
+  width: 100%;
+}
+
+/* ── Tables ── */
+.wo-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-size: 9pt;
+}
+.wo-table td {
+  border: 1px solid #aaa;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+.label-cell {
+  background: #f5f5f5;
+  font-weight: 700;
+  font-size: 9pt;
+  color: #404040;
+  white-space: nowrap;
+  width: 1%;
+}
+.value-cell { background: #fff; }
+.header-row td { background: #2e6da4; color: white; font-weight: 700; font-size: 10pt; }
+.subheader-row td { background: #f5f5f5; font-weight: 700; font-size: 9pt; color: #404040; }
+
+/* ── Inputs inside cells ── */
+.wo-table input[type=text],
+.wo-table input[type=date],
+.wo-table input[type=number],
+.wo-table input[type=email],
+.wo-table select,
+.wo-table textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: Arial, sans-serif;
+  font-size: 9pt;
+  color: #000;
+  padding: 1px 2px;
+  resize: none;
+}
+.wo-table input[type=text]:focus,
+.wo-table input[type=date]:focus,
+.wo-table input[type=number]:focus,
+.wo-table input[type=email]:focus,
+.wo-table select:focus,
+.wo-table textarea:focus {
+  background: #e8f4ff;
+  border-radius: 2px;
+}
+.wo-table select { appearance: none; cursor: pointer; }
+.wo-table textarea { min-height: 80px; }
+.wo-table input[readonly] { color: #555; cursor: default; }
+.field-error { background: #ffe0e0 !important; border: 1.5px solid #e53935 !important; border-radius: 2px; }
+.field-error-cell { background: #fff0f0 !important; }
+
+/* ── Checkboxes / radio groups ── */
+.check-group { display: flex; flex-direction: column; gap: 2px; }
+.check-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 9pt; white-space: nowrap; }
+.check-group input[type=checkbox],
+.check-group input[type=radio] { width: 13px; height: 13px; accent-color: #2e6da4; flex-shrink: 0; }
+.check-group .sub-group { margin-left: 18px; margin-top: 2px; }
+
+/* ── Expense table special ── */
+.exp-col-header { background: #4a86e8 !important; color: white; font-weight: 700; }
+.exp-label { background: #f5f5f5; font-weight: 700; font-size: 9pt; }
+.total-label { font-weight: 700; font-size: 9pt; text-align: right; }
+.dollar-prefix { font-size: 9pt; }
+
+/* ── Notes area ── */
+.notes-cell { min-height: 100px; height: 104px; }
+
+/* ── Footer ── */
+.doc-footer {
+  border-top: 0.5px solid #aaa;
+  margin-top: 12px;
+  padding-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8pt;
+  color: #888;
+}
+
+/* ── Submit button area ── */
+#submit-area {
+  max-width: 760px;
+  margin: 20px auto 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+#submit-btn {
+  background: #2e6da4;
+  color: white;
+  border: none;
+  padding: 10px 28px;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+#submit-btn:hover { background: #4a86e8; }
+#submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+#submit-btn.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#submit-status { font-size: 0.85rem; flex: 1; }
+#submit-status.ok { color: #2e7d50; font-weight: 600; }
+#submit-status.err { color: #c0392b; }
+#doc-link {
+  display: none;
+  color: #2e6da4;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  padding: 7px 14px;
+  border: 1.5px solid #2e6da4;
+  border-radius: 4px;
+}
+#doc-link:hover { background: #e8f4ff; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1a2e; color: white;
+  padding: 10px 22px; border-radius: 6px;
+  font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 9999; white-space: nowrap;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+@media print {
+  body { background: white; padding: 0; }
+  #top-bar, #setup-guide, #submit-area, #toast { display: none; }
+  #doc-wrapper { box-shadow: none; margin: 0; padding: 18pt 20pt; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html" class="active">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+	  <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="inspection-hood.html">🍳 Kitchen Hood Inspection</a>
+      <a href="inspection-fire-alarm.html">🔔 Fire Alarm Inspection</a>
+        </div>
+  </div>
+  <h1>🔥 Fire Life Protection – Work Order Form</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com">
+    </div>
+    <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <button id="refresh-props-btn" class="conn-btn grey" onclick="loadSheet(true)" style="display:none;" title="Re-fetch client list from Google Sheet">↺ Refresh Properties</button>
+    <div class="conn-divider"></div>
+    <button class="conn-btn grey" id="test-conn-btn" onclick="testScriptConnection()" title="Ping Apps Script and write a test log row">🔌 Test Schedule Connection</button>
+  </div>
+</div>
+
+<!-- SETUP GUIDE (commented out — uncomment if needed for first-time setup)
+<details id="setup-guide">
+  <summary>⚙️ First-time Google setup — click to expand</summary>
+  <div class="guide-body">
+    <div class="step"><div class="step-n">1</div><div>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a>, sign in with the Google account that owns your Drive, and create a new project (e.g. <code>FLIPS Work Orders</code>).</div></div>
+    <div class="step"><div class="step-n">2</div><div>Go to <strong>APIs & Services → Library</strong>. Enable: <code>Google Sheets API</code>, <code>Google Drive API</code>, and <code>Google Docs API</code>.</div></div>
+    <div class="step"><div class="step-n">3</div><div>Go to <strong>APIs & Services → Credentials → Create Credentials → API Key</strong>. Copy and paste it into the <strong>API Key</strong> field above.</div></div>
+    <div class="step"><div class="step-n">4</div><div>On the same page, click <strong>Create Credentials → OAuth 2.0 Client ID → Web Application</strong>. Under <em>Authorized JavaScript origins</em>, add the full URL where you open this file (e.g. <code>file://</code> won't work — you need to serve it, even locally via VS Code Live Server or Python's <code>http.server</code>). Copy the Client ID above.</div></div>
+    <div class="step"><div class="step-n">5</div><div>Click <strong>Connect</strong>, sign in once, and the property dropdown will load from your Google Sheet automatically.</div></div>
+    <div class="step"><div class="step-n">💡</div><div><strong>Running locally?</strong> Open Terminal and run: <code>python3 -m http.server 8080</code> in the folder containing this file, then open <code>http://localhost:8080/FireLifeProtection_WorkOrder_Master.html</code>. Add <code>http://localhost:8080</code> as an authorized origin in your OAuth Client ID.</div></div>
+  </div>
+</details>
+-->
+
+<!-- DOCUMENT -->
+<div id="doc-wrapper">
+
+  <!-- ══ WORK ORDER INFORMATION ══ -->
+  <table class="wo-table">
+    <tr><td colspan="4" class="section-header">WORK ORDER INFORMATION</td></tr>
+    <tr>
+      <td class="label-cell">Date Completed:</td>
+      <td class="value-cell"><input type="date" id="date-requested" oninput="this.classList.remove('field-error');this.closest('td').classList.remove('field-error-cell');"></td>
+      <td class="label-cell">Date Required:</td>
+      <td class="value-cell"><input type="date" id="date-required"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Line #:</td>
+      <td class="value-cell"><input type="text" id="wo-number" placeholder="Auto or enter manually" oninput="this.classList.remove('field-error');this.closest('td').classList.remove('field-error-cell');"></td>
+      <td class="label-cell">Priority:</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="radio" name="priority" value="Routine" checked> Routine</label>
+          <label><input type="radio" name="priority" value="Urgent"> Urgent</label>
+          <label><input type="radio" name="priority" value="Emergency"> Emergency</label>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="label-cell">Requested By:</td>
+      <td class="value-cell"><input type="text" id="requested-by"></td>
+      <td class="label-cell">Assigned Technician:</td>
+      <td class="value-cell"><input type="text" id="technician"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Scheduled Date:</td>
+      <td colspan="3" class="value-cell"><input type="date" id="scheduled-date"></td>
+    </tr>
+  </table>
+
+  <!-- ══ CLIENT & PROPERTY INFORMATION ══ -->
+  <table class="wo-table">
+    <tr><td colspan="4" class="section-header">CLIENT &amp; PROPERTY INFORMATION</td></tr>
+    <tr>
+      <td class="label-cell">Property Name:</td>
+      <td colspan="3" class="value-cell">
+        <div style="position:relative;margin-bottom:3px;">
+          <input type="text" id="prop-search"
+            placeholder="🔍 Type to filter properties…"
+            oninput="filterPropertyDropdown(this.value)"
+            onkeydown="if(event.key==='Escape'){clearPropertySearch();}"
+            autocomplete="off"
+            style="width:100%;font-size:9pt;border:1px solid #bbb;border-radius:3px;padding:3px 22px 3px 5px;outline:none;font-family:inherit;color:#000;background:#fff;">
+          <span id="prop-search-clear"
+            onclick="clearPropertySearch()"
+            title="Clear search"
+            style="display:none;position:absolute;right:5px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;font-size:11px;line-height:1;">✕</span>
+        </div>
+        <select id="property-select" onchange="onPropertySelect()" style="width:100%;font-size:9pt;">
+          <option value="">— Connect to Google to load properties —</option>
+        </select>
+        <div id="prop-loading" style="display:none;font-size:8pt;color:#888;font-style:italic;margin-top:2px;">Loading…</div>
+      </td>
+    </tr>
+    <tr>
+      <td class="label-cell">Client / Company:</td>
+      <td colspan="3" class="value-cell"><input type="text" id="client-company"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Service Address:</td>
+      <td colspan="3" class="value-cell"><input type="text" id="service-address"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">City / State / Zip:</td>
+      <td class="value-cell"><input type="text" id="city-state-zip"></td>
+      <td class="label-cell">Property Contact:</td>
+      <td class="value-cell"><input type="text" id="property-contact"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Contact Phone:</td>
+      <td class="value-cell"><input type="text" id="contact-phone"></td>
+      <td class="label-cell">Billing Email:</td>
+      <td class="value-cell"><input type="email" id="billing-email"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Contact Email:</td>
+      <td class="value-cell"><input type="email" id="contact-email"></td>
+      <td class="label-cell">FLPS Account #:</td>
+      <td class="value-cell"><input type="text" id="flps-acct-num" placeholder="e.g. 7"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Access / Entry Info:</td>
+      <td colspan="3" class="value-cell" style="color:#999;font-style:italic;">
+        <input type="text" id="access-info" placeholder="lockbox code, gate code, key location, etc." style="font-style:normal;color:#000;">
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ SCOPE OF WORK ══ -->
+  <table class="wo-table">
+    <tr><td colspan="4" class="section-header">SCOPE OF WORK</td></tr>
+    <tr><td colspan="4" class="subheader-row"><span style="font-weight:700;">Service Type(s) — check all that apply:</span></td></tr>
+    <tr>
+      <!-- Fire Alarm -->
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Fire Alarm Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Fire Alarm – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Fire Alarm – Semi Annual"> Semi Annual</label>
+          <label><input type="checkbox" name="svc" value="Fire Alarm – Quarterly"> Quarterly</label>
+          <label><input type="checkbox" name="svc" value="Fire Alarm – Monthly"> Monthly</label>
+        </div>
+      </td>
+      <!-- Sprinkler -->
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Sprinkler Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Sprinkler – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Sprinkler – Semi Annual"> Semi Annual</label>
+          <label><input type="checkbox" name="svc" value="Sprinkler – Quarterly"> Quarterly</label>
+          <label><input type="checkbox" name="svc" value="Sprinkler – Monthly"> Monthly</label>
+        </div>
+      </td>
+      <!-- Extinguisher -->
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Extinguisher Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Extinguisher – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Extinguisher – Semi Annual"> Semi Annual</label>
+          <label><input type="checkbox" name="svc" value="Extinguisher – Quarterly"> Quarterly</label>
+          <label><input type="checkbox" name="svc" value="Extinguisher – Monthly"> Monthly</label>
+        </div>
+      </td>
+      <!-- Exit Light -->
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Emergency Exit Light Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Exit Light – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Exit Light – Semi Annual"> Semi Annual</label>
+          <label><input type="checkbox" name="svc" value="Exit Light – Quarterly"> Quarterly</label>
+          <label><input type="checkbox" name="svc" value="Exit Light – Monthly"> Monthly</label>
+        </div>
+      </td>
+    </tr>
+    <!-- Hood, Fire Pump, Jockey Pump inspections -->
+    <tr>
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Hood Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Hood Inspection – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Hood Inspection – Semi Annual"> Semi Annual</label>
+        </div>
+      </td>
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Fire Pump Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Fire Pump Inspection – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Fire Pump Inspection – Semi Annual"> Semi Annual</label>
+          <label><input type="checkbox" name="svc" value="Fire Pump Inspection – Quarterly"> Quarterly</label>
+          <label><input type="checkbox" name="svc" value="Fire Pump Inspection – Monthly"> Monthly</label>
+        </div>
+      </td>
+      <td class="value-cell" style="width:25%;">
+        <div style="font-weight:600;font-size:9pt;margin-bottom:3px;">Jockey Pump Inspection</div>
+        <div class="check-group sub-group">
+          <label><input type="checkbox" name="svc" value="Jockey Pump Inspection – Annual"> Annual</label>
+          <label><input type="checkbox" name="svc" value="Jockey Pump Inspection – Semi Annual"> Semi Annual</label>
+          <label><input type="checkbox" name="svc" value="Jockey Pump Inspection – Quarterly"> Quarterly</label>
+          <label><input type="checkbox" name="svc" value="Jockey Pump Inspection – Monthly"> Monthly</label>
+        </div>
+      </td>
+      <td class="value-cell"></td>
+    </tr>
+    <tr>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="5-Year Internal Pipe Inspection"> 5-Year Internal Pipe Inspection</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="5-Year FDC Hydrostatic Test"> 5-Year FDC Hydrostatic Test</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="3-Year Dry Pipe Test"> 3-Year Dry Pipe Test</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Annual Backflow Prevention Test"> Annual Backflow Prevention Test</label></div></td>
+    </tr>
+    <tr>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Deficiency Correction"> Deficiency Correction</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Repair / Service Call"> Repair / Service Call</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="New Installation"> New Installation</label></div></td>
+      <td class="value-cell"></td>
+    </tr>
+    <tr>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Monitoring Setup / Change"> Monitoring Setup / Change</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Sub-Contractor Work"> Sub-Contractor Work</label></div></td>
+      <td class="value-cell"><div class="check-group"><label><input type="checkbox" name="svc" value="Walk-Through / Consultation"> Walk-Through / Consultation</label></div></td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="checkbox" name="svc" id="other-svc-cb"> Other:</label>
+          <input type="text" id="other-svc-text" placeholder="specify" style="margin-left:18px;width:calc(100% - 18px);font-size:9pt;">
+        </div>
+      </td>
+    </tr>
+    <tr><td colspan="4" class="subheader-row" style="background:#f0f0f0;font-style:italic;color:#333;">Description of Work Requested <em style="font-size:8pt;font-weight:400;">(This will show to the customer on the invoice)</em>:</td></tr>
+    <tr>
+      <td colspan="4" class="value-cell"><textarea id="work-description" style="min-height:65px;"></textarea></td>
+    </tr>
+  </table>
+
+  <!-- ══ FIRE SYSTEM INFORMATION ══ -->
+  <table class="wo-table">
+    <tr><td colspan="4" class="section-header">FIRE SYSTEM INFORMATION</td></tr>
+    <tr>
+      <td class="label-cell">System Type:</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="radio" name="sys-type" value="Wet"> Wet</label>
+          <label><input type="radio" name="sys-type" value="Dry"> Dry</label>
+          <label><input type="radio" name="sys-type" value="Pre-Action"> Pre-Action</label>
+          <label><input type="radio" name="sys-type" value="Deluge"> Deluge</label>
+          <label><input type="radio" name="sys-type" value="Glycol"> Glycol</label>
+          <label><input type="radio" name="sys-type" value="Nitrogen"> Nitrogen</label>
+        </div>
+      </td>
+      <td class="label-cell">Panel Manufacturer:</td>
+      <td class="value-cell"><input type="text" id="panel-mfr"></td>
+    </tr>
+    <tr>
+      <td class="label-cell" style="background:#f5f5f5;"></td>
+      <td class="value-cell"></td>
+      <td class="label-cell">Panel System Type:</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="radio" name="panel-type" value="Conventional"> Conventional</label>
+          <label><input type="radio" name="panel-type" value="Addressable"> Addressable</label>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="label-cell">Monitoring Company:</td>
+      <td class="value-cell"><input type="text" id="monitoring-co"></td>
+      <td class="label-cell">Monitoring Account #:</td>
+      <td class="value-cell"><input type="text" id="monitoring-acct"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Sprinkler Heads:</td>
+      <td class="value-cell"><input type="text" id="num-sprinklers"></td>
+      <td class="label-cell">Fire Extinguishers:</td>
+      <td class="value-cell"><input type="text" id="num-extinguishers"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Hydrants:</td>
+      <td class="value-cell"><input type="text" id="num-hydrants"></td>
+      <td class="label-cell">Backflows:</td>
+      <td class="value-cell"><input type="text" id="num-backflows"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Last Inspection Date:</td>
+      <td class="value-cell"><input type="date" id="last-inspection"></td>
+      <td class="label-cell">Compliance Due Date:</td>
+      <td class="value-cell"><input type="date" id="compliance-due"></td>
+    </tr>
+  </table>
+
+  <!-- ══ NOTES / DEFICIENCIES ══ -->
+  <table class="wo-table">
+    <tr><td class="section-header">NOTES / DEFICIENCIES FOUND</td></tr>
+    <tr>
+      <td class="value-cell notes-cell">
+        <textarea id="notes-deficiencies" style="min-height:100px;width:100%;"></textarea>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ FIXED RATE ══ -->
+  <table class="wo-table">
+    <tr>
+      <td class="label-cell" style="white-space:nowrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:700;">
+          <input type="checkbox" id="flat-rate-cb" onchange="onFlatRateChange()">
+          Is this a Fixed Rate?
+        </label>
+      </td>
+      <td class="value-cell" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:9pt;color:#555;">$</span>
+        <input type="number" id="flat-rate-amount" min="0" step="0.01" style="width:130px;" disabled placeholder="Enter fixed rate" oninput="onFlatRateAmountChange()">
+        <span id="flat-rate-note" style="font-size:0.78rem;color:#c0392b;font-style:italic;display:none;">Total to Invoice locked to fixed rate</span>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ FLPS EXPENSES ══ -->
+  <table class="wo-table" id="expenses-table">
+    <tr><td colspan="6" class="section-header">FLPS EXPENSES</td></tr>
+    <tr>
+      <td class="exp-col-header" style="width:14%;">Expense Name</td>
+      <td class="exp-col-header" style="width:22%;">Description</td>
+      <td class="exp-col-header" style="width:8%;text-align:center;">Qty</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Expense</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Markup&nbsp;(<input type="number" id="markup-pct" value="25" min="0" max="999" step="1" style="width:38px;font-size:0.85em;padding:1px 3px;border:1px solid #aaa;border-radius:2px;font-weight:normal;" oninput="recalcAllMarkups()">%)</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Total</td>
+    </tr>
+    <!-- Sub-Contractor Amount — dynamic rows injected here by addSubRow() -->
+    <tr id="sub-add-row">
+      <td colspan="6" style="padding:2px 4px;">
+        <button type="button" onclick="addSubRow()"
+          style="font-size:0.78rem;padding:3px 10px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;">
+          + Add Another Sub-Contractor/Vendor
+        </button>
+      </td>
+    </tr>
+    <!-- Materials -->
+    <tr>
+      <td class="exp-label">Materials</td>
+      <td class="value-cell"><input type="text" id="mat-desc"></td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty" min="0" step="1" style="text-align:center;"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseChange('mat')"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Labor 1 -->
+    <tr>
+      <td class="exp-label">Labor 1</td>
+      <td class="value-cell">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:0.78rem;color:#555;">$</span>
+          <input type="number" id="labor1-rate" min="0" step="0.5" value="135" style="width:68px;" oninput="calcLaborRow(1)">
+          <span style="font-size:0.78rem;color:#555;">/hr</span>
+        </div>
+      </td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="labor1-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(1)"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(1)" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Labor 2 -->
+    <tr>
+      <td class="exp-label">Labor 2</td>
+      <td class="value-cell">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:0.78rem;color:#555;">$</span>
+          <input type="number" id="labor2-rate" min="0" step="0.5" value="85" style="width:68px;" oninput="calcLaborRow(2)">
+          <span style="font-size:0.78rem;color:#555;">/hr</span>
+        </div>
+      </td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="labor2-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(2)"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(2)" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Trip Charge -->
+    <tr>
+      <td class="exp-label">Trip Charge</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="checkbox" id="trip-cb" value="$90.00" onchange="onTripChange()"> $90.00</label>
+        </div>
+      </td>
+      <td class="value-cell"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onTripMarkupChange()" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Misc -->
+    <tr>
+      <td class="exp-label">Misc:</td>
+      <td class="value-cell"><input type="text" id="misc-desc"></td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="misc-qty" min="0" step="1" style="text-align:center;"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseChange('misc')"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Compliance Report -->
+    <tr id="compliance-row">
+      <td class="exp-label">
+        <label style="display:flex;align-items:center;gap:5px;font-weight:700;cursor:pointer;">
+          <input type="checkbox" id="compliance-cb" onchange="onComplianceCbChange()">
+          Compliance Report
+        </label>
+      </td>
+      <td class="value-cell" colspan="2">
+        <input type="text" id="compliance-desc" placeholder="Compliance report description" style="width:100%;" disabled>
+      </td>
+      <td class="value-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="compliance-expense" min="0" step="0.01" style="width:calc(100% - 14px);"
+               oninput="onComplianceExpenseChange()" disabled placeholder="Amount">
+      </td>
+      <td class="value-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="compliance-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onComplianceMarkupChange()" disabled placeholder="0">
+      </td>
+      <td class="value-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="compliance-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1" disabled>
+      </td>
+    </tr>
+    <!-- Total -->
+    <tr>
+      <td colspan="4"></td>
+      <td class="total-label">Total to Invoice =</td>
+      <td class="value-cell" style="font-weight:700;"><span class="dollar-prefix">$</span><input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;"></td>
+    </tr>
+  </table>
+
+  <!-- ══ COMPLETION & BILLING ══ -->
+  <table class="wo-table">
+    <tr><td colspan="4" class="section-header">COMPLETION &amp; BILLING</td></tr>
+    <tr>
+      <td class="label-cell">Work Status:</td>
+      <td colspan="3" class="value-cell">
+        <div class="check-group" style="flex-direction:row;gap:16px;">
+          <label><input type="radio" name="work-status" value="Complete"> Complete</label>
+          <label><input type="radio" name="work-status" value="Incomplete"> Incomplete</label>
+          <label><input type="radio" name="work-status" value="Follow-Up Needed"> Follow-Up Needed</label>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="label-cell">Report Submitted:</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="radio" name="report-sub" value="Yes"> Yes</label>
+          <label><input type="radio" name="report-sub" value="No"> No</label>
+          <label><input type="radio" name="report-sub" value="Pending"> Pending</label>
+        </div>
+      </td>
+      <td class="label-cell">Invoice #:</td>
+      <td class="value-cell"><input type="text" id="invoice-num"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Invoice Date:</td>
+      <td class="value-cell"><input type="date" id="invoice-date"></td>
+      <td class="label-cell">Total Invoice Amount:</td>
+      <td class="value-cell"><span style="font-size:9pt;">$</span><input type="number" id="invoice-amount" min="0" step="0.01" style="width:calc(100% - 14px);"></td>
+    </tr>
+    <tr><td colspan="4" style="height:6px;background:#fff;border-left:1px solid #aaa;border-right:1px solid #aaa;"></td></tr>
+    <tr>
+      <td class="label-cell">Payment Received:</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="radio" name="pmt-received" value="Yes"> Yes</label>
+          <label><input type="radio" name="pmt-received" value="No"> No</label>
+          <label><input type="radio" name="pmt-received" value="Partial"> Partial</label>
+        </div>
+      </td>
+      <td class="label-cell">Payment Method:</td>
+      <td class="value-cell">
+        <div class="check-group">
+          <label><input type="radio" name="pmt-method" value="Check"> Check</label>
+          <label><input type="radio" name="pmt-method" value="ACH"> ACH</label>
+          <label><input type="radio" name="pmt-method" value="Credit Card"> Credit Card</label>
+          <label><input type="radio" name="pmt-method" value="Other"> Other</label>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td class="label-cell">Payment Date:</td>
+      <td class="value-cell"><input type="date" id="pmt-date"></td>
+      <td class="label-cell">Entered into QuickBooks:</td>
+      <td class="value-cell"><input type="date" id="qb-date"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Deposited Date:</td>
+      <td class="value-cell"><input type="date" id="deposit-date"></td>
+      <td colspan="2" class="value-cell">
+        <label style="display:flex;align-items:center;gap:6px;font-size:9pt;">
+          <input type="checkbox" id="tracker-updated" style="width:13px;height:13px;accent-color:#2e6da4;">
+          Google Sheet Work Tracker Updated
+        </label>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>Confidential — For Internal Use Only</span>
+    <span>Fire Life Protection Systems</span>
+  </div>
+
+</div><!-- /doc-wrapper -->
+
+<!-- SUBMIT AREA -->
+<div id="submit-area">
+  <button id="submit-btn" onclick="createDoc()">
+    <div class="spinner"></div>
+    <span>📄 Save as Google Doc</span>
+  </button>
+  <button onclick="window.print()" style="background:#555;color:white;border:none;padding:10px 18px;border-radius:5px;cursor:pointer;font-size:0.85rem;">🖨 Print</button>
+  <div id="submit-status"></div>
+  <a id="doc-link" href="#" target="_blank">Open Doc →</a>
+  <button id="new-wo-btn" onclick="location.reload()"
+    style="display:none;background:#2e7d50;color:white;border:none;padding:10px 18px;border-radius:5px;cursor:pointer;font-size:0.85rem;font-weight:600;">
+    ➕ New Work Order
+  </button>
+</div>
+
+<div id="toast"></div>
+
+<!-- Google Identity Services only - no gapi needed -->
+<script src="https://accounts.google.com/gsi/client"></script>
+
+<script>
+
+// ── Hamburger nav ──────────────────────────────────────────
+function toggleNav() {
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-hamburger')) {
+    const m = document.getElementById('nav-menu');
+    if (m) m.classList.remove('open');
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────
+const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+
+// ── Inspection Schedule Web App ─────────────────────────────────────────────
+// After deploying InspectionSchedule_AppScript.gs as a Web App, paste the URL:
+// ── INSPECTION SCHEDULE INTEGRATION ────────────────────────────────────────
+// After deploying the Apps Script as a Web App, paste the URL below.
+// Apps Script → Deploy → New Deployment → Web App → Execute as Me → Anyone
+// Also run setSecret() in the Apps Script once after pasting.
+const APPS_SCRIPT_URL    = ''; // ← PASTE WEB APP URL HERE
+const APPS_SCRIPT_SECRET = 'flips-2026-secret'; // must match setSecret() in Apps Script
+
+// ── Log verbosity ────────────────────────────────────────────────────────────
+// 'NORMAL'  — only logs WO/invoice creation and errors (production default)
+// 'VERBOSE' — logs every step (use when debugging a specific issue)
+// Change this constant and redeploy, or use browser console to override:
+//   flipsLogLevel = 'VERBOSE'  /  flipsLogLevel = 'NORMAL'
+let flipsLogLevel = 'NORMAL';
+const SHEET_GID = '1899870347';
+const TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc';
+const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets.readonly';
+
+let accessToken = null;
+let tokenClient = null;
+let clientData  = {};
+let API_KEY_VAL = '';  // set on connect
+
+// ─────────────────────────────────────────────────────────
+// GOOGLE AUTH
+// ─────────────────────────────────────────────────────────
+async function initGoogle() {
+  const apiKey   = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter both API Key and Client ID'); return; }
+
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  API_KEY_VAL = apiKey;
+  setStatus('conn-status', 'Connecting…', '');
+
+  // No gapi — use Google Identity Services token client directly
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) {
+          setStatus('conn-status', '✗ ' + resp.error, 'err');
+          console.error('Token error:', resp);
+          return;
+        }
+        accessToken = resp.access_token;
+        // Cache token with expiry (tokens last ~1 hour)
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setStatus('conn-status', '✓ Connected', 'ok');
+        document.getElementById('refresh-props-btn').style.display = 'inline-block';
+        await loadSheet();
+      },
+      error_callback: (err) => {
+        setStatus('conn-status', '✗ ' + (err.message || err.type), 'err');
+        console.error('OAuth error:', err);
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: '' });
+  } catch(e) {
+    setStatus('conn-status', '✗ ' + e.message, 'err');
+    console.error('initGoogle error:', e);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// LOAD CLIENT SHEET
+// Tries 3 strategies in order:
+//  1. Sheets API v4  (native Google Sheets)
+//  2. Drive CSV export  (uploaded .xlsx not yet converted)
+//  3. Clear error telling user to convert the file
+// ─────────────────────────────────────────────────────────
+async function loadSheet(forceRefresh = false) {
+  // Cache client list in sessionStorage for 30 min — avoids two API calls on every page open.
+  // Pass forceRefresh=true (or click the Refresh button) to bypass.
+  const CACHE_KEY = 'flips_client_cache';
+  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+  if (!forceRefresh) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+        clientData = cached.data;
+        buildDropdown();
+        console.log('[loadSheet] Loaded', Object.keys(clientData).length, 'properties from session cache');
+        return;
+      }
+    } catch(_) { /* bad cache — fall through to fetch */ }
+  }
+
+  document.getElementById('prop-loading').style.display = 'block';
+  try {
+
+    // ── Strategy 1: Sheets API (native Google Sheets only) ──
+    const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`;
+    const metaRes = await googleFetch(sheetsUrl);
+
+    if (metaRes.ok) {
+      console.log('✓ Native Google Sheet — using Sheets API');
+      const metaJson = await metaRes.json();
+      let tabName = metaJson.sheets[0].properties.title;
+      for (const s of metaJson.sheets) {
+        if (String(s.properties.sheetId) === String(SHEET_GID)) { tabName = s.properties.title; break; }
+      }
+      const valRes = await googleFetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`
+      );
+      if (!valRes.ok) throw new Error('Sheets values error ' + valRes.status);
+      const valJson = await valRes.json();
+      return parseRows(valJson.values || []);
+    }
+
+    // ── Strategy 2: Drive CSV export (works for .xlsx uploaded to Drive) ──
+    console.log('Sheets API returned ' + metaRes.status + ', trying Drive CSV export...');
+    const csvRes = await googleFetch(
+      `https://www.googleapis.com/drive/v3/files/${SHEET_ID}/export?mimeType=text/csv`
+    );
+
+    if (csvRes.ok) {
+      console.log('✓ Drive CSV export succeeded');
+      const csvText = await csvRes.text();
+      return parseRows(parseCSV(csvText));
+    }
+
+    // ── Strategy 3: Nothing worked ──
+    const errBody = await metaRes.json().catch(() => ({}));
+    const code = errBody.error?.code;
+    if (code === 400 || errBody.error?.status === 'FAILED_PRECONDITION') {
+      throw new Error(
+        'Your spreadsheet is an uploaded Excel file, not a native Google Sheet. ' +
+        'Fix: open it in Google Drive, click File → Save as Google Sheets, ' +
+        'then paste the new URL here and update the SHEET_ID in the code.'
+      );
+    }
+    throw new Error('Could not read spreadsheet (status ' + metaRes.status + '): ' + (errBody.error?.message || 'unknown error'));
+
+  } catch(e) {
+    setStatus('conn-status', '⚠ ' + e.message, 'err');
+    toast('Client list failed — see top bar for details');
+    console.error('loadSheet error:', e);
+  } finally {
+    document.getElementById('prop-loading').style.display = 'none';
+  }
+}
+
+function parseRows(rows) {
+  if (!rows || rows.length < 2) { toast('Sheet appears empty'); return; }
+  const headers = rows[0].map(h => (h || '').trim().toLowerCase());
+  clientData = {};
+  for (let i = 1; i < rows.length; i++) {
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (rows[i][idx] || '').trim(); });
+    // Key the dropdown by Property Name specifically
+    const nameKey = findKey(headers, ['property name','property','site name','site','name']);
+    const label = obj[nameKey] || `Row ${i + 1}`;
+    if (label.trim()) clientData[label] = obj;
+  }
+  // Cache for 30 min so next page load skips the two API calls
+  try { sessionStorage.setItem('flips_client_cache', JSON.stringify({ ts: Date.now(), data: clientData })); } catch(_) {}
+  buildDropdown();
+}
+
+function parseCSV(text) {
+  // Simple but robust: split lines, then split by comma respecting quotes
+  return text.split(/\r?\n/).filter(l => l.trim()).map(line => {
+    const cols = [];
+    let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"' && !q) { q = true; continue; }
+      if (line[i] === '"' && q && line[i+1] === '"') { cur += '"'; i++; continue; }
+      if (line[i] === '"' && q) { q = false; continue; }
+      if (line[i] === ',' && !q) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += line[i];
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+}
+function findKey(headers, candidates) {
+  for (const c of candidates) {
+    const h = headers.find(h => h === c || h.includes(c));
+    if (h) return h;
+  }
+  return headers[0];
+}
+
+function buildDropdown() {
+  const sel = document.getElementById('property-select');
+  sel.innerHTML = '<option value="">— Select property —</option>';
+  Object.keys(clientData).sort().forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  toast('✓ Loaded ' + Object.keys(clientData).length + ' properties');
+  // Clear any stale search when list reloads
+  clearPropertySearch();
+}
+
+function filterPropertyDropdown(query) {
+  const sel   = document.getElementById('property-select');
+  const clear = document.getElementById('prop-search-clear');
+  const q = query.trim().toLowerCase();
+  clear.style.display = q ? 'block' : 'none';
+
+  // Rebuild options filtered by query
+  sel.innerHTML = '';
+  const names = Object.keys(clientData).sort();
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = q ? `— ${names.filter(n => n.toLowerCase().includes(q)).length} match${names.filter(n => n.toLowerCase().includes(q)).length !== 1 ? 'es' : ''} —` : '— Select property —';
+  sel.appendChild(placeholder);
+
+  let firstMatch = null;
+  names.forEach(name => {
+    if (!q || name.toLowerCase().includes(q)) {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+      if (!firstMatch) firstMatch = name;
+    }
+  });
+
+  // Auto-select if exactly one match
+  if (firstMatch && sel.options.length === 2) {
+    sel.value = firstMatch;
+    onPropertySelect();
+  }
+}
+
+function clearPropertySearch() {
+  const input = document.getElementById('prop-search');
+  const clear = document.getElementById('prop-search-clear');
+  if (!input) return;
+  input.value = '';
+  clear.style.display = 'none';
+  filterPropertyDropdown('');
+  input.focus();
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTO-POPULATE ON SELECT
+// ─────────────────────────────────────────────────────────
+function onPropertySelect() {
+  const propName = document.getElementById('property-select').value;
+  if (!propName || !clientData[propName]) return;
+  const d = clientData[propName];
+
+  function fill(id, ...keys) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    for (const k of keys) {
+      const match = Object.keys(d).find(h => h === k || h.includes(k));
+      if (match && d[match]) { el.value = d[match]; return; }
+    }
+    el.value = '';
+  }
+
+  // Standard fills
+  fill('client-company',  'property management','management company','management','client','company');
+  fill('flps-acct-num',   'flps internal account number','internal account number','account number','account no','acct');
+  fill('billing-email',   'billing email');
+  fill('access-info',     'building access entry info','access entry info','access','entry','lockbox','gate code','access info','entry info');
+  fill('monitoring-co',   'monitoring company','alarm company','monitoring');
+
+  // ── Service Address + City/State/Zip parsing ──────────────────
+  // Get the raw address field (may contain full address with city/state/zip inline)
+  const addrKey = Object.keys(d).find(h =>
+    ['address','service address','street address','street'].some(k => h.includes(k))
+  );
+  const rawAddr = addrKey ? d[addrKey] : '';
+
+  // Try to find a dedicated city/state/zip column first
+  const csvKey = Object.keys(d).find(h =>
+    ['city','city/state','city / state','city, state','zip','city state zip'].some(k => h.includes(k))
+  );
+  const rawCsv = csvKey ? d[csvKey] : '';
+
+  if (rawAddr) {
+    // Split on newlines first (some cells have street on line 1, city/state/zip on line 2)
+    const lines = rawAddr.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+    if (lines.length >= 2) {
+      // Multi-line: first line = street, last line = city/state/zip
+      document.getElementById('service-address').value = lines[0];
+      document.getElementById('city-state-zip').value  = rawCsv || lines[lines.length - 1];
+    } else {
+      // Single line — try to split on last comma that precedes a state abbreviation pattern
+      // e.g. "2620 W. Bellview Ave, Littleton, CO 80123"
+      const commaIdx = rawAddr.search(/,\s*[A-Z]{2}\s+\d{5}/);
+      if (commaIdx > 0) {
+        // Find the comma before the state
+        const prevComma = rawAddr.lastIndexOf(',', commaIdx - 1);
+        const splitAt = prevComma > 0 ? prevComma : commaIdx;
+        document.getElementById('service-address').value = rawAddr.slice(0, splitAt).trim();
+        document.getElementById('city-state-zip').value  = rawCsv || rawAddr.slice(splitAt + 1).trim();
+      } else if (rawAddr.includes(',')) {
+        // Fallback: split at last comma
+        const last = rawAddr.lastIndexOf(',');
+        document.getElementById('service-address').value = rawAddr.slice(0, last).trim();
+        document.getElementById('city-state-zip').value  = rawCsv || rawAddr.slice(last + 1).trim();
+      } else {
+        document.getElementById('service-address').value = rawAddr;
+        document.getElementById('city-state-zip').value  = rawCsv || '';
+      }
+    }
+  } else {
+    document.getElementById('service-address').value = '';
+    document.getElementById('city-state-zip').value  = rawCsv || '';
+  }
+
+  // ── Property Contact parsing ──────────────────────────────────
+  // Sheet has these relevant columns:
+  //   "Property Manager"          — name only (e.g. "Mark Best")
+  //   "Property Manger Contact info" — combined name+email+phone cell
+  //   "Billing Email"             — billing only, not contact email
+  //
+  // Strategy:
+  //   1. Prefer a "contact info" style column (combined) for regex extraction
+  //   2. Fall back to dedicated phone/email columns if they exist
+  //   3. Use "property manager" column for name if no combined cell found
+
+  const reEmail = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
+  const rePhone = /\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/;
+
+  const keys = Object.keys(d);
+
+  // 1. Find combined "contact info" column first (highest priority)
+  const contactInfoKey = keys.find(h =>
+    h.includes('contact info') || h.includes('contact information')
+  );
+
+  // 2. Find dedicated phone column (not billing, not sub-contractor)
+  const phoneKey = keys.find(h =>
+    ['contact phone','phone number','mobile','cell','phone'].some(k => h.includes(k))
+    && !h.includes('billing') && !h.includes('sub') && !h.includes('info')
+  );
+
+  // 3. Find dedicated email column (not billing)
+  const emailKey = keys.find(h =>
+    ['contact email','e-mail','email address','email'].some(k => h.includes(k))
+    && !h.includes('billing') && !h.includes('sub') && !h.includes('info')
+  );
+
+  // 4. Find name-only column as fallback (e.g. "property manager")
+  const nameOnlyKey = keys.find(h =>
+    ['property contact','contact name','property manager','on-site contact'].some(k => h.includes(k))
+    && !h.includes('info') && !h.includes('phone') && !h.includes('email')
+    && !h.includes('billing') && !h.includes('company') && !h.includes('management')
+  );
+
+  const rawCombined = contactInfoKey ? d[contactInfoKey] : '';
+  const rawPhone    = phoneKey       ? d[phoneKey]       : '';
+  const rawEmail    = emailKey       ? d[emailKey]       : '';
+  const rawNameOnly = nameOnlyKey    ? d[nameOnlyKey]    : '';
+
+  // Extract email and phone from combined cell
+  const emailFromCell = rawCombined ? (rawCombined.match(reEmail) || [])[0] || '' : '';
+  const phoneFromCell = rawCombined ? (rawCombined.match(rePhone) || [])[0] || '' : '';
+
+  // Dedicated columns win; fall back to combined cell extraction
+  const resolvedPhone = rawPhone || phoneFromCell;
+  const resolvedEmail = rawEmail || emailFromCell;
+
+  // Name: strip email/phone/role from first line of combined cell, or use name-only column
+  let resolvedName = '';
+  const nameSource = rawCombined || rawNameOnly;
+  if (nameSource) {
+    const firstLine = nameSource.split(/[\r\n]+/)[0].trim();
+    resolvedName = firstLine
+      .replace(reEmail, '')
+      .replace(rePhone, '')
+      .replace(/\s*\([^)]*\)\s*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!resolvedName) resolvedName = nameSource.replace(/[\r\n]+/g, ' ').trim();
+  }
+
+  document.getElementById('property-contact').value = resolvedName;
+  document.getElementById('contact-phone').value    = resolvedPhone;
+  document.getElementById('contact-email').value    = resolvedEmail;
+
+  // ── Capture Bill To address from sheet ───────────────────────────────────
+  const billToKey = Object.keys(d).find(h => h.includes('bill to') || h.includes('invoice info'));
+  const billToVal = billToKey ? d[billToKey] : '';
+  // Store in a hidden field so collectForm can read it
+  let billToHidden = document.getElementById('bill-to-address');
+  if (!billToHidden) {
+    billToHidden = document.createElement('input');
+    billToHidden.type = 'hidden';
+    billToHidden.id = 'bill-to-address';
+    document.body.appendChild(billToHidden);
+  }
+  billToHidden.value = billToVal;
+}
+
+// ─────────────────────────────────────────────────────────
+// EXPENSE CALC
+
+// ─────────────────────────────────────────────────────────
+// MARKUP HELPERS
+// ─────────────────────────────────────────────────────────
+function getMarkupPct() {
+  return (parseFloat(document.getElementById('markup-pct')?.value) || 0) / 100;
+}
+
+function setMarkupAndTotal(expenseId, markupId, totalId) {
+  const expense = parseFloat(document.getElementById(expenseId)?.value) || 0;
+  const markup  = expense * getMarkupPct();
+  const elM = document.getElementById(markupId);
+  const elT = document.getElementById(totalId);
+  if (elM) elM.value = markup.toFixed(2);
+  if (elT) elT.value = (expense + markup).toFixed(2);
+}
+
+function onExpenseChange(prefix) {
+  setMarkupAndTotal(prefix + '-expense', prefix + '-markup', prefix + '-total');
+  calcTotal();
+}
+
+function recalcAllMarkups() {
+  document.querySelectorAll('[id^="sub-row-"]').forEach(row => {
+    const n = row.id.replace('sub-row-', '');
+    setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
+  });
+  setMarkupAndTotal('mat-expense', 'mat-markup', 'mat-total');
+  setMarkupAndTotal('misc-expense', 'misc-markup', 'misc-total');
+  // Labor, trip, compliance: NOT auto-markup — user enters manually
+  calcTotal();
+}
+
+function onLaborMarkupChange(n) {
+  const expense = parseFloat(document.getElementById('labor' + n + '-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value)  || 0;
+  const totEl   = document.getElementById('labor' + n + '-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+function onTripMarkupChange() {
+  const expense = parseFloat(document.getElementById('trip-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('trip-markup')?.value)  || 0;
+  const totEl   = document.getElementById('trip-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+function onComplianceExpenseChange() {
+  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
+  const totEl   = document.getElementById('compliance-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+function onComplianceMarkupChange() {
+  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
+  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
+  const totEl   = document.getElementById('compliance-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+// ─────────────────────────────────────────────────────────
+// DYNAMIC SUB-CONTRACTOR ROWS
+// ─────────────────────────────────────────────────────────
+let subRowCount = 0;
+
+function addSubRow(labelVal, expenseVal) {
+  const n = ++subRowCount;
+  const tr = document.createElement('tr');
+  tr.id = 'sub-row-' + n;
+  tr.innerHTML =
+    '<td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor ' +
+    '<button type="button" onclick="removeSubRow(' + n + ')" ' +
+    'style="margin-left:4px;background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
+    '<td class="value-cell"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
+    '<td class="value-cell"></td>' +
+    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
+    '<input type="number" id="sub-expense-' + n + '" value="' + (expenseVal||'') + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onSubExpenseChange(' + n + ')"></td>' +
+    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
+    '<input type="number" id="sub-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
+    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
+    '<input type="number" id="sub-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
+  const addBtnRow = document.getElementById('sub-add-row');
+  addBtnRow.parentNode.insertBefore(tr, addBtnRow);
+  if (expenseVal) setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
+  calcTotal();
+}
+
+function onSubExpenseChange(n) {
+  setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
+  calcTotal();
+}
+
+function removeSubRow(idx) {
+  const tr = document.getElementById('sub-row-' + idx);
+  if (tr) tr.remove();
+  calcTotal();
+}
+
+function getSubRows() {
+  const rows = [];
+  document.querySelectorAll('[id^="sub-row-"]').forEach(tr => {
+    const n = tr.id.replace('sub-row-', '');
+    const label   = document.getElementById('sub-label-'   + n)?.value?.trim() || '';
+    const expense = parseFloat(document.getElementById('sub-expense-' + n)?.value) || 0;
+    const markup  = parseFloat(document.getElementById('sub-markup-'  + n)?.value) || 0;
+    const total   = parseFloat(document.getElementById('sub-total-'   + n)?.value) || 0;
+    rows.push({ label, expense, markup, total });
+  });
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────
+// COMPLIANCE REPORT
+// ─────────────────────────────────────────────────────────
+function onComplianceCbChange() {
+  const cb      = document.getElementById('compliance-cb');
+  const desc    = document.getElementById('compliance-desc');
+  const expense = document.getElementById('compliance-expense');
+  const mkup    = document.getElementById('compliance-markup');
+  const tot     = document.getElementById('compliance-total');
+  [desc, expense, mkup, tot].forEach(el => { if (el) el.disabled = !cb.checked; });
+  if (!cb.checked) {
+    if (expense) expense.value = '';
+    if (mkup)    mkup.value    = '';
+    if (tot)     tot.value     = '';
+  }
+  calcTotal();
+  const row = document.getElementById('compliance-row');
+  if (row) row.style.outline = '';
+}
+
+// INSPECTION service types — any of these checked = compliance report required
+const INSPECTION_SVC_PREFIXES = [
+  'Fire Alarm', 'Sprinkler', 'Extinguisher', 'Exit Light',
+  'Hood Inspection', 'Fire Pump Inspection', 'Jockey Pump Inspection',
+  '5-Year Internal Pipe', '5-Year FDC', '3-Year Dry Pipe', 'Annual Backflow'
+];
+function hasInspectionChecked() {
+  return [...document.querySelectorAll('input[name="svc"]:checked')]
+    .some(cb => INSPECTION_SVC_PREFIXES.some(p => cb.value.startsWith(p)));
+}
+
+// ─────────────────────────────────────────────────────────
+// FLAT RATE
+// ─────────────────────────────────────────────────────────
+function onFlatRateChange() {
+  const cb    = document.getElementById('flat-rate-cb');
+  const amtEl = document.getElementById('flat-rate-amount');
+  const note  = document.getElementById('flat-rate-note');
+  amtEl.disabled = !cb.checked;
+  if (note) note.style.display = cb.checked ? 'inline' : 'none';
+  if (!cb.checked) { amtEl.value = ''; calcTotal(); }
+  else if (amtEl.value) { document.getElementById('grand-total').value = parseFloat(amtEl.value).toFixed(2); }
+}
+function onFlatRateAmountChange() {
+  const amt = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
+  document.getElementById('grand-total').value = amt.toFixed(2);
+}
+
+// ─────────────────────────────────────────────────────────
+function calcTotal() {
+  if (document.getElementById('flat-rate-cb')?.checked) {
+    const flat = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
+    document.getElementById('grand-total').value = flat.toFixed(2);
+    return;
+  }
+  const subRows   = getSubRows ? getSubRows() : [];
+  const subAmt    = subRows.reduce((s, r) => s + r.total, 0);
+  const matAmt    = parseFloat(document.getElementById('mat-total')?.value)    || 0;
+  const labor1Amt = parseFloat(document.getElementById('labor1-total')?.value) || 0;
+  const labor2Amt = parseFloat(document.getElementById('labor2-total')?.value) || 0;
+  const tripAmt   = parseFloat(document.getElementById('trip-total')?.value)   || 0;
+  const miscAmt   = parseFloat(document.getElementById('misc-total')?.value)   || 0;
+  const compliAmt = document.getElementById('compliance-cb')?.checked
+    ? (parseFloat(document.getElementById('compliance-total')?.value) || 0) : 0;
+  document.getElementById('grand-total').value = (subAmt + matAmt + labor1Amt + labor2Amt + tripAmt + miscAmt + compliAmt).toFixed(2);
+}
+
+function onTripChange() {
+  const cb = document.getElementById('trip-cb');
+  const expEl = document.getElementById('trip-expense');
+  if (cb.checked) {
+    expEl.value = '90.00';
+    // Total = $90 + whatever markup user entered manually
+    const markup = parseFloat(document.getElementById('trip-markup')?.value) || 0;
+    document.getElementById('trip-total').value = (90 + markup).toFixed(2);
+  } else {
+    expEl.value = '';
+    document.getElementById('trip-total').value = '';
+  }
+  calcTotal();
+}
+
+function calcLaborRow(n) {
+  const rate   = parseFloat(document.getElementById('labor' + n + '-rate')?.value) || 0;
+  const qty    = parseFloat(document.getElementById('labor' + n + '-qty')?.value)  || 0;
+  const expEl  = document.getElementById('labor' + n + '-expense');
+  if (expEl) expEl.value = (rate && qty) ? (rate * qty).toFixed(2) : '';
+  // Total = expense + whatever markup user entered manually (no auto-markup for labor)
+  const expense = parseFloat(expEl?.value) || 0;
+  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value) || 0;
+  const totEl   = document.getElementById('labor' + n + '-total');
+  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
+  calcTotal();
+}
+
+// ─────────────────────────────────────────────────────────
+// BUILD DOC CONTENT
+// ─────────────────────────────────────────────────────────
+function collectForm() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const r = name => (document.querySelector(`input[name="${name}"]:checked`) || {}).value || '';
+  const checked = name => [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(c => c.value).join(', ');
+  const svcList = [...document.querySelectorAll('input[name="svc"]:checked')].map(c => c.value);
+  const otherCb = document.getElementById('other-svc-cb').checked;
+  if (otherCb) svcList.push('Other: ' + v('other-svc-text'));
+
+  return {
+    'DATE COMPLETED':       fmtDate(v('date-requested')),  // field renamed to Date Completed
+    'DATE COMPLETED ISO':   v('date-requested'),  // raw YYYY-MM-DD for inspection schedule
+    'DATE REQUIRED':        fmtDate(v('date-required')),
+    'LINE #':               v('wo-number'),
+    'PRIORITY':             r('priority'),
+    'REQUESTED BY':         v('requested-by'),
+    'ASSIGNED TECHNICIAN':  v('technician'),
+    'SCHEDULED DATE':       fmtDate(v('scheduled-date')),
+    'CLIENT / COMPANY':     v('client-company'),
+    'PROPERTY NAME':        document.getElementById('property-select').value || '',
+    'FLPS ACCT #':          v('flps-acct-num'),
+    'BILL TO ADDRESS':      (document.getElementById('bill-to-address') || {}).value || '',
+    'SERVICE ADDRESS':      v('service-address'),
+    'CITY / STATE / ZIP':   v('city-state-zip'),
+    'PROPERTY CONTACT':     v('property-contact'),
+    'CONTACT PHONE':        v('contact-phone'),
+    'CONTACT EMAIL':        v('contact-email'),
+    'BILLING EMAIL':        v('billing-email'),
+    'ACCESS / ENTRY INFO':  v('access-info'),
+    'SERVICES':             svcList.join('\n') || '(none selected)',
+    'DESCRIPTION OF WORK':  v('work-description'),
+    'SYSTEM TYPE':          r('sys-type'),
+    'PANEL MANUFACTURER':   v('panel-mfr'),
+    'PANEL SYSTEM TYPE':    r('panel-type'),
+    'MONITORING COMPANY':   v('monitoring-co'),
+    'MONITORING ACCOUNT #': v('monitoring-acct'),
+    '# SPRINKLER HEADS':    v('num-sprinklers'),
+    '# FIRE EXTINGUISHERS': v('num-extinguishers'),
+    '# HYDRANTS':           v('num-hydrants'),
+    '# BACKFLOWS':          v('num-backflows'),
+    'LAST INSPECTION DATE': fmtDate(v('last-inspection')),
+    'COMPLIANCE DUE DATE':  fmtDate(v('compliance-due')),
+    'MARKUP PCT':               (v('markup-pct') || '25') + '%',
+    'SUB-CONTRACTOR ROWS':      JSON.stringify(getSubRows ? getSubRows() : []),
+    'SUB-CONTRACTOR AMOUNT':    '$' + ((getSubRows ? getSubRows().reduce((s,r)=>s+r.total,0) : 0) || 0).toFixed(2),
+    'COMPLIANCE REPORT':        document.getElementById('compliance-cb')?.checked ? 'Yes' : 'No',
+    'COMPLIANCE EXPENSE':       document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-expense')?.value)||0).toFixed(2) : '',
+    'COMPLIANCE MARKUP':        document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-markup')?.value)||0).toFixed(2) : '',
+    'COMPLIANCE TOTAL':         document.getElementById('compliance-cb')?.checked ? '$' + (parseFloat(document.getElementById('compliance-total')?.value)||0).toFixed(2) : '',
+    'COMPLIANCE DESC':          document.getElementById('compliance-desc')?.value?.trim() || '',
+    'NOTES / DEFICIENCIES':     v('notes-deficiencies'),
+    'MATERIALS DESCRIPTION':    v('mat-desc'),
+    'MATERIALS QTY':            v('mat-qty'),
+    'MATERIALS EXPENSE':        '$' + (v('mat-expense') || '0.00'),
+    'MATERIALS MARKUP':         '$' + (v('mat-markup')  || '0.00'),
+    'MATERIALS TOTAL':          '$' + (v('mat-total')   || '0.00'),
+    'LABOR 1 RATE':             v('labor1-rate') ? '$' + v('labor1-rate') + '/hr' : '',
+    'LABOR 1 HOURS':            v('labor1-qty'),
+    'LABOR 1 EXPENSE':          '$' + (v('labor1-expense') || '0.00'),
+    'LABOR 1 MARKUP':           '$' + (v('labor1-markup')  || '0.00'),
+    'LABOR 1 TOTAL':            '$' + (v('labor1-total')   || '0.00'),
+    'LABOR 2 RATE':             v('labor2-rate') ? '$' + v('labor2-rate') + '/hr' : '',
+    'LABOR 2 HOURS':            v('labor2-qty'),
+    'LABOR 2 EXPENSE':          '$' + (v('labor2-expense') || '0.00'),
+    'LABOR 2 MARKUP':           '$' + (v('labor2-markup')  || '0.00'),
+    'LABOR 2 TOTAL':            '$' + (v('labor2-total')   || '0.00'),
+    'TRIP CHARGE':              document.getElementById('trip-cb').checked ? '$90.00' : 'N/A',
+    'TRIP EXPENSE':             '$' + (v('trip-expense') || '0.00'),
+    'TRIP MARKUP':              '$' + (v('trip-markup')  || '0.00'),
+    'TRIP TOTAL':               '$' + (v('trip-total')   || '0.00'),
+    'MISC DESCRIPTION':         v('misc-desc'),
+    'MISC EXPENSE':             '$' + (v('misc-expense') || '0.00'),
+    'MISC MARKUP':              '$' + (v('misc-markup')  || '0.00'),
+    'MISC TOTAL':               '$' + (v('misc-total')   || '0.00'),
+    'TOTAL TO INVOICE':         '$' + (v('grand-total') || '0.00'),
+    'FLAT RATE':                document.getElementById('flat-rate-cb')?.checked ? 'Yes' : 'No',
+    'FLAT RATE AMOUNT':         document.getElementById('flat-rate-cb')?.checked ? '$' + (v('flat-rate-amount') || '0.00') : '',
+    'WORK STATUS':              r('work-status'),
+    'REPORT SUBMITTED':         r('report-sub'),
+    'INVOICE #':                v('invoice-num'),
+    'INVOICE DATE':             fmtDate(v('invoice-date')),
+    'TOTAL INVOICE AMOUNT':     '$' + (v('invoice-amount') || '0.00'),
+    'PAYMENT RECEIVED':         r('pmt-received'),
+    'PAYMENT METHOD':           r('pmt-method'),
+    'PAYMENT DATE':             fmtDate(v('pmt-date')),
+    'ENTERED INTO QUICKBOOKS':  fmtDate(v('qb-date')),
+    'DEPOSITED DATE':           fmtDate(v('deposit-date')),
+    'WORK TRACKER UPDATED':     document.getElementById('tracker-updated').checked ? 'Yes' : 'No',
+    'GENERATED':                new Date().toLocaleString(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────
+// CREATE GOOGLE DOC  — builds a brand-new doc from scratch
+// (avoids FAILED_PRECONDITION that occurs when trying to
+//  replaceAllText on a doc converted from Google Docs HTML export)
+// ─────────────────────────────────────────────────────────
+async function createDoc() {
+  if (!accessToken) {
+    toast('⚠ Not connected — click Connect first');
+    setStatus('conn-status', '⚠ Session expired', 'warn'); document.getElementById('conn-drawer').classList.add('open');
+    return;
+  }
+
+  // ── Validate Line # ──────────────────────────────────────
+  const woNumInput = document.getElementById('wo-number');
+  const woNumCell  = woNumInput.closest('td');
+  if (!woNumInput.value.trim()) {
+    woNumInput.classList.add('field-error');
+    if (woNumCell) woNumCell.classList.add('field-error-cell');
+    woNumInput.focus();
+    // Show modal error
+    const modal = document.createElement('div');
+    modal.id = 'wo-error-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
+      <div style="font-weight:700;font-size:1rem;color:#c0392b;margin-bottom:8px;">Line # Required</div>
+      <div style="font-size:0.875rem;color:#555;margin-bottom:20px;">Please enter a Line # before saving the work order.</div>
+      <button onclick="document.getElementById('wo-error-modal').remove();document.getElementById('wo-number').focus();"
+        style="background:#2e6da4;color:white;border:none;padding:9px 28px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">OK</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    return;
+  }
+  // Clear any previous error state
+  woNumInput.classList.remove('field-error');
+  if (woNumCell) woNumCell.classList.remove('field-error-cell');
+
+  // ── Validate Date Completed ──────────────────────────────
+  const dateInput = document.getElementById('date-requested');
+  const dateCell  = dateInput.closest('td');
+  if (!dateInput.value) {
+    dateInput.classList.add('field-error');
+    if (dateCell) dateCell.classList.add('field-error-cell');
+    dateInput.focus();
+    const modal = document.createElement('div');
+    modal.id = 'wo-error-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
+      <div style="font-weight:700;font-size:1rem;color:#c0392b;margin-bottom:8px;">Date Completed Required</div>
+      <div style="font-size:0.875rem;color:#555;margin-bottom:20px;">Please enter the Date Completed before saving the work order.</div>
+      <button onclick="document.getElementById('wo-error-modal').remove();document.getElementById('date-requested').focus();"
+        style="background:#2e6da4;color:white;border:none;padding:9px 28px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">OK</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    return;
+  }
+  dateInput.classList.remove('field-error');
+  if (dateCell) dateCell.classList.remove('field-error-cell');
+
+  // ── Validate Compliance Report ───────────────────────────
+  const compliCb  = document.getElementById('compliance-cb');
+  const compliAmt = document.getElementById('compliance-expense');
+  if (hasInspectionChecked() && !compliCb?.checked) {
+    const row = document.getElementById('compliance-row');
+    if (row) row.style.outline = '2px solid #e53935';
+    const modal = document.createElement('div');
+    modal.id = 'wo-error-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
+      <div style="font-weight:700;font-size:1rem;color:#c0392b;margin-bottom:8px;">Compliance Report Required</div>
+      <div style="font-size:0.875rem;color:#555;margin-bottom:20px;">You have inspection services selected. Please check Compliance Report in FLIPS Expenses and enter the amount.</div>
+      <button onclick="document.getElementById('wo-error-modal').remove();document.getElementById('compliance-row').scrollIntoView({behavior:'smooth'});"
+        style="background:#2e6da4;color:white;border:none;padding:9px 28px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">OK</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    return;
+  }
+  if (compliCb?.checked && (compliAmt?.value === '' || compliAmt?.value === null || compliAmt?.value === undefined)) {
+    compliAmt.classList.add('field-error');
+    compliAmt.focus();
+    toast('⚠ Enter a Compliance Report amount (0 is allowed)');
+    return;
+  }
+  if (compliAmt) compliAmt.classList.remove('field-error');
+
+  const data = collectForm();
+  // Property name: parse up to first comma
+  const rawProp = data['PROPERTY NAME'] || '';
+  const property = (rawProp.includes(',') ? rawProp.split(',')[0] : rawProp).trim()
+    || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Service type: first checked svc checkbox in DOM order, formatted for title
+  const firstSvc = (() => {
+    const checked = document.querySelector('input[name="svc"]:checked');
+    if (!checked) return '';
+    // e.g. "Fire Alarm – Annual" → "Fire Alarm Annual"
+    //      "Repair / Service Call" → "Repair Service Call"
+    return checked.value.replace(/\s*[–—-]\s*/g, ' ').replace(/\s*\/\s*/g, ' ').trim();
+  })();
+
+  // Date completed (date-requested field, now relabeled): formatted mm-dd-yyyy
+  const rawDate = document.getElementById('date-requested').value; // yyyy-mm-dd
+  const dateTitle = rawDate
+    ? rawDate.split('-').slice(1).concat(rawDate.split('-')[0]).join('-') // mm-dd-yyyy
+    : '';
+
+  const woNum  = data['LINE #'] || '';
+  const subRowsForTitle = (() => { try { return JSON.parse(data['SUB-CONTRACTOR ROWS'] || '[]'); } catch(_) { return []; } })();
+  const hasSubForTitle  = subRowsForTitle.some(r => (r.expense || 0) > 0 || (r.total || 0) > 0);
+  const titleParts = [`Line ${woNum}`, property, firstSvc, dateTitle, hasSubForTitle ? 'Sub' : ''].filter(Boolean);
+  const docName = titleParts.join(' - ');
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.classList.add('loading');
+  setStatus('submit-status', 'Building document…', '');
+
+  try {
+    const html = buildWorkOrderHTML(data);
+
+    setStatus('submit-status', 'Uploading to Drive…', '');
+    // Google's Drive HTML-to-Doc converter only needs the <body>.
+    // Stripping <head> removes the base64 favicon and any other metadata
+    // that can cause the converter to return a 500.
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const safeHtml = bodyMatch
+      ? `<!DOCTYPE html><html><body>${bodyMatch[1]}</body></html>`
+      : html;
+
+    const boundary = '-------314159265358979';
+
+    const metadata = JSON.stringify({ name: docName, mimeType: 'application/vnd.google-apps.document' });
+    const body = [
+      `--${boundary}`,
+      'Content-Type: application/json; charset=UTF-8',
+      '',
+      metadata,
+      `--${boundary}`,
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      safeHtml,
+      `--${boundary}--`
+    ].join('\r\n');
+
+    const uploadRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,parents&supportsAllDrives=true',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': `multipart/related; boundary="${boundary}"`
+        },
+        body
+      }
+    );
+    if (!uploadRes.ok) {
+      let errMsg = 'Upload failed';
+      try {
+        const errJson = await uploadRes.json();
+        errMsg = errJson.error?.message || errJson.error?.status || JSON.stringify(errJson);
+      } catch(_) { try { errMsg = await uploadRes.text(); } catch(_2) {} }
+      console.error('[createDoc] Drive upload error', uploadRes.status, errMsg);
+      throw new Error(`Drive upload ${uploadRes.status}: ${errMsg}`);
+    }
+    const { id: newId, parents } = await uploadRes.json();
+
+    // Move into "FLPS Work Flow / 2 - Ready to Invoice"
+    setStatus('submit-status', 'Moving to folder…', '');
+    const targetFolderId = await findTargetFolder('2 - Ready to Invoice');
+    if (targetFolderId) {
+      const oldParents = (parents || []).join(',');
+      await apiFetch(
+        `https://www.googleapis.com/drive/v3/files/${newId}?addParents=${targetFolderId}&supportsAllDrives=true` +
+        (oldParents ? `&removeParents=${oldParents}` : ''),
+        'PATCH', null
+      );
+    }
+
+    // Convert Completion & Billing checkboxes to native Docs checklist items
+    setStatus('submit-status', 'Applying checkboxes…', '');
+    await applyCompletionChecklists(newId);
+
+    const url = `https://docs.google.com/document/d/${newId}/edit`;
+    const lnk = document.getElementById('doc-link');
+    lnk.href = url; lnk.style.display = 'inline-block';
+    document.getElementById('new-wo-btn').style.display = 'inline-block';
+    toast('✓ Saved: ' + docName);
+
+    // Write client + amount as Drive file properties so create-invoices
+    // can read them instantly from the file list without opening each doc.
+    setStatus('submit-status', '✓ Work order saved!', 'ok');
+    const clientVal  = data['PROPERTY NAME'] || '';
+    const amountVal  = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g,'') : '';
+    if (clientVal || amountVal) {
+      apiFetch(
+        `https://www.googleapis.com/drive/v3/files/${newId}?supportsAllDrives=true`,
+        'PATCH',
+        { appProperties: {
+            flips_client:    clientVal,
+            flips_amount:    amountVal,
+            flips_acct_num:  data['FLPS ACCT #']       || '',
+            flips_bill_to:   data['BILL TO ADDRESS']   || '',
+            flips_bill_email: data['BILLING EMAIL']    || '',
+            flips_svc_addr:  data['SERVICE ADDRESS']   || '',
+            flips_city_st:   data['CITY / STATE / ZIP'] || '',
+          } }
+      ).catch(() => {}); // non-blocking, best-effort
+    }
+
+    // Update inspection schedule (non-blocking — runs in background)
+    updateInspectionSchedule(data);
+
+  } catch(e) {
+    // Make auth errors human-readable; collapse technical details
+    let errMsg = e.message;
+    let errDetail = '';
+    if (e.message.includes('401') || e.message.toLowerCase().includes('authentication') || e.message.toLowerCase().includes('credential')) {
+      errMsg = '⚠ Google session expired — please reconnect';
+      errDetail = e.message;
+      setStatus('conn-status', '⚠ Session expired', 'warn');
+      document.getElementById('conn-drawer').classList.add('open');
+    } else if (e.message.includes('403')) {
+      errMsg = '⚠ Permission denied — check Google Drive access';
+      errDetail = e.message;
+    }
+    const detailHtml = errDetail
+      ? ` <details style="display:inline;font-size:0.75rem;"><summary style="cursor:pointer;color:#888;">details</summary><span style="font-size:0.72rem;color:#c0392b;word-break:break-all;">${errDetail}</span></details>`
+      : '';
+    document.getElementById('submit-status').innerHTML = `<span style="color:#c0392b;">${errMsg}</span>${detailHtml}`;
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.classList.remove('loading');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// APPLY COMPLETION & BILLING CHECKLISTS
+// Paragraphs with "CB|" prefix are stripped then converted
+// to native BULLET_CHECKBOX items — 3 API calls total.
+// ─────────────────────────────────────────────────────────
+async function applyCompletionChecklists(docId) {
+  // Pass 1: find all "CB|" paragraphs
+  const r1 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+  if (!r1.ok) return;
+  const doc1 = await r1.json();
+
+  const cbParas = [];
+  function walk1(elements) {
+    for (const el of elements || []) {
+      if (el.paragraph) {
+        const text = (el.paragraph.elements||[]).map(e => e.textRun?.content||'').join('');
+        if (text.trimStart().startsWith('CB|')) {
+          cbParas.push({ si: el.startIndex, ei: el.endIndex });
+        }
+      }
+      if (el.table) for (const row of el.table.tableRows||[]) for (const cell of row.tableCells||[]) walk1(cell.content);
+    }
+  }
+  walk1(doc1.body.content);
+  if (cbParas.length === 0) return;
+
+  // Pass 2: delete "CB|" (3 chars) from each — reverse order to avoid index drift
+  const deleteReqs = [...cbParas]
+    .sort((a, b) => b.si - a.si)
+    .map(p => ({ deleteContentRange: { range: { startIndex: p.si, endIndex: p.si + 3 } } }));
+
+  const r2 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+    'POST', { requests: deleteReqs });
+  if (!r2.ok) { console.warn('CB delete failed:', (await r2.json()).error?.message); return; }
+
+  // Pass 3: re-read (indices shifted), then apply BULLET_CHECKBOX to all label paragraphs
+  const r3 = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+  if (!r3.ok) return;
+  const doc3 = await r3.json();
+
+  const CB_LABELS = new Set([
+    'Complete','Incomplete','Follow-Up Needed',
+    'Yes','No','Pending','Partial',
+    'Check','ACH','Credit Card','Other',
+    'Google Sheet Work Tracker Updated'
+  ]);
+
+  const bulletParas = [];
+  function walk3(elements) {
+    for (const el of elements || []) {
+      if (el.paragraph) {
+        const text = (el.paragraph.elements||[]).map(e => e.textRun?.content||'').join('').replace(/[\r\n]+$/, '');
+        if (CB_LABELS.has(text)) bulletParas.push({ si: el.startIndex, ei: el.endIndex });
+      }
+      if (el.table) for (const row of el.table.tableRows||[]) for (const cell of row.tableCells||[]) walk3(cell.content);
+    }
+  }
+  walk3(doc3.body.content);
+  if (bulletParas.length === 0) return;
+
+  const bulletReqs = bulletParas.map(p => ({
+    createParagraphBullets: { range: { startIndex: p.si, endIndex: p.ei }, bulletPreset: 'BULLET_CHECKBOX' }
+  }));
+  for (let i = 0; i < bulletReqs.length; i += 50) {
+    await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      'POST', { requests: bulletReqs.slice(i, i+50) });
+  }
+}
+
+function buildWorkOrderHTML(d) {
+  const checkedSvcs = new Set(
+    [...document.querySelectorAll('input[name="svc"]:checked')].map(e => e.value)
+  );
+  const hasSvc     = (v) => checkedSvcs.has(v);
+  const hasAnySvc  = (...vals) => vals.some(v => checkedSvcs.has(v));
+  const trackerChecked = document.getElementById('tracker-updated')?.checked || false;
+  const otherChecked   = document.getElementById('other-svc-cb')?.checked || false;
+  const otherText      = d['OTHER SVC TEXT'] || '';
+
+  // Standard checkboxes — Unicode symbols, decorative only
+  const chk = (checked, label) => (checked ? '\u2611 ' : '\u2610 ') + label;
+
+  // Completion & Billing checkboxes — each option is its own <p> with "CB|" prefix.
+  // The prefix is stripped post-upload and BULLET_CHECKBOX applied by applyCompletionChecklists().
+  const cbOpts = (opts) =>
+    `<td style="${S.val}">` +
+    opts.map(o => `<p style="margin:1px 0;font-size:9pt;line-height:1.4;">CB|${o}</p>`).join('') +
+    `</td>`;
+
+  const S = {
+    page:   'font-family:Arial,sans-serif;font-size:9pt;color:#000;width:100%;border-collapse:collapse;',
+    hdr:    'background:#2e6da4;color:#fff;font-weight:bold;font-size:10pt;text-align:center;padding:5px 4px;',
+    ehdr:   'background:#4a86e8;color:#fff;font-weight:bold;font-size:9pt;padding:4px;',
+    lbl:    'background:#f5f5f5;font-weight:bold;color:#404040;font-size:9pt;padding:3px 5px;white-space:nowrap;width:22%;',
+    val:    'font-size:9pt;padding:3px 5px;width:28%;',
+    subhdr: 'background:#f5f5f5;font-weight:bold;color:#404040;font-size:9pt;padding:4px 5px;',
+  };
+
+  const tbl = (rows, style='') =>
+    `<table style="${S.page}${style}" cellpadding="0" cellspacing="0">${rows}</table>`;
+  const tr  = (...tds) => `<tr>${tds.join('')}</tr>`;
+  const th  = (t, colspan=1, style=S.hdr) =>
+    `<td colspan="${colspan}" style="${style}">${t}</td>`;
+  const td  = (t, style=S.val) => `<td style="${style}">${t||'&nbsp;'}</td>`;
+  const lbl = (t) => td(t, S.lbl);
+  const val = (t) => td(t||'&nbsp;', S.val);
+  const hdr = (t, colspan=4) => tr(th(t, colspan));
+  const v   = (t) => (t||'').toString().replace(/\n/g,'<br>') || '&nbsp;';
+
+  const freqRow = (prefix) => ['Annual','Semi Annual','Quarterly','Monthly']
+    .map(f => chk(hasSvc(`${prefix} \u2013 ${f}`), f)).join('<br>');
+
+  let html = `<!DOCTYPE html><html><body style="margin:18px;">`;
+
+  // ── Letterhead ──────────────────────────────────────────────────
+  html += `
+  <table style="width:100%;border-collapse:collapse;margin-bottom:6px;border:none;">
+    <tr>
+      <td style="width:60px;padding:6px 10px 6px 0;vertical-align:middle;border:none;">
+        <div style="width:52px;height:52px;background:#2e6da4;border-radius:50%;
+                    font-size:26px;text-align:center;line-height:52px;">&#128293;</div>
+      </td>
+      <td style="vertical-align:middle;padding:4px 0;border:none;">
+        <div style="font-family:Arial,sans-serif;font-size:16pt;font-weight:bold;
+                    color:#2e6da4;letter-spacing:0.5px;line-height:1.1;">
+          FIRE LIFE PROTECTION SYSTEMS
+        </div>
+        <div style="font-family:Arial,sans-serif;font-size:9.5pt;color:#555;
+                    font-style:italic;margin-top:2px;">
+          Fire Inspection &amp; Protection Services
+        </div>
+      </td>
+      <td style="vertical-align:middle;text-align:right;padding:4px 0;border:none;">
+        <div style="display:inline-block;background:#2e6da4;color:#fff;
+                    font-family:Arial,sans-serif;font-size:13pt;font-weight:bold;
+                    padding:7px 18px;border-radius:4px;letter-spacing:1px;">
+          WORK ORDER
+        </div>
+        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#888;margin-top:4px;text-align:right;">
+          Line #: <strong style="color:#2e6da4;">${d['LINE #'] || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</strong>
+        </div>
+      </td>
+    </tr>
+  </table><br>`;
+
+  // ── Doc title above first section ──────────────────────────────
+  const rawPropTitle = d['PROPERTY NAME'] || '';
+  const propTitle = (rawPropTitle.includes(',') ? rawPropTitle.split(',')[0] : rawPropTitle).trim();
+  const firstSvcTitle = (() => {
+    const checked = document.querySelector('input[name="svc"]:checked');
+    if (!checked) return '';
+    return checked.value.replace(/\s*[\u2013\u2014-]\s*/g, ' ').replace(/\s*\/\s*/g, ' / ').trim();
+  })();
+  const rawDateTitle = document.getElementById('date-requested').value;
+  const dateTitleStr = rawDateTitle
+    ? rawDateTitle.split('-').slice(1).concat(rawDateTitle.split('-')[0]).join('-')
+    : '';
+  const subRowsForTitle2 = (() => { try { return JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]'); } catch(_) { return []; } })();
+  const hasSubForTitle2  = subRowsForTitle2.some(r => (r.expense || 0) > 0 || (r.total || 0) > 0);
+  const titleParts2 = [`Line ${d['LINE #']}`, propTitle, firstSvcTitle, dateTitleStr, hasSubForTitle2 ? '-Sub' : ''].filter(Boolean);
+  const fullDocTitle = titleParts2.join(' - ');
+
+  html += `<h2 style="font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;
+    color:#2e6da4;margin:0 0 8px 0;padding:0;border-bottom:1px solid #2e6da4;
+    padding-bottom:4px;">${fullDocTitle}</h2>`;
+
+  // ── 1. Work Order Information ────────────────────────────────────
+  html += tbl(
+    hdr('WORK ORDER INFORMATION') +
+    tr(lbl('Date Completed:'), val(d['DATE COMPLETED']), lbl('Date Required:'), val(d['DATE REQUIRED'])) +
+    tr(lbl('Line #:'), val(d['LINE #']),
+       lbl('Priority:'), val(['Routine','Urgent','Emergency'].map(p=>chk(d['PRIORITY']===p,p)).join('&nbsp;&nbsp;'))) +
+    tr(lbl('Requested By:'), val(d['REQUESTED BY']), lbl('Assigned Technician:'), val(d['ASSIGNED TECHNICIAN'])) +
+    tr(lbl('Scheduled Date:'), `<td colspan="3" style="${S.val}">${d['SCHEDULED DATE'] || '&nbsp;'}</td>`)
+  );
+  html += '<br>';
+
+  // ── 2. Client & Property ─────────────────────────────────────────
+  html += tbl(
+    hdr('CLIENT &amp; PROPERTY INFORMATION') +
+    tr(lbl('Client / Company:'), val(v(d['CLIENT / COMPANY'])), lbl('Property Name:'), val(v(d['PROPERTY NAME']))) +
+    tr(lbl('FLPS Account #:'), val(d['FLPS ACCT #']), lbl(''), val('')) +
+    tr(lbl('Service Address:'), val(v(d['SERVICE ADDRESS'])), lbl('City / State / Zip:'), val(v(d['CITY / STATE / ZIP']))) +
+    tr(lbl('Property Contact:'), val(v(d['PROPERTY CONTACT'])), lbl('Contact Phone:'), val(v(d['CONTACT PHONE']))) +
+    tr(lbl('Contact Email:'), val(v(d['CONTACT EMAIL'])), lbl('Billing Email:'), val(v(d['BILLING EMAIL']))) +
+    tr(lbl('Access / Entry Info:'), `<td colspan="3" style="${S.val}font-style:italic;">${v(d['ACCESS / ENTRY INFO'])}</td>`)
+  );
+  html += '<br>';
+
+  // ── 3. Scope of Work ─────────────────────────────────────────────
+  html += tbl(
+    hdr('SCOPE OF WORK') +
+    tr(th('Service Type(s) \u2014 check all that apply:', 4, S.subhdr)) +
+    tr(
+      td(chk(hasAnySvc('Fire Alarm \u2013 Annual','Fire Alarm \u2013 Semi Annual','Fire Alarm \u2013 Quarterly','Fire Alarm \u2013 Monthly'), 'Fire Alarm Inspection')),
+      td(chk(hasAnySvc('Sprinkler \u2013 Annual','Sprinkler \u2013 Semi Annual','Sprinkler \u2013 Quarterly','Sprinkler \u2013 Monthly'), 'Sprinkler Inspection')),
+      td(chk(hasAnySvc('Extinguisher \u2013 Annual','Extinguisher \u2013 Semi Annual','Extinguisher \u2013 Quarterly','Extinguisher \u2013 Monthly'), 'Extinguisher Inspection')),
+      td(chk(hasAnySvc('Exit Light \u2013 Annual','Exit Light \u2013 Semi Annual','Exit Light \u2013 Quarterly','Exit Light \u2013 Monthly'), 'Emergency Exit Light Inspection'))
+    ) +
+    tr(td(freqRow('Fire Alarm')), td(freqRow('Sprinkler')), td(freqRow('Extinguisher')), td(freqRow('Exit Light'))) +
+    tr(
+      td(chk(hasSvc('5-Year Internal Pipe Inspection'), '5-Year Internal Pipe Inspection')),
+      td(chk(hasSvc('5-Year FDC Hydrostatic Test'), '5-Year FDC Hydrostatic Test')),
+      td(chk(hasSvc('3-Year Dry Pipe Test'), '3-Year Dry Pipe Test')),
+      td(chk(hasSvc('Annual Backflow Prevention Test'), 'Annual Backflow Prevention Test'))
+    ) +
+    tr(
+      td(chk(hasSvc('Deficiency Correction'), 'Deficiency Correction')),
+      td(chk(hasSvc('Repair / Service Call'), 'Repair / Service Call')),
+      td(chk(hasSvc('New Installation'), 'New Installation')),
+      td('')
+    ) +
+    tr(
+      td(chk(hasAnySvc('Hood Inspection – Annual','Hood Inspection – Semi Annual'), 'Hood Inspection')),
+      td('■ '.repeat(0) + ['☐ Annual','☐ Semi Annual'].map(f => chk(hasSvc('Hood Inspection – ' + f.replace('☐ ','')),f.replace('☐ ',''))).join('<br>')),
+      td(chk(hasAnySvc('Fire Pump Inspection – Annual','Fire Pump Inspection – Semi Annual','Fire Pump Inspection – Quarterly','Fire Pump Inspection – Monthly'), 'Fire Pump Inspection')),
+      td(freqRow('Fire Pump Inspection'))
+    ) +
+    tr(
+      td(chk(hasAnySvc('Jockey Pump Inspection – Annual','Jockey Pump Inspection – Semi Annual','Jockey Pump Inspection – Quarterly','Jockey Pump Inspection – Monthly'), 'Jockey Pump Inspection')),
+      td(freqRow('Jockey Pump Inspection')),
+      td(''), td('')
+    ) +
+    tr(
+      td(chk(hasSvc('Monitoring Setup / Change'), 'Monitoring Setup / Change')),
+      td(chk(hasSvc('Sub-Contractor Work'), 'Sub-Contractor Work')),
+      td(chk(hasSvc('Walk-Through / Consultation'), 'Walk-Through / Consultation')),
+      td(chk(otherChecked, 'Other: ' + (otherText||'')))
+    ) +
+    tr(th('Description of Work Requested:', 4, S.subhdr)) +
+    tr(`<td colspan="4" style="${S.val}">${v(d['DESCRIPTION OF WORK'])}</td>`) +
+    tr(th('List of Selected Work Scope Items to be included in QB Invoice:', 4, 'background:#e8f0fe;color:#1a1a2e;font-weight:bold;font-size:9pt;padding:4px 5px;')) +
+    tr(`<td colspan="4" style="${S.val}padding:4px 6px;line-height:1.6;">${
+      (() => {
+        const svcs = [...document.querySelectorAll('input[name="svc"]:checked')].map(c => c.value);
+        const otherEl = document.getElementById('other-svc-cb');
+        if (otherEl?.checked) svcs.push('Other: ' + (document.getElementById('other-svc-text')?.value?.trim() || ''));
+        if (!svcs.length) return '<em style="color:#888;">None selected</em>';
+        return svcs.map(s => '• ' + s).join('<br>');
+      })()
+    }</td>`)
+  );
+  html += '<br>';
+
+  // ── 4. Fire System Information ───────────────────────────────────
+  html += tbl(
+    hdr('FIRE SYSTEM INFORMATION') +
+    tr(lbl('System Type:'),
+       val(['Wet','Dry','Pre-Action','Deluge','Glycol','Nitrogen'].map(t=>chk(d['SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
+       lbl('Panel Manufacturer:'), val(d['PANEL MANUFACTURER'])) +
+    tr(lbl('Panel System Type:'),
+       val(['Conventional','Addressable'].map(t=>chk(d['PANEL SYSTEM TYPE']===t,t)).join('&nbsp;&nbsp;')),
+       lbl(''), val('')) +
+    tr(lbl('Monitoring Company:'), val(d['MONITORING COMPANY']), lbl('Monitoring Account #:'), val(d['MONITORING ACCOUNT #'])) +
+    tr(lbl('Sprinkler Heads:'), val(d['# SPRINKLER HEADS']), lbl('Fire Extinguishers:'), val(d['# FIRE EXTINGUISHERS'])) +
+    tr(lbl('Hydrants:'), val(d['# HYDRANTS']), lbl('Backflows:'), val(d['# BACKFLOWS'])) +
+    tr(lbl('Last Inspection Date:'), val(d['LAST INSPECTION DATE']), lbl('Compliance Due Date:'), val(d['COMPLIANCE DUE DATE']))
+  );
+  html += '<br>';
+
+  // ── 5. Notes / Deficiencies ─────────────────────────────────────
+  html += tbl(hdr('NOTES / DEFICIENCIES FOUND', 1) +
+    tr(`<td style="${S.val}min-height:60px;">${v(d['NOTES / DEFICIENCIES'])}</td>`), 'width:100%;');
+  html += '<br>';
+
+  // ── 6. FLPS Expenses ─────────────────────────────────────────────
+  const pdfEhdr = `font-weight:700;font-size:8.5pt;background:#e8f0f8;padding:3px 5px;border:1px solid #bbb;text-align:center;`;
+  const pdfEval = `font-size:9pt;padding:3px 5px;border:1px solid #ddd;text-align:right;`;
+  const pdfElbl = `font-size:9pt;padding:3px 5px;border:1px solid #ddd;font-weight:600;`;
+  const pdfEtxt = `font-size:9pt;padding:3px 5px;border:1px solid #ddd;`;
+  function erow(name, desc, qty, expense, markup, total) {
+    return `<tr>
+      <td style="${pdfElbl}">${name}</td>
+      <td style="${pdfEtxt}">${desc}</td>
+      <td style="${pdfEval}">${qty}</td>
+      <td style="${pdfEval}">${expense}</td>
+      <td style="${pdfEval}">${markup}</td>
+      <td style="${pdfEval}">${total}</td>
+    </tr>`;
+  }
+  html += `<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+    <tr><td colspan="6" style="background:#2e6da4;color:white;font-weight:700;font-size:10pt;padding:4px 6px;">FLPS EXPENSES</td></tr>
+    <tr>
+      <td style="${pdfEhdr}width:14%;">Expense Name</td>
+      <td style="${pdfEhdr}width:22%;">Description</td>
+      <td style="${pdfEhdr}width:8%;">Qty</td>
+      <td style="${pdfEhdr}width:18%;">Expense</td>
+      <td style="${pdfEhdr}width:18%;">Markup (${d['MARKUP PCT']||'25%'})</td>
+      <td style="${pdfEhdr}width:18%;">Total</td>
+    </tr>`;
+
+  // Sub-contractor rows
+  (() => {
+    try {
+      const rows = JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]');
+      if (rows.length === 0) {
+        html += erow('Sub-Contractor/Vendor', '', '', '', '', '');
+      } else {
+        rows.forEach((r, i) => {
+          html += erow(i===0?'Sub-Contractor/Vendor':'', r.label||'', '',
+            r.expense ? '$'+r.expense.toFixed(2) : '',
+            r.markup  ? '$'+r.markup.toFixed(2)  : '',
+            r.total   ? '$'+r.total.toFixed(2)   : '');
+        });
+      }
+    } catch(_) { html += erow('Sub-Contractor/Vendor', '', '', d['SUB-CONTRACTOR AMOUNT']||'', '', ''); }
+  })();
+
+  html += erow('Materials', d['MATERIALS DESCRIPTION']||'', d['MATERIALS QTY']||'',
+    d['MATERIALS EXPENSE']||'', d['MATERIALS MARKUP']||'', d['MATERIALS TOTAL']||'');
+
+  // Labor 1
+  if (d['LABOR 1 RATE'] || d['LABOR 1 HOURS']) {
+    html += erow('Labor 1',
+      d['LABOR 1 RATE'] ? d['LABOR 1 RATE'] : '',
+      d['LABOR 1 HOURS'] ? d['LABOR 1 HOURS'] + ' hrs' : '',
+      d['LABOR 1 EXPENSE']||'', d['LABOR 1 MARKUP']||'', d['LABOR 1 TOTAL']||'');
+  }
+  // Labor 2
+  if (d['LABOR 2 RATE'] || d['LABOR 2 HOURS']) {
+    html += erow('Labor 2',
+      d['LABOR 2 RATE'] ? d['LABOR 2 RATE'] : '',
+      d['LABOR 2 HOURS'] ? d['LABOR 2 HOURS'] + ' hrs' : '',
+      d['LABOR 2 EXPENSE']||'', d['LABOR 2 MARKUP']||'', d['LABOR 2 TOTAL']||'');
+  }
+
+  html += erow('Trip Charge',
+    chk(d['TRIP CHARGE']==='$90.00','$90.00'), '',
+    d['TRIP CHARGE']==='$90.00' ? (d['TRIP EXPENSE']||'') : '',
+    d['TRIP CHARGE']==='$90.00' ? (d['TRIP MARKUP']||'')  : '',
+    d['TRIP CHARGE']==='$90.00' ? (d['TRIP TOTAL']||'')   : '');
+
+  html += erow('Misc', d['MISC DESCRIPTION']||'', '',
+    d['MISC EXPENSE']||'', d['MISC MARKUP']||'', d['MISC TOTAL']||'');
+
+  html += erow(
+    d['COMPLIANCE REPORT']==='Yes' ? '☑ Compliance Report' : '☐ Compliance Report',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE DESC']||'') : 'Not required',
+    '',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE EXPENSE']||'') : '',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE MARKUP']||'')  : '',
+    d['COMPLIANCE REPORT']==='Yes' ? (d['COMPLIANCE TOTAL']||'')   : '');
+
+  html += `<tr>
+    <td colspan="4" style="border:none;"></td>
+    <td style="${pdfElbl}text-align:right;">${d['FLAT RATE']==='Yes' ? '★ FIXED RATE =' : 'Total to Invoice ='}</td>
+    <td style="${pdfElbl}font-size:10pt;text-align:right;">${d['TOTAL TO INVOICE']||'&nbsp;'}</td>
+  </tr>`;
+  html += `</table>`;
+  html += '<br>';
+
+  // ── 8. Completion & Billing ──────────────────────────────────────
+  // Checkbox groups use cbOpts() — each option is its own <p> with "CB|" prefix.
+  // After upload, applyCompletionChecklists() strips the prefix and applies
+  // BULLET_CHECKBOX so they become real interactive checkboxes in the Doc.
+  html += tbl(
+    hdr('COMPLETION &amp; BILLING') +
+    (d['FLAT RATE']==='Yes' ? tr(lbl('★ Fixed Rate Invoice:'), val(d['FLAT RATE AMOUNT']||''), lbl(''), val('')) : '') +
+    tr(lbl('Work Status:'), cbOpts(['Complete','Incomplete','Follow-Up Needed']),
+       lbl(''), val('')) +
+    tr(lbl('Report Submitted:'), cbOpts(['Yes','No','Pending']),
+       lbl('Invoice #:'), val(d['INVOICE #'])) +
+    tr(lbl('Invoice Date:'), val(d['INVOICE DATE']), lbl('Total Invoice Amount:'), val(d['TOTAL INVOICE AMOUNT'])) +
+    tr(lbl('Payment Received:'), cbOpts(['Yes','No','Partial']),
+       lbl('Payment Method:'),   cbOpts(['Check','ACH','Credit Card','Other'])) +
+    tr(lbl('Payment Date:'), val(d['PAYMENT DATE']), lbl('Entered into QuickBooks:'), val(d['ENTERED INTO QUICKBOOKS'])) +
+    tr(lbl('Deposited Date:'), val(d['DEPOSITED DATE']),
+       `<td colspan="2" style="${S.val}"><p style="margin:1px 0;font-size:9pt;">CB|Google Sheet Work Tracker Updated</p></td>`)
+  );
+  html += '<br>';
+
+  // ── Footer ────────────────────────────────────────────────────────
+  html += `<p style="text-align:center;font-size:8pt;color:#666;font-style:italic;">
+    Confidential &mdash; For Internal Use Only &nbsp;&nbsp;&nbsp; Fire Life Protection Systems
+  </p>`;
+
+  html += '</body></html>';
+  return html;
+}
+
+
+// ─────────────────────────────────────────────────────────
+// FIND FOLDER
+// Searches My Drive AND all Shared Drives for
+// "FLPS Work Flow", then finds "2 - Ready to Invoice"
+// inside it. Shared drives require includeItemsFromAllDrives
+// and supportsAllDrives params.
+// ─────────────────────────────────────────────────────────
+async function findTargetFolder(folderName) {
+  try {
+    const q = encodeURIComponent(`mimeType="application/vnd.google-apps.folder" and trashed=false`);
+    const res = await apiFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives&pageSize=1000`
+    );
+    if (!res.ok) { console.warn('Folder list failed:', await res.text()); return null; }
+    const json = await res.json();
+    const folder = json.files?.find(f => f.name.trim().toLowerCase() === folderName.trim().toLowerCase());
+    if (!folder) { console.warn(`Folder "${folderName}" not found`); toast(`⚠ Folder "${folderName}" not found`); return null; }
+    console.log(`✓ Found folder "${folder.name}" id=${folder.id}`);
+    return folder.id;
+  } catch(e) {
+    console.warn('findTargetFolder error:', e.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────
+function apiFetch(url, method = 'GET', body = null) {
+  return googleFetch(url, method, body);
+}
+
+// Wrapper around fetch() that adds the Google Bearer token.
+// On 401 (token revoked mid-session), silently prompts re-auth via GIS
+// then retries the request once.
+async function googleFetch(url, method = 'GET', body = null) {
+  const makeOpts = () => {
+    const opts = { method, headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    return opts;
+  };
+  let res = await fetch(url, makeOpts());
+  if (res.status === 401) {
+    console.warn('[Google] 401 received — token may have been revoked. Requesting fresh token…');
+    toast('⏳ Google session expired — reconnecting…');
+    // Silently request a new token (no popup if consent already granted)
+    await new Promise((resolve, reject) => {
+      if (!tokenClient) { reject(new Error('Not initialized')); return; }
+      tokenClient.callback = async (resp) => {
+        if (resp.error) { reject(new Error(resp.error)); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        resolve();
+      };
+      tokenClient.requestAccessToken({ prompt: '' });
+    });
+    res = await fetch(url, makeOpts());
+  }
+  return res;
+}
+
+function fmtDate(val) {
+  if (!val) return '';
+  const d = new Date(val + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (id === 'conn-status') {
+    el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
+    el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn');
+    if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+  } else {
+    el.textContent = msg; el.className = cls;
+  }
+}
+function toggleDrawer() {
+  document.getElementById('conn-drawer').classList.toggle('open');
+}
+
+function toggleDrawer() {
+  document.getElementById('conn-drawer').classList.toggle('open');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─────────────────────────────────────────────────────────
+// ON LOAD
+// ─────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const k = localStorage.getItem('flips_api_key');
+  const c = localStorage.getItem('flips_client_id');
+  if (k) { document.getElementById('api-key').value = k; API_KEY_VAL = k; }
+  if (c) document.getElementById('client-id').value = c;
+  // date-requested field is now 'Date Completed' — default to today
+  // Date Completed intentionally left blank — user must pick it
+  addSubRow(); // Start with one sub-contractor row
+  calcTotal();
+
+  // Auto-connect: reuse cached token if still valid (no popup needed)
+  if (k && c) {
+    const cachedToken  = localStorage.getItem('flips_access_token');
+    const tokenExpiry  = Number(localStorage.getItem('flips_token_expiry')) || 0;
+    if (cachedToken && tokenExpiry > 0 && Date.now() < tokenExpiry) {
+      accessToken = cachedToken;
+      API_KEY_VAL = k;
+      setStatus('conn-status', '✓ Connected', 'ok');
+      document.getElementById('refresh-props-btn').style.display = 'inline-block';
+      loadSheet();
+    } else {
+      // Token missing or expired — load properties from cache so the dropdown
+      // is ready, but make it obvious the user still needs to Connect.
+      loadSheet(); // will hit session cache instantly, no API call
+      setStatus('conn-status', '⚠ Session expired', 'warn'); document.getElementById('conn-drawer').classList.add('open');
+      document.getElementById('refresh-props-btn').style.display = 'inline-block';
+    }
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// UPDATE INSPECTION SCHEDULE
+// Called after a work order is saved. Reads all checked
+// service boxes and posts updates to the Apps Script web app.
+// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST CONNECTION — click "Test Schedule Connection" to ping
+// the Apps Script and confirm the whole chain works.
+// ─────────────────────────────────────────────────────────
+async function testScriptConnection() {
+  const btn = document.getElementById('test-conn-btn');
+  // URL is handled by the Cloudflare Worker env var — no client-side check needed
+  btn.disabled = true;
+  btn.textContent = '⏳ Testing…';
+  try {
+    const resp = await fetch('/api/apps-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        _appsScriptUrl: APPS_SCRIPT_URL,
+        secret: APPS_SCRIPT_SECRET,
+        action: 'log',
+        log: {
+          source: 'work-order-page',
+          action: 'CONNECTION_TEST',
+          detail: 'Manual test ping from Work Order page — ' + new Date().toLocaleString(),
+          status: 'OK',
+          error:  ''
+        }
+      })
+    });
+    if (!resp.ok) {
+      toast('✗ HTTP ' + resp.status + ' — check the URL');
+      btn.textContent = '✗ Failed';
+      return;
+    }
+    const result = await resp.json();
+    if (result.success) {
+      toast('✓ Connected! Check the FLIPS Work Order System Log sheet in Drive');
+      btn.textContent = '✓ Connected';
+    } else {
+      toast('✗ Apps Script returned: ' + (result.error || 'unknown error'));
+      btn.textContent = '✗ Error';
+    }
+  } catch(e) {
+    toast('✗ Could not reach Apps Script: ' + e.message);
+    btn.textContent = '✗ No response';
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = '🔌 Test Schedule Connection'; }, 3000);
+  }
+}
+
+// SHEET LOGGER — sends a log entry to the Apps Script web app
+// which writes it to the "Work Order System Log" sheet tab.
+// Non-blocking, never throws, silently swallows its own errors.
+// ─────────────────────────────────────────────────────────────────────────────
+function logToSheet(action, detail, status, error) {
+  // Fire-and-forget — never blocks the user-facing flow.
+  // Respects flipsLogLevel: in NORMAL mode only WARN, ERROR, and key OK events
+  // are sent to the sheet. Set flipsLogLevel = 'VERBOSE' in the browser console
+  // to temporarily enable full logging without redeploying.
+  const s = String(status || 'INFO').toUpperCase();
+  const isKeyEvent = ['WO_SAVED','INVOICE_CREATED','QB_INVOICE_CREATED'].includes(action);
+  if (flipsLogLevel !== 'VERBOSE' && s === 'INFO' && !isKeyEvent) return;
+  const entry = { source: 'work-order-page', action, detail: String(detail || ''), status: s, error: String(error || '') };
+  fetch('/api/apps-script', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ _appsScriptUrl: APPS_SCRIPT_URL, secret: APPS_SCRIPT_SECRET, action: 'log', log: entry })
+  }).catch(() => {});
+}
+
+async function updateInspectionSchedule(data) {
+
+  const propertyName  = data['PROPERTY NAME']   || '';
+  const dateCompleted = data['DATE COMPLETED ISO'] || data['DATE COMPLETED'] || '';
+  const svcRaw        = data['SERVICES']         || '';
+  const lineNum       = data['LINE #']           || '';
+
+  logToSheet('WO_SAVE_START',
+    `Line #${lineNum} | Property: ${propertyName} | Date: ${dateCompleted} | Services raw: ${svcRaw.replace(/\n/g,' | ')}`,
+    'INFO');
+
+  if (!propertyName) {
+    logToSheet('WO_SAVE_SKIP', 'No property name on work order', 'WARN'); return;
+  }
+  if (!dateCompleted || dateCompleted === 'N/A') {
+    logToSheet('WO_SAVE_SKIP', `Property: ${propertyName} — Date Completed is blank or N/A`, 'WARN'); return;
+  }
+
+  const parsedDate = parseDisplayDate(dateCompleted);
+  if (!parsedDate) {
+    logToSheet('WO_DATE_PARSE_FAIL',
+      `Could not parse date: "${dateCompleted}" — expected MM/DD/YYYY format`, 'ERROR'); return;
+  }
+  logToSheet('WO_DATE_PARSED', `"${dateCompleted}" → "${parsedDate}"`, 'INFO');
+
+  const SVC_MAP = [
+    { match: /^Fire Alarm\s*[–-]/i,        type: 'Fire Alarm Inspection',           freqKey: true  },
+    { match: /^Sprinkler\s*[–-]/i,          type: 'Sprinkler Inspection',             freqKey: true  },
+    { match: /^Extinguisher\s*[–-]/i,       type: 'Extinguisher Inspection',          freqKey: true  },
+    { match: /^Exit Light\s*[–-]/i,         type: 'Emergency Exit Light Inspection',  freqKey: true  },
+    { match: /5-Year Internal Pipe/i,       type: '5-Year Internal Pipe Inspection',  freq: '5-Year' },
+    { match: /5-Year FDC Hydrostatic/i,     type: '5-Year FDC Hydrostatic Test',      freq: '5-Year' },
+    { match: /3-Year Dry Pipe/i,            type: '3-Year Dry Pipe Test',             freq: '3-Year' },
+    { match: /Annual Backflow Prevention/i, type: 'Annual Backflow Prevention Test',  freq: 'Annual' },
+    { match: /^Hood Inspection\s*[–-]/i,        type: 'Hood Inspection',              freqKey: true },
+    { match: /^Fire Pump Inspection\s*[–-]/i,   type: 'Fire Pump Inspection',         freqKey: true },
+    { match: /^Jockey Pump Inspection\s*[–-]/i, type: 'Jockey Pump Inspection',       freqKey: true },
+  ];
+  const FREQ_MAP = { 'annual':'Annual','semi annual':'Semi Annual','quarterly':'Quarterly','monthly':'Monthly' };
+
+  const checkedSvcs = svcRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  logToSheet('WO_SERVICES_PARSED',
+    `${checkedSvcs.length} service(s) checked: ${checkedSvcs.join(' | ')}`, 'INFO');
+
+  const updates = [];
+  for (const svc of checkedSvcs) {
+    let matched = false;
+    for (const rule of SVC_MAP) {
+      if (rule.match.test(svc)) {
+        let freq = rule.freq || 'Annual';
+        if (rule.freqKey) {
+          const freqPart = svc.replace(/^[^–—-]+[–—-]\s*/i, '').trim().toLowerCase();
+          freq = FREQ_MAP[freqPart] || 'Annual';
+        }
+        updates.push({ propertyName, inspectionType: rule.type, dateCompleted: parsedDate, frequency: freq });
+        logToSheet('WO_SVC_MAPPED', `"${svc}" → type: ${rule.type} | freq: ${freq}`, 'INFO');
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      logToSheet('WO_SVC_NO_MATCH',
+        `"${svc}" did not match any trackable inspection type — not sent to schedule`, 'WARN');
+    }
+  }
+
+  if (updates.length === 0) {
+    logToSheet('WO_NO_TRACKABLE_SVCS',
+      `Property: ${propertyName} — none of the checked services map to tracked inspection types`, 'WARN');
+    return;
+  }
+
+  logToSheet('WO_POSTING_TO_SCRIPT',
+    `Sending ${updates.length} update(s) to Apps Script web app`, 'INFO');
+
+  try {
+    const resp = await fetch('/api/apps-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _appsScriptUrl: APPS_SCRIPT_URL, secret: APPS_SCRIPT_SECRET, updates })
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      logToSheet('WO_HTTP_ERROR', `HTTP ${resp.status}: ${txt.substring(0,200)}`, 'ERROR');
+      return;
+    }
+
+    const result = await resp.json();
+    if (result.success) {
+      logToSheet('WO_SAVED',
+        `Work order saved + ${updates.length} inspection record(s) updated for ${propertyName}`, 'OK');
+      console.log('✓ Inspection schedule updated:', updates.length, 'record(s)');
+    } else {
+      logToSheet('WO_SCHEDULE_FAILED',
+        `Apps Script returned error for ${propertyName}`, 'ERROR', result.error);
+      console.warn('Inspection schedule update failed:', result.error);
+    }
+  } catch(e) {
+    logToSheet('WO_FETCH_EXCEPTION',
+      `fetch() to Apps Script threw — is the URL correct?`, 'ERROR', e.message);
+    console.warn('Could not reach inspection schedule web app:', e.message);
+  }
+}
+
+// Parse date string → ISO "YYYY-MM-DD"
+// Handles: YYYY-MM-DD (native date input), MM/DD/YYYY, "Mar 12, 2026"
+function parseDisplayDate(str) {
+  if (!str || str === 'N/A') return null;
+  str = str.trim();
+  // Already ISO: 2026-03-12
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // MM/DD/YYYY
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  // "Mar 12, 2026" or "March 12, 2026" — force noon to avoid UTC-midnight timezone shift
+  const d = new Date(str + ' 12:00:00');
+  if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  return null;
+}
+</script>
+</body>
+</html>
