@@ -699,26 +699,15 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-col-header" style="width:18%;text-align:center;">Markup&nbsp;(<input type="number" id="markup-pct" value="25" min="0" max="999" step="1" style="width:38px;font-size:0.85em;padding:1px 3px;border:1px solid #aaa;border-radius:2px;font-weight:normal;" oninput="recalcAllMarkups()">%)</td>
       <td class="exp-col-header" style="width:18%;text-align:center;">Total</td>
     </tr>
-    <!-- Sub-Contractor Amount — dynamic rows injected here by addSubRow() -->
+    <!-- Sub-Contractor header row — data rows inserted after this -->
     <tr id="sub-add-row">
-      <td colspan="6" style="padding:2px 4px;">
-        <button type="button" onclick="addSubRow()"
-          title="Add Another Sub-Contractor/Vendor"
-          style="font-size:0.9rem;padding:2px 9px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">
-          +
-        </button>
-      </td>
+      <td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor&nbsp;<button type="button" onclick="addSubRow()" title="Add Sub-Contractor/Vendor" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
+      <td colspan="5"></td>
     </tr>
-    <!-- Materials -->
-    <!-- Materials — dynamic rows injected here by addMatRow() -->
+    <!-- Materials header row — data rows inserted after this -->
     <tr id="mat-add-row">
-      <td colspan="6" style="padding:2px 4px;">
-        <button type="button" onclick="addMatRow()"
-          title="Add Materials Line"
-          style="font-size:0.9rem;padding:2px 9px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">
-          +
-        </button>
-      </td>
+      <td class="exp-label" style="white-space:nowrap;">Materials&nbsp;<button type="button" onclick="addMatRow()" title="Add Materials Line" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
+      <td colspan="5"></td>
     </tr>
     <!-- Labor 1 -->
     <tr>
@@ -1404,9 +1393,9 @@ function addSubRow(labelVal, expenseVal) {
   const tr = document.createElement('tr');
   tr.id = 'sub-row-' + n;
   tr.innerHTML =
-    '<td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor ' +
-    '<button type="button" onclick="removeSubRow(' + n + ')" title="Remove this Sub-Contractor/Vendor row" ' +
-    'style="margin-left:4px;background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
+    '<td class="exp-label" style="text-align:right;padding-right:4px;">' +
+    '<button id="sub-minus-' + n + '" type="button" onclick="removeSubRow(' + n + ')" title="Remove this Sub-Contractor/Vendor row" ' +
+    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;visibility:hidden;">−</button></td>' +
     '<td class="value-cell"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
     '<td class="value-cell"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
@@ -1415,10 +1404,21 @@ function addSubRow(labelVal, expenseVal) {
     '<input type="number" id="sub-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
     '<input type="number" id="sub-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
-  const addBtnRow = document.getElementById('sub-add-row');
-  addBtnRow.parentNode.insertBefore(tr, addBtnRow);
+  // Insert after the last sub-row, or after the header row if none exist
+  const existing = [...document.querySelectorAll('[id^="sub-row-"]')];
+  const anchor = existing.length > 0 ? existing[existing.length - 1] : document.getElementById('sub-add-row');
+  anchor.insertAdjacentElement('afterend', tr);
+  updateSubRowMinus();
   if (expenseVal) setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
   calcTotal();
+}
+
+function updateSubRowMinus() {
+  const rows = document.querySelectorAll('[id^="sub-row-"]');
+  rows.forEach(tr => {
+    const btn = document.getElementById('sub-minus-' + tr.id.replace('sub-row-', ''));
+    if (btn) btn.style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+  });
 }
 
 function onSubExpenseChange(n) {
@@ -1427,8 +1427,10 @@ function onSubExpenseChange(n) {
 }
 
 function removeSubRow(idx) {
+  if (document.querySelectorAll('[id^="sub-row-"]').length <= 1) return;
   const tr = document.getElementById('sub-row-' + idx);
   if (tr) tr.remove();
+  updateSubRowMinus();
   calcTotal();
 }
 
@@ -1455,9 +1457,9 @@ function addMatRow(descVal, qtyVal, expenseVal) {
   const tr = document.createElement('tr');
   tr.id = 'mat-row-' + n;
   tr.innerHTML =
-    '<td class="exp-label" style="white-space:nowrap;">Materials ' +
-    '<button type="button" onclick="removeMatRow(' + n + ')" title="Remove this Materials row" ' +
-    'style="margin-left:4px;background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
+    '<td class="exp-label" style="text-align:right;padding-right:4px;">' +
+    '<button id="mat-minus-' + n + '" type="button" onclick="removeMatRow(' + n + ')" title="Remove this Materials row" ' +
+    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;visibility:hidden;">−</button></td>' +
     '<td class="value-cell"><input type="text" id="mat-desc-' + n + '" value="' + (descVal||'') + '" style="width:100%;"></td>' +
     '<td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty-' + n + '" value="' + (qtyVal||'') + '" min="0" step="1" style="text-align:center;"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
@@ -1466,10 +1468,21 @@ function addMatRow(descVal, qtyVal, expenseVal) {
     '<input type="number" id="mat-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
     '<input type="number" id="mat-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
-  const addBtnRow = document.getElementById('mat-add-row');
-  addBtnRow.parentNode.insertBefore(tr, addBtnRow);
+  // Insert after the last mat-row, or after the header row if none exist
+  const existing = [...document.querySelectorAll('[id^="mat-row-"]')];
+  const anchor = existing.length > 0 ? existing[existing.length - 1] : document.getElementById('mat-add-row');
+  anchor.insertAdjacentElement('afterend', tr);
+  updateMatRowMinus();
   if (expenseVal) setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
   calcTotal();
+}
+
+function updateMatRowMinus() {
+  const rows = document.querySelectorAll('[id^="mat-row-"]');
+  rows.forEach(tr => {
+    const btn = document.getElementById('mat-minus-' + tr.id.replace('mat-row-', ''));
+    if (btn) btn.style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+  });
 }
 
 function onMatExpenseChange(n) {
@@ -1478,8 +1491,10 @@ function onMatExpenseChange(n) {
 }
 
 function removeMatRow(idx) {
+  if (document.querySelectorAll('[id^="mat-row-"]').length <= 1) return;
   const tr = document.getElementById('mat-row-' + idx);
   if (tr) tr.remove();
+  updateMatRowMinus();
   calcTotal();
 }
 
