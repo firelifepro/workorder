@@ -2184,6 +2184,15 @@ async function getSharedDriveId() {
   }
 }
 
+// Returns the ID of the top-level "FLPS Software" folder in the Shared Drive.
+// All sub-folders are created inside this one.
+let _flpsRootId = null;
+async function getFlpsRootFolderId() {
+  if (_flpsRootId) return _flpsRootId;
+  _flpsRootId = await findOrCreateFolder('FLPS Software');
+  return _flpsRootId;
+}
+
 async function findOrCreateFolder(name, parentId) {
   const sharedDriveId = await getSharedDriveId();
   const cacheKey = name + (parentId || '') + (sharedDriveId || '');
@@ -2270,7 +2279,7 @@ async function driveUploadFile(fileName, mimeType, content, folderId, existingFi
 // ─────────────────────────────────────────────────────────────────────────────
 async function findLatestInspectionFile(propName) {
   try {
-    const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
+    const folderId = await findOrCreateFolder('FLPS Software Inspection Data', await getFlpsRootFolderId());
     const safeSearch = propName.replace(/'/g, "\\'").replace(/"/g, '\\"');
     const q = `"${folderId}" in parents and trashed=false and appProperties has { key='flips_insp_property' and value='${safeSearch}' }`;
     const res = await googleFetch(
@@ -2308,7 +2317,7 @@ async function loadLatestInspection(propName) {
 // ─────────────────────────────────────────────────────────────────────────────
 async function findPropertyProfileFile(propName) {
   try {
-    const folderId = await findOrCreateFolder('FLPS Property Profiles');
+    const folderId = await findOrCreateFolder('FLPS Property Profiles', await getFlpsRootFolderId());
     const safeSearch = propName.replace(/'/g, "\\'").replace(/"/g, '\\"');
     const q = `"${folderId}" in parents and trashed=false and appProperties has { key='flips_profile_property' and value='${safeSearch}' }`;
     const res = await googleFetch(
@@ -2342,7 +2351,7 @@ async function loadPropertyProfile(propName) {
 }
 
 async function savePropertyProfile(propName, profile) {
-  const folderId = await findOrCreateFolder('FLPS Property Profiles');
+  const folderId = await findOrCreateFolder('FLPS Property Profiles', await getFlpsRootFolderId());
   const slug = propName.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 60);
   const fileName = `FLPS_Profile_${slug}.json`;
   const existingId = profile._fileId || null;
@@ -2395,7 +2404,7 @@ async function saveInspectionToDrive() {
     const fileSlug = buildFileSlug(data);
     const fileName = `FLPS_Insp_${fileSlug}_${dateStr}.json`;
 
-    const folderId = await findOrCreateFolder('FLPS Software Inspection Data');
+    const folderId = await findOrCreateFolder('FLPS Software Inspection Data', await getFlpsRootFolderId());
 
     // Check if a file for this property+date already exists (update vs create)
     const existing = await findLatestInspectionFile(propName);
@@ -3298,7 +3307,7 @@ async function saveAndDownload() {
         const propName = data.property.name || 'Unknown';
         const dateStr  = data.inspection.date || todayMT();
         const jsonFileName = `FLPS_Insp_${sysSlug}_${propSlug}_${dateStr}.json`;
-        const folderId = await findOrCreateFolder('FLPS Inspection History');
+        const folderId = await findOrCreateFolder('FLPS Inspection History', await getFlpsRootFolderId());
         // Always create a new history record (never upsert — each inspection is a unique record)
         const content = JSON.stringify({ ...data, photos: inspectionPhotos.map(p => ({ note: p.note })) }, null, 2);
         const uploaded = await driveUploadFile(jsonFileName, 'application/json', content, folderId, null);
@@ -3334,7 +3343,7 @@ async function saveAndDownload() {
       try {
         setStatus2('Saving PDF to Drive…', 'var(--slate)');
         const pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
-        const pdfFolderId = await findOrCreateFolder('FLPS Inspection Reports');
+        const pdfFolderId = await findOrCreateFolder('FLPS Inspection Reports', await getFlpsRootFolderId());
         await driveUploadFile(filename, 'application/pdf', pdfBase64, pdfFolderId, null);
         setStatus2('✓ PDF saved to FLPS Inspection Reports', 'var(--green)');
       } catch(e) {
