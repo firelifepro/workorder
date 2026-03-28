@@ -91,6 +91,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 .step-tab .step-check { display: none; }
 .step-tab.done .step-check { display: inline; }
 .step-tab.done .step-num { display: none; }
+.step-tab.disabled { opacity: 0.35; pointer-events: none; cursor: default; }
 
 /* ── CARDS ── */
 .card {
@@ -1227,7 +1228,16 @@ function toggleDrawer() { document.getElementById('conn-drawer').classList.toggl
 // ─────────────────────────────────────────────────────────────────────────────
 // STEP WIZARD
 // ─────────────────────────────────────────────────────────────────────────────
+function syncMainNavDisabled() {
+  const hasInspection = !!activeInspectionSystem;
+  document.querySelectorAll('#step-nav .step-tab').forEach(t => {
+    const s = parseInt(t.dataset.step);
+    if (s >= 3) t.classList.toggle('disabled', !hasInspection);
+  });
+}
+
 function goStep(n) {
+  if (n >= 3 && !activeInspectionSystem) return;
   document.getElementById('step-' + currentStep).style.display = 'none';
   document.getElementById('step-' + n).style.display = 'block';
   document.querySelectorAll('.step-tab').forEach(t => {
@@ -1266,6 +1276,8 @@ function goFAStep(key) {
     if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
     updateDeficiencySummary();
+    const faDeficRows = document.getElementById('fa-defic-tbody')?.querySelectorAll('tr').length || 0;
+    if (faDeficRows > 0 && overallStatus === '') setOverallStatus('DEFICIENT');
   } else {
     const target = document.getElementById('step-fa-' + key);
     if (target) target.style.display = 'block';
@@ -1337,6 +1349,7 @@ function exitFireAlarmInspection(target) {
   document.getElementById('fa-active-banner').style.display = 'none';
   document.getElementById('step-nav').style.display = 'flex';
   activeInspectionSystem = null;
+  syncMainNavDisabled();
   // currentStep is still 2 from when we entered FA mode
   goStep(target === 'property' ? 1 : 2);
 }
@@ -1711,6 +1724,7 @@ function renderInspectionStartCards() {
 
 function startInspectionForSystem(sysKey) {
   activeInspectionSystem = sysKey;
+  syncMainNavDisabled();
   const lastBySystem = (_propertyProfile && _propertyProfile.lastInspBySystem) || {};
   const last = lastBySystem[sysKey];
 
@@ -2489,7 +2503,7 @@ function addExtRow(prefillLoc, prefillType, prefillSize, prefillMfr, prefillPsi)
 function setPFTable(btn, id, val) {
   const input = document.getElementById(id);
   if (input) input.value = val;
-  const group = btn.closest('.pf-group');
+  const group = btn.closest('.pf-group') || btn.parentElement;
   group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
 
@@ -2928,9 +2942,16 @@ function buildFADeviceTable() {
 
 function calcFAPct(i) {
   const id = `fa-dev-${i}`;
-  const total = +document.getElementById(`${id}-total`)?.value || 0;
-  const pass  = +document.getElementById(`${id}-pass`)?.value  || 0;
-  const fail  = +document.getElementById(`${id}-fail`)?.value  || 0;
+  const totalEl = document.getElementById(`${id}-total`);
+  const passEl  = document.getElementById(`${id}-pass`);
+  const failEl  = document.getElementById(`${id}-fail`);
+  // Clamp negatives back to 0 so the down-arrow can't break the row
+  if (totalEl && +totalEl.value < 0) totalEl.value = 0;
+  if (passEl  && +passEl.value  < 0) passEl.value  = 0;
+  if (failEl  && +failEl.value  < 0) failEl.value  = 0;
+  const total = +totalEl?.value || 0;
+  const pass  = +passEl?.value  || 0;
+  const fail  = +failEl?.value  || 0;
   const pPass = document.getElementById(`${id}-pct-pass`);
   const pFail = document.getElementById(`${id}-pct-fail`);
   if (pPass) pPass.textContent = total > 0 ? Math.round(pass / total * 100) + '%' : '—';
@@ -4662,6 +4683,8 @@ window.addEventListener('load', () => {
     const cached = JSON.parse(sessionStorage.getItem('flips_client_cache') || 'null');
     if (cached?.data) { clientData = cached.data; buildDropdown(); }
   } catch(_) {}
+
+  syncMainNavDisabled();
 
   // Init sig pad when step 4 is visited
   const observer = new MutationObserver(() => {
