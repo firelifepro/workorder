@@ -1415,7 +1415,7 @@ function addSubRow(labelVal, expenseVal) {
   tr.innerHTML =
     '<td class="exp-label" style="text-align:right;padding-right:4px;">' +
     '<button id="sub-minus-' + n + '" type="button" onclick="removeSubRow(' + n + ')" title="Remove this Sub-Contractor/Vendor row" ' +
-    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;visibility:hidden;">−</button></td>' +
+    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
     '<td class="value-cell"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
     '<td class="value-cell"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
@@ -1486,7 +1486,7 @@ function addMatRow(descVal, qtyVal, expenseVal) {
   tr.innerHTML =
     '<td class="exp-label" style="text-align:right;padding-right:4px;">' +
     '<button id="mat-minus-' + n + '" type="button" onclick="removeMatRow(' + n + ')" title="Remove this Materials row" ' +
-    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;visibility:hidden;">−</button></td>' +
+    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
     '<td class="value-cell"><input type="text" id="mat-desc-' + n + '" value="' + (descVal||'') + '" style="width:100%;"></td>' +
     '<td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty-' + n + '" value="' + (qtyVal||'') + '" min="0" step="1" style="text-align:center;"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
