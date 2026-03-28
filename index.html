@@ -2130,38 +2130,37 @@ function buildWorkOrderHTML(d) {
   const freqRow = (prefix) => ['Annual','Semi Annual','Quarterly','Monthly']
     .map(f => chk(hasSvc(`${prefix} \u2013 ${f}`), f)).join('<br>');
 
-  let html = `<!DOCTYPE html><html><body style="margin:18px;">`;
+  let html = `<!DOCTYPE html><html><body style="margin:8px 10px;">`;
 
   // ── Letterhead ──────────────────────────────────────────────────
   html += `
-  <table style="width:100%;border-collapse:collapse;margin-bottom:6px;border:none;">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:3px;border:none;">
     <tr>
-      <td style="width:60px;padding:6px 10px 6px 0;vertical-align:middle;border:none;">
-        <div style="width:52px;height:52px;background:#2e6da4;border-radius:50%;
-                    font-size:26px;text-align:center;line-height:52px;">&#128293;</div>
+      <td style="width:44px;padding:2px 8px 2px 0;vertical-align:middle;border:none;">
+        <div style="width:38px;height:38px;background:#2e6da4;border-radius:50%;
+                    font-size:20px;text-align:center;line-height:38px;">&#128293;</div>
       </td>
-      <td style="vertical-align:middle;padding:4px 0;border:none;">
-        <div style="font-family:Arial,sans-serif;font-size:16pt;font-weight:bold;
+      <td style="vertical-align:middle;padding:2px 0;border:none;">
+        <div style="font-family:Arial,sans-serif;font-size:13pt;font-weight:bold;
                     color:#2e6da4;letter-spacing:0.5px;line-height:1.1;">
           FIRE LIFE PROTECTION SYSTEMS
         </div>
-        <div style="font-family:Arial,sans-serif;font-size:9.5pt;color:#555;
-                    font-style:italic;margin-top:2px;">
+        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#555;
+                    font-style:italic;margin-top:1px;">
           Fire Inspection &amp; Protection Services
         </div>
       </td>
-      <td style="vertical-align:middle;text-align:right;padding:4px 0;border:none;">
-        <div style="display:inline-block;background:#2e6da4;color:#fff;
-                    font-family:Arial,sans-serif;font-size:13pt;font-weight:bold;
-                    padding:7px 18px;border-radius:4px;letter-spacing:1px;">
+      <td style="vertical-align:middle;text-align:right;padding:2px 0;border:none;">
+        <div style="font-family:Arial,sans-serif;font-size:15pt;font-weight:bold;
+                    color:#000;letter-spacing:1px;">
           WORK ORDER
         </div>
-        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#888;margin-top:4px;text-align:right;">
+        <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:#888;margin-top:2px;text-align:right;">
           Line #: <strong style="color:#2e6da4;">${d['LINE #'] || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</strong>
         </div>
       </td>
     </tr>
-  </table><br>`;
+  </table>`;
 
   // ── Doc title above first section ──────────────────────────────
   const rawPropTitle = d['PROPERTY NAME'] || '';
@@ -2180,9 +2179,9 @@ function buildWorkOrderHTML(d) {
   const titleParts2 = [`Line ${d['LINE #']}`, propTitle, firstSvcTitle, dateTitleStr, hasSubForTitle2 ? '-Sub' : ''].filter(Boolean);
   const fullDocTitle = titleParts2.join(' - ');
 
-  html += `<h2 style="font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;
-    color:#2e6da4;margin:0 0 8px 0;padding:0;border-bottom:1px solid #2e6da4;
-    padding-bottom:4px;">${fullDocTitle}</h2>`;
+  html += `<h2 style="font-family:Arial,sans-serif;font-size:11pt;font-weight:bold;
+    color:#2e6da4;margin:3px 0 4px 0;padding:0;border-bottom:1px solid #2e6da4;
+    padding-bottom:2px;">${fullDocTitle}</h2>`;
 
   // ── 1. Work Order Information ────────────────────────────────────
   html += tbl(
