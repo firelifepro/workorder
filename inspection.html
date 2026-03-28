@@ -860,14 +860,54 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     <div class="card">
       <div class="card-header"><span class="icon">📝</span><span>On-Site System Notes <span style="font-size:.72rem;font-weight:400;opacity:.8;">— Conditions, Integrity, Outdated/Obsolete Equipment</span></span></div>
       <div class="card-body" style="overflow-x:auto;">
-        <table class="dyn-table">
-          <thead><tr><th style="min-width:160px;">Equipment</th><th style="width:130px;">Condition</th><th>Notes &amp; Observations</th></tr></thead>
-          <tbody>
-            <tr><td><input type="text" id="fa-onsite-eq-1" value="Fire Alarm Control Panel"></td><td><input type="text" id="fa-onsite-cond-1"></td><td><input type="text" id="fa-onsite-notes-1"></td></tr>
-            <tr><td><input type="text" id="fa-onsite-eq-2" value="Initiating Devices"></td><td><input type="text" id="fa-onsite-cond-2"></td><td><input type="text" id="fa-onsite-notes-2"></td></tr>
-            <tr><td><input type="text" id="fa-onsite-eq-3" value="Power Supplies"></td><td><input type="text" id="fa-onsite-cond-3"></td><td><input type="text" id="fa-onsite-notes-3"></td></tr>
-            <tr><td><input type="text" id="fa-onsite-eq-4" value="Graphic Maps / Annunciators"></td><td><input type="text" id="fa-onsite-cond-4"></td><td><input type="text" id="fa-onsite-notes-4"></td></tr>
-            <tr><td><input type="text" id="fa-onsite-eq-5" value="Other"></td><td><input type="text" id="fa-onsite-cond-5"></td><td><input type="text" id="fa-onsite-notes-5"></td></tr>
+        <table class="dyn-table" id="fa-onsite-table">
+          <thead><tr><th style="min-width:160px;">Equipment</th><th style="width:200px;">Condition</th><th>Notes &amp; Observations</th></tr></thead>
+          <tbody id="fa-onsite-tbody">
+            <tr id="fa-onsite-row-1">
+              <td><input type="text" id="fa-onsite-eq-1" value="Fire Alarm Control Panel"></td>
+              <td><div style="display:flex;gap:4px;">
+                <button class="pf-btn pass" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,1,'sat')">Satisfactory</button>
+                <button class="pf-btn fail" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,1,'unsat')">Unsatisfactory</button>
+                <button class="pf-btn na" style="flex:0 0 auto;font-size:.7rem;" onclick="setOnsiteCond(this,1,'na')">N/A</button>
+              </div></td>
+              <td><input type="text" id="fa-onsite-notes-1" oninput="syncOnsiteDefic(1)"></td>
+            </tr>
+            <tr id="fa-onsite-row-2">
+              <td><input type="text" id="fa-onsite-eq-2" value="Initiating Devices"></td>
+              <td><div style="display:flex;gap:4px;">
+                <button class="pf-btn pass" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,2,'sat')">Satisfactory</button>
+                <button class="pf-btn fail" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,2,'unsat')">Unsatisfactory</button>
+                <button class="pf-btn na" style="flex:0 0 auto;font-size:.7rem;" onclick="setOnsiteCond(this,2,'na')">N/A</button>
+              </div></td>
+              <td><input type="text" id="fa-onsite-notes-2" oninput="syncOnsiteDefic(2)"></td>
+            </tr>
+            <tr id="fa-onsite-row-3">
+              <td><input type="text" id="fa-onsite-eq-3" value="Power Supplies"></td>
+              <td><div style="display:flex;gap:4px;">
+                <button class="pf-btn pass" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,3,'sat')">Satisfactory</button>
+                <button class="pf-btn fail" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,3,'unsat')">Unsatisfactory</button>
+                <button class="pf-btn na" style="flex:0 0 auto;font-size:.7rem;" onclick="setOnsiteCond(this,3,'na')">N/A</button>
+              </div></td>
+              <td><input type="text" id="fa-onsite-notes-3" oninput="syncOnsiteDefic(3)"></td>
+            </tr>
+            <tr id="fa-onsite-row-4">
+              <td><input type="text" id="fa-onsite-eq-4" value="Graphic Maps"></td>
+              <td><div style="display:flex;gap:4px;">
+                <button class="pf-btn pass" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,4,'sat')">Satisfactory</button>
+                <button class="pf-btn fail" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,4,'unsat')">Unsatisfactory</button>
+                <button class="pf-btn na" style="flex:0 0 auto;font-size:.7rem;" onclick="setOnsiteCond(this,4,'na')">N/A</button>
+              </div></td>
+              <td><input type="text" id="fa-onsite-notes-4" oninput="syncOnsiteDefic(4)"></td>
+            </tr>
+            <tr id="fa-onsite-row-5">
+              <td><input type="text" id="fa-onsite-eq-5" value="Notification Appliance Devices"></td>
+              <td><div style="display:flex;gap:4px;">
+                <button class="pf-btn pass" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,5,'sat')">Satisfactory</button>
+                <button class="pf-btn fail" style="flex:1;font-size:.7rem;" onclick="setOnsiteCond(this,5,'unsat')">Unsatisfactory</button>
+                <button class="pf-btn na" style="flex:0 0 auto;font-size:.7rem;" onclick="setOnsiteCond(this,5,'na')">N/A</button>
+              </div></td>
+              <td><input type="text" id="fa-onsite-notes-5" oninput="syncOnsiteDefic(5)"></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -928,9 +968,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
           <div class="inspect-row-top">
             <div class="inspect-label">Audible notification present? (bells, chimes, horns &amp; combos)</div>
             <div class="pf-group">
-              <button class="pf-btn na" onclick="setFAPF(this)">N/A</button>
               <button class="pf-btn pass" onclick="setFAPF(this)">PASS</button>
               <button class="pf-btn fail" onclick="setFAPF(this)">FAIL</button>
+              <button class="pf-btn na" onclick="setFAPF(this)">N/A</button>
             </div>
           </div>
         </div>
@@ -1021,10 +1061,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
         <table class="dyn-table" id="fa-subpanel-table">
           <thead>
             <tr>
-              <th>Location</th><th>Make</th><th>Model</th><th>Address</th>
-              <th>Panel/Circuit</th><th>Amps/Style</th><th>Avail. NACs</th>
-              <th>Install Date</th><th>(L) Batt Load</th><th>(R) Batt Load</th>
-              <th>SPVSD?</th><th style="width:80px;">Pass/Fail</th><th style="width:30px;"></th>
+              <th>Location</th><th>Make</th><th>Panel/Circuit</th><th>Amps/Style</th>
+              <th style="width:70px;">(L) Batt</th><th style="width:70px;">(R) Batt</th>
+              <th style="width:60px;">SPVSD</th><th style="width:60px;">Pass/Fail</th><th style="width:30px;"></th>
             </tr>
           </thead>
           <tbody id="fa-subpanel-tbody"></tbody>
@@ -2886,21 +2925,23 @@ function buildFACL(containerId, items, prefix) {
 function addFASubpanelRow() {
   faSubpanelCount++;
   const n = faSubpanelCount;
-  const pfOpts = ['','PASS','FAIL','N/A'].map(o => `<option>${o}</option>`).join('');
+  const iconBtns = (prefix) => `
+    <div style="display:flex;gap:2px;">
+      <button class="pf-btn pass" style="padding:3px 7px;" onclick="setPFTable(this,'${prefix}-${n}','PASS')" title="Pass">✓</button>
+      <button class="pf-btn fail" style="padding:3px 7px;" onclick="setPFTable(this,'${prefix}-${n}','FAIL')" title="Fail">✗</button>
+      <button class="pf-btn na"   style="padding:3px 5px;font-size:.65rem;" onclick="setPFTable(this,'${prefix}-${n}','N/A')" title="N/A">N/A</button>
+      <input type="hidden" id="${prefix}-${n}">
+    </div>`;
   document.getElementById('fa-subpanel-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-sp-row-${n}">
       <td><input type="text" id="fa-sp-loc-${n}"></td>
       <td><input type="text" id="fa-sp-make-${n}"></td>
-      <td><input type="text" id="fa-sp-model-${n}"></td>
-      <td><input type="text" id="fa-sp-addr-${n}"></td>
       <td><input type="text" id="fa-sp-circuit-${n}"></td>
       <td><input type="text" id="fa-sp-amps-${n}"></td>
-      <td><input type="text" id="fa-sp-nacs-${n}"></td>
-      <td><input type="date" id="fa-sp-install-${n}"></td>
-      <td><input type="text" id="fa-sp-lbatt-${n}" placeholder="Pass/Fail/V"></td>
-      <td><input type="text" id="fa-sp-rbatt-${n}" placeholder="Pass/Fail/V"></td>
-      <td><select id="fa-sp-spvsd-${n}"><option></option><option>Yes</option><option>No</option></select></td>
-      <td><select id="fa-sp-pf-${n}">${pfOpts}</select></td>
+      <td>${iconBtns('fa-sp-lbatt')}</td>
+      <td>${iconBtns('fa-sp-rbatt')}</td>
+      <td>${iconBtns('fa-sp-spvsd')}</td>
+      <td>${iconBtns('fa-sp-pf')}</td>
       <td><button class="del-btn" onclick="document.getElementById('fa-sp-row-${n}').remove()">✕</button></td>
     </tr>`);
 }
@@ -2994,10 +3035,69 @@ function addFANoteRow() {
     </tr>`);
 }
 
+// ─── ONSITE CONDITION BUTTONS ─────────────────────────────────────────────────
+// Tracks which onsite rows are currently marked Unsatisfactory
+const _onsiteUnsat = {};  // rowNum → defic-tbody row id
+
+function setOnsiteCond(btn, n, state) {
+  // Toggle button styles in the pair
+  const row = document.getElementById('fa-onsite-row-' + n);
+  if (!row) return;
+  row.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  if (state === 'unsat') {
+    _onsiteUnsat[n] = true;
+    addOnsiteDeficRow(n);
+  } else {
+    _onsiteUnsat[n] = false;
+    removeOnsiteDeficRow(n);
+  }
+  // N/A just clears selection visual — deficiency already removed above
+}
+
+function addOnsiteDeficRow(n) {
+  // Only add once per row
+  if (document.getElementById('fa-defic-onsite-' + n)) return;
+  faDeficCount++;
+  const count = faDeficCount;
+  const eq    = document.getElementById('fa-onsite-eq-' + n)?.value || 'Equipment ' + n;
+  const notes = document.getElementById('fa-onsite-notes-' + n)?.value || '';
+  const sevOpts = FA_SEV_OPTS.map(s => `<option>${s || '— Select —'}</option>`).join('');
+  document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="fa-defic-onsite-${n}">
+      <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
+      <td><input type="text" id="fa-defic-onsite-desc-${n}" value="${escHtml(eq)}${notes ? ' — ' + escHtml(notes) : ''}" placeholder="Describe deficiency and proposed solution…"></td>
+      <td><input type="text" id="fa-defic-onsite-model-${n}"></td>
+      <td><select id="fa-defic-onsite-sev-${n}">${sevOpts}</select></td>
+      <td><button class="del-btn" onclick="removeOnsiteDeficRow(${n})">✕</button></td>
+    </tr>`);
+}
+
+function removeOnsiteDeficRow(n) {
+  const row = document.getElementById('fa-defic-onsite-' + n);
+  if (row) row.remove();
+  _onsiteUnsat[n] = false;
+  // Deselect the Unsatisfactory button visually
+  const tableRow = document.getElementById('fa-onsite-row-' + n);
+  if (tableRow) tableRow.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+}
+
+function syncOnsiteDefic(n) {
+  // When notes change on an unsatisfactory row, keep the defic description in sync
+  if (!_onsiteUnsat[n]) return;
+  const descEl = document.getElementById('fa-defic-onsite-desc-' + n);
+  if (!descEl) return;
+  const eq    = document.getElementById('fa-onsite-eq-' + n)?.value || 'Equipment ' + n;
+  const notes = document.getElementById('fa-onsite-notes-' + n)?.value || '';
+  descEl.value = eq + (notes ? ' — ' + notes : '');
+}
+
 function initFireAlarmPanel() {
   faSubpanelCount = 0; faDetectionCount = 0; faFlowCount = 0;
   faTamperCount = 0; faBatteryCount = 0; faYNANoteCounter = 0;
   faDeficCount = 0; faNoteCount = 0;
+  Object.keys(_onsiteUnsat).forEach(k => delete _onsiteUnsat[k]);
   // Always rebuild device table and checklists (clearFAInspectionState wiped them)
   buildFADeviceTable();
   buildFAChecklists();
