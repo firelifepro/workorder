@@ -447,23 +447,26 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 
   <!-- ── FIRE ALARM STEP NAV (shown only when doing a fire alarm inspection) ── -->
   <div id="fa-step-nav" style="display:none;">
-    <div class="step-tab done" data-fstep="job" onclick="exitFireAlarmInspection()">
-      <span class="step-num">1</span><span class="step-check">✓</span>Job Info
+    <div class="step-tab done" data-fstep="property" onclick="exitFireAlarmInspection('property')">
+      <span class="step-num">1</span><span class="step-check">✓</span>Property
+    </div>
+    <div class="step-tab done" data-fstep="systems" onclick="exitFireAlarmInspection()">
+      <span class="step-num">2</span><span class="step-check">✓</span>Systems
     </div>
     <div class="step-tab active" data-fstep="panel" onclick="goFAStep('panel')">
-      <span class="step-num">2</span><span class="step-check">✓</span>Panel &amp; Monitoring
+      <span class="step-num">3</span><span class="step-check">✓</span>Panel &amp; Monitoring
     </div>
     <div class="step-tab" data-fstep="devices" onclick="goFAStep('devices')">
-      <span class="step-num">3</span><span class="step-check">✓</span>Device Testing
+      <span class="step-num">4</span><span class="step-check">✓</span>Device Testing
     </div>
     <div class="step-tab" data-fstep="aux" onclick="goFAStep('aux')">
-      <span class="step-num">4</span><span class="step-check">✓</span>Auxiliary &amp; Locations
+      <span class="step-num">5</span><span class="step-check">✓</span>Auxiliary &amp; Locations
     </div>
     <div class="step-tab" data-fstep="defic" onclick="goFAStep('defic')">
-      <span class="step-num">5</span><span class="step-check">✓</span>Deficiencies
+      <span class="step-num">6</span><span class="step-check">✓</span>Deficiencies
     </div>
     <div class="step-tab" data-fstep="sign" onclick="goFAStep('sign')">
-      <span class="step-num">6</span><span class="step-check">✓</span>Sign &amp; Export
+      <span class="step-num">7</span><span class="step-check">✓</span>Sign &amp; Export
     </div>
   </div>
   <!-- ── FIRE ALARM ACTIVE BANNER ── -->
@@ -830,7 +833,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
 
     <div class="btn-row">
-      <button class="btn-secondary" onclick="exitFireAlarmInspection()">← Systems</button>
+      <button class="btn-secondary" onclick="exitFireAlarmInspection('systems')">← Systems</button>
       <button class="btn-primary" onclick="goFAStep('devices')">Next: Device Testing →</button>
     </div>
   </div>
@@ -1156,12 +1159,13 @@ function goFAStep(key) {
     if (key === 'defic') updateDeficiencySummary();
   }
 
-  // Update tab states
+  // Update tab states — 'property' and 'systems' are always done
   document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
     t.classList.remove('active', 'done');
     const fstep = t.dataset.fstep;
+    if (fstep === 'property' || fstep === 'systems') { t.classList.add('done'); return; }
     if (fstep === key) t.classList.add('active');
-    else if (fstep !== 'job' && ALL_FA_KEYS.indexOf(fstep) < ALL_FA_KEYS.indexOf(key)) t.classList.add('done');
+    else if (ALL_FA_KEYS.indexOf(fstep) < ALL_FA_KEYS.indexOf(key)) t.classList.add('done');
   });
   currentFAStep = key;
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1174,6 +1178,7 @@ function startFireAlarmInspection() {
   document.getElementById('fa-active-banner').style.display = 'block';
 
   // Hide regular step content
+  document.getElementById('step-2').style.display = 'none';
   document.getElementById('step-3').style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
 
@@ -1208,7 +1213,7 @@ function startFireAlarmInspection() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function exitFireAlarmInspection() {
+function exitFireAlarmInspection(target) {
   // Hide all FA steps and step-4
   FA_STEP_ORDER.forEach(k => {
     const el = document.getElementById('step-fa-' + k);
@@ -1219,7 +1224,8 @@ function exitFireAlarmInspection() {
   document.getElementById('fa-active-banner').style.display = 'none';
   document.getElementById('step-nav').style.display = 'flex';
   activeInspectionSystem = null;
-  goStep(2);
+  // currentStep is still 2 from when we entered FA mode
+  goStep(target === 'property' ? 1 : 2);
 }
 
 function clearFAInspectionState() {
