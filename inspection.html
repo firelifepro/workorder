@@ -1087,7 +1087,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">💧</span><span>Flow Switches — Sprinkler Systems</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:110px;">Supervisory</th><th style="width:80px;">Seconds</th><th style="width:30px;"></th></tr></thead>
+          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:70px;">Supervisory</th><th style="width:80px;">Seconds</th><th style="width:30px;"></th></tr></thead>
           <tbody id="fa-flow-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFAFlowRow()">+ Add Flow Switch</button>
@@ -1098,7 +1098,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">🔒</span><span>Tamper Switches — Sprinkler Systems</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:110px;">Supervisory</th><th>Notes</th><th style="width:30px;"></th></tr></thead>
+          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:70px;">Supervisory</th><th>Notes</th><th style="width:30px;"></th></tr></thead>
           <tbody id="fa-tamper-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFATamperRow()">+ Add Tamper Switch</button>
@@ -1126,7 +1126,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List &amp; Proposed Solutions</span></div>
       <div class="card-body">
         <table class="dyn-table">
-          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:160px;">Make / Model</th><th style="width:120px;">Severity</th><th style="width:32px;"></th></tr></thead>
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:160px;">Make / Model</th><th style="width:32px;"></th></tr></thead>
           <tbody id="fa-defic-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFADeficRow()">+ Add Deficiency</button>
@@ -1148,7 +1148,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">📝</span><span>General Notes &amp; Site Observations</span></div>
       <div class="card-body">
         <table class="dyn-table">
-          <thead><tr><th style="width:32px;">#</th><th>Note / Observation</th><th style="width:120px;">Severity</th><th style="width:32px;"></th></tr></thead>
+          <thead><tr><th style="width:32px;">#</th><th>Note / Observation</th><th style="width:32px;"></th></tr></thead>
           <tbody id="fa-notes-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFANoteRow()">+ Add Note</button>
@@ -2996,14 +2996,19 @@ function addFADetectionRow() {
 function addFAFlowRow() {
   faFlowCount++;
   const n = faFlowCount;
-  const supOpts = ['','Pass','Fail','N/A','NT'].map(o => `<option>${o}</option>`).join('');
+  const iconBtnsFlow = `
+    <div style="display:flex;gap:2px;">
+      <button class="pf-btn pass" style="padding:3px 7px;" onclick="setPFTable(this,'fa-flow-sup-${n}','PASS')" title="Pass">✓</button>
+      <button class="pf-btn fail" style="padding:3px 7px;" onclick="setPFTable(this,'fa-flow-sup-${n}','FAIL')" title="Fail">✗</button>
+      <input type="hidden" id="fa-flow-sup-${n}">
+    </div>`;
   document.getElementById('fa-flow-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-flow-row-${n}">
-      <td><input type="text" id="fa-flow-type-${n}" placeholder="FS, WFS…"></td>
+      <td><input type="text" id="fa-flow-type-${n}" value="FS"></td>
       <td><input type="text" id="fa-flow-loc-${n}"></td>
       <td><input type="text" id="fa-flow-scan-${n}"></td>
       <td><input type="text" id="fa-flow-addr-${n}"></td>
-      <td><select id="fa-flow-sup-${n}">${supOpts}</select></td>
+      <td>${iconBtnsFlow}</td>
       <td><input type="number" id="fa-flow-secs-${n}" placeholder="sec"></td>
       <td><button class="del-btn" onclick="document.getElementById('fa-flow-row-${n}').remove()">✕</button></td>
     </tr>`);
@@ -3012,14 +3017,19 @@ function addFAFlowRow() {
 function addFATamperRow() {
   faTamperCount++;
   const n = faTamperCount;
-  const supOpts = ['','Pass','Fail','N/A','NT'].map(o => `<option>${o}</option>`).join('');
+  const iconBtnsTs = `
+    <div style="display:flex;gap:2px;">
+      <button class="pf-btn pass" style="padding:3px 7px;" onclick="setPFTable(this,'fa-tamper-sup-${n}','PASS')" title="Pass">✓</button>
+      <button class="pf-btn fail" style="padding:3px 7px;" onclick="setPFTable(this,'fa-tamper-sup-${n}','FAIL')" title="Fail">✗</button>
+      <input type="hidden" id="fa-tamper-sup-${n}">
+    </div>`;
   document.getElementById('fa-tamper-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-tamper-row-${n}">
-      <td><input type="text" id="fa-tamper-type-${n}" placeholder="TS…"></td>
+      <td><input type="text" id="fa-tamper-type-${n}" value="TS"></td>
       <td><input type="text" id="fa-tamper-loc-${n}"></td>
       <td><input type="text" id="fa-tamper-scan-${n}"></td>
       <td><input type="text" id="fa-tamper-addr-${n}"></td>
-      <td><select id="fa-tamper-sup-${n}">${supOpts}</select></td>
+      <td>${iconBtnsTs}</td>
       <td><input type="text" id="fa-tamper-notes-${n}"></td>
       <td><button class="del-btn" onclick="document.getElementById('fa-tamper-row-${n}').remove()">✕</button></td>
     </tr>`);
@@ -3033,7 +3043,7 @@ function addFABatteryRow() {
       <td><input type="text" id="fa-bat-size-${n}" placeholder="e.g. 7AH"></td>
       <td><input type="text" id="fa-bat-type-${n}" placeholder="e.g. SLA, Li"></td>
       <td><input type="number" id="fa-bat-count-${n}" min="1" placeholder="1"></td>
-      <td><input type="text" id="fa-bat-loc-${n}" placeholder="Panel location…"></td>
+      <td><select id="fa-bat-loc-${n}"><option>FACP</option><option>Power Supply</option><option>Fire Alarm Communicator</option></select></td>
       <td><button class="del-btn" onclick="document.getElementById('fa-bat-row-${n}').remove()">✕</button></td>
     </tr>`);
 }
@@ -3041,13 +3051,11 @@ function addFABatteryRow() {
 function addFADeficRow() {
   faDeficCount++;
   const n = faDeficCount;
-  const sevOpts = FA_SEV_OPTS.map(s => `<option>${s || '— Select —'}</option>`).join('');
   document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-defic-row-${n}">
       <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
       <td><input type="text" id="fa-defic-desc-${n}" placeholder="Describe deficiency and proposed solution…"></td>
       <td><input type="text" id="fa-defic-model-${n}"></td>
-      <td><select id="fa-defic-sev-${n}">${sevOpts}</select></td>
       <td><button class="del-btn" onclick="document.getElementById('fa-defic-row-${n}').remove()">✕</button></td>
     </tr>`);
 }
@@ -3055,12 +3063,10 @@ function addFADeficRow() {
 function addFANoteRow() {
   faNoteCount++;
   const n = faNoteCount;
-  const sevOpts = FA_SEV_OPTS.map(s => `<option>${s || '— Select —'}</option>`).join('');
   document.getElementById('fa-notes-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-note-row-${n}">
       <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
       <td><input type="text" id="fa-note-desc-${n}" placeholder="Note or observation…"></td>
-      <td><select id="fa-note-sev-${n}">${sevOpts}</select></td>
       <td><button class="del-btn" onclick="document.getElementById('fa-note-row-${n}').remove()">✕</button></td>
     </tr>`);
 }
@@ -3093,13 +3099,11 @@ function addOnsiteDeficRow(n) {
   const count = faDeficCount;
   const eq    = document.getElementById('fa-onsite-eq-' + n)?.value || 'Equipment ' + n;
   const notes = document.getElementById('fa-onsite-notes-' + n)?.value || '';
-  const sevOpts = FA_SEV_OPTS.map(s => `<option>${s || '— Select —'}</option>`).join('');
   document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-defic-onsite-${n}">
       <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
       <td><input type="text" id="fa-defic-onsite-desc-${n}" value="${escHtml(eq)}${notes ? ' — ' + escHtml(notes) : ''}" placeholder="Describe deficiency and proposed solution…"></td>
       <td><input type="text" id="fa-defic-onsite-model-${n}"></td>
-      <td><select id="fa-defic-onsite-sev-${n}">${sevOpts}</select></td>
       <td><button class="del-btn" onclick="removeOnsiteDeficRow(${n})">✕</button></td>
     </tr>`);
 }
