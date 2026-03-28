@@ -1123,17 +1123,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List &amp; Proposed Solutions</span></div>
-      <div class="card-body">
-        <table class="dyn-table">
-          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:160px;">Make / Model</th><th style="width:32px;"></th></tr></thead>
-          <tbody id="fa-defic-tbody"></tbody>
-        </table>
-        <button class="add-row-btn" onclick="addFADeficRow()">+ Add Deficiency</button>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="card-header"><span class="icon">🔋</span><span>Failed Batteries (if applicable)</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
@@ -1155,6 +1144,17 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
         <div style="margin-top:12px;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:10px 14px;font-size:.75rem;color:var(--slate);line-height:1.5;">
           Listed above are any General Notes to report. This section also contains any issues found during inspections that either require a substantial investment to correct (permits, engineering, etc.) or may have been previously approved in their as-is condition by the Authority Having Jurisdiction. Please contact our office for information, consultation, or services for any items contained herein.
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List &amp; Proposed Solutions</span></div>
+      <div class="card-body">
+        <table class="dyn-table">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:160px;">Make / Model</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="fa-defic-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addFADeficRow()">+ Add Deficiency</button>
       </div>
     </div>
 
