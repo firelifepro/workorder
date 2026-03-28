@@ -1434,10 +1434,9 @@ function addSubRow(labelVal, expenseVal) {
 }
 
 function updateSubRowMinus() {
-  const rows = document.querySelectorAll('[id^="sub-row-"]');
-  rows.forEach(tr => {
+  document.querySelectorAll('[id^="sub-row-"]').forEach(tr => {
     const btn = document.getElementById('sub-minus-' + tr.id.replace('sub-row-', ''));
-    if (btn) btn.style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+    if (btn) btn.style.visibility = 'visible';
   });
 }
 
@@ -1505,10 +1504,9 @@ function addMatRow(descVal, qtyVal, expenseVal) {
 }
 
 function updateMatRowMinus() {
-  const rows = document.querySelectorAll('[id^="mat-row-"]');
-  rows.forEach(tr => {
+  document.querySelectorAll('[id^="mat-row-"]').forEach(tr => {
     const btn = document.getElementById('mat-minus-' + tr.id.replace('mat-row-', ''));
-    if (btn) btn.style.visibility = rows.length > 1 ? 'visible' : 'hidden';
+    if (btn) btn.style.visibility = 'visible';
   });
 }
 
