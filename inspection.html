@@ -537,7 +537,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     <div class="card">
       <div class="card-header"><span class="icon">⚙️</span><span>Systems Present at This Building</span></div>
       <div class="card-body">
-        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:12px;">Tap all systems that exist at this property. Your selections are saved per-building for next year.</p>
+        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:12px;">Tap all systems that exist at this property. Press <strong>Save Systems</strong> to sync across all devices.</p>
         <div id="systems-grid">
           <div class="sys-toggle" data-sys="fire-alarm" onclick="toggleSys(this)">
             <span class="sys-icon">🔔</span>Fire Alarm
@@ -594,6 +594,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 
     <div class="btn-row">
       <button class="btn-secondary" onclick="goStep(1)">← Back</button>
+      <button class="btn-primary" id="save-systems-btn" onclick="saveBuildingSystemsToDrive()">💾 Save Systems</button>
       <span id="save-indicator">✓ Saved</span>
     </div>
   </div>
@@ -994,6 +995,35 @@ function saveBuildingConfig() {
 }
 function loadBuildingConfig(propName) {
   try { return JSON.parse(localStorage.getItem(buildingConfigKey(propName)) || 'null'); } catch(_) { return null; }
+}
+
+async function saveBuildingSystemsToDrive() {
+  const propName = document.getElementById('property-select').value;
+  if (!propName) { toast('⚠ Select a property first'); return; }
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  if (activeSystems.size === 0) { toast('⚠ Select at least one system before saving'); return; }
+
+  const btn = document.getElementById('save-systems-btn');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  try {
+    // Upsert the profile — preserve existing lastInspBySystem, just update systems list
+    const profile = _propertyProfile || { property: propName, lastInspBySystem: {} };
+    profile.systems   = [...activeSystems];
+    profile.updatedAt = todayMT();
+    await savePropertyProfile(propName, profile);
+    _propertyProfile = profile;
+
+    // Also keep localStorage in sync as local cache
+    saveBuildingConfig();
+
+    toast('✓ Systems saved — synced across devices');
+  } catch(e) {
+    toast('✗ Save failed: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
