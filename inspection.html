@@ -1000,7 +1000,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
               <div class="pf-group">
                 <button class="pf-btn na" onclick="setSectionNA('fa-av-card', this)">N/A</button>
                 <button class="pf-btn pass" onclick="clearSectionNA('fa-av-card', this)">YES</button>
-                <button class="pf-btn fail" onclick="setSectionNA('fa-av-card', this)">NO</button>
               </div>
               <span style="font-size:.7rem;color:var(--slate);">Operational:</span>
               <div class="pf-group">
@@ -1168,10 +1167,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List &amp; Proposed Solutions</span></div>
+      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List</span></div>
       <div class="card-body">
         <table class="dyn-table">
-          <thead><tr><th style="width:32px;">#</th><th>Deficiency &amp; Proposed Solution</th><th style="width:160px;">Make / Model</th><th style="width:32px;"></th></tr></thead>
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency</th><th style="width:32px;"></th></tr></thead>
           <tbody id="fa-defic-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFADeficRow()">+ Add Deficiency</button>
@@ -1351,11 +1350,12 @@ function startFireAlarmInspection() {
     }
   }
 
-  // Restore previous inspection data typed fields
+  // Restore previous inspection data typed fields + devices
   const prev = window._prevInspectionData;
   if (prev) {
     restorePanelFields(prev);
     syncFAReportTypeButtons();
+    if (prev.devices) restoreFADevices(prev.devices);
     toast('✓ Previous data loaded');
   }
 
@@ -1790,7 +1790,8 @@ function startInspectionForSystem(sysKey) {
     fieldData:     last.fieldData     || {},
     pfStates:      last.pfStates      || {},
     deficiencies:  last.deficiencies  || [],
-    extinguishers: last.extinguishers || []
+    extinguishers: last.extinguishers || [],
+    devices:       last.devices       || null
   } : null;
 
   buildInspectionForms();
@@ -3285,7 +3286,6 @@ function addFADeficRow() {
     <tr id="fa-defic-row-${n}">
       <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
       <td><input type="text" id="fa-defic-desc-${n}" placeholder="Describe deficiency and proposed solution…"></td>
-      <td><input type="text" id="fa-defic-model-${n}"></td>
       <td><button class="del-btn" onclick="document.getElementById('fa-defic-row-${n}').remove()">✕</button></td>
     </tr>`);
 }
@@ -3333,7 +3333,6 @@ function addOnsiteDeficRow(n) {
     <tr id="fa-defic-onsite-${n}">
       <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
       <td><input type="text" id="fa-defic-onsite-desc-${n}" value="${escHtml(eq)}${notes ? ' — ' + escHtml(notes) : ''}" placeholder="Describe deficiency and proposed solution…"></td>
-      <td><input type="text" id="fa-defic-onsite-model-${n}"></td>
       <td><button class="del-btn" onclick="removeOnsiteDeficRow(${n})">✕</button></td>
     </tr>`);
 }
@@ -3411,7 +3410,6 @@ function showSubpanelDeficRow(n) {
       <tr id="fa-defic-sp-${n}">
         <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
         <td><input type="text" id="fa-defic-sp-desc-${n}" value="${escHtml(loc)} — Sub Panel Failure" placeholder="Describe deficiency…"></td>
-        <td><input type="text" id="fa-defic-sp-model-${n}"></td>
         <td><button class="del-btn" onclick="removeSubpanelDeficRow(${n})">✕</button></td>
       </tr>`);
   }
@@ -3452,7 +3450,6 @@ function showDetectionDeficRow(n) {
       <tr id="fa-defic-det-${n}">
         <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
         <td><input type="text" id="fa-defic-det-desc-${n}" value="${escHtml((type ? type + ' — ' : '') + loc)}" placeholder="Describe deficiency…"></td>
-        <td><input type="text" id="fa-defic-det-model-${n}"></td>
         <td><button class="del-btn" onclick="removeDetectionDeficRow(${n})">✕</button></td>
       </tr>`);
   }
@@ -3490,7 +3487,6 @@ function showFlowDeficRow(n) {
       <tr id="fa-defic-flow-${n}">
         <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
         <td><input type="text" id="fa-defic-flow-desc-${n}" value="${escHtml(loc)} — Flow Switch Failure" placeholder="Describe deficiency…"></td>
-        <td><input type="text" id="fa-defic-flow-model-${n}"></td>
         <td><button class="del-btn" onclick="removeFlowDeficRow(${n})">✕</button></td>
       </tr>`);
   }
@@ -3527,7 +3523,6 @@ function showTamperDeficRow(n) {
       <tr id="fa-defic-tamper-${n}">
         <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
         <td><input type="text" id="fa-defic-tamper-desc-${n}" value="${escHtml(loc)} — Tamper Switch Failure" placeholder="Describe deficiency…"></td>
-        <td><input type="text" id="fa-defic-tamper-model-${n}"></td>
         <td><button class="del-btn" onclick="removeTamperDeficRow(${n})">✕</button></td>
       </tr>`);
   }
@@ -4150,11 +4145,107 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
     deficiencies: data.deficiencies || [],
     fieldData:    data.fieldData || {},
     pfStates:     data.pfStates || {},
-    extinguishers:data.extinguishers || []
+    extinguishers:data.extinguishers || [],
+    devices:      sysKey === 'fire-alarm' ? collectFADeviceRows() : undefined
   };
 
   _propertyProfile = profile;
   await savePropertyProfile(propName, profile);
+}
+
+// Collect FA device rows without pass/fail for property profile persistence
+function collectFADeviceRows() {
+  const detection = [];
+  for (let n = 1; n <= faDetectionCount; n++) {
+    if (!document.getElementById('fa-det-row-' + n)) continue;
+    detection.push({
+      type: document.getElementById('fa-det-type-' + n)?.value || '',
+      loc:  document.getElementById('fa-det-loc-' + n)?.value  || '',
+      scan: document.getElementById('fa-det-scan-' + n)?.value || '',
+      addr: document.getElementById('fa-det-addr-' + n)?.value || ''
+    });
+  }
+  const flow = [];
+  for (let n = 1; n <= faFlowCount; n++) {
+    if (!document.getElementById('fa-flow-row-' + n)) continue;
+    flow.push({
+      type: document.getElementById('fa-flow-type-' + n)?.value || '',
+      loc:  document.getElementById('fa-flow-loc-' + n)?.value  || '',
+      scan: document.getElementById('fa-flow-scan-' + n)?.value || '',
+      addr: document.getElementById('fa-flow-addr-' + n)?.value || '',
+      secs: document.getElementById('fa-flow-secs-' + n)?.value || ''
+    });
+  }
+  const tamper = [];
+  for (let n = 1; n <= faTamperCount; n++) {
+    if (!document.getElementById('fa-tamper-row-' + n)) continue;
+    tamper.push({
+      type:  document.getElementById('fa-tamper-type-' + n)?.value  || '',
+      loc:   document.getElementById('fa-tamper-loc-' + n)?.value   || '',
+      scan:  document.getElementById('fa-tamper-scan-' + n)?.value  || '',
+      addr:  document.getElementById('fa-tamper-addr-' + n)?.value  || '',
+      notes: document.getElementById('fa-tamper-notes-' + n)?.value || ''
+    });
+  }
+  const subpanel = [];
+  for (let n = 1; n <= faSubpanelCount; n++) {
+    if (!document.getElementById('fa-sp-row-' + n)) continue;
+    subpanel.push({
+      loc:    document.getElementById('fa-sp-loc-' + n)?.value     || '',
+      make:   document.getElementById('fa-sp-make-' + n)?.value    || '',
+      circuit:document.getElementById('fa-sp-circuit-' + n)?.value || '',
+      amps:   document.getElementById('fa-sp-amps-' + n)?.value    || ''
+    });
+  }
+  return { detection, flow, tamper, subpanel };
+}
+
+// Restore FA device rows from saved profile data (no pass/fail — fresh inspection)
+function restoreFADevices(devices) {
+  if (!devices) return;
+  (devices.detection || []).forEach(d => {
+    addFADetectionRow();
+    const n = faDetectionCount;
+    const typeEl = document.getElementById('fa-det-type-' + n);
+    if (typeEl) {
+      const opt = [...typeEl.options].find(o => o.value === d.type);
+      if (opt) typeEl.value = d.type;
+    }
+    const el = (id) => document.getElementById(id);
+    if (el('fa-det-loc-'  + n)) el('fa-det-loc-'  + n).value = d.loc  || '';
+    if (el('fa-det-scan-' + n)) el('fa-det-scan-' + n).value = d.scan || '';
+    if (el('fa-det-addr-' + n)) el('fa-det-addr-' + n).value = d.addr || '';
+  });
+  (devices.flow || []).forEach(d => {
+    addFAFlowRow();
+    const n = faFlowCount;
+    const el = (id) => document.getElementById(id);
+    if (el('fa-flow-type-' + n)) el('fa-flow-type-' + n).value = d.type || 'FS';
+    if (el('fa-flow-loc-'  + n)) el('fa-flow-loc-'  + n).value = d.loc  || '';
+    if (el('fa-flow-scan-' + n)) el('fa-flow-scan-' + n).value = d.scan || '';
+    if (el('fa-flow-addr-' + n)) el('fa-flow-addr-' + n).value = d.addr || '';
+    if (el('fa-flow-secs-' + n)) el('fa-flow-secs-' + n).value = d.secs || '';
+  });
+  (devices.tamper || []).forEach(d => {
+    addFATamperRow();
+    const n = faTamperCount;
+    const el = (id) => document.getElementById(id);
+    if (el('fa-tamper-type-'  + n)) el('fa-tamper-type-'  + n).value = d.type  || 'TS';
+    if (el('fa-tamper-loc-'   + n)) el('fa-tamper-loc-'   + n).value = d.loc   || '';
+    if (el('fa-tamper-scan-'  + n)) el('fa-tamper-scan-'  + n).value = d.scan  || '';
+    if (el('fa-tamper-addr-'  + n)) el('fa-tamper-addr-'  + n).value = d.addr  || '';
+    if (el('fa-tamper-notes-' + n)) el('fa-tamper-notes-' + n).value = d.notes || '';
+  });
+  (devices.subpanel || []).forEach(d => {
+    addFASubpanelRow();
+    const n = faSubpanelCount;
+    const el = (id) => document.getElementById(id);
+    if (el('fa-sp-loc-'     + n)) el('fa-sp-loc-'     + n).value = d.loc     || '';
+    if (el('fa-sp-make-'    + n)) el('fa-sp-make-'    + n).value = d.make    || '';
+    if (el('fa-sp-circuit-' + n)) el('fa-sp-circuit-' + n).value = d.circuit || '';
+    if (el('fa-sp-amps-'    + n)) el('fa-sp-amps-'    + n).value = d.amps    || '';
+  });
+  syncDeviceSummary();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4251,6 +4342,14 @@ function collectAllData() {
       deficiencies.push({ item: label, description: desc });
     }
   });
+
+  // For FA inspections, also collect deficiencies from the defic-tbody table
+  if (activeInspectionSystem === 'fire-alarm') {
+    document.querySelectorAll('#fa-defic-tbody tr').forEach(row => {
+      const desc = row.querySelector('td:nth-child(2) input')?.value?.trim();
+      if (desc) deficiencies.push({ item: desc, description: '' });
+    });
+  }
 
   // Extinguishers
   const extinguishers = [];
@@ -4465,7 +4564,8 @@ async function buildPDFDoc() {
   // ══════════════════════════════════════════════════════════
   const propName   = data.property.name || 'Property Not Selected';
   const addrLine   = [data.property.address, data.property.cityStateZip].filter(Boolean).join(', ');
-  const contactLine= 'Contact: ' + (data.property.contact || '—') + '   |   Company: ' + (data.property.company || '—');
+  const emailPart   = data.property.contactEmail ? '   Email: ' + data.property.contactEmail + '   |  ' : '';
+  const contactLine = 'Contact: ' + (data.property.contact || '—') + '   |   ' + emailPart + 'Company: ' + (data.property.company || '—');
 
   // Left column
   setFont(FS.heading,'bold'); setTxt(C.navy);
@@ -4644,7 +4744,7 @@ async function buildPDFDoc() {
       [{label:'Dialer Make',id:'fa-dr-make'},{label:'Dialer Model',id:'fa-dr-model'},{label:'Dialer Type',id:'fa-dr-type'}],
       [{label:'Monitored?',id:'fa-monitored'},{label:'Monitoring Company',id:'fa-monitor-company'},{label:'Account #',id:'fa-monitor-account'}],
       [{label:'Monitor Phone',id:'fa-monitor-phone'},{label:'Time Offline',id:'fa-monitor-offline'},{label:'Time Online',id:'fa-monitor-online'}],
-      [{label:'# Smoke Detectors',id:'fa-smoke-count'},{label:'# Heat Detectors',id:'fa-heat-count'},{label:'# Pull Stations',id:'fa-pull-count'}],
+      [{label:'Monitoring Notes',id:'fa-monitor-notes'}],
     ],
     'sprinkler': [
       [{label:'System Type',id:'sp-type'},{label:'Manufacturer',id:'sp-mfr'},{label:'Year Installed',id:'sp-year'}],
@@ -4762,38 +4862,381 @@ async function buildPDFDoc() {
       dFields.forEach(row => dataFieldRow(row));
     }
 
-    // Inspection rows
-    const items = systemInspItems[sys] || [];
-    if (items.length > 0) {
-      checkPage(10);
-      // Sub-header
-      setFill([240,244,252]); doc.rect(ML, y, usableW, 5.5, 'F');
-      setFont(FS.tiny,'bold'); setTxt([50,80,130]);
-      doc.text('INSPECTION RESULTS', ML + 2, y + 4);
-      y += 7;
+    if (sys === 'fire-alarm') {
+      // ── FA-wizard-specific rendering ──
+      const grpVal = (grp) => grp?.querySelector('.pf-btn.selected')?.textContent?.trim() || '';
+      const ynaVal = (row) => {
+        if (row.querySelector('.yna-btn.y.selected'))  return 'Y';
+        if (row.querySelector('.yna-btn.n.selected'))  return 'N';
+        if (row.querySelector('.yna-btn.na.selected')) return 'N/A';
+        return '';
+      };
+      const subHdr = (title) => {
+        checkPage(10);
+        setFill([240,244,252]); doc.rect(ML, y, usableW, 5.5, 'F');
+        setFont(FS.tiny,'bold'); setTxt([50,80,130]);
+        doc.text(title, ML + 2, y + 4); y += 7;
+      };
+      const tblHdr = (cols, widths) => {
+        setFill(C.navy2); doc.rect(ML, y, usableW, 5.5, 'F');
+        let tx = ML;
+        cols.forEach((h, i) => {
+          setFont(FS.tiny,'bold'); setTxt(C.white);
+          doc.text(h, tx + 1.5, y + 4); tx += widths[i];
+        });
+        y += 6;
+      };
 
-      items.forEach(id => {
-        const row = document.getElementById('row-' + id);
-        if (!row) return;
-        const label  = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
-        const result = row.dataset.val || '';
-        const defic  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
-        inspRow(label, result, defic);
+      // Panel Testing Instructions
+      const instrVal = document.getElementById('fa-panel-instructions')?.value?.trim();
+      if (instrVal) {
+        checkPage(12);
+        setFill([255,253,235]); setDraw([254,215,0]);
+        const il = doc.splitTextToSize('Panel Instructions: ' + instrVal, usableW - 6);
+        const ih = il.length * 4 + 5;
+        doc.rect(ML, y, usableW, ih, 'FD');
+        setFont(FS.small,'italic'); setTxt([92,70,0]);
+        doc.text(il, ML + 3, y + 4.5);
+        y += ih + 3;
+      }
+
+      // Pre/Post Checklist
+      const preEl  = document.getElementById('fa-pre-checklist');
+      const postEl = document.getElementById('fa-post-checklist');
+      if (preEl || postEl) {
+        subHdr('PRE & POST INSPECTION CHECKLIST');
+        const renderCL = (el, label) => {
+          if (!el || !el.children.length) return;
+          checkPage(8);
+          setFont(FS.tiny,'bold'); setTxt(C.slate);
+          doc.text(label, ML, y); y += 4;
+          el.querySelectorAll('.inspect-row').forEach(row => {
+            checkPage(6);
+            const lbl = row.querySelector('.inspect-label')?.textContent?.trim() || '';
+            const val = ynaVal(row);
+            const bgC = val === 'Y' ? C.passGrn : val === 'N' ? C.failRed : [248,250,252];
+            setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+            setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+            setFont(FS.small,'normal'); setTxt([25,25,25]);
+            const ll = doc.splitTextToSize(lbl, usableW - 22);
+            doc.text(ll, ML + 2, y + 4.2);
+            if (val) {
+              const bc = val === 'Y' ? C.green : val === 'N' ? C.red : C.slate;
+              setFill(bc); doc.roundedRect(W - MR - 18, y + 1, 18, 4.5, 1, 1, 'F');
+              setTxt(C.white); setFont(FS.tiny,'bold');
+              doc.text(val, W - MR - 9, y + 4.5, { align:'center' });
+            }
+            y += ll.length > 1 ? ll.length * 4 + 2 : 7;
+          });
+          y += 2;
+        };
+        renderCL(preEl, 'PRE-INSPECTION');
+        renderCL(postEl, 'POST-INSPECTION');
+      }
+
+      // On-Site System Notes
+      const onsiteEl = document.getElementById('fa-onsite-tbody');
+      if (onsiteEl) {
+        subHdr('ON-SITE SYSTEM NOTES');
+        const ow = [80, 52, usableW - 132];
+        tblHdr(['Equipment','Condition','Notes & Observations'], ow);
+        for (let n = 1; n <= 5; n++) {
+          const orow = document.getElementById('fa-onsite-row-' + n);
+          if (!orow) continue;
+          checkPage(7);
+          const eq    = document.getElementById('fa-onsite-eq-' + n)?.value || '';
+          const cond  = orow.querySelector('.pf-btn.pass.selected') ? 'Satisfactory' :
+                        orow.querySelector('.pf-btn.fail.selected') ? 'Unsatisfactory' :
+                        orow.querySelector('.pf-btn.na.selected')   ? 'N/A' : '';
+          const onotes = document.getElementById('fa-onsite-notes-' + n)?.value || '';
+          const bgC   = cond === 'Satisfactory' ? C.passGrn : cond === 'Unsatisfactory' ? C.failRed : C.light;
+          setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          doc.text((eq||'').slice(0,28), ML + 1.5, y + 4.2);
+          if (cond) doc.text(cond.slice(0,18), ML + ow[0] + 1.5, y + 4.2);
+          if (onotes) doc.text(doc.splitTextToSize(onotes, ow[2] - 3)[0], ML + ow[0] + ow[1] + 1.5, y + 4.2);
+          y += 6.5;
+        }
+        y += 2;
+      }
+
+      // Detection Devices
+      if (faDetectionCount > 0) {
+        subHdr('DEVICES — FIRE DETECTION');
+        const dw = [26, 54, 28, 28, 26, 26];
+        tblHdr(['Type','Location','Scan ID','Address','Alarm','Supervisory'], dw);
+        for (let n = 1; n <= faDetectionCount; n++) {
+          if (!document.getElementById('fa-det-row-' + n)) continue;
+          checkPage(7);
+          const dtype  = document.getElementById('fa-det-type-' + n)?.value || '';
+          const dloc   = document.getElementById('fa-det-loc-' + n)?.value || '';
+          const dscan  = document.getElementById('fa-det-scan-' + n)?.value || '';
+          const daddr  = document.getElementById('fa-det-addr-' + n)?.value || '';
+          const dalarm = document.getElementById('fa-det-alarm-' + n)?.value || '';
+          const dsup   = document.getElementById('fa-det-sup-' + n)?.value || '';
+          const bgC = (dalarm === 'FAIL' || dsup === 'FAIL') ? C.failRed :
+                      (dalarm === 'PASS' || dsup === 'PASS') ? C.passGrn : C.light;
+          setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          [dtype, dloc, dscan, daddr, dalarm, dsup].forEach((v, i) => {
+            let cx = ML; for (let j = 0; j < i; j++) cx += dw[j];
+            doc.text(String(v||'').slice(0, dw[i] > 28 ? 16 : 8), cx + 1.5, y + 4.2);
+          });
+          y += 6.5;
+        }
+        y += 2;
+      }
+
+      // Flow Switches
+      if (faFlowCount > 0) {
+        subHdr('FLOW SWITCHES — SPRINKLER SYSTEMS');
+        const fw = [26, 56, 28, 28, 26, 24];
+        tblHdr(['Type','Location','Scan ID','Address','Supervisory','Seconds'], fw);
+        for (let n = 1; n <= faFlowCount; n++) {
+          if (!document.getElementById('fa-flow-row-' + n)) continue;
+          checkPage(7);
+          const ftype = document.getElementById('fa-flow-type-' + n)?.value || '';
+          const floc  = document.getElementById('fa-flow-loc-' + n)?.value || '';
+          const fscan = document.getElementById('fa-flow-scan-' + n)?.value || '';
+          const faddr = document.getElementById('fa-flow-addr-' + n)?.value || '';
+          const fsup  = document.getElementById('fa-flow-sup-' + n)?.value || '';
+          const fsecs = document.getElementById('fa-flow-secs-' + n)?.value || '';
+          const bgC = fsup === 'FAIL' ? C.failRed : fsup === 'PASS' ? C.passGrn : C.light;
+          setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          [ftype, floc, fscan, faddr, fsup, fsecs].forEach((v, i) => {
+            let cx = ML; for (let j = 0; j < i; j++) cx += fw[j];
+            doc.text(String(v||'').slice(0, fw[i] > 28 ? 16 : 8), cx + 1.5, y + 4.2);
+          });
+          y += 6.5;
+        }
+        y += 2;
+      }
+
+      // Tamper Switches
+      if (faTamperCount > 0) {
+        subHdr('TAMPER SWITCHES — SPRINKLER SYSTEMS');
+        const tw = [26, 56, 28, 28, 26, 24];
+        tblHdr(['Type','Location','Scan ID','Address','Supervisory','Notes'], tw);
+        for (let n = 1; n <= faTamperCount; n++) {
+          if (!document.getElementById('fa-tamper-row-' + n)) continue;
+          checkPage(7);
+          const ttype  = document.getElementById('fa-tamper-type-' + n)?.value || '';
+          const tloc   = document.getElementById('fa-tamper-loc-' + n)?.value || '';
+          const tscan  = document.getElementById('fa-tamper-scan-' + n)?.value || '';
+          const taddr  = document.getElementById('fa-tamper-addr-' + n)?.value || '';
+          const tsup   = document.getElementById('fa-tamper-sup-' + n)?.value || '';
+          const tnotes = document.getElementById('fa-tamper-notes-' + n)?.value || '';
+          const bgC = tsup === 'FAIL' ? C.failRed : tsup === 'PASS' ? C.passGrn : C.light;
+          setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          [ttype, tloc, tscan, taddr, tsup, tnotes].forEach((v, i) => {
+            let cx = ML; for (let j = 0; j < i; j++) cx += tw[j];
+            doc.text(String(v||'').slice(0, tw[i] > 28 ? 16 : 8), cx + 1.5, y + 4.2);
+          });
+          y += 6.5;
+        }
+        y += 2;
+      }
+
+      // Device Testing Summary
+      const devTbody = document.getElementById('fa-device-tbody');
+      if (devTbody && devTbody.children.length) {
+        subHdr('DEVICE TESTING SUMMARY');
+        const svw = [usableW - 118, 14, 18, 18, 18, 14, 14, 14, 14];
+        tblHdr(['Device / System','Key','Total','Pass','Fail','%P','%F','NT','NF'], svw);
+        devTbody.querySelectorAll('tr').forEach(drow => {
+          checkPage(6);
+          const cells = drow.querySelectorAll('td');
+          if (!cells.length) return;
+          const dlabel = cells[0]?.textContent?.trim() || '';
+          const dkey   = cells[1]?.textContent?.trim() || '';
+          const dtotal = cells[2]?.querySelector('input')?.value || '';
+          const dpass  = cells[3]?.querySelector('input')?.value || '';
+          const dfail  = cells[4]?.querySelector('input')?.value || '';
+          const dpctP  = cells[5]?.textContent?.trim() || '';
+          const dpctF  = cells[6]?.textContent?.trim() || '';
+          const dnt    = cells[7]?.querySelector('input')?.value || '';
+          const dnf    = cells[8]?.querySelector('input')?.value || '';
+          const bgC = +dfail > 0 ? C.failRed : +dpass > 0 ? C.passGrn : C.light;
+          setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          [dlabel, dkey, dtotal, dpass, dfail, dpctP, dpctF, dnt, dnf].forEach((v, i) => {
+            let cx = ML; for (let j = 0; j < i; j++) cx += svw[j];
+            doc.text(String(v||'').slice(0, i === 0 ? 26 : 5), cx + 1.5, y + 4.2);
+          });
+          y += 6.5;
+        });
+        y += 2;
+      }
+
+      // Audio/Visual, Door Holder, HVAC
+      subHdr('AUXILIARY & LOCATIONS');
+      ['fa-av-card','fa-door-card','fa-hvac-card'].forEach(cardId => {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        const cardTitle = card.querySelector('.card-header span:nth-child(2)')?.childNodes[0]?.textContent?.trim() || '';
+        checkPage(6);
+        setFont(FS.tiny,'bold'); setTxt(C.slate);
+        doc.text(cardTitle.toUpperCase(), ML, y); y += 4;
+        card.querySelectorAll('.inspect-row').forEach(arow => {
+          checkPage(6);
+          const albl   = arow.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || '';
+          const groups = arow.querySelectorAll('.pf-group');
+          if (groups.length >= 2) {
+            const presentVal = grpVal(groups[0]);
+            const operVal    = grpVal(groups[1]);
+            const deficInp   = arow.querySelector('.fa-static-defic input');
+            const deficTxt   = (deficInp && deficInp.closest('.fa-static-defic')?.style.display !== 'none') ? deficInp.value.trim() : '';
+            inspRow(albl + '  [Present: ' + (presentVal||'—') + ']', operVal, deficTxt);
+          } else if (groups.length === 1) {
+            const result  = grpVal(groups[0]);
+            const deficInp = arow.querySelector('.fa-static-defic input');
+            const deficTxt = (deficInp && deficInp.closest('.fa-static-defic')?.style.display !== 'none') ? deficInp.value.trim() : '';
+            inspRow(albl, result, deficTxt);
+          }
+        });
+        const cardNotesInp = card.querySelector('input[type=text][id$="-notes"]');
+        if (cardNotesInp?.value?.trim()) {
+          checkPage(8);
+          setFill([255,253,235]); setDraw([254,215,0]);
+          const cnl = doc.splitTextToSize('Notes: ' + cardNotesInp.value.trim(), usableW - 6);
+          const cnh = cnl.length * 4 + 5;
+          doc.rect(ML, y, usableW, cnh, 'FD');
+          setFont(FS.small,'italic'); setTxt([92,70,0]);
+          doc.text(cnl, ML + 3, y + 4.5);
+          y += cnh + 3;
+        }
+        y += 2;
       });
-    }
 
-    // Notes
-    const notesId  = notesIds[sys];
-    const notesVal = notesId ? document.getElementById(notesId)?.value?.trim() : '';
-    if (notesVal) {
-      checkPage(10);
-      setFill([255,253,235]); setDraw([254,215,0]);
-      const nl = doc.splitTextToSize('Notes: ' + notesVal, usableW - 6);
-      const nh = nl.length * 4 + 5;
-      doc.rect(ML, y, usableW, nh, 'FD');
-      setFont(FS.small,'italic'); setTxt([92,70,0]);
-      doc.text(nl, ML + 3, y + 4.5);
-      y += nh + 3;
+      // Sub Panel / Power Supply
+      if (faSubpanelCount > 0) {
+        subHdr('SUB PANEL / POWER SUPPLY INFORMATION');
+        const spw = [usableW - 120, 36, 28, 16, 14, 14, 12];
+        tblHdr(['Location','Make','Panel/Circuit','Amps','(L)Bat','(R)Bat','PF'], spw);
+        for (let n = 1; n <= faSubpanelCount; n++) {
+          if (!document.getElementById('fa-sp-row-' + n)) continue;
+          checkPage(7);
+          const sploc  = document.getElementById('fa-sp-loc-' + n)?.value || '';
+          const spmake = document.getElementById('fa-sp-make-' + n)?.value || '';
+          const spcirc = document.getElementById('fa-sp-circuit-' + n)?.value || '';
+          const spamps = document.getElementById('fa-sp-amps-' + n)?.value || '';
+          const splbat = document.getElementById('fa-sp-lbatt-' + n)?.value || '';
+          const sprbat = document.getElementById('fa-sp-rbatt-' + n)?.value || '';
+          const sppf   = document.getElementById('fa-sp-pf-' + n)?.value || '';
+          const bgC = sppf === 'FAIL' ? C.failRed : sppf === 'PASS' ? C.passGrn : C.light;
+          setFill(bgC); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          [sploc, spmake, spcirc, spamps, splbat, sprbat, sppf].forEach((v, i) => {
+            let cx = ML; for (let j = 0; j < i; j++) cx += spw[j];
+            doc.text(String(v||'').slice(0, i === 0 ? 22 : 8), cx + 1.5, y + 4.2);
+          });
+          y += 6.5;
+        }
+        y += 2;
+      }
+
+      // Failed Batteries
+      if (faBatteryCount > 0) {
+        subHdr('FAILED BATTERIES');
+        const bw = [30, 40, 20, usableW - 90];
+        tblHdr(['Size (AH)','Type','Count','Location'], bw);
+        for (let n = 1; n <= faBatteryCount; n++) {
+          if (!document.getElementById('fa-bat-row-' + n)) continue;
+          checkPage(7);
+          const bsize = document.getElementById('fa-bat-size-' + n)?.value || '';
+          const btype = document.getElementById('fa-bat-type-' + n)?.value || '';
+          const bcnt  = document.getElementById('fa-bat-count-' + n)?.value || '';
+          const bloc  = document.getElementById('fa-bat-loc-' + n)?.value || '';
+          setFill(C.failRed); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'normal'); setTxt([25,25,25]);
+          [bsize, btype, bcnt, bloc].forEach((v, i) => {
+            let cx = ML; for (let j = 0; j < i; j++) cx += bw[j];
+            doc.text(String(v||'').slice(0,16), cx + 1.5, y + 4.2);
+          });
+          y += 6.5;
+        }
+        y += 2;
+      }
+
+      // Deficiency List
+      const deficTbody = document.getElementById('fa-defic-tbody');
+      const deficRows  = deficTbody ? [...deficTbody.querySelectorAll('tr')] : [];
+      if (deficRows.length) {
+        subHdr('DEFICIENCY LIST');
+        deficRows.forEach((drow, idx) => {
+          const ddesc = drow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+          if (!ddesc) return;
+          checkPage(8);
+          setFill([255,236,236]); doc.rect(ML, y, usableW, 6.5, 'F');
+          setDraw([220,38,38]); doc.line(ML, y + 6.5, ML + usableW, y + 6.5);
+          setFont(FS.tiny,'bold'); setTxt([180,20,20]);
+          doc.text(String(idx + 1), ML + 4, y + 4.5);
+          setFont(FS.small,'normal');
+          const ddl = doc.splitTextToSize(ddesc, usableW - 12);
+          doc.text(ddl[0], ML + 10, y + 4.5);
+          y += 7;
+        });
+        y += 2;
+      }
+
+      // General Notes
+      const notesTbody = document.getElementById('fa-notes-tbody');
+      if (notesTbody && notesTbody.children.length) {
+        subHdr('GENERAL NOTES & OBSERVATIONS');
+        notesTbody.querySelectorAll('tr').forEach((nrow, idx) => {
+          checkPage(7);
+          const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+          if (!ntxt) return;
+          setFill(C.light); doc.rect(ML, y, usableW, 6, 'F');
+          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.tiny,'bold'); setTxt(C.slate);
+          doc.text(String(idx + 1), ML + 3, y + 4.2, { align:'center' });
+          setFont(FS.small,'normal'); setTxt([30,30,30]);
+          doc.text(doc.splitTextToSize(ntxt, usableW - 12)[0], ML + 9, y + 4.2);
+          y += 6.5;
+        });
+        y += 2;
+      }
+
+    } else {
+      // Generic system: inspection rows + notes
+      const items = systemInspItems[sys] || [];
+      if (items.length > 0) {
+        checkPage(10);
+        setFill([240,244,252]); doc.rect(ML, y, usableW, 5.5, 'F');
+        setFont(FS.tiny,'bold'); setTxt([50,80,130]);
+        doc.text('INSPECTION RESULTS', ML + 2, y + 4);
+        y += 7;
+        items.forEach(id => {
+          const row = document.getElementById('row-' + id);
+          if (!row) return;
+          const label  = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
+          const result = row.dataset.val || '';
+          const defic  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
+          inspRow(label, result, defic);
+        });
+      }
+      const notesId  = notesIds[sys];
+      const notesVal = notesId ? document.getElementById(notesId)?.value?.trim() : '';
+      if (notesVal) {
+        checkPage(10);
+        setFill([255,253,235]); setDraw([254,215,0]);
+        const nl = doc.splitTextToSize('Notes: ' + notesVal, usableW - 6);
+        const nh = nl.length * 4 + 5;
+        doc.rect(ML, y, usableW, nh, 'FD');
+        setFont(FS.small,'italic'); setTxt([92,70,0]);
+        doc.text(nl, ML + 3, y + 4.5);
+        y += nh + 3;
+      }
     }
 
     y += 4;
