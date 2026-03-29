@@ -1551,7 +1551,7 @@ function onPropertySelect() {
   fill('service-address', 'service address','address');
   fill('city-state-zip', 'city','zip');
   fill('property-contact-name', 'property manager','contact name');
-  fill('property-contact-email', 'property manager','contact email');
+  fill('property-contact-email', 'contact email','email','e-mail');
 
   // Extract FLPS account number for stable Drive profile lookup
   const acctHeader = Object.keys(d).find(h => h.includes('acct') || h.includes('account'));
@@ -3732,7 +3732,7 @@ function collectAllData() {
     if (el.id && el.type !== 'button') fieldData[el.id] = el.value;
   });
   // Also step-1 fields
-  ['client-company','service-address','city-state-zip','property-contact',
+  ['client-company','service-address','city-state-zip','property-contact-name','property-contact-email',
    'insp-date','report-type','inspector-name','inspector-cert','company-name',
    'company-license','nfpa-ref','weather'].forEach(id => {
     fieldData[id] = v(id);
@@ -3786,11 +3786,13 @@ function collectAllData() {
   return {
     meta: { generatedAt: new Date().toISOString(), version: '3.0' },
     property: {
-      name:        document.getElementById('property-select')?.value || '',
-      company:     v('client-company'),
-      address:     v('service-address'),
-      cityStateZip:v('city-state-zip'),
-      contact:     v('property-contact')
+      name:         document.getElementById('property-select')?.value || '',
+      acct:         _currentPropertyAcct,
+      company:      v('client-company'),
+      address:      v('service-address'),
+      cityStateZip: v('city-state-zip'),
+      contact:      v('property-contact-name'),
+      contactEmail: v('property-contact-email')
     },
     inspection: {
       date:         v('insp-date'),
