@@ -2570,20 +2570,22 @@ function setPFTable(btn, id, val) {
     const note = document.getElementById('ext-override-note-' + n);
     if (note) note.textContent = '(manually set)';
   }
-  // Detection row deficiency
+  // Detection row deficiency + summary
   const detMatch = id.match(/^fa-det-(?:alarm|sup|note)-(\d+)$/);
-  if (detMatch) checkDetectionDefic(parseInt(detMatch[1]));
-  // Flow switch deficiency
+  if (detMatch) { checkDetectionDefic(parseInt(detMatch[1])); syncDeviceSummary(); }
+  // Flow switch deficiency + summary
   const flowMatch = id.match(/^fa-flow-sup-(\d+)$/);
   if (flowMatch) {
     const n = parseInt(flowMatch[1]);
     if (val === 'FAIL') showFlowDeficRow(n); else hideFlowDeficRow(n);
+    syncDeviceSummary();
   }
-  // Tamper switch deficiency
+  // Tamper switch deficiency + summary
   const tamperMatch = id.match(/^fa-tamper-sup-(\d+)$/);
   if (tamperMatch) {
     const n = parseInt(tamperMatch[1]);
     if (val === 'FAIL') showTamperDeficRow(n); else hideTamperDeficRow(n);
+    syncDeviceSummary();
   }
 }
 
@@ -3003,6 +3005,12 @@ function setFAYNA(btn, noteId, type) {
   }
 }
 
+function buildFATypeOptions(defaultKey) {
+  return FA_DEVICES.map(d =>
+    `<option value="${d.key}"${d.key === defaultKey ? ' selected' : ''}>${d.key} — ${d.label}</option>`
+  ).join('');
+}
+
 function buildFADeviceTable() {
   const tbody = document.getElementById('fa-device-tbody');
   if (!tbody) return;
@@ -3021,6 +3029,63 @@ function buildFADeviceTable() {
         <td><input type="number" id="${id}-nf" min="0" placeholder="0"></td>
         <td><input type="text"   id="${id}-notes" style="min-width:100px;"></td>
       </tr>`);
+  });
+}
+
+function syncDeviceSummary() {
+  // Tally total/pass/fail per key across all detection, flow, tamper rows
+  const counts = {};
+  FA_DEVICES.forEach(d => { counts[d.key] = { total: 0, pass: 0, fail: 0 }; });
+
+  const tally = (type, passVal) => {
+    if (!type) return;
+    if (!counts[type]) counts[type] = { total: 0, pass: 0, fail: 0 };
+    counts[type].total++;
+    if (passVal === 'FAIL') counts[type].fail++;
+    else if (passVal === 'PASS') counts[type].pass++;
+  };
+
+  // Detection rows: fail if any of alarm/sup/note is FAIL; pass if none are FAIL and at least one is PASS
+  for (let n = 1; n <= faDetectionCount; n++) {
+    if (!document.getElementById('fa-det-row-' + n)) continue;
+    const type  = document.getElementById('fa-det-type-' + n)?.value || '';
+    const alarm = document.getElementById('fa-det-alarm-' + n)?.value || '';
+    const sup   = document.getElementById('fa-det-sup-' + n)?.value || '';
+    const note  = document.getElementById('fa-det-note-' + n)?.value || '';
+    const anyFail = alarm === 'FAIL' || sup === 'FAIL' || note === 'FAIL';
+    const anyPass = alarm === 'PASS' || sup === 'PASS' || note === 'PASS';
+    tally(type, anyFail ? 'FAIL' : anyPass ? 'PASS' : '');
+  }
+
+  // Flow rows
+  for (let n = 1; n <= faFlowCount; n++) {
+    if (!document.getElementById('fa-flow-row-' + n)) continue;
+    tally(
+      document.getElementById('fa-flow-type-' + n)?.value || '',
+      document.getElementById('fa-flow-sup-' + n)?.value || ''
+    );
+  }
+
+  // Tamper rows
+  for (let n = 1; n <= faTamperCount; n++) {
+    if (!document.getElementById('fa-tamper-row-' + n)) continue;
+    tally(
+      document.getElementById('fa-tamper-type-' + n)?.value || '',
+      document.getElementById('fa-tamper-sup-' + n)?.value || ''
+    );
+  }
+
+  // Push counts into Device Testing Summary (only total/pass/fail — leave NT/NF alone)
+  FA_DEVICES.forEach((d, i) => {
+    const c = counts[d.key] || { total: 0, pass: 0, fail: 0 };
+    const id = `fa-dev-${i}`;
+    const totalEl = document.getElementById(id + '-total');
+    const passEl  = document.getElementById(id + '-pass');
+    const failEl  = document.getElementById(id + '-fail');
+    if (totalEl) totalEl.value = c.total > 0 ? c.total : '';
+    if (passEl)  passEl.value  = c.pass  > 0 ? c.pass  : '';
+    if (failEl)  failEl.value  = c.fail  > 0 ? c.fail  : '';
+    calcFAPct(i);
   });
 }
 
@@ -3119,7 +3184,7 @@ function addFADetectionRow() {
     </div>`;
   document.getElementById('fa-detection-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-det-row-${n}">
-      <td><select id="fa-det-type-${n}"><option>SD</option><option>HD</option></select></td>
+      <td><select id="fa-det-type-${n}" onchange="syncDeviceSummary()">${buildFATypeOptions('SD')}</select></td>
       <td><input type="text" id="fa-det-loc-${n}"></td>
       <td><input type="text" id="fa-det-scan-${n}"></td>
       <td><input type="text" id="fa-det-addr-${n}"></td>
@@ -3136,6 +3201,7 @@ function addFADetectionRow() {
         </div>
       </td>
     </tr>`);
+  syncDeviceSummary();
 }
 
 function addFAFlowRow() {
@@ -3149,7 +3215,7 @@ function addFAFlowRow() {
     </div>`;
   document.getElementById('fa-flow-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-flow-row-${n}">
-      <td><input type="text" id="fa-flow-type-${n}" value="FS"></td>
+      <td><select id="fa-flow-type-${n}" onchange="syncDeviceSummary()">${buildFATypeOptions('FS')}</select></td>
       <td><input type="text" id="fa-flow-loc-${n}"></td>
       <td><input type="text" id="fa-flow-scan-${n}"></td>
       <td><input type="text" id="fa-flow-addr-${n}"></td>
@@ -3165,6 +3231,7 @@ function addFAFlowRow() {
         </div>
       </td>
     </tr>`);
+  syncDeviceSummary();
 }
 
 function addFATamperRow() {
@@ -3178,7 +3245,7 @@ function addFATamperRow() {
     </div>`;
   document.getElementById('fa-tamper-tbody').insertAdjacentHTML('beforeend', `
     <tr id="fa-tamper-row-${n}">
-      <td><input type="text" id="fa-tamper-type-${n}" value="TS"></td>
+      <td><select id="fa-tamper-type-${n}" onchange="syncDeviceSummary()">${buildFATypeOptions('TS')}</select></td>
       <td><input type="text" id="fa-tamper-loc-${n}"></td>
       <td><input type="text" id="fa-tamper-scan-${n}"></td>
       <td><input type="text" id="fa-tamper-addr-${n}"></td>
@@ -3194,6 +3261,7 @@ function addFATamperRow() {
         </div>
       </td>
     </tr>`);
+  syncDeviceSummary();
 }
 
 function addFABatteryRow() {
@@ -3399,6 +3467,7 @@ function removeDetectionRow(n) {
   removeDetectionDeficRow(n);
   document.getElementById('fa-det-row-' + n)?.remove();
   document.getElementById('fa-det-defic-tr-' + n)?.remove();
+  syncDeviceSummary();
 }
 function syncDetectionDefic(n) {
   const descEl = document.getElementById('fa-defic-det-desc-' + n);
@@ -3436,6 +3505,7 @@ function removeFlowRow(n) {
   removeFlowDeficRow(n);
   document.getElementById('fa-flow-row-' + n)?.remove();
   document.getElementById('fa-flow-defic-tr-' + n)?.remove();
+  syncDeviceSummary();
 }
 function syncFlowDefic(n) {
   const descEl = document.getElementById('fa-defic-flow-desc-' + n);
@@ -3472,6 +3542,7 @@ function removeTamperRow(n) {
   removeTamperDeficRow(n);
   document.getElementById('fa-tamper-row-' + n)?.remove();
   document.getElementById('fa-tamper-defic-tr-' + n)?.remove();
+  syncDeviceSummary();
 }
 function syncTamperDefic(n) {
   const descEl = document.getElementById('fa-defic-tamper-desc-' + n);
@@ -3567,6 +3638,7 @@ function restoreDraft(draft) {
   // Rebuild item→panel map since innerHTML was replaced
   buildItemPanelMap();
   updateDeficiencySummary();
+  syncDeviceSummary();
   const saved = new Date(draft.savedAt);
   const label = saved.toLocaleDateString() + ' ' + saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   toast('Draft restored — saved ' + label);
@@ -3588,6 +3660,7 @@ function initFireAlarmPanel() {
   // Always rebuild device table and checklists (clearFAInspectionState wiped them)
   buildFADeviceTable();
   buildFAChecklists();
+  syncDeviceSummary();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
