@@ -433,7 +433,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
   <!-- ── STEP NAV (default) ── -->
   <div id="step-nav">
     <div class="step-tab active" data-step="1" onclick="goStep(1)">
-      <span class="step-num">1</span><span class="step-check">✓</span>Job Info
+      <span class="step-num">1</span><span class="step-check">✓</span>Property
     </div>
     <div class="step-tab" data-step="2" onclick="goStep(2)">
       <span class="step-num">2</span><span class="step-check">✓</span>Systems
@@ -505,25 +505,16 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
             <input type="text" id="city-state-zip">
           </div>
           <div class="field-group">
-            <label>Property Contact</label>
-            <input type="text" id="property-contact">
+            <label>Property Contact Name</label>
+            <input type="text" id="property-contact-name">
+          </div>
+          <div class="field-group">
+            <label>Property Contact Email</label>
+            <input type="text" id="property-contact-email">
           </div>
           <div class="field-group">
             <label>Date of Inspection</label>
             <input type="date" id="insp-date">
-          </div>
-          <div class="field-group">
-            <label>Report Type</label>
-            <select id="report-type">
-              <option>Annual</option>
-              <option>Semi-Annual</option>
-              <option>Quarterly</option>
-              <option>Monthly</option>
-              <option>5-Year</option>
-              <option>Acceptance Test</option>
-              <option>Retest / Repair</option>
-              <option>Unable to Test</option>
-            </select>
           </div>
           <div class="field-group">
             <label>Inspector Name</label>
@@ -789,6 +780,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">🖥️</span><span>Main Fire Alarm Control Panel &amp; Monitoring Information</span></div>
       <div class="card-body">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="field-group">
+            <label>Report Type</label>
+            <select id="report-type">
+              <option>Annual</option>
+              <option>Semi-Annual</option>
+            </select>
+          </div>
           <div>
             <div class="sys-section">Control Panel Specification</div>
             <div class="data-row cols-1"><div class="data-field"><label>Make</label><input type="text" id="fa-cp-make" placeholder="e.g. Honeywell, EST, Simplex"></div></div>
@@ -1552,7 +1550,8 @@ function onPropertySelect() {
   fill('client-company', 'management','client','company');
   fill('service-address', 'service address','address');
   fill('city-state-zip', 'city','zip');
-  fill('property-contact', 'property manager','contact name');
+  fill('property-contact-name', 'property manager','contact name');
+  fill('property-contact-email', 'property manager','contact email');
 
   // Extract FLPS account number for stable Drive profile lookup
   const acctHeader = Object.keys(d).find(h => h.includes('acct') || h.includes('account'));
