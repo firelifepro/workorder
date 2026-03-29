@@ -866,31 +866,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       </div>
     </div>
 
-    <div class="btn-row">
-      <button class="btn-secondary" onclick="exitFireAlarmInspection('systems')">← Systems</button>
-      <button class="btn-primary" onclick="goFAStep('devices')">Next: Device Testing →</button>
-    </div>
-  </div>
-
-  <!-- ══ FIRE ALARM STEP 3: DEVICE TESTING ══ -->
-  <div id="step-fa-devices" style="display:none;">
-
-    <div class="card">
-      <div class="card-header"><span class="icon">📊</span><span>Device Testing Summary <span style="font-size:.72rem;font-weight:400;opacity:.8;">(PASS = Functional/Visual  |  FAIL = Failed  |  NT = Not Tested  |  NF = Not Found)</span></span></div>
-      <div class="card-body" style="overflow-x:auto;">
-        <table class="dev-table" id="fa-device-table">
-          <thead>
-            <tr>
-              <th class="left" style="min-width:150px;">Device / System</th>
-              <th>Key</th><th>Total</th><th>Pass #</th><th>Fail #</th>
-              <th>% Pass</th><th>% Fail</th><th>Not Tested</th><th>Not Found</th><th>Notes</th>
-            </tr>
-          </thead>
-          <tbody id="fa-device-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-header"><span class="icon">📝</span><span>On-Site System Notes <span style="font-size:.72rem;font-weight:400;opacity:.8;">— Conditions, Integrity, Outdated/Obsolete Equipment</span></span></div>
       <div class="card-body" style="overflow-x:auto;">
@@ -943,6 +918,64 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
               <td><input type="text" id="fa-onsite-notes-5" oninput="syncOnsiteDefic(5)"></td>
             </tr>
           </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="exitFireAlarmInspection('systems')">← Systems</button>
+      <button class="btn-primary" onclick="goFAStep('devices')">Next: Device Testing →</button>
+    </div>
+  </div>
+
+  <!-- ══ FIRE ALARM STEP 3: DEVICE TESTING ══ -->
+  <div id="step-fa-devices" style="display:none;">
+
+    <div class="card">
+      <div class="card-header"><span class="icon">🔍</span><span>Devices — Fire Detection (by Level / Floor / Location)</span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="dyn-table">
+          <thead><tr><th style="width:60px;">Type</th><th>Location</th><th style="width:80px;">Scan ID</th><th style="width:80px;">Address</th><th style="width:60px;">Alarm</th><th style="width:70px;">Supervisory</th><th style="width:60px;">Note #</th><th style="width:30px;"></th></tr></thead>
+          <tbody id="fa-detection-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addFADetectionRow()">+ Add Device</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">💧</span><span>Flow Switches — Sprinkler Systems</span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="dyn-table">
+          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:70px;">Supervisory</th><th style="width:80px;">Seconds</th><th style="width:30px;"></th></tr></thead>
+          <tbody id="fa-flow-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addFAFlowRow()">+ Add Flow Switch</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">🔒</span><span>Tamper Switches — Sprinkler Systems</span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="dyn-table">
+          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:70px;">Supervisory</th><th>Notes</th><th style="width:30px;"></th></tr></thead>
+          <tbody id="fa-tamper-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addFATamperRow()">+ Add Tamper Switch</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📊</span><span>Device Testing Summary <span style="font-size:.72rem;font-weight:400;opacity:.8;">(PASS = Functional/Visual  |  FAIL = Failed  |  NT = Not Tested  |  NF = Not Found)</span></span></div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table class="dev-table" id="fa-device-table">
+          <thead>
+            <tr>
+              <th class="left" style="min-width:150px;">Device / System</th>
+              <th>Key</th><th>Total</th><th>Pass #</th><th>Fail #</th>
+              <th>% Pass</th><th>% Fail</th><th>Not Tested</th><th>Not Found</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="fa-device-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -1103,39 +1136,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
           <tbody id="fa-subpanel-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFASubpanelRow()">+ Add Sub Panel / Power Supply</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="icon">🔍</span><span>Devices — Fire Detection (by Level / Floor / Location)</span></div>
-      <div class="card-body" style="overflow-x:auto;">
-        <table class="dyn-table">
-          <thead><tr><th style="width:60px;">Type</th><th>Location</th><th style="width:80px;">Scan ID</th><th style="width:80px;">Address</th><th style="width:60px;">Alarm</th><th style="width:70px;">Supervisory</th><th style="width:60px;">Note #</th><th style="width:30px;"></th></tr></thead>
-          <tbody id="fa-detection-tbody"></tbody>
-        </table>
-        <button class="add-row-btn" onclick="addFADetectionRow()">+ Add Device</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="icon">💧</span><span>Flow Switches — Sprinkler Systems</span></div>
-      <div class="card-body" style="overflow-x:auto;">
-        <table class="dyn-table">
-          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:70px;">Supervisory</th><th style="width:80px;">Seconds</th><th style="width:30px;"></th></tr></thead>
-          <tbody id="fa-flow-tbody"></tbody>
-        </table>
-        <button class="add-row-btn" onclick="addFAFlowRow()">+ Add Flow Switch</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="icon">🔒</span><span>Tamper Switches — Sprinkler Systems</span></div>
-      <div class="card-body" style="overflow-x:auto;">
-        <table class="dyn-table">
-          <thead><tr><th style="width:80px;">Type</th><th>Location</th><th style="width:90px;">Scan ID</th><th style="width:90px;">Address</th><th style="width:70px;">Supervisory</th><th>Notes</th><th style="width:30px;"></th></tr></thead>
-          <tbody id="fa-tamper-tbody"></tbody>
-        </table>
-        <button class="add-row-btn" onclick="addFATamperRow()">+ Add Tamper Switch</button>
       </div>
     </div>
 
