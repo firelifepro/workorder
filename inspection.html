@@ -1606,14 +1606,14 @@ function onPropertySelect() {
   fill('client-company', 'management','client','company');
   fill('service-address', 'service address','address');
   fill('city-state-zip', 'city','zip');
-  // Parse city/state/zip from service address if no dedicated column in sheet
+  // Parse city/state/zip from service address if it contains a line break
   const cszEl = document.getElementById('city-state-zip');
   const saEl  = document.getElementById('service-address');
-  if (cszEl && !cszEl.value.trim() && saEl?.value) {
-    const lines = saEl.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (saEl?.value) {
+    const lines = saEl.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length >= 2) {
-      cszEl.value = lines[lines.length - 1];
       saEl.value  = lines[0];
+      if (cszEl) cszEl.value = lines[lines.length - 1];
     }
   }
   // Populate property name field from dropdown selection
@@ -3505,11 +3505,14 @@ function showFlowDeficRow(n) {
   if (!document.getElementById('fa-defic-flow-' + n)) {
     faDeficCount++;
     const count = faDeficCount;
-    const loc = document.getElementById('fa-flow-loc-' + n)?.value || 'Flow Switch ' + n;
+    const type = document.getElementById('fa-flow-type-' + n)?.value || 'FS';
+    const loc  = document.getElementById('fa-flow-loc-' + n)?.value || '';
+    const prefix = 'Flow Switch ' + n + ' (' + type + ')';
+    const initVal = loc ? prefix + ' — ' + loc : prefix;
     document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
       <tr id="fa-defic-flow-${n}">
         <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
-        <td><input type="text" id="fa-defic-flow-desc-${n}" value="${escHtml(loc)} — Flow Switch Failure" placeholder="Describe deficiency…"></td>
+        <td><input type="text" id="fa-defic-flow-desc-${n}" value="${escHtml(initVal)}" placeholder="Describe deficiency…"></td>
         <td><button class="del-btn" onclick="removeFlowDeficRow(${n})">✕</button></td>
       </tr>`);
   }
@@ -3529,9 +3532,11 @@ function removeFlowRow(n) {
 function syncFlowDefic(n) {
   const descEl = document.getElementById('fa-defic-flow-desc-' + n);
   if (!descEl) return;
-  const loc   = document.getElementById('fa-flow-loc-' + n)?.value || 'Flow Switch ' + n;
+  const type  = document.getElementById('fa-flow-type-' + n)?.value || 'FS';
+  const loc   = document.getElementById('fa-flow-loc-' + n)?.value || '';
   const notes = document.getElementById('fa-flow-defic-txt-' + n)?.value || '';
-  descEl.value = loc + (notes ? ' — ' + notes : ' — Flow Switch Failure');
+  const prefix = 'Flow Switch ' + n + ' (' + type + ')';
+  descEl.value = (loc ? prefix + ' — ' + loc : prefix) + (notes ? ': ' + notes : '');
 }
 
 // ─── TAMPER SWITCH ROW DEFICIENCY ─────────────────────────────────────────────
@@ -3541,11 +3546,14 @@ function showTamperDeficRow(n) {
   if (!document.getElementById('fa-defic-tamper-' + n)) {
     faDeficCount++;
     const count = faDeficCount;
-    const loc = document.getElementById('fa-tamper-loc-' + n)?.value || 'Tamper Switch ' + n;
+    const type = document.getElementById('fa-tamper-type-' + n)?.value || 'TS';
+    const loc  = document.getElementById('fa-tamper-loc-' + n)?.value || '';
+    const prefix = 'Tamper Switch ' + n + ' (' + type + ')';
+    const initVal = loc ? prefix + ' — ' + loc : prefix;
     document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
       <tr id="fa-defic-tamper-${n}">
         <td style="text-align:center;font-weight:700;color:var(--slate);">${count}</td>
-        <td><input type="text" id="fa-defic-tamper-desc-${n}" value="${escHtml(loc)} — Tamper Switch Failure" placeholder="Describe deficiency…"></td>
+        <td><input type="text" id="fa-defic-tamper-desc-${n}" value="${escHtml(initVal)}" placeholder="Describe deficiency…"></td>
         <td><button class="del-btn" onclick="removeTamperDeficRow(${n})">✕</button></td>
       </tr>`);
   }
@@ -3565,9 +3573,11 @@ function removeTamperRow(n) {
 function syncTamperDefic(n) {
   const descEl = document.getElementById('fa-defic-tamper-desc-' + n);
   if (!descEl) return;
-  const loc   = document.getElementById('fa-tamper-loc-' + n)?.value || 'Tamper Switch ' + n;
+  const type  = document.getElementById('fa-tamper-type-' + n)?.value || 'TS';
+  const loc   = document.getElementById('fa-tamper-loc-' + n)?.value || '';
   const notes = document.getElementById('fa-tamper-defic-txt-' + n)?.value || '';
-  descEl.value = loc + (notes ? ' — ' + notes : ' — Tamper Switch Failure');
+  const prefix = 'Tamper Switch ' + n + ' (' + type + ')';
+  descEl.value = (loc ? prefix + ' — ' + loc : prefix) + (notes ? ': ' + notes : '');
 }
 
 // ─── DRAFT SAVE / RESTORE ─────────────────────────────────────────────────────
@@ -5684,8 +5694,10 @@ async function buildEditablePDF() {
       const g0 = grps[0]?.querySelector('.pf-btn.selected')?.textContent?.trim() || '';
       const g1 = grps.length >= 2 ? (grps[1]?.querySelector('.pf-btn.selected')?.textContent?.trim() || '') : null;
       if (g1 !== null) {
-        // Two-group row (Present/Operational): left=present, right=operational
-        return [g0, g1];
+        // Two-group row (Present/Operational): if present=N/A, whole row N/A
+        if (g0 === 'N/A') return ['N/A', ''];
+        // Route operational result: PASS/N/A → left, FAIL → right
+        return [g1 !== 'FAIL' ? g1 : '', g1 === 'FAIL' ? 'FAIL' : ''];
       }
       // Single-group: PASS/YES/N/A → left, FAIL → right
       return [g0 !== 'FAIL' ? g0 : '', g0 === 'FAIL' ? 'FAIL' : ''];
@@ -6032,14 +6044,14 @@ async function buildEditablePDF() {
     secHdr('DEFICIENCY LIST & PROPOSED SOLUTIONS');
     const deficList = [];
     document.querySelectorAll('#fa-defic-tbody tr').forEach((r, i) => {
-      deficList.push([String(i+1), r.querySelector('td:nth-child(2) input')?.value?.trim()||'', '', '']);
+      deficList.push([String(i+1), r.querySelector('td:nth-child(2) input')?.value?.trim()||'', '']);
     });
     (data.deficiencies||[]).forEach((d,i) => {
-      if (!deficList.find(r => r[1]===d.item)) deficList.push([String(deficList.length+1), d.item||'', '', '']);
+      if (!deficList.find(r => r[1]===d.item)) deficList.push([String(deficList.length+1), d.item||'', '']);
     });
-    while (deficList.length < 10) deficList.push(Array(4).fill(''));
+    while (deficList.length < 10) deficList.push(Array(3).fill(''));
     table(
-      [{label:'#',w:25},{label:'DEFICIENCY & PROPOSED SOLUTIONS',w:380},{label:'MAKE/MODEL',w:90},{label:'SEVERITY',w:45}],
+      [{label:'#',w:25},{label:'DEFICIENCY & PROPOSED SOLUTIONS',w:425},{label:'MAKE/MODEL',w:90}],
       deficList, 14
     );
     gap(6);
@@ -6085,6 +6097,43 @@ async function buildEditablePDF() {
       { label:'INSPECTOR DATE', val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
       { label:'CLIENT DATE',    val: '', w: PW/2 },
     ]);
+
+    // ── Photos page ───────────────────────────────────────────────────────────
+    if (inspectionPhotos.length > 0) {
+      addPage();
+      secHdr('INSPECTION PHOTOS');
+      const photoW = Math.floor((PW - 10) / 2);
+      const photoH = 140;
+      let col = 0;
+      for (let i = 0; i < inspectionPhotos.length; i++) {
+        const photo = inspectionPhotos[i];
+        checkPage(photoH + 30);
+        const px = ML + col * (photoW + 10);
+        try {
+          const b64 = photo.dataUrl.split(',')[1];
+          const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+          const img = photo.dataUrl.startsWith('data:image/png')
+            ? await pdfDoc.embedPng(ab)
+            : await pdfDoc.embedJpg(ab);
+          const dims = img.scaleToFit(photoW, photoH);
+          page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
+        } catch(_) {
+          page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: rgb(0.93,0.93,0.93) });
+          page.drawText('Image unavailable', { x: px + photoW/2 - 30, y: ry(photoH) + photoH/2, size: 8, font: rFont, color: rgb(0.5,0.5,0.5) });
+        }
+        // Photo number badge
+        page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: 12, color: rgb(0,0,0) });
+        page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: 7, font: hFont, color: white });
+        // Note below photo
+        const noteLines = wrap(photo.note || 'No note', 7, photoW);
+        noteLines.forEach((l, li) => {
+          page.drawText(l, { x: px, y: ry(photoH) - 10 - li * 9, size: 7, font: rFont, color: blk });
+        });
+        col++;
+        if (col >= 2) { col = 0; curY += photoH + 22; }
+      }
+      if (col > 0) curY += photoH + 22;
+    }
 
     // ── Download ──────────────────────────────────────────────────────────────
     const bytes = await pdfDoc.save();
