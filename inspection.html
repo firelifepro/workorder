@@ -5864,16 +5864,20 @@ async function buildEditablePDF() {
     // ── PAGE 3: Device Testing Summary + On-Site Notes ────────────────────────
     addPage();
     secHdr('DEVICE/SIGNAL TESTING SUMMARY');
-    const sumEl = document.getElementById('fa-device-summary');
     const sumData = {};
-    if (sumEl) {
-      sumEl.querySelectorAll('tbody tr').forEach(r => {
-        const key = r.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
-        if (!key) return;
-        const iv = (n) => r.querySelector('td:nth-child('+n+') input')?.value || '';
-        sumData[key] = { total:iv(3), passN:iv(4), failN:iv(5), passPct:r.querySelector('td:nth-child(6)')?.textContent?.trim()||'', failPct:r.querySelector('td:nth-child(7)')?.textContent?.trim()||'', nt:iv(8), nf:iv(9), notes:iv(10) };
-      });
-    }
+    FA_DEVICES.forEach((d, i) => {
+      const id = 'fa-dev-' + i;
+      sumData[d[1]] = {
+        total:   document.getElementById(id+'-total')?.value || '',
+        passN:   document.getElementById(id+'-pass')?.value  || '',
+        failN:   document.getElementById(id+'-fail')?.value  || '',
+        passPct: document.getElementById(id+'-pct-pass')?.textContent?.trim() || '',
+        failPct: document.getElementById(id+'-pct-fail')?.textContent?.trim() || '',
+        nt:      document.getElementById(id+'-nt')?.value    || '',
+        nf:      document.getElementById(id+'-nf')?.value    || '',
+        notes:   document.getElementById(id+'-notes')?.value || '',
+      };
+    });
     const sumCols = [
       {label:'DEVICES/SIGNALS/SYSTEMS',w:120},{label:'KEY',w:30},{label:'TOTAL',w:40},
       {label:'PASS #',w:40},{label:'FAIL #',w:40},{label:'PASS %',w:40},{label:'FAIL %',w:40},
@@ -5895,7 +5899,11 @@ async function buildEditablePDF() {
     subHdr('ON SITE SYSTEM NOTES');
     table(
       [{label:'EQUIPMENT',w:130},{label:'CONDITION',w:130},{label:'NOTES & OBSERVATIONS',w:280}],
-      [1,2,3,4,5].map(n => [dv('fa-onsite-eq-'+n),dv('fa-onsite-cond-'+n),dv('fa-onsite-notes-'+n)]),
+      [1,2,3,4,5].map(n => {
+        const row = document.getElementById('fa-onsite-row-'+n);
+        const cond = row?.querySelector('.pf-btn.selected')?.textContent?.trim() || '';
+        return [dv('fa-onsite-eq-'+n), cond, dv('fa-onsite-notes-'+n)];
+      }),
       14
     );
 
