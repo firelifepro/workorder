@@ -1663,7 +1663,11 @@ function onPropertySelect() {
   }
   // Populate property name field from dropdown selection
   const pnEl = document.getElementById('property-name');
-  if (pnEl) pnEl.value = propName || '';
+  if (pnEl) {
+    // propName may contain embedded newlines (spreadsheet cell with line break) — take first line only
+    const pnLines = propName.split(/\r\n|\r|\n|\u2028|\u2029/);
+    pnEl.value = pnLines[0].trim() || propName;
+  }
   fill('property-contact-name', 'property manager','contact name');
   fill('property-contact-email', 'contact email','email','e-mail');
 
@@ -5980,22 +5984,45 @@ async function buildEditablePDF() {
     // Left background
     page.drawRectangle({ x: ML, y: ry(iH), width: 313, height: iH, color: lgray, borderColor: sky, borderWidth: 0.5 });
 
-    // Programmatic fire badge (vector — no raster/favicon dependency)
-    const badgeX = ML + 4;
-    const badgeS = 54;
-    const badgeY = ry(iH) + (iH - badgeS) / 2;
-    // Red background square
-    page.drawRectangle({ x: badgeX, y: badgeY, width: badgeS, height: badgeS, color: FIRE_RED });
-    // Outer flame (orange)
-    page.drawSvgPath(
-      'M12,2 C11,5 8.5,8 7,11 C5.5,14 6,18 8,20 C7,17 9,15 11,16 C10,18.5 11,22 12,22 C13,22 14,18.5 13,16 C15,15 17,17 16,20 C18,18 18.5,14 17,11 C15.5,8 13,5 12,2 Z',
-      { x: badgeX + badgeS * 0.04, y: badgeY + badgeS, scale: badgeS / 24, color: rgb(1.0, 0.55, 0.05) }
-    );
-    // Inner flame (yellow)
-    page.drawSvgPath(
-      'M12,8 C11.5,10 10.5,12 10.5,14 C10.5,16.5 11,19 12,19 C13,19 13.5,16.5 13.5,14 C13.5,12 12.5,10 12,8 Z',
-      { x: badgeX + badgeS * 0.04, y: badgeY + badgeS, scale: badgeS / 24, color: rgb(1.0, 0.92, 0.15) }
-    );
+    // Load FLPS logo from SVG file → canvas → PNG → pdf-lib
+    let logoImg = null;
+    try {
+      const svgResp = await fetch('logo.svg');
+      const svgText = await svgResp.text();
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+      const svgUrl  = URL.createObjectURL(svgBlob);
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          // SVG viewBox 0 0 400 600; shield+flame spans roughly top 440 units
+          const res = 200; // render at 200×200 for crisp embedding
+          const canvas = document.createElement('canvas');
+          canvas.width = res; canvas.height = res;
+          const ctx = canvas.getContext('2d');
+          // Crop: source region (x=35, y=35, w=330, h=410) → square canvas
+          ctx.drawImage(img, 35, 35, 330, 410, 0, 0, res, res);
+          URL.revokeObjectURL(svgUrl);
+          const dataUrl = canvas.toDataURL('image/png');
+          const b64 = dataUrl.split(',')[1];
+          const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+          pdfDoc.embedPng(ab).then(i => { logoImg = i; resolve(); }).catch(resolve);
+        };
+        img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve(); };
+        img.src = svgUrl;
+      });
+    } catch(_) {}
+
+    // Draw logo (transparent PNG — no background square needed)
+    if (logoImg) {
+      const logoS = 60;
+      const dims  = logoImg.scaleToFit(logoS, logoS);
+      page.drawImage(logoImg, {
+        x: ML + 2,
+        y: ry(iH) + (iH - dims.height) / 2,
+        width:  dims.width,
+        height: dims.height,
+      });
+    }
 
     // Company info text
     const compX = ML + 65;
@@ -6039,6 +6066,20 @@ async function buildEditablePDF() {
     });
 
     curY += iH + 4;
+
+    // Overall System Status bar — full width, prominently colored
+    {
+      const stH = 18;
+      const stVal = (data.overallStatus || '').toUpperCase();
+      const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22) :
+                      stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10) :
+                      stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00) :
+                                              rgb(0.38, 0.44, 0.54);
+      page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
+      page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: 6.5, font: hFont, color: white });
+      page.drawText(stVal || 'PENDING', { x: ML + 130, y: ty(stH, 6), size: 9.5, font: hFont, color: white });
+      curY += stH + 4;
+    }
 
     // Property + contact info
     dataRow([{ label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }]);
