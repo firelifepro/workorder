@@ -941,7 +941,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">🔍</span><span>Devices — Fire Detection (by Level / Floor / Location)</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th style="width:60px;">Type</th><th>Location</th><th style="width:80px;">Scan ID</th><th style="width:80px;">Address</th><th style="width:60px;">Alarm</th><th style="width:70px;">Supervisory</th><th style="width:30px;"></th></tr></thead>
+          <thead><tr><th style="width:78px;">Type</th><th>Location</th><th style="width:80px;">Scan ID</th><th style="width:80px;">Address</th><th style="width:60px;">Alarm</th><th style="width:70px;">Supervisory</th><th style="width:30px;"></th></tr></thead>
           <tbody id="fa-detection-tbody"></tbody>
         </table>
         <button class="add-row-btn" onclick="addFADetectionRow()">+ Add Device</button>
@@ -1300,6 +1300,8 @@ function goStep(n) {
 // FIRE ALARM MULTI-STEP NAVIGATION
 // ─────────────────────────────────────────────────────────────────────────────
 function goFAStep(key) {
+  // Auto-save draft on every step transition
+  saveDraft();
   const ALL_FA_KEYS = [...FA_STEP_ORDER, 'sign'];
   // Hide all FA step divs and step-4
   FA_STEP_ORDER.forEach(k => {
