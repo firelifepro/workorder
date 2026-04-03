@@ -1646,17 +1646,18 @@ function onPropertySelect() {
     el.value = '';
   };
   fill('client-company', 'management','client','company');
-  fill('service-address', 'service address','address');
-  fill('city-state-zip', 'city','zip');
-  // Parse city/state/zip from service address if it contains a line break
-  const cszEl = document.getElementById('city-state-zip');
+  // Service address: parse from raw clientData before touching the DOM,
+  // because input[type=text].value strips \n so split-after-fill never works.
+  const addrKey = Object.keys(d).find(h => h.includes('service address') || h.includes('address'));
+  const rawAddr = addrKey ? (d[addrKey] || '') : '';
+  const addrParts = rawAddr.split(/\r\n|\r|\n|\u2028|\u2029/).map(s => s.trim()).filter(Boolean);
   const saEl  = document.getElementById('service-address');
-  if (saEl?.value) {
-    const lines = saEl.value.split(/\r\n|\r|\n|\u2028|\u2029/).map(l => l.trim()).filter(Boolean);
-    if (lines.length >= 2) {
-      saEl.value  = lines[0];
-      if (cszEl) cszEl.value = lines[lines.length - 1];
-    }
+  const cszEl = document.getElementById('city-state-zip');
+  if (saEl)  saEl.value  = addrParts[0] || rawAddr;
+  if (addrParts.length >= 2) {
+    if (cszEl) cszEl.value = addrParts[addrParts.length - 1];
+  } else {
+    fill('city-state-zip', 'city','zip');
   }
   // Populate property name field from dropdown selection
   const pnEl = document.getElementById('property-name');
@@ -5128,7 +5129,7 @@ async function buildPDFDoc() {
         if (row.querySelector('.yna-btn.y.selected'))  return 'Y';
         if (row.querySelector('.yna-btn.n.selected'))  return 'N';
         if (row.querySelector('.yna-btn.na.selected')) return 'N/A';
-        return '';
+        return 'N/A';
       };
       const subHdr = (title) => {
         checkPage(10);
@@ -5962,17 +5963,6 @@ async function buildEditablePDF() {
     // ── PAGE 1: Header + Property + NFPA ─────────────────────────────────────
     addPage();
 
-    // Load logo from favicon
-    let logoImg = null;
-    try {
-      const faviconEl = document.querySelector('link[rel="icon"]');
-      if (faviconEl?.href) {
-        const resp = await fetch(faviconEl.href);
-        const ab = await resp.arrayBuffer();
-        logoImg = await pdfDoc.embedPng(ab);
-      }
-    } catch(_) {}
-
     // Red title banner
     const FIRE_RED = rgb(0.72, 0.08, 0.08);
     const titleH = 22;
@@ -5988,14 +5978,25 @@ async function buildEditablePDF() {
     // Left background
     page.drawRectangle({ x: ML, y: ry(iH), width: 313, height: iH, color: lgray, borderColor: sky, borderWidth: 0.5 });
 
-    // Logo
-    if (logoImg) {
-      const dims = logoImg.scaleToFit(55, 55);
-      page.drawImage(logoImg, { x: ML+4, y: ry(iH)+(iH-dims.height)/2, width: dims.width, height: dims.height });
-    }
+    // Programmatic fire badge (vector — no raster/favicon dependency)
+    const badgeX = ML + 4;
+    const badgeS = 54;
+    const badgeY = ry(iH) + (iH - badgeS) / 2;
+    // Red background square
+    page.drawRectangle({ x: badgeX, y: badgeY, width: badgeS, height: badgeS, color: FIRE_RED });
+    // Outer flame (orange)
+    page.drawSvgPath(
+      'M12,2 C11,5 8.5,8 7,11 C5.5,14 6,18 8,20 C7,17 9,15 11,16 C10,18.5 11,22 12,22 C13,22 14,18.5 13,16 C15,15 17,17 16,20 C18,18 18.5,14 17,11 C15.5,8 13,5 12,2 Z',
+      { x: badgeX + badgeS * 0.04, y: badgeY + badgeS, scale: badgeS / 24, color: rgb(1.0, 0.55, 0.05) }
+    );
+    // Inner flame (yellow)
+    page.drawSvgPath(
+      'M12,8 C11.5,10 10.5,12 10.5,14 C10.5,16.5 11,19 12,19 C13,19 13.5,16.5 13.5,14 C13.5,12 12.5,10 12,8 Z',
+      { x: badgeX + badgeS * 0.04, y: badgeY + badgeS, scale: badgeS / 24, color: rgb(1.0, 0.92, 0.15) }
+    );
 
     // Company info text
-    const compX = ML + 63;
+    const compX = ML + 65;
     const compInfo = [
       { t: 'Fire Life Protection System, Inc.', sz: 8.5, f: hFont },
       { t: '8201 Shaffer Parkway Suit B.',        sz: 7.5, f: rFont },
