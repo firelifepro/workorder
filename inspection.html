@@ -1192,6 +1192,30 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 </div><!-- /app -->
 
 <div id="toast"></div>
+
+<!-- Draft Management Modal -->
+<div id="draft-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:14px;padding:28px 28px 22px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.35);font-family:'DM Sans',sans-serif;">
+    <div id="draft-modal-main">
+      <div style="font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:6px;">Saved Draft Found</div>
+      <div id="draft-modal-info" style="font-size:0.85rem;color:#555;margin-bottom:20px;line-height:1.5;"></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn-primary" onclick="_draftModalResume()" style="width:100%;padding:13px;">Open Saved Draft</button>
+        <button class="btn-secondary" onclick="_draftModalFresh()" style="width:100%;padding:12px;">Start Fresh Inspection</button>
+        <button class="btn-danger" onclick="_draftModalShowConfirm()" style="width:100%;padding:12px;">Discard Draft</button>
+      </div>
+    </div>
+    <div id="draft-modal-confirm" style="display:none;">
+      <div style="font-size:1rem;font-weight:700;color:var(--red);margin-bottom:8px;">Discard this draft?</div>
+      <div style="font-size:0.85rem;color:#555;margin-bottom:20px;">This cannot be undone. The saved draft will be permanently deleted.</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-danger" onclick="_draftModalDiscard()" style="flex:1;padding:12px;">Yes, Discard</button>
+        <button class="btn-secondary" onclick="_draftModalHideConfirm()" style="flex:1;padding:12px;">Go Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://accounts.google.com/gsi/client"></script>
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1334,56 +1358,50 @@ function startFireAlarmInspection() {
   clearFAInspectionState();
   initFireAlarmPanel();
 
-  // Check for a saved draft first; offer resume if found
+  // Check for a saved draft first; offer resume via modal
   const draft = loadDraft();
   if (draft) {
-    const saved = new Date(draft.savedAt);
-    const label = saved.toLocaleDateString() + ' ' + saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const stepLabel = { panel:'Panel Info', devices:'Devices', aux:'Aux Systems', defic:'Deficiency/Sign' };
-    const onStep = stepLabel[draft.currentFAStep] || draft.currentFAStep || 'Panel Info';
-    if (confirm('A saved draft exists from ' + label + ' (last step: ' + onStep + ').\n\nResume where you left off?\n\nCancel to discard the draft and start fresh.')) {
-      restoreDraft(draft);
-      const resumeStep = draft.currentFAStep || 'panel';
-      currentFAStep = resumeStep;
-      const resumeEl = document.getElementById('step-fa-' + resumeStep);
-      if (resumeEl) resumeEl.style.display = 'block';
-      document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
-        t.classList.remove('active', 'done');
-        if (t.dataset.fstep === 'job') t.classList.add('done');
-        else if (t.dataset.fstep === resumeStep) t.classList.add('active');
-      });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    } else {
-      clearDraft();
-    }
+    showDraftModal(draft, false,
+      () => { _resumeFromDraft(draft); },
+      () => { clearDraft(); _continueFireAlarmStart(); },
+      () => { clearDraft(); _continueFireAlarmStart(); }
+    );
+    return; // modal callbacks handle the rest
   } else if (accessToken) {
     // localStorage was empty — check Drive for a backed-up draft
     const key = draftKey();
     loadDraftFromDrive(key).then(driveDraft => {
-      if (!driveDraft) return;
-      const saved = new Date(driveDraft.savedAt);
-      const label = saved.toLocaleDateString() + ' ' + saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const stepLabel = { panel:'Panel Info', devices:'Devices', aux:'Aux Systems', defic:'Deficiency/Sign' };
-      const onStep = stepLabel[driveDraft.currentFAStep] || driveDraft.currentFAStep || 'Panel Info';
-      if (confirm('A draft backed up to Google Drive was found from ' + label + ' (last step: ' + onStep + ').\n\nLocal storage was empty — this was recovered from Drive.\n\nResume where you left off?')) {
-        // Restore to localStorage so subsequent saves work normally
-        try { localStorage.setItem(key, JSON.stringify(driveDraft)); } catch(_) {}
-        restoreDraft(driveDraft);
-        const resumeStep = driveDraft.currentFAStep || 'panel';
-        currentFAStep = resumeStep;
-        const resumeEl = document.getElementById('step-fa-' + resumeStep);
-        if (resumeEl) resumeEl.style.display = 'block';
-        document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
-          t.classList.remove('active', 'done');
-          if (t.dataset.fstep === 'job') t.classList.add('done');
-          else if (t.dataset.fstep === resumeStep) t.classList.add('active');
-        });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }).catch(() => {});
+      if (!driveDraft) { _continueFireAlarmStart(); return; }
+      showDraftModal(driveDraft, true,
+        () => {
+          try { localStorage.setItem(key, JSON.stringify(driveDraft)); } catch(_) {}
+          _resumeFromDraft(driveDraft);
+        },
+        () => { clearDraftFromDrive(key).catch(() => {}); _continueFireAlarmStart(); },
+        () => { clearDraftFromDrive(key).catch(() => {}); _continueFireAlarmStart(); }
+      );
+    }).catch(() => { _continueFireAlarmStart(); });
+    return; // wait for async + modal
   }
 
+  _continueFireAlarmStart();
+}
+
+function _resumeFromDraft(draft) {
+  restoreDraft(draft);
+  const resumeStep = draft.currentFAStep || 'panel';
+  currentFAStep = resumeStep;
+  const resumeEl = document.getElementById('step-fa-' + resumeStep);
+  if (resumeEl) resumeEl.style.display = 'block';
+  document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
+    t.classList.remove('active', 'done');
+    if (t.dataset.fstep === 'job') t.classList.add('done');
+    else if (t.dataset.fstep === resumeStep) t.classList.add('active');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function _continueFireAlarmStart() {
   // Restore previous inspection data typed fields + devices
   const prev = window._prevInspectionData;
   if (prev) {
@@ -1634,7 +1652,7 @@ function onPropertySelect() {
   const cszEl = document.getElementById('city-state-zip');
   const saEl  = document.getElementById('service-address');
   if (saEl?.value) {
-    const lines = saEl.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const lines = saEl.value.split(/\r\n|\r|\n|\u2028|\u2029/).map(l => l.trim()).filter(Boolean);
     if (lines.length >= 2) {
       saEl.value  = lines[0];
       if (cszEl) cszEl.value = lines[lines.length - 1];
@@ -3602,6 +3620,64 @@ function syncTamperDefic(n) {
   const notes = document.getElementById('fa-tamper-defic-txt-' + n)?.value || '';
   const prefix = 'Tamper Switch ' + n + ' (' + type + ')';
   descEl.value = (loc ? prefix + ' — ' + loc : prefix) + (notes ? ': ' + notes : '');
+}
+
+// ─── DRAFT MODAL ──────────────────────────────────────────────────────────────
+let _draftModalResumeCallback = null;
+let _draftModalFreshCallback  = null;
+let _draftModalDiscardCallback = null;
+
+function showDraftModal(draft, isFromDrive, onResume, onFresh, onDiscard) {
+  const saved   = new Date(draft.savedAt);
+  const label   = saved.toLocaleDateString() + ' at ' + saved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const stepLabel = { panel:'Panel Info', devices:'Devices', aux:'Aux Systems', defic:'Deficiency/Sign' };
+  const onStep  = stepLabel[draft.currentFAStep] || draft.currentFAStep || 'Panel Info';
+  const source  = isFromDrive ? ' (recovered from Google Drive)' : '';
+  document.getElementById('draft-modal-info').innerHTML =
+    '<strong>Saved:</strong> ' + label + source + '<br>' +
+    '<strong>Last step:</strong> ' + onStep;
+  document.getElementById('draft-modal-main').style.display = '';
+  document.getElementById('draft-modal-confirm').style.display = 'none';
+  _draftModalResumeCallback  = onResume;
+  _draftModalFreshCallback   = onFresh;
+  _draftModalDiscardCallback = onDiscard;
+  const ov = document.getElementById('draft-modal-overlay');
+  ov.style.display = 'flex';
+}
+
+function _draftModalClose() {
+  document.getElementById('draft-modal-overlay').style.display = 'none';
+  _draftModalResumeCallback  = null;
+  _draftModalFreshCallback   = null;
+  _draftModalDiscardCallback = null;
+}
+
+function _draftModalResume() {
+  const cb = _draftModalResumeCallback;
+  _draftModalClose();
+  if (cb) cb();
+}
+
+function _draftModalFresh() {
+  const cb = _draftModalFreshCallback;
+  _draftModalClose();
+  if (cb) cb();
+}
+
+function _draftModalShowConfirm() {
+  document.getElementById('draft-modal-main').style.display = 'none';
+  document.getElementById('draft-modal-confirm').style.display = '';
+}
+
+function _draftModalHideConfirm() {
+  document.getElementById('draft-modal-main').style.display = '';
+  document.getElementById('draft-modal-confirm').style.display = 'none';
+}
+
+function _draftModalDiscard() {
+  const cb = _draftModalDiscardCallback;
+  _draftModalClose();
+  if (cb) cb();
 }
 
 // ─── DRAFT SAVE / RESTORE ─────────────────────────────────────────────────────
