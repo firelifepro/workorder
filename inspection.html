@@ -1201,15 +1201,15 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div id="draft-modal-info" style="font-size:0.85rem;color:#555;margin-bottom:20px;line-height:1.5;"></div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <button class="btn-primary" onclick="_draftModalResume()" style="width:100%;padding:13px;">Open Saved Draft</button>
-        <button class="btn-secondary" onclick="_draftModalFresh()" style="width:100%;padding:12px;">Start Fresh Inspection</button>
-        <button class="btn-danger" onclick="_draftModalShowConfirm()" style="width:100%;padding:12px;">Discard Draft</button>
+        <button class="btn-secondary" onclick="_draftModalShowConfirm('fresh')" style="width:100%;padding:12px;">Start Fresh Inspection</button>
+        <button class="btn-danger" onclick="_draftModalShowConfirm('discard')" style="width:100%;padding:12px;">Discard Draft</button>
       </div>
     </div>
     <div id="draft-modal-confirm" style="display:none;">
-      <div style="font-size:1rem;font-weight:700;color:var(--red);margin-bottom:8px;">Discard this draft?</div>
-      <div style="font-size:0.85rem;color:#555;margin-bottom:20px;">This cannot be undone. The saved draft will be permanently deleted.</div>
+      <div id="draft-modal-confirm-title" style="font-size:1rem;font-weight:700;color:var(--red);margin-bottom:8px;"></div>
+      <div id="draft-modal-confirm-msg" style="font-size:0.85rem;color:#555;margin-bottom:20px;line-height:1.5;"></div>
       <div style="display:flex;gap:10px;">
-        <button class="btn-danger" onclick="_draftModalDiscard()" style="flex:1;padding:12px;">Yes, Discard</button>
+        <button class="btn-danger" onclick="_draftModalConfirmAction()" style="flex:1;padding:12px;">Yes, Continue</button>
         <button class="btn-secondary" onclick="_draftModalHideConfirm()" style="flex:1;padding:12px;">Go Back</button>
       </div>
     </div>
@@ -3630,9 +3630,10 @@ function syncTamperDefic(n) {
 }
 
 // ─── DRAFT MODAL ──────────────────────────────────────────────────────────────
-let _draftModalResumeCallback = null;
-let _draftModalFreshCallback  = null;
+let _draftModalResumeCallback  = null;
+let _draftModalFreshCallback   = null;
 let _draftModalDiscardCallback = null;
+let _draftModalPendingAction   = null; // 'fresh' | 'discard'
 
 function showDraftModal(draft, isFromDrive, onResume, onFresh, onDiscard) {
   const saved   = new Date(draft.savedAt);
@@ -3671,7 +3672,14 @@ function _draftModalFresh() {
   if (cb) cb();
 }
 
-function _draftModalShowConfirm() {
+function _draftModalShowConfirm(source) {
+  _draftModalPendingAction = source || 'discard';
+  const titleEl = document.getElementById('draft-modal-confirm-title');
+  const msgEl   = document.getElementById('draft-modal-confirm-msg');
+  if (titleEl) titleEl.textContent = source === 'fresh' ? 'Start fresh inspection?' : 'Discard this draft?';
+  if (msgEl)   msgEl.textContent   = source === 'fresh'
+    ? 'Starting fresh will permanently discard your saved draft. This cannot be undone.'
+    : 'This cannot be undone. The saved draft will be permanently deleted.';
   document.getElementById('draft-modal-main').style.display = 'none';
   document.getElementById('draft-modal-confirm').style.display = '';
 }
@@ -3681,8 +3689,10 @@ function _draftModalHideConfirm() {
   document.getElementById('draft-modal-confirm').style.display = 'none';
 }
 
-function _draftModalDiscard() {
-  const cb = _draftModalDiscardCallback;
+function _draftModalConfirmAction() {
+  const action = _draftModalPendingAction;
+  _draftModalPendingAction = null;
+  const cb = action === 'fresh' ? _draftModalFreshCallback : _draftModalDiscardCallback;
   _draftModalClose();
   if (cb) cb();
 }
@@ -3705,19 +3715,26 @@ async function saveDraftToDrive(draft, key) {
       { headers: { 'Authorization': 'Bearer ' + accessToken } }
     );
     const existingId = (await listRes.json()).files?.[0]?.id || null;
-    const propKey = key.replace('flips_draft_', '').replace(/_[^_]+$/, '');
-    const sysKey  = activeInspectionSystem || 'unknown';
-    const fileName = `FLPS_Draft_${propKey}_${sysKey}.json`;
-    const content  = JSON.stringify(draft, null, 2);
-    const uploaded = await driveUploadFile(fileName, 'application/json', content, folderId, existingId);
+    const sysKey    = activeInspectionSystem || 'unknown';
+    // Human-readable property name (first line only, stripped of special chars)
+    const rawPropName = document.getElementById('property-select')?.value || '';
+    const propDisplay = rawPropName.split(/\r\n|\r|\n/)[0].replace(/[^a-zA-Z0-9 ]/g, ' ').trim().slice(0, 50);
+    const propSlugHR  = propDisplay.replace(/\s+/g, '_') || _currentPropertyAcct || 'Unknown';
+    const sysLabel    = { 'fire-alarm':'FireAlarm','sprinkler':'Sprinkler','fire-pump':'FirePump','hood':'Hood','extinguisher':'Extinguisher','backflow':'Backflow','standpipe':'Standpipe','hydrant':'Hydrant','bda':'BDA','smoke-control':'SmokeControl','gas-detection':'GasDetection','special-suppression':'SpecialSuppression' }[sysKey] || sysKey;
+    const datePart    = (draft.savedAt || '').slice(0, 10);
+    const fileName    = `FLPS_Draft_${propSlugHR}_${sysLabel}_${datePart}.json`;
+    const content     = JSON.stringify(draft, null, 2);
+    const uploaded    = await driveUploadFile(fileName, 'application/json', content, folderId, existingId);
     await fetch(`https://www.googleapis.com/drive/v3/files/${uploaded.id}?supportsAllDrives=true`, {
       method: 'PATCH',
       headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ appProperties: {
-        flips_draft_key:    key,
-        flips_draft_sys:    sysKey,
-        flips_draft_active: 'true',
-        flips_draft_saved:  draft.savedAt
+        flips_draft_key:       key,
+        flips_draft_sys:       sysKey,
+        flips_draft_prop_name: propDisplay,
+        flips_draft_prop_acct: _currentPropertyAcct || '',
+        flips_draft_active:    'true',
+        flips_draft_saved:     draft.savedAt
       }})
     });
     console.log('[Draft] Backed up to Drive:', fileName);
@@ -4386,8 +4403,10 @@ async function savePropertyProfile(propName, profile) {
     method: 'PATCH',
     headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ appProperties: {
-      flips_profile_property: propName,
+      flips_profile_property: propName.split(/\r\n|\r|\n/)[0].trim().slice(0, 100),
       ...(_currentPropertyAcct ? { flips_profile_acct: _currentPropertyAcct } : {}),
+      flips_profile_updated:  profile.updatedAt || todayMT(),
+      flips_profile_systems:  (profile.systems || []).join(','),
       flips_profile_version:  '1.0'
     }})
   });
