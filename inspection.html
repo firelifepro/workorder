@@ -781,7 +781,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
         <div id="sig-warning" class="sig-warning"></div>
         <div class="btn-row">
           <button class="btn-primary fire" id="save-download-btn" onclick="saveAndDownload()">📄 Save &amp; Download PDF</button>
-          <button class="btn-secondary" id="editable-pdf-btn" onclick="buildEditablePDF()" style="display:none;">📋 Download Editable Format</button>
           <button class="btn-secondary" onclick="goBackFromSign()">← Back</button>
         </div>
         <div id="pdf-status" style="margin-top:10px;font-size:0.8rem;color:var(--green);line-height:1.6;"></div>
@@ -1316,8 +1315,7 @@ function goFAStep(key) {
   // Show target — 'sign' reuses #step-4
   if (key === 'sign') {
     document.getElementById('step-4').style.display = 'block';
-    const editBtn = document.getElementById('editable-pdf-btn');
-    if (editBtn) editBtn.style.display = activeInspectionSystem === 'fire-alarm' ? 'inline-flex' : 'none';
+
     const todayStr = todayMT();
     if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
@@ -4214,8 +4212,8 @@ function autoSign() {
     sigHasData = true;
   };
 
-  // Dancing Script is loaded via the page's Google Fonts <link> — wait for it to be ready
-  (document.fonts ? document.fonts.ready : Promise.resolve()).then(drawSig);
+  // Use document.fonts.load() for the specific variant — more reliable than .ready for canvas
+  (document.fonts ? document.fonts.load('700 52px "Dancing Script"') : Promise.resolve()).then(drawSig);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5816,15 +5814,12 @@ function removePhoto(idx) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EDITABLE PDF (fillable form, fire-alarm only — test/comparison version)
+// PDF GENERATION — returns a Uint8Array of the PDF bytes
 // ─────────────────────────────────────────────────────────────────────────────
-async function buildEditablePDF() {
-  if (!window.PDFLib) { alert('Editable PDF library not loaded. Please refresh.'); return; }
-  const btn = document.getElementById('editable-pdf-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-  try {
-    const data = collectAllData();
-    const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+async function buildEditablePDFBytes() {
+  if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
+  const data = collectAllData();
+  const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
     const pdfDoc = await PDFDocument.create();
     const form = pdfDoc.getForm();
     const hFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -6036,21 +6031,24 @@ async function buildEditablePDF() {
     try {
       const svgResp = await fetch('logo.svg');
       const svgText = await svgResp.text();
-      const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+      // Inject explicit dimensions so all browsers render SVG at a known pixel size
+      const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
+      const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
       const svgUrl  = URL.createObjectURL(svgBlob);
       await new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
-          // SVG viewBox 0 0 400 600; shield+flame spans roughly top 440 units
-          // Crop source region x=30 y=0 w=340 h=440 (aspect 340:440 ≈ 17:22)
-          const srcX = 30, srcY = 0, srcW = 340, srcH = 440;
-          const scale = 2; // 2× for crispness
+          // Step 1: Render full SVG to canvas at 3× scale (guaranteed 400×600 coordinate space)
+          const scale = 3;
+          const fullCanvas = document.createElement('canvas');
+          fullCanvas.width = 400 * scale; fullCanvas.height = 600 * scale;
+          fullCanvas.getContext('2d').drawImage(img, 0, 0, fullCanvas.width, fullCanvas.height);
+          // Step 2: Crop just the shield+flame (SVG y=0 to y=445, full width)
+          const cropW = 400 * scale, cropH = 445 * scale;
           const canvas = document.createElement('canvas');
-          canvas.width  = Math.round(srcW * scale);
-          canvas.height = Math.round(srcH * scale);
+          canvas.width = cropW; canvas.height = cropH;
           const ctx = canvas.getContext('2d');
-          // Draw SVG at full viewBox size (400×600) then crop via drawImage coordinates
-          ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, canvas.width, canvas.height);
+          ctx.drawImage(fullCanvas, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
           URL.revokeObjectURL(svgUrl);
           const dataUrl = canvas.toDataURL('image/png');
           const b64 = dataUrl.split(',')[1];
@@ -6064,7 +6062,7 @@ async function buildEditablePDF() {
 
     // Draw logo (transparent PNG — no background square needed)
     if (logoImg) {
-      const logoS = 80;
+      const logoS = 70;
       const dims  = logoImg.scaleToFit(logoS, logoS);
       page.drawImage(logoImg, {
         x: ML + 2,
@@ -6078,7 +6076,7 @@ async function buildEditablePDF() {
     const compX = ML + 65;
     const compInfo = [
       { t: 'Fire Life Protection System, Inc.', sz: 8.5, f: hFont },
-      { t: '8201 Shaffer Parkway Suit B.',        sz: 7.5, f: rFont },
+      { t: '8201 Shaffer Parkway Suite B',        sz: 7.5, f: rFont },
       { t: 'Littleton, CO 80127',                sz: 7.5, f: rFont },
       { t: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', sz: 7, f: rFont },
       { t: 'Alan.antonio@firelifeprotectionsystems.com', sz: 7, f: rFont },
@@ -6466,23 +6464,8 @@ async function buildEditablePDF() {
       if (col > 0) curY += photoH + 22;
     }
 
-    // ── Download ──────────────────────────────────────────────────────────────
-    const bytes = await pdfDoc.save();
-    const blob = new Blob([bytes], { type:'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const propSlug = (data.property?.name||'Inspection').replace(/[^a-z0-9]/gi,'_');
-    const dt = (data.inspection?.date||todayMT()).replace(/-/g,'');
-    a.download = `FLPS_FA_Editable_${propSlug}_${dt}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch(e) {
-    console.error('buildEditablePDF error:', e);
-    alert('Error generating editable PDF: ' + e.message);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📋 Download Editable Format'; }
-  }
+    // Return bytes to caller
+    return await pdfDoc.save();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6526,14 +6509,22 @@ async function saveAndDownload() {
   const setStatus2 = (msg, color) => { if (statusEl) { statusEl.innerHTML += `<div style="color:${color||'inherit'}">${msg}</div>`; } };
   if (statusEl) statusEl.innerHTML = '';
 
-  let pdfDoc = null;
+  let pdfBytes = null;
   let filename = '';
   let jsonSaveOk = false;
+
+  const downloadPDF = (bytes, name) => {
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   try {
     // ── 3. Build the PDF ───────────────────────────────────────────────────────
     setStatus2('Building PDF…', 'var(--slate)');
-    pdfDoc = await buildPDFDoc();
+    pdfBytes = await buildEditablePDFBytes();
     const data = collectAllData();
     const propSlug = buildFileSlug(data);
     const dateSlug = data.inspection.date || todayMT();
@@ -6548,7 +6539,6 @@ async function saveAndDownload() {
         const dateStr  = data.inspection.date || todayMT();
         const jsonFileName = `FLPS_Insp_${sysSlug}_${propSlug}_${dateStr}.json`;
         const folderId = await findOrCreateFolder('FLPS Inspection History', await getFlpsRootFolderId());
-        // Always create a new history record (never upsert — each inspection is a unique record)
         const content = JSON.stringify({ ...data, photos: inspectionPhotos.map(p => ({ note: p.note })) }, null, 2);
         const uploaded = await driveUploadFile(jsonFileName, 'application/json', content, folderId, null);
         await fetch(`https://www.googleapis.com/drive/v3/files/${uploaded.id}?supportsAllDrives=true`, {
@@ -6567,7 +6557,7 @@ async function saveAndDownload() {
         jsonSaveOk = true;
         setStatus2('✓ Inspection data saved to FLPS Inspection History', 'var(--green)');
 
-        // ── 4b. Update property profile with this system's results ─────────────
+        // ── 4b. Update property profile ────────────────────────────────────────
         try {
           setStatus2('Updating property profile…', 'var(--slate)');
           await updatePropertyProfileAfterSave(data, activeInspectionSystem);
@@ -6582,7 +6572,8 @@ async function saveAndDownload() {
       // ── 5. Save PDF to Drive ─────────────────────────────────────────────────
       try {
         setStatus2('Saving PDF to Drive…', 'var(--slate)');
-        const pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
+        const binary   = Array.from(new Uint8Array(pdfBytes)).map(b => String.fromCharCode(b)).join('');
+        const pdfBase64 = btoa(binary);
         const pdfFolderId = await findOrCreateFolder('FLPS Inspection Reports', await getFlpsRootFolderId());
         await driveUploadFile(filename, 'application/pdf', pdfBase64, pdfFolderId, null);
         setStatus2('✓ PDF saved to FLPS Inspection Reports', 'var(--green)');
@@ -6594,26 +6585,18 @@ async function saveAndDownload() {
     }
 
     // ── 6. Download PDF locally ────────────────────────────────────────────────
-    pdfDoc.save(filename);
+    downloadPDF(pdfBytes, filename);
     setStatus2(`✓ Downloaded: ${filename}`, 'var(--green)');
     setStatus2('Upload to thecomplianceengine.com to complete reporting.', 'var(--slate)');
     toast('✓ Report saved & downloaded!');
 
-    // ── 7. Offer draft discard if a draft exists ───────────────────────────────
-    if (loadDraft()) {
-      if (statusEl) {
-        statusEl.insertAdjacentHTML('beforeend', `
-          <div style="margin-top:8px;padding:8px 10px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;font-size:0.78rem;color:#92400e;display:flex;align-items:center;gap:10px;">
-            <span>💾 A saved draft exists for this inspection.</span>
-            <button onclick="clearDraft();this.closest('div').innerHTML='<span style=color:var(--green)>✓ Draft discarded</span>';" style="background:#f59e0b;color:white;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;font-family:inherit;">Discard Draft</button>
-          </div>`);
-      }
-    }
+    // ── 7. Clear the draft — inspection is complete ────────────────────────────
+    clearDraft();
 
   } catch(e) {
     setStatus2('✗ Error: ' + e.message, 'var(--red)');
     toast('✗ Save failed: ' + e.message);
-    if (pdfDoc) { try { pdfDoc.save(filename || 'inspection.pdf'); } catch(_) {} }
+    if (pdfBytes) { try { downloadPDF(pdfBytes, filename || 'inspection.pdf'); } catch(_) {} }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📄 Save & Download PDF'; }
   }
