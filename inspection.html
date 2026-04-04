@@ -755,7 +755,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-body">
         <p style="font-size:0.78rem;color:var(--slate);margin-bottom:8px;">Sign below to certify this inspection report:</p>
         <canvas id="sig-canvas" width="500" height="100"></canvas>
-        <button class="sig-clear" onclick="clearSig()">Clear Signature</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <button class="sig-clear" onclick="clearSig()">Clear Signature</button>
+          <button class="sig-clear" onclick="autoSign()" style="background:#e0f2fe;border-color:#0284c7;color:#0369a1;">✦ Auto Sign</button>
+        </div>
         <div style="margin-top:12px;" class="field-grid">
           <div class="field-group">
             <label>Print Name</label>
@@ -4190,6 +4193,32 @@ function initSig() {
 }
 function clearSig() { if (sigCtx) sigCtx.clearRect(0,0,500,100); sigHasData = false; }
 
+function autoSign() {
+  initSig();
+  const canvas = document.getElementById('sig-canvas');
+  if (!canvas || !sigCtx) return;
+  sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const drawSig = () => {
+    sigCtx.save();
+    sigCtx.translate(18, 72);
+    sigCtx.rotate(-0.05);
+    sigCtx.font = 'italic 48px "Dancing Script", cursive';
+    sigCtx.fillStyle = '#0d1b2a';
+    sigCtx.fillText('Alan Antonio', 0, 0);
+    sigCtx.restore();
+    sigHasData = true;
+  };
+
+  if (document.fonts && !document.fonts.check('48px "Dancing Script"')) {
+    const f = new FontFace('Dancing Script',
+      'url(https://fonts.gstatic.com/s/dancingscript/v25/If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7BMSo3ROp6.woff2)');
+    f.load().then(loaded => { document.fonts.add(loaded); drawSig(); }).catch(drawSig);
+  } else {
+    drawSig();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DRIVE FOLDER MANAGEMENT
 // Searches ALL drives (My Drive + Shared Drives) for the folder.
@@ -6374,10 +6403,21 @@ async function buildEditablePDF() {
     const sigH = 35, sigW = PW/2-10;
     page.drawRectangle({ x:ML, y:ry(sigH), width:sigW, height:sigH, color:lgray, borderColor:navy, borderWidth:0.5 });
     page.drawText('INSPECTOR SIGNATURE:', { x:ML+3, y:ry(sigH)+sigH-8, size:7, font:hFont, color:navy });
-    const sf = form.createTextField(fid());
-    sf.setText(data.signature?.name||'');
-    sf.addToPage(page, { x:ML+2, y:ry(sigH)+2, width:sigW-4, height:sigH-12, font: rFont });
-    sf.setFontSize(9);
+    if (sigHasData) {
+      try {
+        const sc  = document.getElementById('sig-canvas');
+        const b64 = sc.toDataURL('image/png').split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const sImg  = await pdfDoc.embedPng(ab);
+        const sDims = sImg.scaleToFit(sigW - 8, sigH - 14);
+        page.drawImage(sImg, { x: ML + 4, y: ry(sigH) + 3, width: sDims.width, height: sDims.height });
+      } catch(_) {}
+    } else {
+      const sf = form.createTextField(fid());
+      sf.setText(data.signature?.name||'');
+      sf.addToPage(page, { x:ML+2, y:ry(sigH)+2, width:sigW-4, height:sigH-12, font: rFont });
+      sf.setFontSize(9);
+    }
     page.drawRectangle({ x:ML+PW/2+10, y:ry(sigH), width:sigW, height:sigH, color:lgray, borderColor:navy, borderWidth:0.5 });
     page.drawText('CLIENT SIGNATURE:', { x:ML+PW/2+13, y:ry(sigH)+sigH-8, size:7, font:hFont, color:navy });
     const cf = form.createTextField(fid());
