@@ -354,6 +354,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 .dyn-table th { background: var(--navy3); color: white; padding: 5px 7px; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; }
 .dyn-table td { padding: 5px 5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .dyn-table input, .dyn-table select { border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font-size: 0.78rem; font-family: inherit; width: 100%; background: white; outline: none; }
+.dyn-table .pf-group { gap: 2px; flex-wrap: nowrap; }
+.dyn-table .pf-btn { padding: 3px 6px; min-width: 26px; font-size: 0.65rem; }
 .dyn-table input:focus, .dyn-table select:focus { border-color: var(--blue); background: #eff6ff; }
 .del-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 1rem; padding: 2px 6px; }
 
@@ -1268,17 +1270,17 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">📊</span><span>Existing Sprinkler Systems Overview</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th>Question</th><th style="width:55px;">Y/N/NA</th><th style="width:40px;">#</th><th style="width:70px;">Inspecting?</th><th>Locations / Notes</th></tr></thead>
+          <thead><tr><th>Question</th><th style="width:110px;">Y/N/NA</th><th style="width:40px;">#</th><th style="width:70px;">Inspecting?</th><th>Locations / Notes</th></tr></thead>
           <tbody>
-            <tr><td>Wet System(s) Present?</td><td><select id="sp-ov-wet-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-wet-cnt"></td><td><select id="sp-ov-wet-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-wet-loc"></td></tr>
-            <tr><td>Dry System(s) Present?</td><td><select id="sp-ov-dry-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-dry-cnt"></td><td><select id="sp-ov-dry-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-dry-loc"></td></tr>
-            <tr><td>Fire Pump(s) Present?</td><td><select id="sp-ov-pump-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-pump-cnt"></td><td><select id="sp-ov-pump-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-pump-loc"></td></tr>
-            <tr><td>Test Header(s) Present?</td><td><select id="sp-ov-hdr-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-hdr-cnt"></td><td><select id="sp-ov-hdr-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-hdr-loc"></td></tr>
-            <tr><td>FDC Present?</td><td><select id="sp-ov-fdc-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-fdc-cnt"></td><td><select id="sp-ov-fdc-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-fdc-loc"></td></tr>
-            <tr><td>PRV Valve(s) Present?</td><td><select id="sp-ov-prv-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-prv-cnt"></td><td><select id="sp-ov-prv-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-prv-loc"></td></tr>
-            <tr><td>Antifreeze System(s) Present?</td><td><select id="sp-ov-af-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-af-cnt"></td><td><select id="sp-ov-af-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-af-loc"></td></tr>
-            <tr><td>Standpipe(s) Present?</td><td><select id="sp-ov-standp-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-standp-cnt"></td><td><select id="sp-ov-standp-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-standp-loc"></td></tr>
-            <tr><td>Deluge Valve(s) Present?</td><td><select id="sp-ov-del-yn"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="number" id="sp-ov-del-cnt"></td><td><select id="sp-ov-del-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-del-loc"></td></tr>
+            <tr><td>Wet System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-wet-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-wet-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-wet-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-wet-yn" value=""></td><td><input type="number" id="sp-ov-wet-cnt"></td><td><select id="sp-ov-wet-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-wet-loc"></td></tr>
+            <tr><td>Dry System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-dry-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-dry-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-dry-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-dry-yn" value=""></td><td><input type="number" id="sp-ov-dry-cnt"></td><td><select id="sp-ov-dry-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-dry-loc"></td></tr>
+            <tr><td>Fire Pump(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-pump-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-pump-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-pump-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-pump-yn" value=""></td><td><input type="number" id="sp-ov-pump-cnt"></td><td><select id="sp-ov-pump-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-pump-loc"></td></tr>
+            <tr><td>Test Header(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-hdr-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-hdr-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-hdr-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-hdr-yn" value=""></td><td><input type="number" id="sp-ov-hdr-cnt"></td><td><select id="sp-ov-hdr-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-hdr-loc"></td></tr>
+            <tr><td>FDC Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-fdc-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-fdc-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-fdc-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-fdc-yn" value=""></td><td><input type="number" id="sp-ov-fdc-cnt"></td><td><select id="sp-ov-fdc-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-fdc-loc"></td></tr>
+            <tr><td>PRV Valve(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-prv-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-prv-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-prv-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-prv-yn" value=""></td><td><input type="number" id="sp-ov-prv-cnt"></td><td><select id="sp-ov-prv-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-prv-loc"></td></tr>
+            <tr><td>Antifreeze System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-af-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-af-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-af-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-af-yn" value=""></td><td><input type="number" id="sp-ov-af-cnt"></td><td><select id="sp-ov-af-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-af-loc"></td></tr>
+            <tr><td>Standpipe(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-standp-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-standp-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-standp-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-standp-yn" value=""></td><td><input type="number" id="sp-ov-standp-cnt"></td><td><select id="sp-ov-standp-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-standp-loc"></td></tr>
+            <tr><td>Deluge Valve(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-del-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-del-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-del-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-del-yn" value=""></td><td><input type="number" id="sp-ov-del-cnt"></td><td><select id="sp-ov-del-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-del-loc"></td></tr>
           </tbody>
         </table>
       </div>
@@ -1313,13 +1315,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">🔍</span><span>Pre-Inspection General Questions</span></div>
       <div class="card-body">
         <table class="dyn-table">
-          <thead><tr><th>Question</th><th style="width:55px;">Y</th><th style="width:55px;">N</th><th style="width:70px;">Unknown</th></tr></thead>
+          <thead><tr><th>Question</th><th style="width:185px;">Answer</th></tr></thead>
           <tbody>
-            <tr><td>Is the building occupied?</td><td><select id="sp-pre-occupied"><option value="">—</option><option>Y</option><option>N</option><option>Unknown</option></select></td><td></td><td></td></tr>
-            <tr><td>Has the occupancy classification and hazard or contents remained the same since last inspection?</td><td><select id="sp-pre-occ-same"><option value="">—</option><option>Y</option><option>N</option><option>Unknown</option></select></td><td></td><td></td></tr>
-            <tr><td>All fire protection systems in service?</td><td><select id="sp-pre-in-svc"><option value="">—</option><option>Y</option><option>N</option><option>Unknown</option></select></td><td></td><td></td></tr>
-            <tr><td>Has the system remained in service without modification since the last inspection?</td><td><select id="sp-pre-no-mod"><option value="">—</option><option>Y</option><option>N</option><option>Unknown</option></select></td><td></td><td></td></tr>
-            <tr><td>Was the system free of actuation of devices or alarms since the last inspection?</td><td><select id="sp-pre-no-alarm"><option value="">—</option><option>Y</option><option>N</option><option>Unknown</option></select></td><td></td><td></td></tr>
+            <tr><td>Is the building occupied?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-pre-occupied','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-pre-occupied','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-pre-occupied','Unknown')">Unknown</button></div><input type="hidden" id="sp-pre-occupied" value=""></td></tr>
+            <tr><td>Has the occupancy classification and hazard or contents remained the same since last inspection?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-pre-occ-same','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-pre-occ-same','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-pre-occ-same','Unknown')">Unknown</button></div><input type="hidden" id="sp-pre-occ-same" value=""></td></tr>
+            <tr><td>All fire protection systems in service?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-pre-in-svc','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-pre-in-svc','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-pre-in-svc','Unknown')">Unknown</button></div><input type="hidden" id="sp-pre-in-svc" value=""></td></tr>
+            <tr><td>Has the system remained in service without modification since the last inspection?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-pre-no-mod','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-pre-no-mod','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-pre-no-mod','Unknown')">Unknown</button></div><input type="hidden" id="sp-pre-no-mod" value=""></td></tr>
+            <tr><td>Was the system free of actuation of devices or alarms since the last inspection?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-pre-no-alarm','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-pre-no-alarm','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-pre-no-alarm','Unknown')">Unknown</button></div><input type="hidden" id="sp-pre-no-alarm" value=""></td></tr>
           </tbody>
         </table>
       </div>
@@ -1446,20 +1448,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">📊</span><span>Main Drain Test Results</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th style="width:32px;">#</th><th>System Location</th><th style="width:80px;">Static (PSI)</th><th style="width:80px;">Residual (PSI)</th><th style="width:80px;">Post (PSI)</th></tr></thead>
-          <tbody id="sp-drain-tbody">
-            <tr><td style="text-align:center;color:var(--slate);">1</td><td><input type="text" id="sp-dr-loc-1"></td><td><input type="number" id="sp-dr-static-1"></td><td><input type="number" id="sp-dr-resid-1"></td><td><input type="number" id="sp-dr-post-1"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">2</td><td><input type="text" id="sp-dr-loc-2"></td><td><input type="number" id="sp-dr-static-2"></td><td><input type="number" id="sp-dr-resid-2"></td><td><input type="number" id="sp-dr-post-2"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">3</td><td><input type="text" id="sp-dr-loc-3"></td><td><input type="number" id="sp-dr-static-3"></td><td><input type="number" id="sp-dr-resid-3"></td><td><input type="number" id="sp-dr-post-3"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">4</td><td><input type="text" id="sp-dr-loc-4"></td><td><input type="number" id="sp-dr-static-4"></td><td><input type="number" id="sp-dr-resid-4"></td><td><input type="number" id="sp-dr-post-4"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">5</td><td><input type="text" id="sp-dr-loc-5"></td><td><input type="number" id="sp-dr-static-5"></td><td><input type="number" id="sp-dr-resid-5"></td><td><input type="number" id="sp-dr-post-5"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">6</td><td><input type="text" id="sp-dr-loc-6"></td><td><input type="number" id="sp-dr-static-6"></td><td><input type="number" id="sp-dr-resid-6"></td><td><input type="number" id="sp-dr-post-6"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">7</td><td><input type="text" id="sp-dr-loc-7"></td><td><input type="number" id="sp-dr-static-7"></td><td><input type="number" id="sp-dr-resid-7"></td><td><input type="number" id="sp-dr-post-7"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">8</td><td><input type="text" id="sp-dr-loc-8"></td><td><input type="number" id="sp-dr-static-8"></td><td><input type="number" id="sp-dr-resid-8"></td><td><input type="number" id="sp-dr-post-8"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">9</td><td><input type="text" id="sp-dr-loc-9"></td><td><input type="number" id="sp-dr-static-9"></td><td><input type="number" id="sp-dr-resid-9"></td><td><input type="number" id="sp-dr-post-9"></td></tr>
-            <tr><td style="text-align:center;color:var(--slate);">10</td><td><input type="text" id="sp-dr-loc-10"></td><td><input type="number" id="sp-dr-static-10"></td><td><input type="number" id="sp-dr-resid-10"></td><td><input type="number" id="sp-dr-post-10"></td></tr>
-          </tbody>
+          <thead><tr><th style="width:32px;">#</th><th>System Location</th><th style="width:80px;">Static (PSI)</th><th style="width:80px;">Residual (PSI)</th><th style="width:80px;">Post (PSI)</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="sp-drain-tbody"></tbody>
         </table>
+        <button class="add-row-btn" onclick="addSPDrainRow()" style="margin-top:6px;">+ Add Row</button>
       </div>
     </div>
 
@@ -1553,6 +1545,7 @@ const SP_STEP_ORDER = ['overview', 'inspection', 'drain', 'defic'];
 let currentSPStep = 'overview';
 let spDeficCount = 0;
 let spNoteCount = 0;
+let spDrainCount = 0;
 let activeSystems = new Set();
 let activeInspectionSystem = null;
 let _propertyProfile = null;
@@ -1784,8 +1777,8 @@ function goSPStep(key) {
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
     updateSPDeficiencySummary();
     const spDeficRows = document.getElementById('sp-defic-tbody')?.querySelectorAll('tr').length || 0;
-    if (spDeficRows > 0 && overallStatus === '') setOverallStatus('DEFICIENT');
-    else if (spDeficRows === 0 && overallStatus === '') setOverallStatus('COMPLIANT');
+    if (spDeficRows > 0) setOverallStatus('DEFICIENT');
+    else if (overallStatus === '') setOverallStatus('COMPLIANT');
   } else {
     const target = document.getElementById('step-sp-' + key);
     if (target) target.style.display = 'block';
@@ -1881,12 +1874,14 @@ function clearSPInspectionState() {
     el.querySelectorAll('.deficiency-row').forEach(d => d.classList.remove('show'));
     el.querySelectorAll('.deficiency-row input').forEach(i => { i.value = ''; });
   });
-  ['sp-defic-tbody', 'sp-notes-tbody'].forEach(id => {
+  ['sp-defic-tbody', 'sp-notes-tbody', 'sp-drain-tbody'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
   });
   spDeficCount = 0;
   spNoteCount = 0;
+  spDrainCount = 0;
+  addSPDrainRow();
   overallStatus = '';
   document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('sp-report-type') && (document.getElementById('sp-report-type').value = 'Annual');
@@ -1898,6 +1893,7 @@ function clearSPInspectionState() {
 function restoreSPDraft(draft) {
   spDeficCount = draft.counters?.spDeficCount || 0;
   spNoteCount  = draft.counters?.spNoteCount  || 0;
+  spDrainCount = draft.counters?.spDrainCount || 0;
   overallStatus = draft.overallStatus || '';
   if (overallStatus) setOverallStatus(overallStatus);
   Object.entries(draft.stepHTML || {}).forEach(([id, html]) => {
@@ -1926,6 +1922,36 @@ function restoreSPDraft(draft) {
     else if (t.dataset.sstep === resumeStep) t.classList.add('active');
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function addSPDrainRow(loc, stat, resid, post) {
+  spDrainCount++;
+  const n = spDrainCount;
+  document.getElementById('sp-drain-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="sp-dr-row-${n}">
+      <td style="text-align:center;color:var(--slate);">${n}</td>
+      <td><input type="text" id="sp-dr-loc-${n}" value="${loc||''}"></td>
+      <td><input type="number" id="sp-dr-static-${n}" value="${stat||''}"></td>
+      <td><input type="number" id="sp-dr-resid-${n}" value="${resid||''}"></td>
+      <td><input type="number" id="sp-dr-post-${n}" value="${post||''}"></td>
+      <td><button class="del-btn" onclick="removeSPDrainRow(${n})">✕</button></td>
+    </tr>`);
+}
+
+function removeSPDrainRow(n) {
+  document.getElementById('sp-dr-row-' + n)?.remove();
+  // Renumber remaining rows
+  document.querySelectorAll('#sp-drain-tbody tr').forEach((tr, i) => {
+    tr.querySelector('td:first-child').textContent = i + 1;
+  });
+}
+
+function setSPBtn(btn, fieldId, val) {
+  const group = btn.closest('.pf-group');
+  group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const inp = document.getElementById(fieldId);
+  if (inp) inp.value = val;
 }
 
 function setSPReportType(val, btn) {
@@ -4482,7 +4508,7 @@ function saveDraft() {
     photos,
     sigData,
     custSigData,
-    counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount },
+    counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount, spDrainCount },
     overallStatus,
     onsiteUnsat: Object.assign({}, _onsiteUnsat),
     currentFAStep,
@@ -6593,27 +6619,28 @@ async function buildSprinklerPDFBytes() {
   };
   const inspRow = (label, rowId) => {
     const val = spPF(rowId);
-    const Y  = val === 'PASS' ? 'X' : '';
-    const N  = val === 'FAIL' ? 'X' : '';
-    const NA = val === 'N/A'  ? 'X' : '';
+    const yVal  = val === 'PASS' ? 'X' : '';
+    const nVal  = val === 'FAIL' ? 'X' : '';
+    const naVal = val === 'N/A'  ? 'X' : '';
     const noteVal = document.getElementById('sp-defic-note-' + rowId)?.value?.trim() || '';
     const h = 13;
     checkPage(h + 1);
-    page.drawRectangle({ x: ML,         y: ry(h), width: LW,  height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
+    page.drawRectangle({ x: ML, y: ry(h), width: LW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
     wrap(label, 6.5, LW - 4).forEach((ln, li) => {
       page.drawText(ln, { x: ML+2, y: ry(h) + h - 6 - li*7, size: 6.5, font: rFont, color: blk });
     });
-    page.drawRectangle({ x: ML+LW,      y: ry(h), width: BW,  height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
-    if (Y)  page.drawText('X', { x: ML+LW+BW/2-3,    y: ry(h)+4, size: 8, font: hFont, color: blk });
-    page.drawRectangle({ x: ML+LW+BW,   y: ry(h), width: BW,  height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
-    if (N)  page.drawText('X', { x: ML+LW+BW*1.5-3,  y: ry(h)+4, size: 8, font: hFont, color: blk });
-    page.drawRectangle({ x: ML+LW+BW*2, y: ry(h), width: BW,  height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
-    if (NA) page.drawText('X', { x: ML+LW+BW*2.5-3,  y: ry(h)+4, size: 8, font: hFont, color: blk });
+    page.drawRectangle({ x: ML+LW,      y: ry(h), width: BW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const yf = form.createTextField(fid());
+    yf.setText(yVal); yf.addToPage(page, { x: ML+LW+1,      y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); yf.setFontSize(8);
+    page.drawRectangle({ x: ML+LW+BW,   y: ry(h), width: BW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const nf2 = form.createTextField(fid());
+    nf2.setText(nVal); nf2.addToPage(page, { x: ML+LW+BW+1,  y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); nf2.setFontSize(8);
+    page.drawRectangle({ x: ML+LW+BW*2, y: ry(h), width: BW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const naf = form.createTextField(fid());
+    naf.setText(naVal); naf.addToPage(page, { x: ML+LW+BW*2+1, y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); naf.setFontSize(8);
+    page.drawRectangle({ x: ML+LW+BW*3, y: ry(h), width: NW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
     const nf = form.createTextField(fid());
-    nf.setText(noteVal);
-    page.drawRectangle({ x: ML+LW+BW*3, y: ry(h), width: NW,  height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
-    nf.addToPage(page, { x: ML+LW+BW*3+1, y: ry(h)+1, width: NW-2, height: h-2, font: rFont });
-    nf.setFontSize(6);
+    nf.setText(noteVal); nf.addToPage(page, { x: ML+LW+BW*3+1, y: ry(h)+1, width: NW-2, height: h-2, font: rFont }); nf.setFontSize(6);
     curY += h + 1;
   };
 
@@ -6685,24 +6712,32 @@ async function buildSprinklerPDFBytes() {
   compLines.forEach(cl => { page.drawText(cl.text, { x: infoX+4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk }); compY -= cl.sz + 1.5; });
 
   // Report type + job fields
-  const rtLineH = 13;
-  const rtTypes  = [['Annual', fd['sp-report-type'] === 'Annual'], ['Semi-Annual', fd['sp-report-type'] === 'Semi-Annual'], ['Quarterly', fd['sp-report-type'] === 'Quarterly']];
-  let rtY = ry(logoAreaH) + logoAreaH - rtLineH;
-  rtTypes.forEach(([label, checked]) => {
-    page.drawRectangle({ x: rtX, y: rtY, width: rtW, height: rtLineH, color: checked ? rgb(0.85,0.92,1) : gold, borderColor: sky, borderWidth: 0.4 });
-    page.drawText((checked ? '[X] ' : '[  ] ') + label.toUpperCase(), { x: rtX+4, y: rtY+4, size: 7, font: checked ? hFont : rFont, color: blk });
-    rtY -= rtLineH + 1;
+  // Report type boxes (3 equal segments)
+  const rtBoxH = 15;
+  const rtBW = rtW / 3;
+  const rtCur = (fd['sp-report-type'] || '').toUpperCase();
+  ['ANNUAL','SEMI-ANNUAL','QUARTERLY'].forEach((t, i) => {
+    const sel = rtCur === t || (t === 'SEMI-ANNUAL' && (rtCur === 'SEMI ANNUAL' || rtCur.includes('SEMI')));
+    const bx = rtX + i * rtBW;
+    page.drawRectangle({ x: bx, y: ry(logoAreaH)+logoAreaH-rtBoxH, width: rtBW-1, height: rtBoxH, color: sel ? rgb(1,0.85,0) : white, borderColor: sky, borderWidth: 0.5 });
+    page.drawText(t, { x: bx+3, y: ry(logoAreaH)+logoAreaH-rtBoxH+5, size: 6, font: hFont, color: sel ? rgb(0.4,0.25,0) : navy });
   });
-  const rtFields = [
-    { label: 'JOB NUMBER', val: fd['sp-job-num'] || '' },
-    { label: 'DATE PERFORMED', val: fd['insp-date'] || data.inspection?.date || '' },
-    { label: 'INSPECTOR(S) INITIALS', val: fd['inspector-name'] || data.inspection?.inspectorName || '' },
+  // Job info fields (editable)
+  const jFields = [
+    ['JOB NUMBER', fd['sp-job-num'] || ''],
+    ['PO NUMBER (IF ANY)', ''],
+    ['DATE PERFORMED', fd['insp-date'] || data.inspection?.date || ''],
+    ['INSPECTOR', fd['inspector-name'] || data.inspection?.inspectorName || ''],
   ];
-  rtFields.forEach(rf => {
-    page.drawRectangle({ x: rtX, y: rtY, width: rtW, height: rtLineH, color: gold, borderColor: sky, borderWidth: 0.4 });
-    page.drawText(rf.label + ':', { x: rtX+2, y: rtY+8, size: 5.5, font: hFont, color: navy });
-    page.drawText(rf.val, { x: rtX+2, y: rtY+2, size: 7, font: rFont, color: blk });
-    rtY -= rtLineH + 1;
+  let jY = ry(logoAreaH) + logoAreaH - rtBoxH - 3;
+  jFields.forEach(([lbl, val]) => {
+    jY -= 7;
+    page.drawText(lbl, { x: rtX+2, y: jY, size: 5.5, font: hFont, color: navy });
+    jY -= 10;
+    page.drawRectangle({ x: rtX, y: jY, width: rtW, height: 10, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const jf = form.createTextField(fid());
+    jf.setText(val); jf.addToPage(page, { x: rtX+1, y: jY+1, width: rtW-2, height: 8, font: rFont }); jf.setFontSize(7);
+    jY -= 2;
   });
   curY += logoAreaH + 4;
 
@@ -6924,16 +6959,15 @@ async function buildSprinklerPDFBytes() {
   // ── PAGE 4: MAIN DRAIN TEST RESULTS ─────────────────────────────────────────
   addPage();
   secHdr('MAIN DRAIN TEST RESULTS');
-  const drainRows = [];
-  for (let i = 1; i <= 10; i++) {
-    drainRows.push([
-      String(i),
-      fd['sp-dr-loc-' + i]    || '',
-      fd['sp-dr-static-' + i] || '',
-      fd['sp-dr-resid-' + i]  || '',
-      fd['sp-dr-post-' + i]   || '',
-    ]);
-  }
+  const drainDOMRows = [...(document.getElementById('sp-drain-tbody')?.querySelectorAll('tr') || [])];
+  const drainRows = drainDOMRows.map((tr, i) => [
+    String(i + 1),
+    tr.querySelector('input[type=text]')?.value || '',
+    tr.querySelectorAll('input[type=number]')[0]?.value || '',
+    tr.querySelectorAll('input[type=number]')[1]?.value || '',
+    tr.querySelectorAll('input[type=number]')[2]?.value || '',
+  ]);
+  if (drainRows.length === 0) drainRows.push(['1', '', '', '', '']);
   table(
     [{label:'#',w:28},{label:'SYSTEM LOCATION',w:PW-268},{label:'STATIC (PSI)',w:80},{label:'RESIDUAL (PSI)',w:80},{label:'POST (PSI)',w:80}],
     drainRows, 14
@@ -6967,24 +7001,18 @@ async function buildSprinklerPDFBytes() {
   // General notes
   secHdr('GENERAL NOTES & SITE OBSERVATIONS');
   const spNoteRows = [...(document.getElementById('sp-notes-tbody')?.querySelectorAll('tr') || [])];
-  if (spNoteRows.length === 0) {
+  const noteRowCount = Math.max(spNoteRows.length, 3);
+  for (let i = 0; i < noteRowCount; i++) {
+    const note = i < spNoteRows.length ? (spNoteRows[i].querySelector('td:nth-child(2) input')?.value?.trim() || '') : '';
     checkPage(14);
-    page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText('No general notes.', { x: ML+4, y: ty(13,4), size: 8, font: rFont, color: blk });
+    page.drawRectangle({ x: ML,    y: ry(13), width: 24,     height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
+    page.drawText(String(i+1), { x: ML+8, y: ty(13,4), size: 7, font: hFont, color: blk });
+    const nf = form.createTextField(fid());
+    nf.setText(note);
+    page.drawRectangle({ x: ML+24, y: ry(13), width: PW-24, height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
+    nf.addToPage(page, { x: ML+25, y: ry(13)+1, width: PW-26, height: 11, font: rFont });
+    nf.setFontSize(7);
     curY += 14;
-  } else {
-    spNoteRows.forEach((tr, i) => {
-      const note = tr.querySelector('td:nth-child(2) input')?.value?.trim() || '';
-      checkPage(14);
-      page.drawRectangle({ x: ML,    y: ry(13), width: 24,     height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-      page.drawText(String(i+1), { x: ML+8, y: ty(13,4), size: 7, font: hFont, color: blk });
-      const nf = form.createTextField(fid());
-      nf.setText(note);
-      page.drawRectangle({ x: ML+24, y: ry(13), width: PW-24, height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-      nf.addToPage(page, { x: ML+25, y: ry(13)+1, width: PW-26, height: 11, font: rFont });
-      nf.setFontSize(7);
-      curY += 14;
-    });
   }
 
   // ── SIGNATURES ───────────────────────────────────────────────────────────────
@@ -7370,7 +7398,7 @@ async function buildEditablePDFBytes() {
       ['JOB NUMBER', ''],
       ['PO NUMBER (IF ANY)', ''],
       ['DATE PERFORMED', data.inspection?.date || ''],
-      ['INSPECTOR(S) INITIALS', data.inspection?.inspectorName || ''],
+      ['INSPECTOR', data.inspection?.inspectorName || ''],
     ];
     let jY = ry(iH) + iH - rtBoxH - 3;
     jFields.forEach(([lbl, val]) => {
