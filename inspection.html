@@ -1242,12 +1242,23 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     <div class="card">
       <div class="card-header"><span class="icon">💧</span><span>Sprinkler System Configuration</span></div>
       <div class="card-body">
-        <div class="data-row cols-3">
-          <div class="data-field"><label>System Type</label>
-            <select id="sp-type"><option>Wet Pipe</option><option>Dry Pipe</option><option>Pre-Action</option><option>Deluge</option><option>Foam-Water</option><option>Glycol</option><option>Nitrogen-Filled</option></select>
+        <div class="data-row cols-1">
+          <div class="data-field"><label>System Type (select all that apply)</label>
+            <div class="pf-group" id="sp-type-btns" style="flex-wrap:wrap;gap:5px;padding:4px 0;">
+              <button class="pf-btn" onclick="toggleSPType(this,'Wet Pipe')">Wet Pipe</button>
+              <button class="pf-btn" onclick="toggleSPType(this,'Dry Pipe')">Dry Pipe</button>
+              <button class="pf-btn" onclick="toggleSPType(this,'Pre-Action')">Pre-Action</button>
+              <button class="pf-btn" onclick="toggleSPType(this,'Deluge')">Deluge</button>
+              <button class="pf-btn" onclick="toggleSPType(this,'Foam-Water')">Foam-Water</button>
+              <button class="pf-btn" onclick="toggleSPType(this,'Glycol')">Glycol</button>
+              <button class="pf-btn" onclick="toggleSPType(this,'Nitrogen-Filled')">Nitrogen-Filled</button>
+            </div>
+            <input type="hidden" id="sp-type" value="">
           </div>
+        </div>
+        <div class="data-row cols-2">
           <div class="data-field"><label>Manufacturer / Make</label><input type="text" id="sp-mfr"></div>
-          <div class="data-field"><label>Year Installed</label><input type="number" id="sp-year"></div>
+          <div class="data-field"><label>Year Installed</label><input type="text" id="sp-year"></div>
         </div>
         <div class="data-row cols-3">
           <div class="data-field"><label>Total # of Sprinkler Heads</label><input type="number" id="sp-heads"></div>
@@ -1270,17 +1281,17 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">📊</span><span>Existing Sprinkler Systems Overview</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th>Question</th><th style="width:110px;">Y/N/NA</th><th style="width:40px;">#</th><th style="width:70px;">Inspecting?</th><th>Locations / Notes</th></tr></thead>
+          <thead><tr><th>Question</th><th style="width:110px;">Y/N/NA</th><th style="width:40px;">#</th><th style="width:90px;">Inspecting?</th><th>Locations / Notes</th></tr></thead>
           <tbody>
-            <tr><td>Wet System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-wet-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-wet-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-wet-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-wet-yn" value=""></td><td><input type="number" id="sp-ov-wet-cnt"></td><td><select id="sp-ov-wet-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-wet-loc"></td></tr>
-            <tr><td>Dry System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-dry-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-dry-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-dry-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-dry-yn" value=""></td><td><input type="number" id="sp-ov-dry-cnt"></td><td><select id="sp-ov-dry-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-dry-loc"></td></tr>
-            <tr><td>Fire Pump(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-pump-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-pump-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-pump-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-pump-yn" value=""></td><td><input type="number" id="sp-ov-pump-cnt"></td><td><select id="sp-ov-pump-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-pump-loc"></td></tr>
-            <tr><td>Test Header(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-hdr-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-hdr-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-hdr-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-hdr-yn" value=""></td><td><input type="number" id="sp-ov-hdr-cnt"></td><td><select id="sp-ov-hdr-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-hdr-loc"></td></tr>
-            <tr><td>FDC Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-fdc-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-fdc-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-fdc-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-fdc-yn" value=""></td><td><input type="number" id="sp-ov-fdc-cnt"></td><td><select id="sp-ov-fdc-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-fdc-loc"></td></tr>
-            <tr><td>PRV Valve(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-prv-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-prv-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-prv-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-prv-yn" value=""></td><td><input type="number" id="sp-ov-prv-cnt"></td><td><select id="sp-ov-prv-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-prv-loc"></td></tr>
-            <tr><td>Antifreeze System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-af-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-af-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-af-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-af-yn" value=""></td><td><input type="number" id="sp-ov-af-cnt"></td><td><select id="sp-ov-af-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-af-loc"></td></tr>
-            <tr><td>Standpipe(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-standp-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-standp-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-standp-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-standp-yn" value=""></td><td><input type="number" id="sp-ov-standp-cnt"></td><td><select id="sp-ov-standp-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-standp-loc"></td></tr>
-            <tr><td>Deluge Valve(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-del-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-del-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-del-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-del-yn" value=""></td><td><input type="number" id="sp-ov-del-cnt"></td><td><select id="sp-ov-del-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-ov-del-loc"></td></tr>
+            <tr><td>Wet System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-wet-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-wet-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-wet-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-wet-yn" value=""></td><td><input type="text" id="sp-ov-wet-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-wet-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-wet-insp','N')">N</button></div><input type="hidden" id="sp-ov-wet-insp" value=""></td><td><input type="text" id="sp-ov-wet-loc"></td></tr>
+            <tr><td>Dry System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-dry-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-dry-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-dry-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-dry-yn" value=""></td><td><input type="text" id="sp-ov-dry-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-dry-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-dry-insp','N')">N</button></div><input type="hidden" id="sp-ov-dry-insp" value=""></td><td><input type="text" id="sp-ov-dry-loc"></td></tr>
+            <tr><td>Fire Pump(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-pump-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-pump-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-pump-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-pump-yn" value=""></td><td><input type="text" id="sp-ov-pump-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-pump-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-pump-insp','N')">N</button></div><input type="hidden" id="sp-ov-pump-insp" value=""></td><td><input type="text" id="sp-ov-pump-loc"></td></tr>
+            <tr><td>Test Header(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-hdr-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-hdr-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-hdr-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-hdr-yn" value=""></td><td><input type="text" id="sp-ov-hdr-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-hdr-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-hdr-insp','N')">N</button></div><input type="hidden" id="sp-ov-hdr-insp" value=""></td><td><input type="text" id="sp-ov-hdr-loc"></td></tr>
+            <tr><td>FDC Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-fdc-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-fdc-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-fdc-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-fdc-yn" value=""></td><td><input type="text" id="sp-ov-fdc-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-fdc-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-fdc-insp','N')">N</button></div><input type="hidden" id="sp-ov-fdc-insp" value=""></td><td><input type="text" id="sp-ov-fdc-loc"></td></tr>
+            <tr><td>PRV Valve(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-prv-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-prv-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-prv-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-prv-yn" value=""></td><td><input type="text" id="sp-ov-prv-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-prv-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-prv-insp','N')">N</button></div><input type="hidden" id="sp-ov-prv-insp" value=""></td><td><input type="text" id="sp-ov-prv-loc"></td></tr>
+            <tr><td>Antifreeze System(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-af-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-af-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-af-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-af-yn" value=""></td><td><input type="text" id="sp-ov-af-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-af-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-af-insp','N')">N</button></div><input type="hidden" id="sp-ov-af-insp" value=""></td><td><input type="text" id="sp-ov-af-loc"></td></tr>
+            <tr><td>Standpipe(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-standp-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-standp-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-standp-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-standp-yn" value=""></td><td><input type="text" id="sp-ov-standp-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-standp-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-standp-insp','N')">N</button></div><input type="hidden" id="sp-ov-standp-insp" value=""></td><td><input type="text" id="sp-ov-standp-loc"></td></tr>
+            <tr><td>Deluge Valve(s) Present?</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-del-yn','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-del-yn','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-ov-del-yn','N/A')">N/A</button></div><input type="hidden" id="sp-ov-del-yn" value=""></td><td><input type="text" id="sp-ov-del-cnt" inputmode="numeric" style="width:100%;"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-ov-del-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-ov-del-insp','N')">N</button></div><input type="hidden" id="sp-ov-del-insp" value=""></td><td><input type="text" id="sp-ov-del-loc"></td></tr>
           </tbody>
         </table>
       </div>
@@ -1290,13 +1301,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div class="card-header"><span class="icon">📅</span><span>3 &amp; 5 Year — Previous Inspection Year (If Applicable)</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
-          <thead><tr><th>Service</th><th style="width:70px;">Applicable?</th><th style="width:90px;">Last Year Performed</th><th style="width:80px;">Next Year Due</th><th style="width:70px;">Inspecting Now?</th><th>Location / Notes</th></tr></thead>
+          <thead><tr><th>Service</th><th style="width:120px;">Applicable?</th><th style="width:90px;">Last Year Performed</th><th style="width:80px;">Next Year Due</th><th style="width:80px;">Inspecting Now?</th><th>Location / Notes</th></tr></thead>
           <tbody>
-            <tr><td>Dry Valve (3 Year Full Trip)</td><td><select id="sp-35-dv-app"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="text" id="sp-35-dv-last"></td><td><input type="text" id="sp-35-dv-next"></td><td><select id="sp-35-dv-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-35-dv-loc"></td></tr>
-            <tr><td>Roof Top Flow (5 Year)</td><td><select id="sp-35-rt-app"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="text" id="sp-35-rt-last"></td><td><input type="text" id="sp-35-rt-next"></td><td><select id="sp-35-rt-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-35-rt-loc"></td></tr>
-            <tr><td>FDC Hydrostatic (5 Year)</td><td><select id="sp-35-fdc-app"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="text" id="sp-35-fdc-last"></td><td><input type="text" id="sp-35-fdc-next"></td><td><select id="sp-35-fdc-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-35-fdc-loc"></td></tr>
-            <tr><td>Internal Piping (5 Year)</td><td><select id="sp-35-ip-app"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="text" id="sp-35-ip-last"></td><td><input type="text" id="sp-35-ip-next"></td><td><select id="sp-35-ip-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-35-ip-loc"></td></tr>
-            <tr><td>Standpipe (5 Year)</td><td><select id="sp-35-standp-app"><option value="">—</option><option>Y</option><option>N</option><option>N/A</option></select></td><td><input type="text" id="sp-35-standp-last"></td><td><input type="text" id="sp-35-standp-next"></td><td><select id="sp-35-standp-insp"><option value="">—</option><option>Y</option><option>N</option></select></td><td><input type="text" id="sp-35-standp-loc"></td></tr>
+            <tr><td>Dry Valve (3 Year Full Trip)</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-dv-app','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-dv-app','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-35-dv-app','N/A')">N/A</button></div><input type="hidden" id="sp-35-dv-app" value=""></td><td><input type="text" id="sp-35-dv-last"></td><td><input type="text" id="sp-35-dv-next"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-dv-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-dv-insp','N')">N</button></div><input type="hidden" id="sp-35-dv-insp" value=""></td><td><input type="text" id="sp-35-dv-loc"></td></tr>
+            <tr><td>Roof Top Flow (5 Year)</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-rt-app','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-rt-app','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-35-rt-app','N/A')">N/A</button></div><input type="hidden" id="sp-35-rt-app" value=""></td><td><input type="text" id="sp-35-rt-last"></td><td><input type="text" id="sp-35-rt-next"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-rt-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-rt-insp','N')">N</button></div><input type="hidden" id="sp-35-rt-insp" value=""></td><td><input type="text" id="sp-35-rt-loc"></td></tr>
+            <tr><td>FDC Hydrostatic (5 Year)</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-fdc-app','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-fdc-app','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-35-fdc-app','N/A')">N/A</button></div><input type="hidden" id="sp-35-fdc-app" value=""></td><td><input type="text" id="sp-35-fdc-last"></td><td><input type="text" id="sp-35-fdc-next"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-fdc-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-fdc-insp','N')">N</button></div><input type="hidden" id="sp-35-fdc-insp" value=""></td><td><input type="text" id="sp-35-fdc-loc"></td></tr>
+            <tr><td>Internal Piping (5 Year)</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-ip-app','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-ip-app','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-35-ip-app','N/A')">N/A</button></div><input type="hidden" id="sp-35-ip-app" value=""></td><td><input type="text" id="sp-35-ip-last"></td><td><input type="text" id="sp-35-ip-next"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-ip-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-ip-insp','N')">N</button></div><input type="hidden" id="sp-35-ip-insp" value=""></td><td><input type="text" id="sp-35-ip-loc"></td></tr>
+            <tr><td>Standpipe (5 Year)</td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-standp-app','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-standp-app','N')">N</button><button class="pf-btn na" onclick="setSPBtn(this,'sp-35-standp-app','N/A')">N/A</button></div><input type="hidden" id="sp-35-standp-app" value=""></td><td><input type="text" id="sp-35-standp-last"></td><td><input type="text" id="sp-35-standp-next"></td><td><div class="pf-group"><button class="pf-btn pass" onclick="setSPBtn(this,'sp-35-standp-insp','Y')">Y</button><button class="pf-btn fail" onclick="setSPBtn(this,'sp-35-standp-insp','N')">N</button></div><input type="hidden" id="sp-35-standp-insp" value=""></td><td><input type="text" id="sp-35-standp-loc"></td></tr>
           </tbody>
         </table>
       </div>
@@ -1823,21 +1834,14 @@ function startSprinklerInspection() {
 function _continueSprinklerStart() {
   const prev = window._prevInspectionData;
   if (prev) {
+    // Restore config text fields only — skip hidden inputs (button groups) and pass/fail states
     Object.entries(prev.fieldData || {}).forEach(([elId, val]) => {
       const el = document.getElementById(elId);
-      if (!el || el.type === 'button') return;
-      if (el.tagName === 'SELECT') el.value = val;
-      else el.value = val;
+      if (!el || el.type === 'button' || el.type === 'hidden') return;
+      el.value = val;
     });
-    Object.entries(prev.pfStates || {}).forEach(([rowId, state]) => {
-      const row = document.getElementById(rowId);
-      if (!row || !state.val) return;
-      row.dataset.val = state.val;
-      row.querySelectorAll('.pf-btn').forEach(b => {
-        b.classList.toggle('selected', b.textContent.trim() === state.val);
-      });
-    });
-    toast('✓ Previous data loaded');
+    // Note: pfStates intentionally NOT restored — new inspections start with blank selections
+    toast('✓ Previous config loaded');
   }
   currentSPStep = 'overview';
   document.getElementById('step-sp-overview').style.display = 'block';
@@ -1869,7 +1873,7 @@ function clearSPInspectionState() {
     if (!el) return;
     el.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
     el.querySelectorAll('.inspect-row').forEach(r => { r.dataset.val = ''; delete r.dataset.spDeficId; });
-    el.querySelectorAll('input[type=text], input[type=date], input[type=number], textarea').forEach(f => { f.value = ''; });
+    el.querySelectorAll('input[type=text], input[type=date], input[type=number], input[type=hidden], textarea').forEach(f => { f.value = ''; });
     el.querySelectorAll('select').forEach(s => { s.selectedIndex = 0; });
     el.querySelectorAll('.deficiency-row').forEach(d => d.classList.remove('show'));
     el.querySelectorAll('.deficiency-row input').forEach(i => { i.value = ''; });
@@ -1952,6 +1956,13 @@ function setSPBtn(btn, fieldId, val) {
   btn.classList.add('selected');
   const inp = document.getElementById(fieldId);
   if (inp) inp.value = val;
+}
+
+function toggleSPType(btn, val) {
+  btn.classList.toggle('selected');
+  const selected = [...document.querySelectorAll('#sp-type-btns .pf-btn.selected')].map(b => b.textContent.trim());
+  const inp = document.getElementById('sp-type');
+  if (inp) inp.value = selected.join(', ');
 }
 
 function setSPReportType(val, btn) {
@@ -6696,10 +6707,6 @@ async function buildSprinklerPDFBytes() {
   // Company info box
   page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
   const compLines = [
-    { text: 'Alan Antonio, C.F.P.S. C.S.P.', bold: true, sz: 8 },
-    { text: 'Fire Protection Engineer', bold: false, sz: 7.5 },
-    { text: 'Chief Executive Officer', bold: false, sz: 7.5 },
-    { text: '', bold: false, sz: 4 },
     { text: 'Fire Life Protection System, Inc.', bold: true, sz: 7.5 },
     { text: '8201 Shaffer Parkway Suite B', bold: false, sz: 7 },
     { text: 'Littleton, CO 80127', bold: false, sz: 7 },
