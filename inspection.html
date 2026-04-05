@@ -712,6 +712,23 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
   </div>
 
+  <!-- ══ GENERIC PREVDEFIC INTERSTITIAL ══ -->
+  <div id="step-generic-prevdefic" style="display:none;">
+    <div class="card" style="border-left:4px solid var(--amber);">
+      <div class="card-header" style="background:var(--amber);color:white;"><span class="icon">⚠</span><span>Previous Inspection — Deficiencies to Review</span></div>
+      <div class="card-body">
+        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:12px;">The previous inspection for this system had the following deficiencies recorded. Review each item and confirm whether it has been corrected during this inspection.</p>
+        <table class="dyn-table" style="margin-bottom:0;">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency</th></tr></thead>
+          <tbody id="generic-prevdefic-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="proceedFromGenericPrevDefic()">Continue to Inspection →</button>
+    </div>
+  </div>
+
   <!-- ══ STEP 3: INSPECTION FORMS ══ -->
   <div id="step-3" style="display:none;">
     <div id="active-system-banner"></div>
@@ -1433,6 +1450,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
         <div class="inspect-row" id="row-sp-pipe-aligned" data-val=""><div class="inspect-row-top"><div class="inspect-label">Properly aligned / no external loads?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-pipe-aligned','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-pipe-aligned','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-pipe-aligned','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-pipe-aligned"><input type="text" id="sp-defic-note-sp-pipe-aligned" placeholder="Describe deficiency…"></div></div>
         <div class="inspect-row" id="row-sp-hangers-cond" data-val=""><div class="inspect-row-top"><div class="inspect-label">Visible hangers/braces not damaged?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-hangers-cond','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-hangers-cond','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-hangers-cond','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-hangers-cond"><input type="text" id="sp-defic-note-sp-hangers-cond" placeholder="Describe deficiency…"></div></div>
         <div class="inspect-row" id="row-sp-pipe-heat" data-val=""><div class="inspect-row-top"><div class="inspect-label">Adequate heat in areas with wet piping?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-pipe-heat','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-pipe-heat','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-pipe-heat','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-pipe-heat"><input type="text" id="sp-defic-note-sp-pipe-heat" placeholder="Describe deficiency…"></div></div>
+        <div class="inspect-row" id="row-sp-pipe-label" data-val=""><div class="inspect-row-top"><div class="inspect-label">Pipe appropriately labeled including water flow direction?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-pipe-label','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-pipe-label','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-pipe-label','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-pipe-label"><input type="text" id="sp-defic-note-sp-pipe-label" placeholder="Describe deficiency…"></div></div>
       </div>
     </div>
 
@@ -1450,6 +1468,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
         <div class="inspect-row" id="row-sp-heads-standard" data-val=""><div class="inspect-row-top"><div class="inspect-label">Standard response sprinklers 50+ years old — replaced or sample tested within last 15 years?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-heads-standard','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-heads-standard','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-heads-standard','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-heads-standard"><input type="text" id="sp-defic-note-sp-heads-standard" placeholder="Describe deficiency…"></div></div>
         <div class="inspect-row" id="row-sp-dp-heads" data-val=""><div class="inspect-row-top"><div class="inspect-label">Dry-pendant sprinklers replaced/tested within 10 years?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-dp-heads','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-dp-heads','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-dp-heads','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-dp-heads"><input type="text" id="sp-defic-note-sp-dp-heads" placeholder="Describe deficiency…"></div></div>
         <div class="inspect-row" id="row-sp-escutcheons" data-val=""><div class="inspect-row-top"><div class="inspect-label">All escutcheons in place / not damaged?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-escutcheons','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-escutcheons','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-escutcheons','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-escutcheons"><input type="text" id="sp-defic-note-sp-escutcheons" placeholder="Describe deficiency…"></div></div>
+        <div class="inspect-row" id="row-sp-heads-20yr" data-val=""><div class="inspect-row-top"><div class="inspect-label">Sprinklers are not 20 years or older and are requiring lab testing?</div><div class="pf-group"><button class="pf-btn pass" onclick="setSPPF(this,'sp-heads-20yr','PASS')">PASS</button><button class="pf-btn fail" onclick="setSPPF(this,'sp-heads-20yr','FAIL')">FAIL</button><button class="pf-btn na" onclick="setSPPF(this,'sp-heads-20yr','N/A')">N/A</button></div></div><div class="deficiency-row" id="sp-defic-row-sp-heads-20yr"><input type="text" id="sp-defic-note-sp-heads-20yr" placeholder="Describe deficiency…"></div></div>
       </div>
     </div>
 
@@ -1711,8 +1730,10 @@ function goFAStep(key) {
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
     updateDeficiencySummary();
     const faDeficRows = document.getElementById('fa-defic-tbody')?.querySelectorAll('tr').length || 0;
-    if (faDeficRows > 0 && overallStatus === '') setOverallStatus('DEFICIENT');
-    else if (faDeficRows === 0 && overallStatus === '') setOverallStatus('COMPLIANT');
+    if (!overallStatusUserSet) {
+      if (faDeficRows > 0) setOverallStatus('DEFICIENT');
+      else setOverallStatus('COMPLIANT');
+    }
   } else {
     const target = document.getElementById('step-fa-' + key);
     if (target) target.style.display = 'block';
@@ -2047,6 +2068,12 @@ function _continueSprinklerStart() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function proceedFromGenericPrevDefic() {
+  document.getElementById('step-generic-prevdefic').style.display = 'none';
+  document.getElementById('step-nav').style.display = 'flex';
+  goStep(3);
+}
+
 function proceedFromSPPrevDefic() {
   document.getElementById('step-sp-prevdefic').style.display = 'none';
   currentSPStep = 'overview';
@@ -2238,6 +2265,10 @@ function clearFAInspectionState() {
   if (rtInput) rtInput.value = 'Annual';
   document.getElementById('fa-rt-annual')?.classList.add('selected');
   document.getElementById('fa-rt-semi')?.classList.remove('selected');
+  // Reset overall status
+  overallStatus = '';
+  overallStatusUserSet = false;
+  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
   // Restore On-Site equipment defaults
   const onsiteDefaults = ['Fire Alarm Control Panel','Initiating Devices','Power Supplies','Graphic Maps','Notification Appliance Devices'];
   onsiteDefaults.forEach((val, i) => {
@@ -2736,7 +2767,26 @@ function buildInspectionForms() {
   buildItemPanelMap();
   updateDeficiencySummary();   // populate deficiency box from restored FAILs
 
-  goStep(3);
+  // Show prevdefic interstitial if previous deficiencies exist
+  const prevDefics = (prev && prev.deficiencies) || [];
+  if (prevDefics.length > 0) {
+    const tbody = document.getElementById('generic-prevdefic-tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      prevDefics.forEach((d, i) => {
+        const tr = document.createElement('tr');
+        const label = typeof d === 'string' ? d : (d.item || '');
+        const note  = typeof d === 'object' ? (d.description || '') : '';
+        tr.innerHTML = `<td>${i + 1}</td><td>${label}${note ? `<div style="font-size:0.78rem;color:var(--slate);margin-top:2px;">${note}</div>` : ''}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    document.getElementById('step-generic-prevdefic').style.display = 'block';
+    document.getElementById('step-nav').style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    goStep(3);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8042,6 +8092,7 @@ function startNewInspection() {
     exitSprinklerInspection('property');
   } else {
     // Other system types (extinguisher, hood, etc.) use step-3/step-4 directly
+    document.getElementById('step-generic-prevdefic').style.display = 'none';
     document.getElementById('step-3').style.display = 'none';
     document.getElementById('step-4').style.display = 'none';
     document.getElementById('step-nav').style.display = 'flex';
