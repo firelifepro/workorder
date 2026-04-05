@@ -93,6 +93,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 .step-tab.done .step-check { display: inline; }
 .step-tab.done .step-num { display: none; }
 .step-tab.disabled { opacity: 0.35; pointer-events: none; cursor: default; }
+.step-tab.prevdefic-tab { color: var(--amber); border-right-color: var(--border); }
+.step-tab.prevdefic-tab.active { background: var(--amber); color: white; }
 
 /* ── CARDS ── */
 .card {
@@ -460,6 +462,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     <div class="step-tab done" data-fstep="systems" onclick="exitFireAlarmInspection()">
       <span class="step-num">2</span><span class="step-check">✓</span>Systems
     </div>
+    <div class="step-tab prevdefic-tab" data-fstep="prevdefic" onclick="goFAStep('prevdefic')" style="display:none;">
+      <span class="step-num">⚠</span><span class="step-check">⚠</span>Prior Defic.
+    </div>
     <div class="step-tab active" data-fstep="panel" onclick="goFAStep('panel')">
       <span class="step-num">3</span><span class="step-check">✓</span>Panel &amp; Monitoring
     </div>
@@ -491,6 +496,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
     <div class="step-tab done" data-sstep="systems" onclick="exitSprinklerInspection()">
       <span class="step-num">2</span><span class="step-check">✓</span>Systems
+    </div>
+    <div class="step-tab prevdefic-tab" data-sstep="prevdefic" onclick="goSPStep('prevdefic')" style="display:none;">
+      <span class="step-num">⚠</span><span class="step-check">⚠</span>Prior Defic.
     </div>
     <div class="step-tab active" data-sstep="overview" onclick="goSPStep('overview')">
       <span class="step-num">3</span><span class="step-check">✓</span>Overview
@@ -1662,12 +1670,25 @@ function goFAStep(key) {
   // Auto-save draft on every step transition
   saveDraft();
   const ALL_FA_KEYS = [...FA_STEP_ORDER, 'sign'];
-  // Hide all FA step divs and step-4
+  // Hide all FA step divs, prevdefic, and step-4
   FA_STEP_ORDER.forEach(k => {
     const el = document.getElementById('step-fa-' + k);
     if (el) el.style.display = 'none';
   });
+  document.getElementById('step-fa-prevdefic').style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
+
+  // Handle prevdefic as a special view-only step
+  if (key === 'prevdefic') {
+    document.getElementById('step-fa-prevdefic').style.display = 'block';
+    document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
+      t.classList.remove('active');
+      if (t.dataset.fstep === 'prevdefic') t.classList.add('active');
+    });
+    currentFAStep = 'prevdefic';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
 
   // Show target — 'sign' reuses #step-4
   if (key === 'sign') {
@@ -1688,11 +1709,12 @@ function goFAStep(key) {
     if (key === 'defic') updateDeficiencySummary();
   }
 
-  // Update tab states — 'property' and 'systems' are always done
+  // Update tab states — 'property', 'systems', and 'prevdefic' are excluded from done/active progression
   document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
     t.classList.remove('active', 'done');
     const fstep = t.dataset.fstep;
     if (fstep === 'property' || fstep === 'systems') { t.classList.add('done'); return; }
+    if (fstep === 'prevdefic') return; // never mark prevdefic as done via normal progression
     if (fstep === key) t.classList.add('active');
     else if (ALL_FA_KEYS.indexOf(fstep) < ALL_FA_KEYS.indexOf(key)) t.classList.add('done');
   });
@@ -1754,13 +1776,29 @@ function startFireAlarmInspection() {
 function _resumeFromDraft(draft) {
   restoreDraft(draft);
   document.getElementById('step-fa-prevdefic').style.display = 'none';
+  // Show prevdefic tab if there are previous deficiencies (even when resuming a draft)
+  const faPrevDefics = window._prevInspectionData?.deficiencies || [];
+  if (faPrevDefics.length > 0) {
+    const faPrevTab = document.querySelector('#fa-step-nav .step-tab[data-fstep="prevdefic"]');
+    if (faPrevTab) {
+      const tbody = document.getElementById('fa-prevdefic-tbody');
+      if (tbody) {
+        tbody.innerHTML = faPrevDefics.map((d, i) => `<tr>
+          <td style="text-align:center;color:var(--slate);">${i + 1}</td>
+          <td>${escHtml(d.item || d.description || '')}</td>
+        </tr>`).join('');
+      }
+      faPrevTab.style.display = '';
+    }
+  }
   const resumeStep = 'panel';
   currentFAStep = resumeStep;
   const resumeEl = document.getElementById('step-fa-' + resumeStep);
   if (resumeEl) resumeEl.style.display = 'block';
   document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
     t.classList.remove('active', 'done');
-    if (t.dataset.fstep === 'job') t.classList.add('done');
+    if (t.dataset.fstep === 'property' || t.dataset.fstep === 'systems') t.classList.add('done');
+    else if (t.dataset.fstep === 'prevdefic') return; // leave prevdefic tab as-is
     else if (t.dataset.fstep === resumeStep) t.classList.add('active');
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1781,7 +1819,7 @@ function _continueFireAlarmStart() {
   buildItemPanelMap();
   updateDeficiencySummary();
 
-  // If there were previous deficiencies, show the review step first
+  // If there were previous deficiencies, show the tab and review step first
   const prevDefics = prev?.deficiencies || [];
   if (prevDefics.length > 0) {
     const tbody = document.getElementById('fa-prevdefic-tbody');
@@ -1791,10 +1829,12 @@ function _continueFireAlarmStart() {
         <td>${escHtml(d.item || d.description || '')}</td>
       </tr>`).join('');
     }
+    document.querySelector('#fa-step-nav .step-tab[data-fstep="prevdefic"]').style.display = '';
     document.getElementById('step-fa-prevdefic').style.display = 'block';
     document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
       t.classList.remove('active', 'done');
       if (t.dataset.fstep === 'property' || t.dataset.fstep === 'systems') t.classList.add('done');
+      if (t.dataset.fstep === 'prevdefic') t.classList.add('active');
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
@@ -1830,6 +1870,8 @@ function exitFireAlarmInspection(target) {
     if (el) el.style.display = 'none';
   });
   document.getElementById('step-fa-prevdefic').style.display = 'none';
+  const faPrevDeficTab = document.querySelector('#fa-step-nav .step-tab[data-fstep="prevdefic"]');
+  if (faPrevDeficTab) faPrevDeficTab.style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
   document.getElementById('fa-step-nav').style.display = 'none';
   document.getElementById('fa-active-banner').style.display = 'none';
@@ -1850,7 +1892,20 @@ function goSPStep(key) {
     const el = document.getElementById('step-sp-' + k);
     if (el) el.style.display = 'none';
   });
+  document.getElementById('step-sp-prevdefic').style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
+
+  // Handle prevdefic as a special view-only step
+  if (key === 'prevdefic') {
+    document.getElementById('step-sp-prevdefic').style.display = 'block';
+    document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
+      t.classList.remove('active');
+      if (t.dataset.sstep === 'prevdefic') t.classList.add('active');
+    });
+    currentSPStep = 'prevdefic';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
 
   if (key === 'sign') {
     document.getElementById('step-4').style.display = 'block';
@@ -1869,10 +1924,12 @@ function goSPStep(key) {
     if (key === 'defic') updateSPDeficiencySummary();
   }
 
+  // Update tab states — 'property', 'systems', and 'prevdefic' excluded from done/active progression
   document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
     t.classList.remove('active', 'done');
     const sstep = t.dataset.sstep;
     if (sstep === 'property' || sstep === 'systems') { t.classList.add('done'); return; }
+    if (sstep === 'prevdefic') return; // never mark prevdefic as done via normal progression
     if (sstep === key) t.classList.add('active');
     else if (ALL_SP_KEYS.indexOf(sstep) < ALL_SP_KEYS.indexOf(key)) t.classList.add('done');
   });
@@ -1932,7 +1989,7 @@ function _continueSprinklerStart() {
     toast('✓ Previous config loaded');
   }
 
-  // If there were previous deficiencies, show the review step first
+  // If there were previous deficiencies, show the tab and review step first
   const prevDefics = prev?.deficiencies || [];
   if (prevDefics.length > 0) {
     const tbody = document.getElementById('sp-prevdefic-tbody');
@@ -1942,10 +1999,12 @@ function _continueSprinklerStart() {
         <td>${escHtml(d.item || d.description || '')}</td>
       </tr>`).join('');
     }
+    document.querySelector('#sp-step-nav .step-tab[data-sstep="prevdefic"]').style.display = '';
     document.getElementById('step-sp-prevdefic').style.display = 'block';
     document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
       t.classList.remove('active', 'done');
       if (t.dataset.sstep === 'property' || t.dataset.sstep === 'systems') t.classList.add('done');
+      if (t.dataset.sstep === 'prevdefic') t.classList.add('active');
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
@@ -1980,6 +2039,8 @@ function exitSprinklerInspection(target) {
     if (el) el.style.display = 'none';
   });
   document.getElementById('step-sp-prevdefic').style.display = 'none';
+  const spPrevDeficTab = document.querySelector('#sp-step-nav .step-tab[data-sstep="prevdefic"]');
+  if (spPrevDeficTab) spPrevDeficTab.style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
   document.getElementById('sp-step-nav').style.display = 'none';
   document.getElementById('sp-active-banner').style.display = 'none';
@@ -2042,6 +2103,21 @@ function restoreSPDraft(draft) {
   if (draft.sigData) { const sc = document.getElementById('sig-canvas'); if (sc) { const ctx = sc.getContext('2d'); const img = new Image(); img.onload = () => { ctx.drawImage(img,0,0); sigHasData = true; }; img.src = draft.sigData; } }
   if (draft.custSigData) { const cc = document.getElementById('cust-sig-canvas'); if (cc) { const ctx = cc.getContext('2d'); const img = new Image(); img.onload = () => { ctx.drawImage(img,0,0); custSigHasData = true; }; img.src = draft.custSigData; } }
   document.getElementById('step-sp-prevdefic').style.display = 'none';
+  // Show prevdefic tab if there are previous deficiencies (even when resuming a draft)
+  const spPrevDefics = window._prevInspectionData?.deficiencies || [];
+  if (spPrevDefics.length > 0) {
+    const spPrevTab = document.querySelector('#sp-step-nav .step-tab[data-sstep="prevdefic"]');
+    if (spPrevTab) {
+      const tbody = document.getElementById('sp-prevdefic-tbody');
+      if (tbody) {
+        tbody.innerHTML = spPrevDefics.map((d, i) => `<tr>
+          <td style="text-align:center;color:var(--slate);">${i + 1}</td>
+          <td>${escHtml(d.item || d.description || '')}</td>
+        </tr>`).join('');
+      }
+      spPrevTab.style.display = '';
+    }
+  }
   updateSPDeficiencySummary();
   const resumeStep = 'overview';
   currentSPStep = resumeStep;
@@ -2050,6 +2126,7 @@ function restoreSPDraft(draft) {
   document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
     t.classList.remove('active', 'done');
     if (t.dataset.sstep === 'property' || t.dataset.sstep === 'systems') t.classList.add('done');
+    else if (t.dataset.sstep === 'prevdefic') return; // leave prevdefic tab as-is
     else if (t.dataset.sstep === resumeStep) t.classList.add('active');
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
