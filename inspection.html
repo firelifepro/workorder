@@ -184,9 +184,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
 .pf-btn.pass  { border-color: var(--pass-ring); color: var(--pass-ring); }
 .pf-btn.fail  { border-color: var(--fail-ring); color: var(--fail-ring); }
 .pf-btn.na    { border-color: var(--na-ring);   color: var(--na-ring); }
-.pf-btn.pass.selected  { background: var(--pass-bg); box-shadow: 0 0 0 2px var(--pass-ring); }
-.pf-btn.fail.selected  { background: var(--fail-bg); box-shadow: 0 0 0 2px var(--fail-ring); }
-.pf-btn.na.selected    { background: var(--na-bg);   box-shadow: 0 0 0 2px var(--na-ring); }
+.pf-btn.selected       { background: #eff6ff; box-shadow: 0 0 0 2px var(--blue2); color: var(--blue); }
+.pf-btn.pass.selected  { background: var(--pass-bg); box-shadow: 0 0 0 2px var(--pass-ring); color: var(--pass-ring); }
+.pf-btn.fail.selected  { background: var(--fail-bg); box-shadow: 0 0 0 2px var(--fail-ring); color: var(--fail-ring); }
+.pf-btn.na.selected    { background: var(--na-bg);   box-shadow: 0 0 0 2px var(--na-ring);   color: var(--na-ring); }
 
 .deficiency-row {
   margin-top: 2px; display: none;
@@ -831,6 +832,23 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
   </div>
 
+  <!-- ══ FIRE ALARM: PREVIOUS DEFICIENCIES REVIEW (shown before panel when prev defics exist) ══ -->
+  <div id="step-fa-prevdefic" style="display:none;">
+    <div class="card" style="border-left:4px solid var(--amber);">
+      <div class="card-header" style="background:#fffbeb;"><span class="icon">⚠</span><span>Previous Inspection — Deficiencies to Review</span></div>
+      <div class="card-body">
+        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:12px;">The following deficiencies were recorded on the last inspection for this system. Review before starting the new inspection.</p>
+        <table class="dyn-table" style="margin-bottom:0;">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency</th></tr></thead>
+          <tbody id="fa-prevdefic-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="proceedFromFAPrevDefic()">Continue to Inspection →</button>
+    </div>
+  </div>
+
   <!-- ══ FIRE ALARM STEP 2: PANEL & MONITORING ══ -->
   <div id="step-fa-panel" style="display:none;">
 
@@ -1234,6 +1252,23 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     </div>
   </div>
 
+
+  <!-- ══ SPRINKLER: PREVIOUS DEFICIENCIES REVIEW (shown before overview when prev defics exist) ══ -->
+  <div id="step-sp-prevdefic" style="display:none;">
+    <div class="card" style="border-left:4px solid var(--amber);">
+      <div class="card-header" style="background:#fffbeb;"><span class="icon">⚠</span><span>Previous Inspection — Deficiencies to Review</span></div>
+      <div class="card-body">
+        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:12px;">The following deficiencies were recorded on the last inspection for this system. Review before starting the new inspection.</p>
+        <table class="dyn-table" style="margin-bottom:0;">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency</th></tr></thead>
+          <tbody id="sp-prevdefic-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="proceedFromSPPrevDefic()">Continue to Overview →</button>
+    </div>
+  </div>
 
   <!-- ══ SPRINKLER STEP 1: OVERVIEW ══ -->
   <div id="step-sp-overview" style="display:none;">
@@ -1681,6 +1716,7 @@ function startFireAlarmInspection() {
     const el = document.getElementById('step-fa-' + k);
     if (el) el.style.display = 'none';
   });
+  document.getElementById('step-fa-prevdefic').style.display = 'none';
 
   // Reset and initialize
   clearFAInspectionState();
@@ -1717,6 +1753,7 @@ function startFireAlarmInspection() {
 
 function _resumeFromDraft(draft) {
   restoreDraft(draft);
+  document.getElementById('step-fa-prevdefic').style.display = 'none';
   const resumeStep = 'panel';
   currentFAStep = resumeStep;
   const resumeEl = document.getElementById('step-fa-' + resumeStep);
@@ -1734,20 +1771,53 @@ function _continueFireAlarmStart() {
   const prev = window._prevInspectionData;
   if (prev) {
     restorePanelFields(prev);
-    syncFAReportTypeButtons();
     if (prev.devices) restoreFADevices(prev.devices);
     toast('✓ Previous data loaded');
   }
+  // Always default report type to Annual
+  document.getElementById('report-type').value = 'Annual';
+  syncFAReportTypeButtons();
 
   buildItemPanelMap();
   updateDeficiencySummary();
 
-  // Show first FA step, reset all tab states
+  // If there were previous deficiencies, show the review step first
+  const prevDefics = prev?.deficiencies || [];
+  if (prevDefics.length > 0) {
+    const tbody = document.getElementById('fa-prevdefic-tbody');
+    if (tbody) {
+      tbody.innerHTML = prevDefics.map((d, i) => `<tr>
+        <td style="text-align:center;color:var(--slate);">${i + 1}</td>
+        <td>${escHtml(d.item || d.description || '')}</td>
+      </tr>`).join('');
+    }
+    document.getElementById('step-fa-prevdefic').style.display = 'block';
+    document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
+      t.classList.remove('active', 'done');
+      if (t.dataset.fstep === 'property' || t.dataset.fstep === 'systems') t.classList.add('done');
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  // No prev deficiencies — go directly to panel
   currentFAStep = 'panel';
   document.getElementById('step-fa-panel').style.display = 'block';
   document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
     t.classList.remove('active', 'done');
-    if (t.dataset.fstep === 'job') t.classList.add('done');
+    if (t.dataset.fstep === 'property' || t.dataset.fstep === 'systems') t.classList.add('done');
+    else if (t.dataset.fstep === 'panel') t.classList.add('active');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function proceedFromFAPrevDefic() {
+  document.getElementById('step-fa-prevdefic').style.display = 'none';
+  currentFAStep = 'panel';
+  document.getElementById('step-fa-panel').style.display = 'block';
+  document.querySelectorAll('#fa-step-nav .step-tab').forEach(t => {
+    t.classList.remove('active', 'done');
+    if (t.dataset.fstep === 'property' || t.dataset.fstep === 'systems') t.classList.add('done');
     else if (t.dataset.fstep === 'panel') t.classList.add('active');
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1759,6 +1829,7 @@ function exitFireAlarmInspection(target) {
     const el = document.getElementById('step-fa-' + k);
     if (el) el.style.display = 'none';
   });
+  document.getElementById('step-fa-prevdefic').style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
   document.getElementById('fa-step-nav').style.display = 'none';
   document.getElementById('fa-active-banner').style.display = 'none';
@@ -1820,6 +1891,7 @@ function startSprinklerInspection() {
     const el = document.getElementById('step-sp-' + k);
     if (el) el.style.display = 'none';
   });
+  document.getElementById('step-sp-prevdefic').style.display = 'none';
   clearSPInspectionState();
 
   const draft = loadDraft();
@@ -1836,11 +1908,12 @@ function startSprinklerInspection() {
 function _continueSprinklerStart() {
   const prev = window._prevInspectionData;
   if (prev) {
-    // Restore config text fields only — skip hidden inputs (button groups), number inputs, and pass/fail states
+    // Restore config text fields only — skip hidden, number, button inputs, drain fields, and deficiency note inputs
     Object.entries(prev.fieldData || {}).forEach(([elId, val]) => {
       const el = document.getElementById(elId);
       if (!el || el.type === 'button' || el.type === 'hidden' || el.type === 'number') return;
       if (/^sp-dr-/.test(elId)) return; // drain fields handled separately below
+      if (/^sp-defic-note-/.test(elId)) return; // don't restore prev deficiency notes — new inspection starts clean
       el.value = val;
     });
     // Restore drain row locations from previous inspection (PSI values left blank)
@@ -1858,6 +1931,39 @@ function _continueSprinklerStart() {
     // Note: pfStates intentionally NOT restored — new inspections start with blank selections
     toast('✓ Previous config loaded');
   }
+
+  // If there were previous deficiencies, show the review step first
+  const prevDefics = prev?.deficiencies || [];
+  if (prevDefics.length > 0) {
+    const tbody = document.getElementById('sp-prevdefic-tbody');
+    if (tbody) {
+      tbody.innerHTML = prevDefics.map((d, i) => `<tr>
+        <td style="text-align:center;color:var(--slate);">${i + 1}</td>
+        <td>${escHtml(d.item || d.description || '')}</td>
+      </tr>`).join('');
+    }
+    document.getElementById('step-sp-prevdefic').style.display = 'block';
+    document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
+      t.classList.remove('active', 'done');
+      if (t.dataset.sstep === 'property' || t.dataset.sstep === 'systems') t.classList.add('done');
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  // No prev deficiencies — go directly to overview
+  currentSPStep = 'overview';
+  document.getElementById('step-sp-overview').style.display = 'block';
+  document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
+    t.classList.remove('active', 'done');
+    if (t.dataset.sstep === 'property' || t.dataset.sstep === 'systems') t.classList.add('done');
+    else if (t.dataset.sstep === 'overview') t.classList.add('active');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function proceedFromSPPrevDefic() {
+  document.getElementById('step-sp-prevdefic').style.display = 'none';
   currentSPStep = 'overview';
   document.getElementById('step-sp-overview').style.display = 'block';
   document.querySelectorAll('#sp-step-nav .step-tab').forEach(t => {
@@ -1873,6 +1979,7 @@ function exitSprinklerInspection(target) {
     const el = document.getElementById('step-sp-' + k);
     if (el) el.style.display = 'none';
   });
+  document.getElementById('step-sp-prevdefic').style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
   document.getElementById('sp-step-nav').style.display = 'none';
   document.getElementById('sp-active-banner').style.display = 'none';
@@ -1934,6 +2041,7 @@ function restoreSPDraft(draft) {
   if (draft.photos) { inspectionPhotos.length = 0; draft.photos.forEach(p => inspectionPhotos.push({...p})); renderPhotoGrid(); }
   if (draft.sigData) { const sc = document.getElementById('sig-canvas'); if (sc) { const ctx = sc.getContext('2d'); const img = new Image(); img.onload = () => { ctx.drawImage(img,0,0); sigHasData = true; }; img.src = draft.sigData; } }
   if (draft.custSigData) { const cc = document.getElementById('cust-sig-canvas'); if (cc) { const ctx = cc.getContext('2d'); const img = new Image(); img.onload = () => { ctx.drawImage(img,0,0); custSigHasData = true; }; img.src = draft.custSigData; } }
+  document.getElementById('step-sp-prevdefic').style.display = 'none';
   updateSPDeficiencySummary();
   const resumeStep = 'overview';
   currentSPStep = resumeStep;
@@ -5470,7 +5578,7 @@ function restoreInspectionData(data) {
 // Called after forms are built to restore panel field values
 function restorePanelFields(data) {
   if (!data?.fieldData) return;
-  const skip = new Set(['insp-date']);
+  const skip = new Set(['insp-date', 'report-type']);
   Object.entries(data.fieldData).forEach(([id, val]) => {
     if (skip.has(id)) return;
     const el = document.getElementById(id);
