@@ -457,6 +457,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     <div class="step-tab" data-step="3" onclick="goStep(3)">
       <span class="step-num">3</span><span class="step-check">✓</span>Inspect
     </div>
+    <div class="step-tab" id="step-nav-defic-tab" onclick="goGenericDeficStep()">
+      <span class="step-num">D</span><span class="step-check">✓</span>Deficiencies
+    </div>
     <div class="step-tab" data-step="4" onclick="goStep(4)">
       <span class="step-num">4</span><span class="step-check">✓</span>Sign &amp; Export
     </div>
@@ -750,7 +753,26 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
     <div id="sys-forms"></div>
     <div class="btn-row">
       <button class="btn-secondary" onclick="goStep(2)">← Systems</button>
-      <button class="btn-primary" onclick="goStep(4)">Review & Sign →</button>
+      <button class="btn-primary" onclick="goGenericDeficStep()">Next: Deficiencies →</button>
+    </div>
+  </div>
+
+  <!-- ══ GENERIC DEFICIENCIES STEP ══ -->
+  <div id="step-generic-defic" style="display:none;">
+    <div class="card">
+      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List</span></div>
+      <div class="card-body">
+        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:10px;">Deficiencies found during inspection are listed below. Edit descriptions or add additional items as needed.</p>
+        <table class="dyn-table">
+          <thead><tr><th style="width:32px;">#</th><th>Deficiency</th><th style="width:32px;"></th></tr></thead>
+          <tbody id="generic-defic-tbody"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addGenericDeficRow()" style="margin-top:6px;">+ Add Deficiency</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goStep(3)">← Inspect</button>
+      <button class="btn-primary" onclick="goStep(4)">Next: Sign &amp; Export →</button>
     </div>
   </div>
 
@@ -1409,11 +1431,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(
       <div>
         <div class="cl-section-header">Pre-Inspection</div>
         <div class="cl-block">
-          <div class="inspect-row" id="row-sp-pre-occupied" data-val=""><div class="inspect-row-top"><div class="inspect-label">Is the building occupied?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNA(this,'sp-pre-occupied','Y')">Y</button><button class="yna-btn n" onclick="setSPYNA(this,'sp-pre-occupied','N')">N</button><button class="yna-btn na" onclick="setSPYNA(this,'sp-pre-occupied','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-occupied"><span class="note-badge">Deficiency</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-occupied" placeholder="Describe deficiency…"></div></div>
-          <div class="inspect-row" id="row-sp-pre-occ-same" data-val=""><div class="inspect-row-top"><div class="inspect-label">Has the occupancy classification and hazard or contents remained the same since last inspection?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNA(this,'sp-pre-occ-same','Y')">Y</button><button class="yna-btn n" onclick="setSPYNA(this,'sp-pre-occ-same','N')">N</button><button class="yna-btn na" onclick="setSPYNA(this,'sp-pre-occ-same','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-occ-same"><span class="note-badge">Deficiency</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-occ-same" placeholder="Describe deficiency…"></div></div>
-          <div class="inspect-row" id="row-sp-pre-in-svc" data-val=""><div class="inspect-row-top"><div class="inspect-label">All fire protection systems in service?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNA(this,'sp-pre-in-svc','Y')">Y</button><button class="yna-btn n" onclick="setSPYNA(this,'sp-pre-in-svc','N')">N</button><button class="yna-btn na" onclick="setSPYNA(this,'sp-pre-in-svc','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-in-svc"><span class="note-badge">Deficiency</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-in-svc" placeholder="Describe deficiency…"></div></div>
-          <div class="inspect-row" id="row-sp-pre-no-mod" data-val=""><div class="inspect-row-top"><div class="inspect-label">Has the system remained in service without modification since the last inspection?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNA(this,'sp-pre-no-mod','Y')">Y</button><button class="yna-btn n" onclick="setSPYNA(this,'sp-pre-no-mod','N')">N</button><button class="yna-btn na" onclick="setSPYNA(this,'sp-pre-no-mod','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-no-mod"><span class="note-badge">Deficiency</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-no-mod" placeholder="Describe deficiency…"></div></div>
-          <div class="inspect-row" id="row-sp-pre-no-alarm" data-val=""><div class="inspect-row-top"><div class="inspect-label">Was the system free of actuation of devices or alarms since the last inspection?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNA(this,'sp-pre-no-alarm','Y')">Y</button><button class="yna-btn n" onclick="setSPYNA(this,'sp-pre-no-alarm','N')">N</button><button class="yna-btn na" onclick="setSPYNA(this,'sp-pre-no-alarm','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-no-alarm"><span class="note-badge">Deficiency</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-no-alarm" placeholder="Describe deficiency…"></div></div>
+          <div class="inspect-row" id="row-sp-pre-occupied" data-val=""><div class="inspect-row-top"><div class="inspect-label">Is the building occupied?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNANote(this,'sp-pre-occupied','Y')">Y</button><button class="yna-btn n" onclick="setSPYNANote(this,'sp-pre-occupied','N')">N</button><button class="yna-btn na" onclick="setSPYNANote(this,'sp-pre-occupied','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-occupied"><span class="note-badge">Note</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-occupied" placeholder="Add a note…"></div></div>
+          <div class="inspect-row" id="row-sp-pre-occ-same" data-val=""><div class="inspect-row-top"><div class="inspect-label">Has the occupancy classification and hazard or contents remained the same since last inspection?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNANote(this,'sp-pre-occ-same','Y')">Y</button><button class="yna-btn n" onclick="setSPYNANote(this,'sp-pre-occ-same','N')">N</button><button class="yna-btn na" onclick="setSPYNANote(this,'sp-pre-occ-same','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-occ-same"><span class="note-badge">Note</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-occ-same" placeholder="Add a note…"></div></div>
+          <div class="inspect-row" id="row-sp-pre-in-svc" data-val=""><div class="inspect-row-top"><div class="inspect-label">All fire protection systems in service?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNANote(this,'sp-pre-in-svc','Y')">Y</button><button class="yna-btn n" onclick="setSPYNANote(this,'sp-pre-in-svc','N')">N</button><button class="yna-btn na" onclick="setSPYNANote(this,'sp-pre-in-svc','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-in-svc"><span class="note-badge">Note</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-in-svc" placeholder="Add a note…"></div></div>
+          <div class="inspect-row" id="row-sp-pre-no-mod" data-val=""><div class="inspect-row-top"><div class="inspect-label">Has the system remained in service without modification since the last inspection?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNANote(this,'sp-pre-no-mod','Y')">Y</button><button class="yna-btn n" onclick="setSPYNANote(this,'sp-pre-no-mod','N')">N</button><button class="yna-btn na" onclick="setSPYNANote(this,'sp-pre-no-mod','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-no-mod"><span class="note-badge">Note</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-no-mod" placeholder="Add a note…"></div></div>
+          <div class="inspect-row" id="row-sp-pre-no-alarm" data-val=""><div class="inspect-row-top"><div class="inspect-label">Was the system free of actuation of devices or alarms since the last inspection?</div><div class="yna-group"><button class="yna-btn y" onclick="setSPYNANote(this,'sp-pre-no-alarm','Y')">Y</button><button class="yna-btn n" onclick="setSPYNANote(this,'sp-pre-no-alarm','N')">N</button><button class="yna-btn na" onclick="setSPYNANote(this,'sp-pre-no-alarm','NA')">NA</button></div></div><div class="note-row" id="sp-note-row-sp-pre-no-alarm"><span class="note-badge">Note</span><input type="text" class="note-input fail" id="sp-defic-note-sp-pre-no-alarm" placeholder="Add a note…"></div></div>
         </div>
       </div>
       <div>
@@ -1628,6 +1650,7 @@ let currentSPStep = 'overview';
 let spDeficCount = 0;
 let spNoteCount = 0;
 let spDrainCount = 0;
+let genericDeficCount = 0;
 let activeSystems = new Set();
 let activeInspectionSystem = null;
 let _propertyProfile = null;
@@ -1678,14 +1701,29 @@ function goStep(n) {
   if (activeInspectionSystem && !['fire-alarm','sprinkler'].includes(activeInspectionSystem)) {
     saveDraft();
   }
+  // Always hide generic defic step when navigating numbered steps
+  const genDeficEl = document.getElementById('step-generic-defic');
+  if (genDeficEl) genDeficEl.style.display = 'none';
   document.getElementById('step-' + currentStep).style.display = 'none';
   document.getElementById('step-' + n).style.display = 'block';
-  document.querySelectorAll('.step-tab').forEach(t => {
+  document.querySelectorAll('#step-nav .step-tab').forEach(t => {
     const s = parseInt(t.dataset.step);
     t.classList.remove('active','done');
     if (s === n) t.classList.add('active');
     else if (s < n) t.classList.add('done');
   });
+  // Deficiencies tab: done when on or past step-4, otherwise inactive
+  const deficTab = document.getElementById('step-nav-defic-tab');
+  if (deficTab) {
+    deficTab.classList.remove('active', 'done');
+    if (n >= 4) deficTab.classList.add('done');
+  }
+  // Prevdefic tab: mark done when moving past it
+  const prevDeficTab = document.getElementById('step-nav-prevdefic-tab');
+  if (prevDeficTab && prevDeficTab.style.display !== 'none') {
+    prevDeficTab.classList.remove('active');
+    prevDeficTab.classList.add('done');
+  }
   currentStep = n;
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (n === 3) updateDeficiencySummary();
@@ -2091,11 +2129,66 @@ function goGenericPrevDeficStep() {
   if (!activeInspectionSystem || ['fire-alarm','sprinkler'].includes(activeInspectionSystem)) return;
   document.getElementById('step-3').style.display = 'none';
   document.getElementById('step-4').style.display = 'none';
+  document.getElementById('step-generic-defic').style.display = 'none';
   document.getElementById('step-generic-prevdefic').style.display = 'block';
   const prevDeficTab = document.getElementById('step-nav-prevdefic-tab');
   document.querySelectorAll('#step-nav .step-tab[data-step]').forEach(t => t.classList.remove('active'));
+  document.getElementById('step-nav-defic-tab')?.classList.remove('active', 'done');
   if (prevDeficTab) { prevDeficTab.classList.remove('done'); prevDeficTab.classList.add('active'); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goGenericDeficStep() {
+  if (!activeInspectionSystem || ['fire-alarm','sprinkler'].includes(activeInspectionSystem)) return;
+  saveDraft();
+  // Rebuild deficiency table from current FAIL rows in sys-forms
+  genericDeficCount = 0;
+  const tbody = document.getElementById('generic-defic-tbody');
+  if (tbody) {
+    tbody.innerHTML = '';
+    document.querySelectorAll('#sys-forms .inspect-row').forEach(row => {
+      if (row.dataset.val === 'FAIL') {
+        genericDeficCount++;
+        const itemId = row.id.replace('row-', '');
+        const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || itemId;
+        const noteVal = document.getElementById('defic-txt-' + itemId)?.value?.trim() || '';
+        const description = label + (noteVal ? ': ' + noteVal : '');
+        const rowId = 'generic-defic-' + genericDeficCount;
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr id="${rowId}">
+            <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
+            <td><input type="text" id="${rowId}-desc" value="${escHtml(description)}" placeholder="Describe deficiency…"></td>
+            <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
+          </tr>`);
+      }
+    });
+  }
+  // Show/hide
+  document.getElementById('step-3').style.display = 'none';
+  document.getElementById('step-4').style.display = 'none';
+  document.getElementById('step-generic-defic').style.display = 'block';
+  // Nav tab states
+  document.querySelectorAll('#step-nav .step-tab[data-step]').forEach(t => {
+    const s = parseInt(t.dataset.step);
+    t.classList.remove('active', 'done');
+    if (s <= 3) t.classList.add('done');
+  });
+  const deficTab = document.getElementById('step-nav-defic-tab');
+  if (deficTab) { deficTab.classList.remove('done'); deficTab.classList.add('active'); }
+  const prevDeficTab = document.getElementById('step-nav-prevdefic-tab');
+  if (prevDeficTab && prevDeficTab.style.display !== 'none') prevDeficTab.classList.add('done');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function addGenericDeficRow() {
+  genericDeficCount++;
+  const rowId = 'generic-defic-' + genericDeficCount;
+  document.getElementById('generic-defic-tbody').insertAdjacentHTML('beforeend', `
+    <tr id="${rowId}">
+      <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
+      <td><input type="text" placeholder="Describe deficiency…"></td>
+      <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
+    </tr>`);
 }
 
 function proceedFromSPPrevDefic() {
@@ -2133,7 +2226,7 @@ function clearSPInspectionState() {
     if (!el) return;
     el.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
     el.querySelectorAll('.yna-btn').forEach(b => b.classList.remove('selected'));
-    el.querySelectorAll('.inspect-row').forEach(r => { r.dataset.val = ''; delete r.dataset.spDeficId; });
+    el.querySelectorAll('.inspect-row').forEach(r => { r.dataset.val = ''; delete r.dataset.spDeficId; delete r.dataset.spNoteId; });
     el.querySelectorAll('input[type=text], input[type=date], input[type=number], input[type=hidden], textarea').forEach(f => { f.value = ''; });
     el.querySelectorAll('select').forEach(s => { s.selectedIndex = 0; });
     el.querySelectorAll('.deficiency-row').forEach(d => d.classList.remove('show'));
@@ -3955,6 +4048,56 @@ function setSPYNA(btn, rowId, val) {
   updateSPDeficiencySummary();
 }
 
+// Pre-inspection rows: N → general note (not deficiency); Y/NA → clear note
+function setSPYNANote(btn, rowId, val) {
+  btn.closest('.yna-group').querySelectorAll('.yna-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const row = document.getElementById('row-' + rowId);
+  if (!row) return;
+  row.dataset.val = val === 'Y' ? 'PASS' : val === 'N' ? 'FAIL' : 'N/A';
+  const noteRow = document.getElementById('sp-note-row-' + rowId);
+  if (val === 'N') {
+    if (noteRow) noteRow.classList.add('show');
+    if (!row.dataset.spNoteId) {
+      spNoteCount++;
+      const noteId = 'sp-note-preinsp-' + spNoteCount;
+      row.dataset.spNoteId = noteId;
+      const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || rowId;
+      document.getElementById('sp-notes-tbody').insertAdjacentHTML('beforeend', `
+        <tr id="${noteId}">
+          <td style="text-align:center;font-weight:700;color:var(--slate);">${spNoteCount}</td>
+          <td><input type="text" id="${noteId}-text" value="Pre-Inspection: ${escHtml(label)}" placeholder="Note…"></td>
+          <td><button class="del-btn" onclick="removeSPPreInspNote('${noteId}','${rowId}')">✕</button></td>
+        </tr>`);
+      const noteInp = document.getElementById('sp-defic-note-' + rowId);
+      const noteTextInp = document.getElementById(noteId + '-text');
+      if (noteInp && noteTextInp) {
+        noteInp.addEventListener('input', () => {
+          noteTextInp.value = 'Pre-Inspection: ' + label + (noteInp.value ? ' - ' + noteInp.value : '');
+        });
+      }
+    }
+  } else {
+    if (noteRow) { noteRow.classList.remove('show'); const ni = noteRow.querySelector('input'); if (ni) ni.value = ''; }
+    if (row.dataset.spNoteId) {
+      document.getElementById(row.dataset.spNoteId)?.remove();
+      delete row.dataset.spNoteId;
+    }
+  }
+}
+
+function removeSPPreInspNote(noteId, rowId) {
+  document.getElementById(noteId)?.remove();
+  const row = document.getElementById('row-' + rowId);
+  if (row) {
+    delete row.dataset.spNoteId;
+    row.dataset.val = '';
+    row.querySelectorAll('.yna-btn').forEach(b => b.classList.remove('selected'));
+  }
+  const noteRow = document.getElementById('sp-note-row-' + rowId);
+  if (noteRow) { noteRow.classList.remove('show'); const ni = noteRow.querySelector('input'); if (ni) ni.value = ''; }
+}
+
 function setSPPF(btn, rowId, val) {
   const group = btn.closest('.pf-group');
   group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
@@ -4930,6 +5073,10 @@ function saveDraft() {
   const spNotesTbodyEl = document.getElementById('sp-notes-tbody');
   if (spNotesTbodyEl) spNotesTbodyEl.querySelectorAll('input:not([type=button])').forEach(inp => inp.setAttribute('value', inp.value));
   const spNotesHTML = spNotesTbodyEl?.innerHTML || '';
+  // Generic defic tbody
+  const genericDeficTbodyEl = document.getElementById('generic-defic-tbody');
+  if (genericDeficTbodyEl) genericDeficTbodyEl.querySelectorAll('input:not([type=button])').forEach(inp => inp.setAttribute('value', inp.value));
+  const genericDeficHTML = genericDeficTbodyEl?.innerHTML || '';
   // Photos (base64 dataURL + note text)
   const photos = inspectionPhotos.map(p => ({ dataUrl: p.dataUrl, note: p.note }));
   // Signature canvases → dataURL (only if drawn)
@@ -4949,10 +5096,11 @@ function saveDraft() {
     notesHTML,
     spDeficHTML,
     spNotesHTML,
+    genericDeficHTML,
     photos,
     sigData,
     custSigData,
-    counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount, spDrainCount },
+    counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount, spDrainCount, genericDeficCount },
     overallStatus,
     onsiteUnsat: Object.assign({}, _onsiteUnsat),
     currentFAStep,
@@ -5012,10 +5160,16 @@ function restoreDraft(draft) {
   }
   // Restore _onsiteUnsat tracking
   Object.assign(_onsiteUnsat, draft.onsiteUnsat || {});
+  genericDeficCount = draft.counters?.genericDeficCount || 0;
   // Restore general notes tbody (lives in step-4, outside faSteps)
   if (draft.notesHTML !== undefined) {
     const el = document.getElementById('fa-notes-tbody');
     if (el) el.innerHTML = draft.notesHTML;
+  }
+  // Restore generic defic tbody
+  if (draft.genericDeficHTML) {
+    const el = document.getElementById('generic-defic-tbody');
+    if (el) el.innerHTML = draft.genericDeficHTML;
   }
   // Restore photos
   if (draft.photos?.length) {
@@ -5768,16 +5922,38 @@ function collectAllData() {
 
   // Collect deficiency list (for summary)
   const deficiencies = [];
-  document.querySelectorAll('.inspect-row').forEach(row => {
-    if (row.dataset.val === 'FAIL') {
-      const id = row.id.replace('row-','');
-      const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
-      const desc  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
-      deficiencies.push({ item: label, description: desc });
-    }
-  });
+  const isGeneric = !['fire-alarm','sprinkler'].includes(activeInspectionSystem);
+  const genericDeficRows = isGeneric ? document.querySelectorAll('#generic-defic-tbody tr') : [];
 
-  // For FA inspections, also collect deficiencies from the defic-tbody table
+  if (isGeneric && genericDeficRows.length > 0) {
+    // Use the reviewed+edited deficiency list from the dedicated defic step
+    genericDeficRows.forEach(row => {
+      const desc = row.querySelector('td:nth-child(2) input')?.value?.trim();
+      if (desc) deficiencies.push({ item: desc, description: '' });
+    });
+  } else if (!isGeneric) {
+    // FA/SP: scan inspect-rows for FAIL states
+    document.querySelectorAll('.inspect-row').forEach(row => {
+      if (row.dataset.val === 'FAIL') {
+        const id = row.id.replace('row-','');
+        const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
+        const desc  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
+        deficiencies.push({ item: label, description: desc });
+      }
+    });
+  } else {
+    // Generic: inspector hasn't visited defic step yet — fall back to inspect-row scan
+    document.querySelectorAll('#sys-forms .inspect-row').forEach(row => {
+      if (row.dataset.val === 'FAIL') {
+        const id = row.id.replace('row-','');
+        const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
+        const desc  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
+        deficiencies.push({ item: label, description: desc });
+      }
+    });
+  }
+
+  // For FA inspections, also collect from fa-defic-tbody (manually added rows)
   if (activeInspectionSystem === 'fire-alarm') {
     document.querySelectorAll('#fa-defic-tbody tr').forEach(row => {
       const desc = row.querySelector('td:nth-child(2) input')?.value?.trim();
