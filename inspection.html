@@ -3709,15 +3709,18 @@ function addExtUnitRow(prefill) {
   extUnitCount++;
   const n = extUnitCount;
   const p = prefill || {};
-  const mountSel = EXT_MOUNT_OPTS.map(([v,l]) => `<option value="${v}"${v===p.mount?' selected':''}>${l}</option>`).join('');
-  const typeSel  = ['', ...EXT_TYPES].map(t => `<option value="${t}"${t===p.type?' selected':''}>${t||'—'}</option>`).join('');
-  const cabDisabled = p.mount === 'CAB' ? '' : 'disabled style="opacity:.4;"';
+  const defMount = p.mount !== undefined ? p.mount : 'HK';
+  const defType  = p.type  !== undefined ? p.type  : 'ABC';
+  const defFlr   = p.flr   !== undefined ? p.flr   : '1';
+  const mountSel = EXT_MOUNT_OPTS.map(([v,l]) => `<option value="${v}"${v===defMount?' selected':''}>${l}</option>`).join('');
+  const typeSel  = ['', ...EXT_TYPES].map(t => `<option value="${t}"${t===defType?' selected':''}>${t||'—'}</option>`).join('');
+  const cabDisabled = defMount === 'CAB' ? '' : 'disabled style="opacity:.4;"';
   const tbody = document.getElementById('ext-tbody');
   if (!tbody) return;
   tbody.insertAdjacentHTML('beforeend', `
     <tr id="ext-unit-row-${n}">
       <td style="text-align:center;font-weight:600;color:var(--slate);font-size:0.75rem;">${n}</td>
-      <td><input type="text" id="u-flr-${n}" value="${p.flr||''}" placeholder="1" style="width:36px;"></td>
+      <td><input type="text" id="u-flr-${n}" value="${defFlr}" placeholder="1" style="width:36px;"></td>
       <td><input type="text" id="u-loc-${n}" value="${(p.loc||'').replace(/"/g,'&quot;')}" placeholder="e.g. Lobby"></td>
       <td><select id="u-mount-${n}" onchange="extToggleCab(${n})">${mountSel}</select></td>
       <td><input type="text" id="u-cab-${n}" value="${(p.cab||'').replace(/"/g,'&quot;')}" placeholder="GLS,MLT,SGN" ${cabDisabled}></td>
