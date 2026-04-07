@@ -3008,12 +3008,17 @@ function _buildFreshGenericInspection() {
     // Restore all typed panel field values (notes, serials, counts, etc.)
     restorePanelFields(prev);
 
-    // Restore extinguisher rows
+    // Restore extinguisher rows — clear per-inspection fields, keep persistent ones
     if (prev.extinguishers && prev.extinguishers.length > 0) {
       const tbody = document.getElementById('ext-tbody');
       if (tbody) { tbody.innerHTML = ''; extUnitCount = 0; }
       prev.extinguishers.forEach(ext => {
-        addExtUnitRow(ext);
+        addExtUnitRow({
+          ...ext,
+          pf: '', recharge: '', newUnit: '',
+          cabM: '', cabG: '', cabS: '',
+          deficTxt: '',
+        });
       });
     }
 
@@ -3716,15 +3721,23 @@ function addExtUnitRow(prefill) {
   const defFlr   = p.flr   !== undefined ? p.flr   : '1';
   const mountSel = EXT_MOUNT_OPTS.map(([v,l]) => `<option value="${v}"${v===defMount?' selected':''}>${l}</option>`).join('');
   const typeSel  = ['', ...EXT_TYPES].map(t => `<option value="${t}"${t===defType?' selected':''}>${t||'—'}</option>`).join('');
-  const cabDisabled = defMount === 'CAB' ? '' : 'disabled style="opacity:.4;"';
   const tbody = document.getElementById('ext-tbody');
   if (!tbody) return;
   tbody.insertAdjacentHTML('beforeend', `
     <tr id="ext-unit-row-${n}" style="border-bottom:none;">
       <td><input type="text" id="u-flr-${n}" value="${defFlr}" placeholder="1" style="width:30px;"></td>
       <td><input type="text" id="u-loc-${n}" value="${(p.loc||'').replace(/"/g,'&quot;')}" placeholder="e.g. Lobby by entrance"></td>
-      <td><select id="u-mount-${n}" onchange="extToggleCab(${n})">${mountSel}</select></td>
-      <td><input type="text" id="u-cab-${n}" value="${(p.cab||'').replace(/"/g,'&quot;')}" placeholder="GLS,MLT,SGN" ${cabDisabled}></td>
+      <td><select id="u-mount-${n}">${mountSel}</select></td>
+      <td>
+        <div style="display:flex;gap:3px;">
+          <button id="u-cab-m-btn-${n}" class="ext-yn-btn${p.cabM==='Y'?' active':''}" onclick="toggleExtCab(${n},'m')" title="Mallet missing" style="padding:3px 7px;">M</button>
+          <button id="u-cab-g-btn-${n}" class="ext-yn-btn${p.cabG==='Y'?' active':''}" onclick="toggleExtCab(${n},'g')" title="Glass missing" style="padding:3px 7px;">G</button>
+          <button id="u-cab-s-btn-${n}" class="ext-yn-btn${p.cabS==='Y'?' active':''}" onclick="toggleExtCab(${n},'s')" title="Sign missing" style="padding:3px 7px;">S</button>
+        </div>
+        <input type="hidden" id="u-cab-m-${n}" value="${p.cabM||''}">
+        <input type="hidden" id="u-cab-g-${n}" value="${p.cabG||''}">
+        <input type="hidden" id="u-cab-s-${n}" value="${p.cabS||''}">
+      </td>
       <td><input type="text" inputmode="numeric" class="no-spin" id="u-mfg-${n}" value="${p.mfg||''}" placeholder="2019" style="width:54px;"></td>
       <td><input type="text" id="u-size-${n}" value="${(p.size||'').replace(/"/g,'&quot;')}" placeholder="10 lb"></td>
       <td><select id="u-type-${n}">${typeSel}</select></td>
@@ -3828,6 +3841,11 @@ function _restoreExtBtns(n) {
     const btn = document.getElementById('u-newunit-btn-' + n);
     if (btn) { btn.classList.add('active'); btn.textContent = 'Y'; }
   }
+  ['m','g','s'].forEach(item => {
+    if (document.getElementById('u-cab-' + item + '-' + n)?.value === 'Y') {
+      document.getElementById('u-cab-' + item + '-btn-' + n)?.classList.add('active');
+    }
+  });
 }
 
 function setExtPF(btn, n, val) {
@@ -3939,12 +3957,42 @@ function removeExtYNDefic(deficId, n, field) {
   if (inp) inp.value = '';
 }
 
-function extToggleCab(n) {
-  const mount = document.getElementById('u-mount-' + n)?.value;
-  const cab = document.getElementById('u-cab-' + n);
-  if (!cab) return;
-  if (mount === 'CAB') { cab.disabled = false; cab.style.opacity = '1'; }
-  else { cab.disabled = true; cab.style.opacity = '.4'; cab.value = ''; }
+function toggleExtCab(n, item) {
+  const labels = { m: 'Mallet', g: 'Glass', s: 'Sign' };
+  const btn = document.getElementById('u-cab-' + item + '-btn-' + n);
+  const inp = document.getElementById('u-cab-' + item + '-' + n);
+  const deficId = 'ext-cab-' + item + '-defic-' + n;
+  const isActive = btn?.classList.contains('active');
+  if (isActive) {
+    if (btn) btn.classList.remove('active');
+    if (inp) inp.value = '';
+    document.getElementById(deficId)?.remove();
+  } else {
+    if (btn) btn.classList.add('active');
+    if (inp) inp.value = 'Y';
+    if (!document.getElementById(deficId)) {
+      extDeficCount++;
+      const loc = document.getElementById('u-loc-' + n)?.value?.trim() || '';
+      const desc = 'Unit #' + n + (loc ? ' – ' + loc : '') + ': Cabinet missing ' + labels[item];
+      const tbody = document.getElementById('generic-defic-tbody');
+      if (tbody) {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr id="${deficId}">
+            <td style="text-align:center;font-weight:700;color:var(--slate);">${extDeficCount}</td>
+            <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" placeholder="Describe deficiency…"></td>
+            <td><button class="del-btn" onclick="removeExtCabDefic('${deficId}',${n},'${item}')">✕</button></td>
+          </tr>`);
+      }
+    }
+  }
+}
+
+function removeExtCabDefic(deficId, n, item) {
+  document.getElementById(deficId)?.remove();
+  const btn = document.getElementById('u-cab-' + item + '-btn-' + n);
+  const inp = document.getElementById('u-cab-' + item + '-' + n);
+  if (btn) btn.classList.remove('active');
+  if (inp) inp.value = '';
 }
 
 function toggleExtNote(n) {
@@ -3960,6 +4008,9 @@ function removeExtUnit(n) {
   document.getElementById('ext-unit-defic-' + n)?.remove();
   document.getElementById('ext-recharge-defic-' + n)?.remove();
   document.getElementById('ext-newunit-defic-' + n)?.remove();
+  document.getElementById('ext-cab-m-defic-' + n)?.remove();
+  document.getElementById('ext-cab-g-defic-' + n)?.remove();
+  document.getElementById('ext-cab-s-defic-' + n)?.remove();
   // Remove all rows for this unit
   document.getElementById('ext-unit-row-' + n)?.remove();
   document.getElementById('ext-action-row-' + n)?.remove();
@@ -4058,6 +4109,7 @@ function buildExtQATable() {
             <button class="yna-btn na" onclick="setExtQA(this,${i},'NA')">NA</button>
           </div>
           <input type="hidden" id="ext-qa-ans-${i}" value="">
+          <input type="text" id="ext-qa-note-${i}" style="display:none;margin-top:5px;width:100%;border:1px solid #fca5a5;border-radius:4px;padding:4px 7px;font-size:.78rem;font-family:inherit;background:white;" placeholder="Deficiency note…">
         </td>
       </tr>`);
   });
@@ -4070,22 +4122,33 @@ function setExtQA(btn, i, val) {
   btn.classList.add('selected');
   const inp = document.getElementById('ext-qa-ans-' + i);
   if (inp) inp.value = val;
+  const noteInp = document.getElementById('ext-qa-note-' + i);
   const deficId = 'ext-qa-defic-' + i;
   if (val === 'N') {
+    if (noteInp) { noteInp.style.display = ''; noteInp.focus(); }
     if (!document.getElementById(deficId)) {
       extQADeficCount++;
       const q = EXT_QA_QUESTIONS[i] || 'QA item ' + (i + 1);
+      const initDesc = 'QA Failed: ' + q;
       const tbody = document.getElementById('generic-defic-tbody');
       if (tbody) {
         tbody.insertAdjacentHTML('beforeend', `
           <tr id="${deficId}">
             <td style="text-align:center;font-weight:700;color:var(--slate);">${extQADeficCount}</td>
-            <td><input type="text" id="${deficId}-desc" value="${escHtml('QA Failed: ' + q)}" placeholder="Describe deficiency…"></td>
+            <td><input type="text" id="${deficId}-desc" value="${escHtml(initDesc)}" placeholder="Describe deficiency…"></td>
             <td><button class="del-btn" onclick="removeExtQADefic('${deficId}',${i})">✕</button></td>
           </tr>`);
       }
+      // Wire note input to sync deficiency description
+      if (noteInp) {
+        noteInp.addEventListener('input', function() {
+          const syncEl = document.getElementById(deficId + '-desc');
+          if (syncEl) syncEl.value = this.value || initDesc;
+        });
+      }
     }
   } else {
+    if (noteInp) { noteInp.style.display = 'none'; noteInp.value = ''; }
     document.getElementById(deficId)?.remove();
   }
 }
@@ -4094,6 +4157,8 @@ function removeExtQADefic(deficId, i) {
   document.getElementById(deficId)?.remove();
   const inp = document.getElementById('ext-qa-ans-' + i);
   if (inp) inp.value = '';
+  const noteInp = document.getElementById('ext-qa-note-' + i);
+  if (noteInp) { noteInp.style.display = 'none'; noteInp.value = ''; }
   document.querySelector(`#ext-qa-row-${i} .yna-btn`)?.closest('td')?.querySelectorAll('.yna-btn').forEach(b => b.classList.remove('selected'));
 }
 
@@ -4126,6 +4191,7 @@ function matchExtSvcType(type, size) {
 
 function autoFillExtSvcFromUnits() {
   const curYear = new Date().getFullYear();
+  let malletsCount = 0, glassCount = 0, signageCount = 0;
   for (let i = 1; i <= extUnitCount; i++) {
     if (!document.getElementById('ext-unit-row-' + i)) continue;
     const type = document.getElementById('u-type-' + i)?.value?.trim() || '';
@@ -4150,7 +4216,17 @@ function autoFillExtSvcFromUnits() {
         if (el) el.value = (parseInt(el.value || '0') || 0) + 1;
       }
     }
+    if (document.getElementById('u-cab-m-' + i)?.value === 'Y') malletsCount++;
+    if (document.getElementById('u-cab-g-' + i)?.value === 'Y') glassCount++;
+    if (document.getElementById('u-cab-s-' + i)?.value === 'Y') signageCount++;
   }
+  // Fill "Units Not Found" summary from cabinet missing toggles
+  const malEl = document.getElementById('ext-nf-mallets');
+  if (malEl && malletsCount) malEl.value = malletsCount;
+  const sigEl = document.getElementById('ext-nf-signage');
+  if (sigEl && signageCount) sigEl.value = signageCount;
+  const glEl = document.getElementById('ext-nf-glass');
+  if (glEl && glassCount && !glEl.value) glEl.value = glassCount;
   calcExtTotalSvc();
 }
 
@@ -6442,7 +6518,9 @@ function collectAllData() {
       flr:      document.getElementById('u-flr-' + i)?.value?.trim() || '',
       location: document.getElementById('u-loc-' + i)?.value?.trim() || '',
       mount:    document.getElementById('u-mount-' + i)?.value || '',
-      cab:      document.getElementById('u-cab-' + i)?.value?.trim() || '',
+      cabM:     document.getElementById('u-cab-m-' + i)?.value || '',
+      cabG:     document.getElementById('u-cab-g-' + i)?.value || '',
+      cabS:     document.getElementById('u-cab-s-' + i)?.value || '',
       mfgYear:  document.getElementById('u-mfg-' + i)?.value?.trim() || '',
       size:     document.getElementById('u-size-' + i)?.value?.trim() || '',
       type:     document.getElementById('u-type-' + i)?.value || '',
@@ -6465,7 +6543,8 @@ function collectAllData() {
   })) : [];
   const extQA = typeof EXT_QA_QUESTIONS !== 'undefined' ? EXT_QA_QUESTIONS.map((q, i) => ({
     q,
-    ans: document.getElementById('ext-qa-ans-' + i)?.value || '',
+    ans:  document.getElementById('ext-qa-ans-' + i)?.value || '',
+    note: document.getElementById('ext-qa-note-' + i)?.value?.trim() || '',
   })) : [];
   const extNfMallets  = document.getElementById('ext-nf-mallets')?.value || '';
   const extNfSignage  = document.getElementById('ext-nf-signage')?.value || '';
@@ -7866,12 +7945,13 @@ async function buildExtinguisherPDFBytes() {
     const cellH = 14;
     if (curY + cellH > PH - MB) { addPage(); drawExtHdr(); }
     const pf = (ext.pf || ext.overall || '').toUpperCase();
+    const cabMissing = [ext.cabM === 'Y' ? 'Mallet' : '', ext.cabG === 'Y' ? 'Glass' : '', ext.cabS === 'Y' ? 'Sign' : ''].filter(Boolean).join(', ');
     const cells = [
       String(ext.rowNum || ''),
       ext.flr || '',
       ext.location || '',
       ext.mount || '',
-      ext.cab || '',
+      cabMissing,
       ext.mfgYear || ext.mfrDate || '',
       ext.size || '',
       ext.type || '',
@@ -7980,16 +8060,17 @@ async function buildExtinguisherPDFBytes() {
       page.drawText('ANSWER', { x: ML+qaLW+4, y: ty(13,4), size: 6, font: hFont, color: white });
       curY += 14;
       (data.extQA || []).forEach(qa => {
-        const qH = 13;
-        checkPage(qH + 1);
-        page.drawRectangle({ x: ML, y: ry(qH), width: qaLW, height: qH, color: gold, borderColor: sky, borderWidth: 0.3 });
+        const rowH = qa.note ? 22 : 13;
+        checkPage(rowH + 1);
+        page.drawRectangle({ x: ML, y: ry(rowH), width: qaLW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
         wrap(qa.q, 6, qaLW - 4).forEach((ln, li) => {
-          page.drawText(ln, { x: ML+2, y: ry(qH) + qH - 6 - li*7, size: 6, font: rFont, color: blk });
+          page.drawText(ln, { x: ML+2, y: ry(rowH) + rowH - 6 - li*7, size: 6, font: rFont, color: blk });
         });
-        page.drawRectangle({ x: ML+qaLW, y: ry(qH), width: qaAW, height: qH, color: gold, borderColor: sky, borderWidth: 0.3 });
+        page.drawRectangle({ x: ML+qaLW, y: ry(rowH), width: qaAW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
         const af = form.createTextField(fid());
-        af.setText(qa.ans||''); af.addToPage(page, { x: ML+qaLW+1, y: ry(qH)+1, width: qaAW-2, height: qH-2, font: rFont }); af.setFontSize(6);
-        curY += qH + 1;
+        const ansText = (qa.ans || '') + (qa.note ? ' – ' + qa.note : '');
+        af.setText(ansText); af.addToPage(page, { x: ML+qaLW+1, y: ry(rowH)+1, width: qaAW-2, height: rowH-2, font: rFont }); af.setFontSize(6);
+        curY += rowH + 1;
       });
       gap(8);
     }
