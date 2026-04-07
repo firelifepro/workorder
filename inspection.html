@@ -1831,6 +1831,13 @@ function goStep(n) {
     if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
     updateDeficiencySummary();
+    // Auto-suggest status for generic/extinguisher (FA/SP have their own logic)
+    if (activeInspectionSystem && !['fire-alarm','sprinkler'].includes(activeInspectionSystem)) {
+      if (!overallStatusUserSet) {
+        const genericDefics = document.getElementById('generic-defic-tbody')?.querySelectorAll('tr').length || 0;
+        setOverallStatus(genericDefics > 0 ? 'DEFICIENT' : 'COMPLIANT');
+      }
+    }
   }
 }
 
@@ -2935,6 +2942,9 @@ function buildInspectionForms() {
 }
 
 function _resumeGenericFromDraft(draft) {
+  overallStatus = '';
+  overallStatusUserSet = false;
+  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
   // Restore banner + sys-forms from draft
   const sysKey = draft.sysKey;
   activeInspectionSystem = sysKey;
@@ -2961,6 +2971,9 @@ function _resumeGenericFromDraft(draft) {
 }
 
 function _buildFreshGenericInspection() {
+  overallStatus = '';
+  overallStatusUserSet = false;
+  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
   const container = document.getElementById('sys-forms');
   container.innerHTML = '';
 
@@ -3014,10 +3027,13 @@ function _buildFreshGenericInspection() {
       if (tbody) { tbody.innerHTML = ''; extUnitCount = 0; }
       prev.extinguishers.forEach(ext => {
         addExtUnitRow({
-          ...ext,
-          pf: '', recharge: '', newUnit: '',
-          cabM: '', cabG: '', cabS: '',
-          deficTxt: '',
+          flr:      ext.flr,
+          loc:      ext.location || ext.loc,
+          mount:    ext.mount,
+          mfg:      ext.mfgYear  || ext.mfg,
+          size:     ext.size,
+          type:     ext.type,
+          hydroDue: ext.hydroDue,
         });
       });
     }
@@ -3681,7 +3697,7 @@ function buildExtinguisherPanel() {
           <th style="width:38px;">FLR</th>
           <th>Location</th>
           <th style="width:100px;">Mount</th>
-          <th style="width:90px;">Cabinet</th>
+          <th style="width:90px;">Cabinet Missing?</th>
           <th style="width:62px;">MFG Yr</th>
           <th style="width:72px;">Size</th>
           <th style="width:100px;">Type</th>
@@ -3698,10 +3714,6 @@ function buildExtinguisherPanel() {
   const panel = makePanel('extinguisher', '🧯', 'Portable Fire Extinguishers (NFPA 10)', extTable);
   _extSvcAutoFilled = false;
   setTimeout(() => {
-    const tbody = document.getElementById('ext-tbody');
-    if (tbody && tbody.rows.length === 0) {
-      addExtUnitRow(); addExtUnitRow();
-    }
     const summaryTab = document.getElementById('step-nav-summary-tab');
     if (summaryTab) summaryTab.style.display = '';
     const nb = document.getElementById('step3-next-btn');
@@ -3716,9 +3728,12 @@ function addExtUnitRow(prefill) {
   extUnitCount++;
   const n = extUnitCount;
   const p = prefill || {};
-  const defMount = p.mount !== undefined ? p.mount : 'HK';
-  const defType  = p.type  !== undefined ? p.type  : 'ABC';
-  const defFlr   = p.flr   !== undefined ? p.flr   : '1';
+  const defMount = p.mount    !== undefined ? p.mount    : 'HK';
+  const defType  = p.type     !== undefined ? p.type     : 'ABC';
+  const defFlr   = p.flr      !== undefined ? p.flr      : '1';
+  const defLoc   = p.loc      || p.location || '';
+  const defMfg   = p.mfg      || p.mfgYear  || '';
+  const defHydro = p.hydroDue || '';
   const mountSel = EXT_MOUNT_OPTS.map(([v,l]) => `<option value="${v}"${v===defMount?' selected':''}>${l}</option>`).join('');
   const typeSel  = ['', ...EXT_TYPES].map(t => `<option value="${t}"${t===defType?' selected':''}>${t||'—'}</option>`).join('');
   const tbody = document.getElementById('ext-tbody');
@@ -3726,10 +3741,10 @@ function addExtUnitRow(prefill) {
   tbody.insertAdjacentHTML('beforeend', `
     <tr id="ext-unit-row-${n}" style="border-bottom:none;">
       <td><input type="text" id="u-flr-${n}" value="${defFlr}" placeholder="1" style="width:30px;"></td>
-      <td><input type="text" id="u-loc-${n}" value="${(p.loc||'').replace(/"/g,'&quot;')}" placeholder="e.g. Lobby by entrance"></td>
-      <td><select id="u-mount-${n}">${mountSel}</select></td>
-      <td>
-        <div style="display:flex;gap:3px;">
+      <td><input type="text" id="u-loc-${n}" value="${defLoc.replace(/"/g,'&quot;')}" placeholder="e.g. Lobby by entrance"></td>
+      <td><select id="u-mount-${n}" onchange="extUpdateCabState(${n})">${mountSel}</select></td>
+      <td title="Select what is missing from the cabinet: M = Mallet, S = Signage, G = Glass. Only available when Mount is set to CAB.">
+        <div id="u-cab-wrap-${n}" style="display:flex;gap:3px;${defMount!=='CAB'?'opacity:.35;pointer-events:none;':''}">
           <button id="u-cab-m-btn-${n}" class="ext-yn-btn${p.cabM==='Y'?' active':''}" onclick="toggleExtCab(${n},'m')" title="Mallet missing" style="padding:3px 7px;">M</button>
           <button id="u-cab-g-btn-${n}" class="ext-yn-btn${p.cabG==='Y'?' active':''}" onclick="toggleExtCab(${n},'g')" title="Glass missing" style="padding:3px 7px;">G</button>
           <button id="u-cab-s-btn-${n}" class="ext-yn-btn${p.cabS==='Y'?' active':''}" onclick="toggleExtCab(${n},'s')" title="Sign missing" style="padding:3px 7px;">S</button>
@@ -3738,7 +3753,7 @@ function addExtUnitRow(prefill) {
         <input type="hidden" id="u-cab-g-${n}" value="${p.cabG||''}">
         <input type="hidden" id="u-cab-s-${n}" value="${p.cabS||''}">
       </td>
-      <td><input type="text" inputmode="numeric" class="no-spin" id="u-mfg-${n}" value="${p.mfg||''}" placeholder="2019" style="width:54px;"></td>
+      <td><input type="text" inputmode="numeric" class="no-spin" id="u-mfg-${n}" value="${defMfg}" placeholder="2019" style="width:54px;"></td>
       <td><input type="text" id="u-size-${n}" value="${(p.size||'').replace(/"/g,'&quot;')}" placeholder="10 lb"></td>
       <td><select id="u-type-${n}">${typeSel}</select></td>
       <td><button class="del-btn" onclick="removeExtUnit(${n})">✕</button></td>
@@ -3756,7 +3771,7 @@ function addExtUnitRow(prefill) {
           </div>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:.7rem;font-weight:700;color:var(--slate);white-space:nowrap;">Hydro Due:</span>
-            <input type="text" inputmode="numeric" class="no-spin" id="u-hydro-${n}" value="${p.hydroDue||''}" placeholder="Year" style="width:52px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.8rem;font-family:inherit;">
+            <input type="text" inputmode="numeric" class="no-spin" id="u-hydro-${n}" value="${defHydro}" placeholder="Year" style="width:52px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.8rem;font-family:inherit;">
           </div>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:.7rem;font-weight:700;color:var(--slate);white-space:nowrap;">Recharge:</span>
@@ -3816,6 +3831,16 @@ function setPFTable(btn, id, val) {
   }
 }
 
+function extUnitLabel(n) {
+  const flr = document.getElementById('u-flr-' + n)?.value?.trim() || '';
+  const loc = document.getElementById('u-loc-' + n)?.value?.trim() || '';
+  const parts = [];
+  if (loc) parts.push(loc);
+  if (flr) parts.push('Fl.' + flr);
+  parts.push('Unit #' + n);
+  return parts.join(' – ');
+}
+
 function _restoreExtBtns(n) {
   const pfVal = document.getElementById('u-pf-'+n)?.value || '';
   if (pfVal) {
@@ -3870,9 +3895,7 @@ function setExtPF(btn, n, val) {
     const deficId = 'ext-unit-defic-' + n;
     if (!document.getElementById(deficId)) {
       extDeficCount++;
-      const loc = document.getElementById('u-loc-' + n)?.value?.trim() || '';
-      const type = document.getElementById('u-type-' + n)?.value?.trim() || '';
-      const initDesc = 'Unit #' + n + (loc ? ' – ' + loc : '') + (type ? ' (' + type + ')' : '') + ': Failed inspection';
+      const initDesc = extUnitLabel(n) + ': Failed inspection';
       const tbody = document.getElementById('generic-defic-tbody');
       if (tbody) {
         tbody.insertAdjacentHTML('beforeend', `
@@ -3882,9 +3905,10 @@ function setExtPF(btn, n, val) {
             <td><button class="del-btn" onclick="removeExtUnitDefic('${deficId}',${n})">✕</button></td>
           </tr>`);
       }
-      // Wire inline text input to keep generic-defic-tbody row in sync
+      // Pre-fill inline defic text if empty
       const inlineTxt = document.getElementById('u-defic-txt-' + n);
       if (inlineTxt) {
+        if (!inlineTxt.value) inlineTxt.value = initDesc;
         inlineTxt.addEventListener('input', function() {
           const syncEl = document.getElementById(deficId + '-desc');
           if (syncEl) syncEl.value = this.value;
@@ -3933,9 +3957,8 @@ function toggleExtYN(n, field) {
     if (inp) inp.value = 'Y';
     if (!document.getElementById(deficId)) {
       extDeficCount++;
-      const loc = document.getElementById('u-loc-' + n)?.value?.trim() || '';
       const label = field === 'recharge' ? 'Recharge required' : 'New unit required';
-      const desc = label + ' – Unit #' + n + (loc ? ' – ' + loc : '');
+      const desc = extUnitLabel(n) + ': ' + label;
       const tbody = document.getElementById('generic-defic-tbody');
       if (tbody) {
         tbody.insertAdjacentHTML('beforeend', `
@@ -3957,6 +3980,24 @@ function removeExtYNDefic(deficId, n, field) {
   if (inp) inp.value = '';
 }
 
+function extUpdateCabState(n) {
+  const mount = document.getElementById('u-mount-' + n)?.value;
+  const wrap = document.getElementById('u-cab-wrap-' + n);
+  if (!wrap) return;
+  const isCAB = mount === 'CAB';
+  wrap.style.opacity = isCAB ? '1' : '.35';
+  wrap.style.pointerEvents = isCAB ? '' : 'none';
+  // If switching away from CAB, clear any active missing items and their defics
+  if (!isCAB) {
+    ['m','g','s'].forEach(item => {
+      const inp = document.getElementById('u-cab-' + item + '-' + n);
+      if (inp && inp.value === 'Y') {
+        toggleExtCab(n, item); // toggle off
+      }
+    });
+  }
+}
+
 function toggleExtCab(n, item) {
   const labels = { m: 'Mallet', g: 'Glass', s: 'Sign' };
   const btn = document.getElementById('u-cab-' + item + '-btn-' + n);
@@ -3972,8 +4013,7 @@ function toggleExtCab(n, item) {
     if (inp) inp.value = 'Y';
     if (!document.getElementById(deficId)) {
       extDeficCount++;
-      const loc = document.getElementById('u-loc-' + n)?.value?.trim() || '';
-      const desc = 'Unit #' + n + (loc ? ' – ' + loc : '') + ': Cabinet missing ' + labels[item];
+      const desc = extUnitLabel(n) + ': Cabinet missing ' + labels[item];
       const tbody = document.getElementById('generic-defic-tbody');
       if (tbody) {
         tbody.insertAdjacentHTML('beforeend', `
@@ -4101,7 +4141,10 @@ function buildExtQATable() {
   EXT_QA_QUESTIONS.forEach((q, i) => {
     tbody.insertAdjacentHTML('beforeend', `
       <tr id="ext-qa-row-${i}">
-        <td class="q-cell">${q}</td>
+        <td class="q-cell">
+          <div>${q}</div>
+          <input type="text" id="ext-qa-note-${i}" style="display:none;margin-top:5px;width:100%;border:1px solid #fca5a5;border-radius:4px;padding:4px 7px;font-size:.78rem;font-family:inherit;background:white;" placeholder="Deficiency note…">
+        </td>
         <td>
           <div style="display:flex;gap:4px;">
             <button class="yna-btn y" onclick="setExtQA(this,${i},'Y')">Y</button>
@@ -4109,7 +4152,6 @@ function buildExtQATable() {
             <button class="yna-btn na" onclick="setExtQA(this,${i},'NA')">NA</button>
           </div>
           <input type="hidden" id="ext-qa-ans-${i}" value="">
-          <input type="text" id="ext-qa-note-${i}" style="display:none;margin-top:5px;width:100%;border:1px solid #fca5a5;border-radius:4px;padding:4px 7px;font-size:.78rem;font-family:inherit;background:white;" placeholder="Deficiency note…">
         </td>
       </tr>`);
   });
@@ -5943,6 +5985,7 @@ function jumpToItem(itemId, panelId) {
 // ─────────────────────────────────────────────────────────────────────────────
 function setOverallStatus(val, btn) {
   overallStatus = val;
+  if (btn) overallStatusUserSet = true;
   document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
   if (btn) btn.classList.add('selected');
   else {
