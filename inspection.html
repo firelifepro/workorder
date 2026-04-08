@@ -7,440 +7,9 @@
 <title>FLIPS – Fire Inspection</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAIRklEQVR4nJWXa4xV1RmGn2+tfW5zZriDQEBKQbReU0NrU4uTyI9G29gf9VBrTJqmVZqm2KRpqybVgTa2sZVSmmpDVUzUtAraeiEktakjokSBwiAIioLAMDPM7ewzM+e6z97r6499GGaGi7qSlZN91uV913d5v7XgMzQFaafV09ZWT3M5q6pGVY3mNlltbfXaafXawHyWPT8tsNFczmLkwtsLYARtazObwH6aveVCg21gVre1Ib/5tcMpW2HmPJLXJ2Ys+oo3Z9YSmdQ8XQUjpUrB9fYfrXYf29XPyPblcBwj6P0PGNasQcB9ZgJKzop5PsIpO+D6WfOvXZm54Us3T/7addPTV10Gs2eiTRlUwFQDZCBPcPBD8tvfKdW27/xP/oMdf10Kr2IEdbdaYXP0aSyCgmhbm0GgHS47uuDazf2/WK1hR4cWSwUtBMXQLxXq+UJ/mB/sjbvfF/pFv+7XRsLhyrDW3z+k/uqH9Oii67a0w5UIaC5n9RMsThsYkXjOHqbc3XPbnSPh3g71gxGXHx4M8z0nnd/Tqf6pk+r3do3vp7rU7+nUfE+nyxcGQr9eiuoHDmjP7SvLHUxaBaCqMpHE6IeCiIiuUk39eNqljy9s+9kdwQ+/Q+hcJCNFi7FgznMA50Ak7jESRBHanI08z7PJDf/g2Jq1T64sfHjXNpFQVUVARwk0WMmLMOmKRUtfWPznB28cvvmG0PUOWgHBXCD0owhpzqJhCEH9DIkGMQU1F02PWl5+zfto1a/+feTE3hU3QRFQAY13zuWMgFty8TXrL9nw8I1DN7cG2t3viTHnB1cFVWT6VOpv7SY6cBhJp+L/TzdjEGNEu/u94VuWB0see/jr8+df/YiAI5czMJrVOQBSc+fODq++1OmAb/EukMaqIIJkM1R+9wilO+9Bspnzz/csOuDb8NorXXr+vDkAXL5JxxBoWDOsB1KuGuwna4hk0pTv+z2VtrXYKy/FLl6IVmrnX2ANUq4YG0ZlAA5ulrMIKMg4H56rRREyuYXK+o3UNj6HTJuKmT8XEhZcBJ53PsogEKmOwxxPQB2jITmxNSJbmrOE73RQXb8RmTENwhBJNEATCbQwND4OJpxQJ4yNI2CR+jkXq0LCA8+CQPXRpyAI4rQ0BtfZA6kU4c4Oym1/RJoy4Cbs08g3N4FBg8Dm+Mc5ZSK+KqSSuCMn0GKF6MNjhNt3Is1ZqIdIU4Zw1z7cxyeov/YW4Zu70EoV7DmyRxWL1sdiTph17kWSShEdPUH10acI/7cf9YeJA1XBWrRcofzzB3Efn8R191Jv3xETjM6Wf1U5VwzEaahGEhjDWVZwDkmnCF7YSvD8VqQ5g4iLzxI5ZFKWcPtOwrf3IC3N1Db8HS1XGJdNSqwLVryxmDGBy3OxLHomEZtuDANV8Dyig4fRvgGi9z6ARJLE9IimxVHs21Ahk4oBsk2Eu/dR39qOtDSPsYKixoL1EgBsyo3RgdUNc9iEOaPSjWYtWhgi2PJfSKdRF6dT0GtIzXFMWhoiCSDSUXXEWmrPvoQGAaNKqsSXFWsS53BBA8vIWVouzVnCvQeIDh3BTkqRaIlinBDqg4bkDEfTJRHqiK3hHNKUIdp7EPf+ESSTPpOWMqbcjiPQsEAY1lWcO6MDqmi9jvvoONQDopohOduRWeDQSJCU4gIhMd1h0sBpa1uLjhQJ9x6AZDJOSQGcEoXjIzMmcHCFAETVWmm0ojVOUntyE+GeA3GhiZRwSMgsjEhMdtgsqAMxYFJKYoaecZ8q7mjnmHorSBAgteoIACtWjJHivj4BcIXhXhkpIp6nOIV0CnfkOMGLr8biovHVTgxkljgSSYfR2Aqp2Q5vikPDhhdF0FJp1PzieSojJaLCcN9YzHExUO/tPRx19ymed2bh7FlQq40Gkm2KC3nT1JDj9Ra6oiyeOhIzdHwZUY21QCR2gefhuvu03tN7+CwXbN62TTHCSKVrd/HdgyLWGAWIIrwrlkAyEWu4BW+yI1IhIwFvVubwXnU6zekamgKbVTgtIyKYJZ+P40gVscYU9x+SYvXkbozEmKcJ5MAJQjfsLry1sytZrQme57RUwfvyNdhFC9ByDdskmGZIOMe+2iwOBVN5eeRzHI2mkMBhWsBmgFqIzJyKd90X4xKd8FyyGkh++86e/bALhFzjqm4a2aFu2TJvhVApvfH2M6ld+4XJLY5agEybQupHd6DFMpI0GBt7Z71/DW9U5nIsbOHBgaVEajBWkYyHGxoh+Y3l2MULoFSGyS0utXu/VN7c8cxKody+bJl3Wm1GY2D1tm1OncrxwpE/nVz3WCEdRkYTntPCMKnbbiH1vW8THBsgqXBcp7CrMouaWgajNLuqszgZZUkaQ9hfwi6cR/qnP0BLFdSzLhU5c3LdY0Od+SPr1Km8vm2bGxcDAGvAISvMN42c6t/yyk9Y94TxZs2INIpUKxWyD91D8vt3UNo/QjoYxhqHNYK1Bmc9bFKpHhhCs1PIbvgt5qIZaLmCvWhmJOs2mt5XXlp1k5EeZIVZc4GXEprLWQT2Zef/IfrbUzqkQT3f06l+X7cWykN66rkXtXjXt/S+5bfrnKvv1blX/VLv/uqtOnTjF7Tzuyt18N19WijmNd91XIc0qEePP617m+atRaC9tfV816VxTTSXswDvNl28rvTwX7RQ9J3f36N+T6f65SEtDPSrv+dt/efzr+sLT2/RgX89q/7O3eoXC1oo9Kvf26WFku9Kax/R/c0L1o8e7JNeRuci0cG0+/tX3Rv4XSeiURJ9XeoPDWpYzmtY8bVQHlF/eDAe6+1Sv/tENHD3fUEH0x44DX6+Z9n/AVIlgBRojGjmAAAAAElFTkSuQmCC">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="inspection.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-<style>
-:root {
-  --navy:   #0d1b2a;
-  --navy2:  #162235;
-  --navy3:  #1e304a;
-  --blue:   #2563eb;
-  --blue2:  #3b82f6;
-  --fire:   #f97316;
-  --fire2:  #fb923c;
-  --red:    #dc2626;
-  --green:  #16a34a;
-  --amber:  #d97706;
-  --slate:  #64748b;
-  --light:  #f1f5f9;
-  --white:  #ffffff;
-  --border: #e2e8f0;
-  --pass-bg:   #f0fdf4;
-  --fail-bg:   #fef2f2;
-  --na-bg:     #f8fafc;
-  --pass-ring: #16a34a;
-  --fail-ring: #dc2626;
-  --na-ring:   #94a3b8;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html { font-size: 16px; }
-body { font-family: 'DM Sans', sans-serif; background: var(--light); color: var(--navy); min-height: 100vh; }
-
-/* ── TOP BAR ── */
-#top-bar {
-  background: var(--navy);
-  color: white;
-  padding: 11px 16px;
-  display: flex; align-items: center; gap: 10px;
-  position: sticky; top: 0; z-index: 200;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-}
-#top-bar h1 { font-size: 0.92rem; font-weight: 700; flex: 1; letter-spacing: 0.02em; }
-.nav-hamburger { position: relative; }
-.hamburger-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 5px 9px; border-radius: 6px; cursor: pointer; font-size: 1rem; line-height: 1; }
-.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--navy2); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; min-width: 210px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 300; overflow: hidden; }
-.nav-menu.open { display: block; }
-.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
-.nav-menu a:hover { background: rgba(255,255,255,0.08); color: white; }
-.nav-menu a.active { color: var(--fire2); font-weight: 600; }
-.conn-status-pill { font-size: 0.7rem; padding: 3px 9px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
-.conn-status-pill.ok   { background: rgba(22,163,74,0.2); color: #86efac; border: 1px solid rgba(22,163,74,0.3); }
-.conn-status-pill.err  { background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(220,38,38,0.3); }
-.conn-status-pill.warn { background: rgba(217,119,6,0.2); color: #fcd34d; border: 1px solid rgba(217,119,6,0.3); }
-.conn-toggle { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: rgba(255,255,255,0.75); padding: 4px 9px; border-radius: 5px; cursor: pointer; font-size: 0.7rem; white-space: nowrap; }
-
-/* ── CONN DRAWER ── */
-#conn-drawer { background: #0a1422; border-bottom: 1px solid rgba(255,255,255,0.08); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
-#conn-drawer.open { max-height: 200px; }
-.conn-drawer-inner { padding: 12px 16px; display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
-.conn-field { display: flex; flex-direction: column; gap: 3px; }
-.conn-field label { font-size: 0.65rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-.conn-field input { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 6px 10px; border-radius: 5px; font-size: 0.78rem; font-family: 'DM Mono', monospace; width: 230px; }
-.conn-field input::placeholder { color: rgba(255,255,255,0.3); }
-.conn-btn { background: var(--blue); color: white; border: none; padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 0.78rem; font-weight: 600; white-space: nowrap; align-self: flex-end; font-family: inherit; }
-.conn-btn:hover { background: var(--blue2); }
-
-/* ── MAIN LAYOUT ── */
-#app { max-width: 900px; margin: 0 auto; padding: 16px; }
-
-/* ── STEP WIZARD ── */
-#step-nav, #fa-step-nav {
-  display: flex; gap: 0; margin-bottom: 20px;
-  background: white; border-radius: 10px; overflow: hidden;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.08); border: 1px solid var(--border);
-}
-.step-tab {
-  flex: 1; padding: 10px 8px; text-align: center; cursor: pointer;
-  font-size: 0.72rem; font-weight: 600; color: var(--slate);
-  border-right: 1px solid var(--border); transition: all 0.15s;
-  position: relative; line-height: 1.3;
-}
-.step-tab:last-child { border-right: none; }
-.step-tab.active { background: var(--navy); color: white; }
-.step-tab.done { background: var(--pass-bg); color: var(--green); }
-.step-tab .step-num { display: block; font-size: 0.65rem; opacity: 0.7; margin-bottom: 2px; }
-.step-tab .step-check { display: none; }
-.step-tab.done .step-check { display: inline; }
-.step-tab.done .step-num { display: none; }
-.step-tab.disabled { opacity: 0.35; pointer-events: none; cursor: default; }
-.step-tab.prevdefic-tab { color: var(--amber); border-right-color: var(--border); }
-.step-tab.prevdefic-tab.active { background: var(--amber); color: white; }
-
-/* ── CARDS ── */
-.card {
-  background: white; border-radius: 10px; border: 1px solid var(--border);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.06); margin-bottom: 14px; overflow: hidden;
-}
-.card-header {
-  background: var(--navy); color: white;
-  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
-  font-size: 0.88rem; font-weight: 700;
-}
-.card-header .icon { font-size: 1.1rem; }
-.card-header span { flex: 1; }
-.card-body { padding: 16px; }
-
-/* ── FORM FIELDS ── */
-.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.field-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-.field-grid.cols-1 { grid-template-columns: 1fr; }
-.field-group { display: flex; flex-direction: column; gap: 4px; }
-.field-group.span-2 { grid-column: span 2; }
-.field-group label { font-size: 0.72rem; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; }
-.field-group input, .field-group select, .field-group textarea {
-  border: 1.5px solid var(--border); border-radius: 7px;
-  padding: 9px 11px; font-size: 0.88rem; font-family: inherit;
-  color: var(--navy); outline: none; width: 100%;
-  background: white; transition: border-color 0.15s;
-}
-.field-group input:focus, .field-group select:focus, .field-group textarea:focus { border-color: var(--blue); background: #eff6ff; }
-.field-group textarea { resize: vertical; min-height: 60px; }
-
-/* ── PROPERTY SELECT SEARCH ── */
-#prop-search-wrap { position: relative; }
-#prop-search {
-  border: 1.5px solid var(--border); border-radius: 7px;
-  padding: 9px 32px 9px 11px; font-size: 0.88rem; font-family: inherit;
-  color: var(--navy); outline: none; width: 100%; background: white;
-}
-#prop-search:focus { border-color: var(--blue); background: #eff6ff; }
-#prop-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--slate); font-size: 0.8rem; display: none; }
-#property-select { margin-top: 5px; }
-
-/* ── SYSTEM SELECTOR ── */
-#systems-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-}
-.sys-toggle {
-  border: 2px solid var(--border); border-radius: 8px; padding: 10px 8px;
-  text-align: center; cursor: pointer; transition: all 0.15s;
-  font-size: 0.74rem; font-weight: 600; color: var(--slate);
-  user-select: none; line-height: 1.3;
-}
-.sys-toggle .sys-icon { font-size: 1.3rem; display: block; margin-bottom: 3px; }
-.sys-toggle.active { border-color: var(--blue); background: #eff6ff; color: var(--blue); }
-.sys-toggle.active .sys-icon { filter: none; }
-
-/* ── SYSTEM PANELS ── */
-.sys-panel { margin-bottom: 16px; }
-.sys-panel-header {
-  background: var(--navy2); color: white; padding: 10px 14px;
-  border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 8px;
-  font-size: 0.85rem; font-weight: 700; cursor: pointer;
-}
-.sys-panel-header .collapse-arrow { margin-left: auto; font-size: 0.75rem; transition: transform 0.2s; }
-.sys-panel-header.collapsed .collapse-arrow { transform: rotate(-90deg); }
-.sys-panel-body { border: 1.5px solid var(--navy2); border-top: none; border-radius: 0 0 8px 8px; padding: 14px; background: white; }
-.sys-panel-body.hidden { display: none; }
-
-/* ── INSPECTION ROWS ── */
-.inspect-row {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 8px 0; border-bottom: 1px solid var(--border);
-}
-.inspect-row-top {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-}
-.inspect-row:last-child { border-bottom: none; }
-.inspect-label { font-size: 0.82rem; font-weight: 500; color: var(--navy); padding-top: 4px; flex: 1; min-width: 0; }
-.inspect-label small { display: block; font-size: 0.7rem; color: var(--slate); font-weight: 400; margin-top: 1px; }
-
-/* Radio button groups */
-.pf-group { display: flex; gap: 4px; }
-.pf-btn {
-  padding: 5px 10px; border-radius: 6px; border: 1.5px solid var(--border);
-  font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.12s;
-  white-space: nowrap; font-family: inherit; background: white;
-  min-width: 44px; text-align: center;
-}
-.pf-btn.pass  { border-color: var(--pass-ring); color: var(--pass-ring); }
-.pf-btn.fail  { border-color: var(--fail-ring); color: var(--fail-ring); }
-.pf-btn.na    { border-color: var(--na-ring);   color: var(--na-ring); }
-.pf-btn.selected       { background: #eff6ff; box-shadow: 0 0 0 2px var(--blue2); color: var(--blue); }
-.pf-btn.pass.selected  { background: var(--pass-bg); box-shadow: 0 0 0 2px var(--pass-ring); color: var(--pass-ring); }
-.pf-btn.fail.selected  { background: var(--fail-bg); box-shadow: 0 0 0 2px var(--fail-ring); color: var(--fail-ring); }
-.pf-btn.na.selected    { background: var(--na-bg);   box-shadow: 0 0 0 2px var(--na-ring);   color: var(--na-ring); }
-
-.deficiency-row {
-  margin-top: 2px; display: none;
-}
-.deficiency-row.show { display: flex; gap: 6px; }
-.deficiency-row input {
-  flex: 1; border: 1.5px solid var(--fail-ring); border-radius: 6px;
-  padding: 6px 10px; font-size: 0.8rem; color: var(--navy); font-family: inherit;
-  background: var(--fail-bg); outline: none;
-}
-.deficiency-row input::placeholder { color: #fca5a5; }
-
-/* ── DATA FIELDS INLINE ── */
-.data-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-.data-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-.data-row.cols-1 { grid-template-columns: 1fr; }
-.data-field { display: flex; flex-direction: column; gap: 3px; }
-.data-field label { font-size: 0.66rem; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; }
-.data-field input, .data-field select { border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 9px; font-size: 0.82rem; font-family: inherit; color: var(--navy); outline: none; width: 100%; background: #fafafa; }
-.data-field input:focus, .data-field select:focus { border-color: var(--blue); background: #eff6ff; }
-
-/* ── SECTION DIVIDERS ── */
-.sys-section { font-size: 0.7rem; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1.5px solid #bfdbfe; }
-
-/* ── EXTINGUISHER TABLE ── */
-.ext-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 6px; }
-.ext-table th { background: var(--navy3); color: white; padding: 6px 8px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.ext-table td { padding: 6px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.ext-table input, .ext-table select { border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font-size: 0.78rem; font-family: inherit; width: 100%; background: white; outline: none; }
-.ext-table .pf-btn { padding: 3px 7px; font-size: 0.68rem; min-width: 36px; }
-.ext-table .pf-group { gap: 3px; }
-.add-row-btn {
-  background: #eff6ff; color: var(--blue); border: 1.5px dashed var(--blue2);
-  border-radius: 6px; padding: 7px 14px; font-size: 0.78rem; font-weight: 600;
-  cursor: pointer; font-family: inherit; margin-top: 8px; width: 100%;
-}
-.remove-row-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 1rem; padding: 2px 4px; }
-
-/* ── DEFICIENCY SUMMARY ── */
-.defic-badge {
-  display: inline-block; background: var(--red); color: white;
-  font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;
-  margin-left: 6px; vertical-align: middle;
-}
-
-/* ── OVERALL STATUS ── */
-.overall-status-group { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-.ost-btn {
-  flex: 1; min-width: 100px; padding: 12px 10px; text-align: center;
-  border-radius: 8px; border: 2px solid var(--border); cursor: pointer;
-  font-size: 0.82rem; font-weight: 700; font-family: inherit; background: white;
-  transition: all 0.15s;
-}
-.ost-btn.compliant   { border-color: var(--green); color: var(--green); }
-.ost-btn.deficient   { border-color: var(--amber); color: var(--amber); }
-.ost-btn.impaired    { border-color: var(--red);   color: var(--red);   }
-.ost-btn.compliant.selected  { background: var(--pass-bg); box-shadow: 0 0 0 2px var(--green); }
-.ost-btn.deficient.selected  { background: #fffbeb; box-shadow: 0 0 0 2px var(--amber); }
-.ost-btn.impaired.selected   { background: var(--fail-bg); box-shadow: 0 0 0 2px var(--red); }
-.ost-btn.annual    { border-color: var(--blue);  color: var(--blue); }
-.ost-btn.semi      { border-color: var(--navy3); color: var(--navy3); }
-.ost-btn.annual.selected  { background: #eff6ff; box-shadow: 0 0 0 2px var(--blue); }
-.ost-btn.semi.selected    { background: #f1f5f9; box-shadow: 0 0 0 2px var(--navy3); }
-
-/* ── SIGNATURE ── */
-#sig-canvas, #cust-sig-canvas {
-  border: 2px solid var(--border); border-radius: 8px; background: white;
-  cursor: crosshair; display: block; width: 100%; max-width: 500px; height: 100px;
-  touch-action: none;
-}
-.sig-clear { background: none; border: 1px solid var(--border); border-radius: 5px; padding: 4px 12px; font-size: 0.75rem; cursor: pointer; color: var(--slate); font-family: inherit; margin-top: 6px; }
-
-/* ── ACTION BUTTONS ── */
-.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-.btn-primary {
-  background: var(--navy); color: white; border: none; padding: 12px 24px;
-  border-radius: 8px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
-  font-family: inherit; display: flex; align-items: center; gap: 8px;
-  transition: background 0.15s;
-}
-.btn-primary:hover { background: var(--navy3); }
-.btn-primary.fire { background: var(--fire); }
-.btn-primary.fire:hover { background: var(--fire2); }
-.btn-primary.green { background: var(--green); }
-.btn-secondary {
-  background: white; color: var(--navy); border: 1.5px solid var(--border);
-  padding: 11px 20px; border-radius: 8px; font-size: 0.88rem; font-weight: 600;
-  cursor: pointer; font-family: inherit; transition: all 0.15s;
-}
-.btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
-.btn-danger {
-  background: white; color: var(--red); border: 1.5px solid var(--red);
-  padding: 11px 20px; border-radius: 8px; font-size: 0.88rem; font-weight: 600;
-  cursor: pointer; font-family: inherit;
-}
-
-/* ── SAVE/LOAD INDICATOR ── */
-#save-indicator {
-  font-size: 0.72rem; color: var(--green); font-weight: 600;
-  padding: 3px 8px; background: var(--pass-bg); border-radius: 4px;
-  opacity: 0; transition: opacity 0.3s;
-}
-#save-indicator.show { opacity: 1; }
-
-/* ── TOAST ── */
-#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--navy); color: white; padding: 10px 20px; border-radius: 8px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.35); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 9999; white-space: nowrap; }
-#toast.show { transform: translateX(-50%) translateY(0); }
-
-/* ── PROGRESS BAR ── */
-.defic-summary { background: var(--fail-bg); border: 1.5px solid #fca5a5; border-radius: 8px; margin-bottom: 12px; display: none; overflow: hidden; }
-.defic-summary.show { display: block; }
-.defic-summary-hdr { background: var(--red); color: white; padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; }
-.defic-count-pill { background: white; color: var(--red); border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; font-weight: 800; }
-.defic-list-inner { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-.defic-item { background: white; border: 1px solid #fecaca; border-left: 3px solid var(--red); border-radius: 6px; padding: 8px 10px; display: flex; gap: 8px; align-items: flex-start; }
-.defic-item-body { flex: 1; min-width: 0; }
-.defic-item-section { font-size: 0.67rem; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-.defic-item-label { font-size: 0.82rem; font-weight: 600; color: #7f1d1d; line-height: 1.3; }
-.defic-item-note { font-size: 0.77rem; color: #991b1b; margin-top: 3px; font-style: italic; padding-left: 8px; border-left: 2px solid #fecaca; }
-.defic-item-note.missing { color: #fca5a5; }
-.defic-jump-btn { flex-shrink: 0; font-size: 0.68rem; color: var(--red); background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 3px 8px; cursor: pointer; font-family: inherit; font-weight: 600; white-space: nowrap; }
-.defic-jump-btn:hover { background: #fee2e2; }
-/* Panel header deficiency highlight */
-.sys-panel-header.has-defic { background: #7f1d1d !important; }
-.defic-badge { display: none; background: var(--red); color: white; font-size: 0.65rem; font-weight: 800; padding: 1px 7px; border-radius: 8px; margin-left: 6px; }
-.has-defic .defic-badge { display: inline-block; }
-
-/* ── COLLAPSIBLE SECTION ── */
-.section-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 6px 0; margin: 8px 0 4px; border-bottom: 1.5px solid var(--border); }
-.section-toggle h4 { font-size: 0.78rem; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: 0.04em; }
-.section-toggle .toggle-arr { font-size: 0.7rem; color: var(--slate); transition: transform 0.2s; }
-.section-toggle.collapsed .toggle-arr { transform: rotate(-90deg); }
-.section-content.hidden { display: none; }
-
-/* ── PHOTOS ── */
-.photo-card { position: relative; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--border); background: #f8fafc; }
-.photo-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
-.photo-note-wrap { padding: 6px 8px; }
-.photo-note-input { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 5px 7px; font-size: 0.75rem; font-family: inherit; color: var(--navy); resize: none; min-height: 44px; background: white; }
-.photo-note-input:focus { border-color: var(--blue); background: #eff6ff; outline: none; }
-.photo-remove { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.55); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
-.photo-remove:hover { background: var(--red); }
-.photo-num { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.5); color: white; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
-
-/* ── SIGNATURE WARNING ── */
-.sig-warning { background: #fef3c7; border: 1.5px solid var(--amber); border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; color: #92400e; font-weight: 600; margin-bottom: 10px; display: none; }
-
-/* ── Y/N/NA CHECKLIST BUTTONS ── */
-.yna-group { display: flex; gap: 4px; flex-shrink: 0; }
-.yna-btn { padding: 5px 9px; border-radius: 6px; border: 1.5px solid var(--border); font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.12s; font-family: inherit; background: white; min-width: 38px; text-align: center; }
-.yna-btn.y  { border-color: var(--pass-ring); color: var(--pass-ring); }
-.yna-btn.n  { border-color: var(--fail-ring); color: var(--fail-ring); }
-.yna-btn.na { border-color: var(--na-ring);   color: var(--na-ring); }
-.yna-btn.y.selected  { background: var(--pass-bg); box-shadow: 0 0 0 2px var(--pass-ring); }
-.yna-btn.n.selected  { background: var(--fail-bg); box-shadow: 0 0 0 2px var(--fail-ring); }
-.yna-btn.na.selected { background: var(--na-bg);   box-shadow: 0 0 0 2px var(--na-ring); }
-
-/* ── EXTINGUISHER Y-TOGGLE BUTTON ── */
-.ext-yn-btn{border:1.5px solid var(--border);border-radius:5px;padding:3px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;background:white;color:var(--slate);transition:all .12s;}
-.ext-yn-btn.active{border-color:var(--red);background:var(--fail-bg);color:var(--red);}
-/* hide number input spinners */
-input.no-spin::-webkit-inner-spin-button,input.no-spin::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
-input.no-spin{-moz-appearance:textfield;appearance:textfield;}
-/* ext action sub-row */
-.ext-action-row td{background:var(--light);border-top:none!important;padding:4px 8px 8px;}
-
-/* ── EXTINGUISHER STAT BOXES & SUMMARY TABLES ── */
-.stat-box{background:#f8fafc;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
-.stat-box .stat-label{font-size:.72rem;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;}
-.stat-box .stat-val{font-size:1.4rem;font-weight:700;color:var(--navy);}
-.sum-table{width:100%;border-collapse:collapse;font-size:.76rem;}
-.sum-table th{background:var(--navy3);color:white;padding:6px 8px;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-align:center;}
-.sum-table th.left{text-align:left;}
-.sum-table td{padding:5px 6px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:middle;text-align:center;}
-.sum-table td.row-label{text-align:left;font-weight:700;font-size:.76rem;background:#f8fafc;white-space:nowrap;}
-.sum-table td:last-child{border-right:none;}
-.sum-table tr:last-child td{border-bottom:none;}
-.sum-table input[type=number]{border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;width:60px;background:white;outline:none;text-align:center;}
-.sum-table input[type=text]{border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;width:100%;background:white;outline:none;}
-.sum-table input:focus{border-color:var(--blue);background:#eff6ff;}
-.qa-table{width:100%;border-collapse:collapse;font-size:.8rem;}
-.qa-table th{background:var(--navy3);color:white;padding:7px 9px;font-size:.68rem;font-weight:700;text-transform:uppercase;text-align:left;}
-.qa-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
-.qa-table tr:nth-child(even) td{background:#f8fafc;}
-.qa-table td.q-cell{font-size:.8rem;font-weight:500;}
-.qa-table select,.qa-table input[type=text]{border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-size:.78rem;font-family:inherit;background:white;outline:none;}
-.qa-table select:focus,.qa-table input:focus{border-color:var(--blue);background:#eff6ff;}
-
-.cl-section-header { background: var(--navy3); color: white; padding: 8px 12px; font-size: .8rem; font-weight: 700; border-radius: 6px 6px 0 0; margin-bottom: 0; }
-.cl-block { border: 1.5px solid var(--navy3); border-radius: 0 0 8px 8px; overflow: hidden; margin-bottom: 14px; }
-.cl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 700px) { .cl-grid { grid-template-columns: 1fr; } }
-.note-row { display: none; gap: 6px; margin-top: 3px; align-items: center; }
-.note-row.show { display: flex; }
-.note-badge { background: var(--amber); color: white; font-size: 0.65rem; font-weight: 800; padding: 2px 7px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
-.note-input { flex: 1; border: 1.5px solid #fcd34d; border-radius: 6px; padding: 5px 9px; font-size: 0.78rem; font-family: inherit; color: var(--navy); background: #fffbeb; outline: none; }
-.note-input.fail { border-color: var(--fail-ring) !important; background: var(--fail-bg) !important; }
-
-/* ── DYNAMIC TABLES (sub-panels, detection, flow, tamper, batteries) ── */
-.dyn-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 6px; }
-.dyn-table th { background: var(--navy3); color: white; padding: 5px 7px; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; }
-.dyn-table td { padding: 5px 5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.dyn-table input, .dyn-table select { border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font-size: 0.78rem; font-family: inherit; width: 100%; background: white; outline: none; }
-.dyn-table .pf-group { gap: 2px; flex-wrap: nowrap; }
-.dyn-table .pf-btn { padding: 3px 6px; min-width: 26px; font-size: 0.65rem; }
-.dyn-table input:focus, .dyn-table select:focus { border-color: var(--blue); background: #eff6ff; }
-.del-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 1rem; padding: 2px 6px; }
-
-/* ── DEVICE TESTING SUMMARY TABLE ── */
-.dev-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 6px; }
-.dev-table th { background: var(--navy3); color: white; padding: 5px 7px; font-weight: 600; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; text-align: center; }
-.dev-table th.left { text-align: left; }
-.dev-table td { padding: 5px 5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.dev-table td.label-cell { font-size: 0.78rem; color: var(--navy); }
-.dev-table td.key-cell { text-align: center; font-size: 0.72rem; color: var(--slate); font-weight: 700; }
-.dev-table input[type=number] { border: 1px solid var(--border); border-radius: 4px; padding: 4px 5px; font-size: 0.78rem; font-family: inherit; width: 54px; background: white; outline: none; text-align: center; }
-.dev-table input[type=number]:focus { border-color: var(--blue); background: #eff6ff; }
-.dev-table input[type=text] { border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; width: 100%; background: white; outline: none; }
-.pct.pass { color: var(--green); font-weight: 700; font-size: 0.78rem; }
-.pct.fail { color: var(--red); font-weight: 700; font-size: 0.78rem; }
-@media (max-width: 600px) {
-  .field-grid { grid-template-columns: 1fr; }
-  .field-grid.cols-3 { grid-template-columns: 1fr 1fr; }
-  .field-group.span-2 { grid-column: span 1; }
-  #systems-grid { grid-template-columns: repeat(3, 1fr); }
-  .inspect-row-top { flex-wrap: wrap; }
-  .pf-group { flex-shrink: 0; }
-}
-
-/* ── INSPECTION START CARDS ── */
-.insp-start-card {
-  background: white; border: 1.5px solid var(--border); border-radius: 8px;
-  padding: 12px 14px; margin-bottom: 8px;
-  transition: border-color 0.15s;
-}
-.insp-start-card:hover { border-color: var(--blue); }
-.insp-start-card:last-child { margin-bottom: 0; }
-.sys-status-pill {
-  display: inline-block; font-size: 0.68rem; font-weight: 700;
-  padding: 2px 8px; border-radius: 8px; margin-left: 6px; vertical-align: middle;
-}
-.sys-status-pill.compliant { background: rgba(22,163,74,0.12); color: var(--green); border: 1px solid rgba(22,163,74,0.3); }
-.sys-status-pill.deficient { background: rgba(217,119,6,0.12); color: var(--amber); border: 1px solid rgba(217,119,6,0.3); }
-.sys-status-pill.impaired  { background: rgba(220,38,38,0.12); color: var(--red);   border: 1px solid rgba(220,38,38,0.3); }
-#active-system-banner {
-  background: var(--fire); color: white;
-  padding: 10px 16px; border-radius: 8px; margin-bottom: 14px;
-  font-weight: 700; font-size: 0.9rem;
-  display: none; flex-direction: row; align-items: center; gap: 10px;
-}
-</style>
 </head>
 <body>
 
@@ -1766,7 +1335,8 @@ const SYS_META = {
   'smoke-control':       { label: 'Smoke Control',          icon: '💨' },
   'gas-detection':       { label: 'Gas Detection',          icon: '⚗️' },
   'special-suppression': { label: 'Special Suppression',    icon: '🧪' },
-  'backflow':            { label: 'Backflow Prevention',    icon: '🔁' }
+  'backflow':            { label: 'Backflow Prevention',    icon: '🔁' },
+  'exit-sign-lighting':  { label: 'Exit Sign & Lighting',   icon: '🚪' }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2997,7 +2567,8 @@ function _buildFreshGenericInspection() {
     'smoke-control':       buildSmokeControlPanel,
     'gas-detection':       buildGasDetectionPanel,
     'special-suppression': buildSpecialSuppressionPanel,
-    'backflow':            buildBackflowPanel
+    'backflow':            buildBackflowPanel,
+    'exit-sign-lighting':  buildExitSignLightingPanel
   };
   const builder = BUILDERS[activeInspectionSystem];
   if (!builder) { toast('⚠ Unknown system: ' + activeInspectionSystem); return; }
@@ -3028,6 +2599,18 @@ function _buildFreshGenericInspection() {
   if (prev) {
     // Restore all typed panel field values (notes, serials, counts, etc.)
     restorePanelFields(prev);
+
+    // Restore exit sign & emergency lighting rows (location/type persist)
+    if (prev.elUnits && prev.elUnits.length > 0) {
+      const elTbody = document.getElementById('el-tbody');
+      if (elTbody) { elTbody.innerHTML = ''; elCount = 0; }
+      prev.elUnits.forEach(u => addELRow({ loc: u.loc, type: u.type }));
+    }
+    if (prev.esUnits && prev.esUnits.length > 0) {
+      const esTbody = document.getElementById('es-tbody');
+      if (esTbody) { esTbody.innerHTML = ''; esCount = 0; }
+      prev.esUnits.forEach(u => addESRow({ loc: u.loc, type: u.type }));
+    }
 
     // Restore extinguisher rows — clear per-inspection fields, keep persistent ones
     if (prev.extinguishers && prev.extinguishers.length > 0) {
@@ -4553,6 +4136,219 @@ function buildBackflowPanel() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// EXIT SIGN & EMERGENCY LIGHTING PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+let elCount = 0, esCount = 0;
+
+function buildExitSignLightingPanel() {
+  elCount = 0;
+  esCount = 0;
+  const body = `
+    ${sectionDiv('Emergency Lighting Units (NFPA 101 7.9)')}
+    <p style="font-size:.78rem;color:var(--slate);margin-bottom:8px;">Test each unit. 30-sec: press test button and verify lamp illuminates. 90-min annual: full discharge test.</p>
+    <div style="overflow-x:auto;">
+      <table class="dyn-table" id="el-table">
+        <thead><tr>
+          <th style="width:24px;">#</th>
+          <th>Location</th>
+          <th style="width:90px;">Type</th>
+          <th style="width:72px;">30-Sec</th>
+          <th style="width:72px;">90-Min</th>
+          <th style="width:72px;">Battery</th>
+          <th style="width:72px;">Pass/Fail</th>
+          <th>Comments</th>
+          <th style="width:28px;"></th>
+        </tr></thead>
+        <tbody id="el-tbody"></tbody>
+      </table>
+    </div>
+    <button class="add-row-btn" onclick="addELRow()">+ Add Emergency Lighting Unit</button>
+
+    ${sectionDiv('Exit Signs (NFPA 101 7.10)')}
+    <div style="overflow-x:auto;">
+      <table class="dyn-table" id="es-table">
+        <thead><tr>
+          <th style="width:24px;">#</th>
+          <th>Location</th>
+          <th style="width:90px;">Type</th>
+          <th style="width:72px;">Illuminated</th>
+          <th style="width:72px;">Arrows</th>
+          <th style="width:72px;">Batt. Backup</th>
+          <th style="width:72px;">Pass/Fail</th>
+          <th>Comments</th>
+          <th style="width:28px;"></th>
+        </tr></thead>
+        <tbody id="es-tbody"></tbody>
+      </table>
+    </div>
+    <button class="add-row-btn" onclick="addESRow()">+ Add Exit Sign</button>
+
+    <div class="field-group" style="margin-top:12px;">
+      <label>Exit Sign &amp; Lighting Notes</label>
+      <textarea id="esl-notes" rows="3"></textarea>
+    </div>`;
+  return makePanel('exit-sign-lighting', '🚪', 'Exit Sign & Emergency Lighting (NFPA 101)', body);
+}
+
+function _eslYNA(prefix, n) {
+  return `<div class="pf-group" style="gap:2px;">
+    <button class="pf-btn pass" style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLSub(this,'${prefix}',${n},'PASS')">P</button>
+    <button class="pf-btn fail" style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLSub(this,'${prefix}',${n},'FAIL')">F</button>
+    <button class="pf-btn na"   style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLSub(this,'${prefix}',${n},'NA')">N/A</button>
+    <input type="hidden" id="${prefix}-${n}" value="">
+  </div>`;
+}
+
+function _eslPF(typeStr, n) {
+  return `<div class="pf-group" style="gap:2px;">
+    <button class="pf-btn pass" style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLPF(this,'${typeStr}',${n},'PASS')">P</button>
+    <button class="pf-btn fail" style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLPF(this,'${typeStr}',${n},'FAIL')">F</button>
+    <input type="hidden" id="${typeStr}-pf-${n}" value="">
+  </div>`;
+}
+
+function addELRow(p) {
+  elCount++;
+  const n = elCount;
+  p = p || {};
+  const types = ['LED','Fluorescent','Incandescent','Other'];
+  const typeSel = types.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
+  const tbody = document.getElementById('el-tbody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.id = 'el-row-' + n;
+  tr.innerHTML = `
+    <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
+    <td><input type="text" id="el-loc-${n}" value="${p.loc||''}" placeholder="Location / ID" style="width:100%;"></td>
+    <td><select id="el-type-${n}" style="width:100%;">${typeSel}</select></td>
+    <td>${_eslYNA('el-30s',n)}</td>
+    <td>${_eslYNA('el-90m',n)}</td>
+    <td>${_eslYNA('el-batt',n)}</td>
+    <td>${_eslPF('el',n)}</td>
+    <td><input type="text" id="el-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
+    <td><button class="del-btn" onclick="removeELRow(${n})">✕</button></td>`;
+  tbody.appendChild(tr);
+  if (p.pf30s)    setESLSubById('el-30s-' + n, p.pf30s);
+  if (p.pf90m)    setESLSubById('el-90m-' + n, p.pf90m);
+  if (p.pfBatt)   setESLSubById('el-batt-' + n, p.pfBatt);
+  if (p.pf)       setESLPFById('el', n, p.pf);
+}
+
+function addESRow(p) {
+  esCount++;
+  const n = esCount;
+  p = p || {};
+  const types = ['LED','Photoluminescent','Incandescent','Other'];
+  const typeSel = types.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
+  const tbody = document.getElementById('es-tbody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.id = 'es-row-' + n;
+  tr.innerHTML = `
+    <td style="text-align:center;font-weight:700;color:var(--slate);">${n}</td>
+    <td><input type="text" id="es-loc-${n}" value="${p.loc||''}" placeholder="Location / ID" style="width:100%;"></td>
+    <td><select id="es-type-${n}" style="width:100%;">${typeSel}</select></td>
+    <td>${_eslYNA('es-illum',n)}</td>
+    <td>${_eslYNA('es-arrows',n)}</td>
+    <td>${_eslYNA('es-batt',n)}</td>
+    <td>${_eslPF('es',n)}</td>
+    <td><input type="text" id="es-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
+    <td><button class="del-btn" onclick="removeESRow(${n})">✕</button></td>`;
+  tbody.appendChild(tr);
+  if (p.pfIllum)  setESLSubById('es-illum-' + n, p.pfIllum);
+  if (p.pfArrows) setESLSubById('es-arrows-' + n, p.pfArrows);
+  if (p.pfBatt)   setESLSubById('es-batt-' + n, p.pfBatt);
+  if (p.pf)       setESLPFById('es', n, p.pf);
+}
+
+function setESLSub(btn, prefix, n, val) {
+  btn.closest('.pf-group').querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const inp = document.getElementById(prefix + '-' + n);
+  if (inp) inp.value = val;
+}
+
+function setESLSubById(id, val) {
+  const inp = document.getElementById(id);
+  if (!inp) return;
+  const grp = inp.closest('.pf-group');
+  if (!grp) return;
+  grp.querySelectorAll('.pf-btn').forEach(b => {
+    const bval = b.textContent.trim() === 'P' ? 'PASS' : b.textContent.trim() === 'F' ? 'FAIL' : 'NA';
+    b.classList.toggle('selected', bval === val);
+  });
+  inp.value = val;
+}
+
+function setESLPF(btn, typeStr, n, val) {
+  btn.closest('.pf-group').querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const inp = document.getElementById(typeStr + '-pf-' + n);
+  if (inp) inp.value = val;
+  _eslManageDefic(typeStr, n, val);
+  _eslAutoStatus();
+}
+
+function setESLPFById(typeStr, n, val) {
+  const inp = document.getElementById(typeStr + '-pf-' + n);
+  if (!inp) return;
+  const grp = inp.closest('.pf-group');
+  if (grp) {
+    grp.querySelectorAll('.pf-btn').forEach(b => {
+      const bval = b.textContent.trim() === 'P' ? 'PASS' : 'FAIL';
+      b.classList.toggle('selected', bval === val);
+    });
+  }
+  inp.value = val;
+  _eslManageDefic(typeStr, n, val);
+}
+
+function _eslManageDefic(typeStr, n, val) {
+  const deficId = typeStr + '-pf-defic-' + n;
+  const locEl = document.getElementById(typeStr + '-loc-' + n);
+  const loc = locEl?.value?.trim() || '';
+  const unitLabel = (typeStr === 'el' ? 'Emergency Light' : 'Exit Sign') + (loc ? ' - ' + loc : '') + ' (Unit #' + n + ')';
+  const tbody = document.getElementById('generic-defic-tbody');
+  if (!tbody) return;
+  const existing = document.getElementById(deficId);
+  if (val === 'FAIL') {
+    if (!existing) {
+      const row = document.createElement('tr');
+      row.id = deficId;
+      row.innerHTML = `<td style="white-space:nowrap;font-size:.78rem;padding:4px 6px;">${unitLabel}</td>
+        <td style="padding:4px 6px;"><input type="text" id="${deficId}-txt" placeholder="Deficiency note…" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></td>
+        <td style="padding:4px 6px;"><button class="del-btn" onclick="document.getElementById('${deficId}').remove();_eslAutoStatus();">✕</button></td>`;
+      tbody.appendChild(row);
+    }
+  } else {
+    if (existing) existing.remove();
+  }
+}
+
+function _eslAutoStatus() {
+  if (!overallStatusUserSet) {
+    const tbody = document.getElementById('generic-defic-tbody');
+    const defics = tbody ? tbody.querySelectorAll('tr').length : 0;
+    setOverallStatus(defics > 0 ? 'DEFICIENT' : 'COMPLIANT');
+  }
+}
+
+function removeELRow(n) {
+  document.getElementById('el-row-' + n)?.remove();
+  const defic = document.getElementById('el-pf-defic-' + n);
+  if (defic) defic.remove();
+  _eslAutoStatus();
+}
+
+function removeESRow(n) {
+  document.getElementById('es-row-' + n)?.remove();
+  const defic = document.getElementById('es-pf-defic-' + n);
+  if (defic) defic.remove();
+  _eslAutoStatus();
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FIRE ALARM — DEVICE LIST, CHECKLISTS, DYNAMIC TABLES
 // ─────────────────────────────────────────────────────────────────────────────
 const FA_DEVICES = [
@@ -5691,7 +5487,7 @@ function saveDraft() {
     photos,
     sigData,
     custSigData,
-    counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount, spDrainCount, genericDeficCount, extUnitCount, extDeficCount },
+    counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount, spDrainCount, genericDeficCount, extUnitCount, extDeficCount, elCount, esCount },
     overallStatus,
     onsiteUnsat: Object.assign({}, _onsiteUnsat),
     currentFAStep,
@@ -5754,6 +5550,8 @@ function restoreDraft(draft) {
   genericDeficCount = draft.counters?.genericDeficCount || 0;
   extUnitCount = draft.counters?.extUnitCount || 0;
   extDeficCount = draft.counters?.extDeficCount || 0;
+  elCount = draft.counters?.elCount || 0;
+  esCount = draft.counters?.esCount || 0;
   // Restore general notes tbody (lives in step-4, outside faSteps)
   if (draft.notesHTML !== undefined) {
     const el = document.getElementById('fa-notes-tbody');
@@ -6610,6 +6408,36 @@ function collectAllData() {
   const extNfGlass    = document.getElementById('ext-nf-glass')?.value?.trim() || '';
   const extTotalSvcDue = document.getElementById('ext-total-svc-due')?.value || '';
 
+  // Exit Sign & Emergency Lighting units
+  const elUnits = [];
+  for (let i = 1; i <= elCount; i++) {
+    if (!document.getElementById('el-row-' + i)) continue;
+    elUnits.push({
+      rowNum:   i,
+      loc:      document.getElementById('el-loc-' + i)?.value?.trim() || '',
+      type:     document.getElementById('el-type-' + i)?.value || '',
+      pf30s:    document.getElementById('el-30s-' + i)?.value || '',
+      pf90m:    document.getElementById('el-90m-' + i)?.value || '',
+      pfBatt:   document.getElementById('el-batt-' + i)?.value || '',
+      pf:       document.getElementById('el-pf-' + i)?.value || '',
+      comments: document.getElementById('el-comments-' + i)?.value?.trim() || '',
+    });
+  }
+  const esUnits = [];
+  for (let i = 1; i <= esCount; i++) {
+    if (!document.getElementById('es-row-' + i)) continue;
+    esUnits.push({
+      rowNum:    i,
+      loc:       document.getElementById('es-loc-' + i)?.value?.trim() || '',
+      type:      document.getElementById('es-type-' + i)?.value || '',
+      pfIllum:   document.getElementById('es-illum-' + i)?.value || '',
+      pfArrows:  document.getElementById('es-arrows-' + i)?.value || '',
+      pfBatt:    document.getElementById('es-batt-' + i)?.value || '',
+      pf:        document.getElementById('es-pf-' + i)?.value || '',
+      comments:  document.getElementById('es-comments-' + i)?.value?.trim() || '',
+    });
+  }
+
   return {
     meta: { generatedAt: new Date().toISOString(), version: '3.0' },
     property: {
@@ -6645,6 +6473,8 @@ function collectAllData() {
     extNfSignage,
     extNfGlass,
     extTotalSvcDue,
+    elUnits,
+    esUnits,
     signature: { name: v('sig-name'), date: v('sig-date'), hasDrawnSig: sigHasData }
   };
 }
@@ -7056,6 +6886,9 @@ async function buildPDFDoc() {
       [{label:'RV Diff PSI',id:'bf-rv-open'},{label:'Test Date',id:'bf-test-date'}],
       [{label:"Tester's Cert #",id:'bf-cert-number'},{label:'Cert. Expiration',id:'bf-cert-exp'}],
     ],
+    'exit-sign-lighting': [
+      [{label:'# Emergency Lighting Units',id:'esl-el-count'},{label:'# Exit Signs',id:'esl-es-count'}],
+    ],
   };
 
   // ══════════════════════════════════════════════════════════
@@ -7074,6 +6907,7 @@ async function buildPDFDoc() {
     'gas-detection':['gd-sensor-test','gd-alarm-test','gd-gas-shutoff','gd-ventilation','gd-power','gd-backup','gd-control-panel','gd-fa-integration','gd-calibration-cert'],
     'special-suppression':['ss-agent-wt','ss-detection','ss-pull','ss-abort','ss-discharge-time','ss-nozzles','ss-coverage','ss-room-integrity','ss-hvac-shutoff','ss-power-shutoff','ss-fa-integration','ss-recharge-cert'],
     'backflow':  ['bf-test','bf-passed','bf-casing','bf-shutoffs','bf-clearance','bf-freeze'],
+    'exit-sign-lighting': [],
   };
 
   const systemTitles = {
@@ -7089,6 +6923,7 @@ async function buildPDFDoc() {
     'gas-detection':       'GAS DETECTION SYSTEM',
     'special-suppression': 'SPECIAL SUPPRESSION SYSTEM  (NFPA 2001 / 11 / 17)',
     'backflow':            'BACKFLOW PREVENTION DEVICE',
+    'exit-sign-lighting':  'EXIT SIGN & EMERGENCY LIGHTING  (NFPA 101)',
   };
 
   const notesIds = {
@@ -7096,6 +6931,7 @@ async function buildPDFDoc() {
     'standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
     'bda':'bda-notes','smoke-control':'sc-notes','gas-detection':'gd-notes',
     'special-suppression':'ss-notes','backflow':'bf-notes','extinguisher':'ext-notes',
+    'exit-sign-lighting':'esl-notes',
   };
 
   // ── Render active system ──
@@ -8905,6 +8741,653 @@ async function buildSprinklerPDFBytes() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GENERIC SYSTEM PDF (fire-pump, standpipe, hood, hydrant, bda, smoke-control,
+// gas-detection, special-suppression, backflow) — pdf-lib editable format
+// ─────────────────────────────────────────────────────────────────────────────
+async function buildGenericSystemPDFBytes() {
+  if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
+  const data = collectAllData();
+  const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const form   = pdfDoc.getForm();
+  const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 36;
+  let page, curY, _fid = 0;
+  const fid = () => 'gen_' + (++_fid);
+
+  const FIRE_RED = rgb(0.72, 0.08, 0.08);
+  const navy  = rgb(0.13, 0.21, 0.42);
+  const sky   = rgb(0.71, 0.80, 0.93);
+  const gold  = rgb(1.0, 1.0, 0.75);
+  const lgray = rgb(0.94, 0.94, 0.94);
+  const white = rgb(1, 1, 1);
+  const green = rgb(0.06, 0.50, 0.22);
+  const red   = rgb(0.76, 0.10, 0.10);
+  const amber = rgb(0.75, 0.38, 0.00);
+  const slate = rgb(0.39, 0.45, 0.55);
+
+  const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
+  const ry = (h) => PH - curY - h;
+  const ty = (h, a = 3) => PH - curY - h + a;
+  const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
+  const gap = (h) => { curY += h; };
+
+  const wrap = (text, sz, maxW) => {
+    if (!text) return [''];
+    const words = String(text).split(' ');
+    const lines = []; let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  };
+
+  const secHdr = (title) => {
+    checkPage(20);
+    page.drawRectangle({ x: ML, y: ry(17), width: PW, height: 17, color: navy });
+    page.drawText(title, { x: ML+4, y: ty(17,5), size: 9, font: hFont, color: white });
+    curY += 18;
+  };
+  const subHdr = (title) => {
+    checkPage(14);
+    page.drawRectangle({ x: ML, y: ry(12), width: PW, height: 12, color: sky });
+    page.drawText(title, { x: ML+4, y: ty(12,4), size: 7.5, font: hFont, color: navy });
+    curY += 13;
+  };
+  const mkField = (val, x, fieldY, w, h, ml) => {
+    page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
+    const f = form.createTextField(fid());
+    f.setText(String(val || ''));
+    if (ml) f.enableMultiline();
+    f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
+    f.setFontSize(8);
+  };
+  const dataRow = (cols, fh = 12, lh = 8, gp = 3) => {
+    checkPage(lh + fh + gp);
+    let x = ML;
+    cols.forEach(c => {
+      page.drawText((c.label||'')+':', { x: x+2, y: ty(lh, lh-3), size: 6, font: hFont, color: navy });
+      mkField(c.val, x, ry(lh+fh), c.w, fh);
+      x += c.w;
+    });
+    curY += lh + fh + gp;
+  };
+
+  const sys = activeInspectionSystem;
+  const meta = SYS_META[sys] || { label: sys, icon: '' };
+
+  // System title map
+  const SYS_TITLE = {
+    'fire-pump':           'FIRE PUMP INSPECTION REPORT',
+    'standpipe':           'STANDPIPE SYSTEM INSPECTION REPORT',
+    'hood':                'KITCHEN HOOD SUPPRESSION INSPECTION REPORT',
+    'hydrant':             'PRIVATE HYDRANT INSPECTION REPORT',
+    'bda':                 'BDA / EMERGENCY RADIO INSPECTION REPORT',
+    'smoke-control':       'SMOKE CONTROL SYSTEM INSPECTION REPORT',
+    'gas-detection':       'GAS DETECTION SYSTEM INSPECTION REPORT',
+    'special-suppression': 'SPECIAL SUPPRESSION SYSTEM INSPECTION REPORT',
+    'backflow':            'BACKFLOW PREVENTION DEVICE TEST REPORT',
+  };
+  const NFPA_REF = {
+    'fire-pump':'NFPA 25 Ch. 8','standpipe':'NFPA 25 Ch. 6','hood':'NFPA 17A',
+    'hydrant':'NFPA 25 Ch. 7','bda':'NFPA 72 Ch. 24','smoke-control':'NFPA 92',
+    'gas-detection':'NFPA 72','special-suppression':'NFPA 2001 / 11 / 17','backflow':'AWWA',
+  };
+
+  // System data fields (ids → labels)
+  const SYS_FIELDS = {
+    'fire-pump': [
+      [{label:'Manufacturer',id:'fp-mfr',w:180},{label:'Model',id:'fp-model',w:180},{label:'Serial #',id:'fp-serial',w:180}],
+      [{label:'Driver Type',id:'fp-type',w:180},{label:'Rated GPM',id:'fp-rated-gpm',w:180},{label:'Rated PSI',id:'fp-rated-psi',w:180}],
+      [{label:'Rated RPM',id:'fp-rpm',w:135},{label:'Horsepower',id:'fp-hp',w:135},{label:'Year Installed',id:'fp-year',w:135},{label:'Jockey Start PSI',id:'fp-jockey-start',w:135}],
+      [{label:'Churn Suction PSI',id:'fp-churn-suction',w:180},{label:'Churn Discharge PSI',id:'fp-churn-discharge',w:180},{label:'Churn RPM',id:'fp-churn-rpm',w:180}],
+      [{label:'Flow GPM',id:'fp-flow-gpm',w:135},{label:'Flow Suction PSI',id:'fp-flow-suction',w:135},{label:'Flow Discharge PSI',id:'fp-flow-discharge',w:135},{label:'Flow RPM',id:'fp-flow-rpm',w:135}],
+    ],
+    'standpipe': [
+      [{label:'Standpipe Class',id:'std-class',w:180},{label:'System Type',id:'std-type',w:180},{label:'# Standpipes',id:'std-count',w:180}],
+      [{label:'# Floors Served',id:'std-floors',w:180},{label:'# Hose Stations',id:'std-hose-stations',w:180},{label:'Last Flow Test Date',id:'std-flow-date',w:180}],
+      [{label:'PRV Static PSI',id:'std-prv-static',w:180},{label:'PRV Residual PSI',id:'std-prv-residual',w:180},{label:'Flow Test PSI',id:'std-flow-psi',w:180}],
+    ],
+    'hood': [
+      [{label:'Manufacturer',id:'hood-mfr',w:180},{label:'Model / Cylinder #',id:'hood-model',w:180},{label:'Year Installed',id:'hood-install',w:180}],
+      [{label:'Agent Type',id:'hood-agent',w:180},{label:'# Nozzles',id:'hood-nozzle-count',w:180},{label:'Last Service Date',id:'hood-last-service',w:180}],
+      [{label:'Cylinder Wt (actual)',id:'hood-cyl-wt-actual',w:180},{label:'Min Acceptable Wt (lbs)',id:'hood-cyl-wt-min',w:180},{label:'Next Service Due',id:'hood-next-service',w:180}],
+    ],
+    'hydrant': [
+      [{label:'# Hydrants',id:'hy-count',w:180},{label:'Hydrant Type',id:'hy-type',w:180},{label:'Last Flow Test Date',id:'hy-last-flow',w:180}],
+      [{label:'Static PSI',id:'hy-flow-static',w:180},{label:'Residual PSI',id:'hy-flow-residual',w:180},{label:'Flow GPM',id:'hy-flow-gpm',w:180}],
+    ],
+    'bda': [
+      [{label:'Manufacturer',id:'bda-mfr',w:180},{label:'Model',id:'bda-model',w:180},{label:'Year Installed',id:'bda-install',w:180}],
+      [{label:'Frequencies',id:'bda-freqs',w:270},{label:'AHJ Cert / FCC License',id:'bda-ahj-cert',w:270}],
+      [{label:'Min Signal (dBm)',id:'bda-min-signal',w:180},{label:'Worst Coverage Location',id:'bda-worst-loc',w:180},{label:'Next Test Date',id:'bda-next-test',w:180}],
+    ],
+    'smoke-control': [
+      [{label:'System Type',id:'sc-type',w:180},{label:'# Zones',id:'sc-zones',w:180},{label:'Year Installed',id:'sc-year',w:180}],
+      [{label:'# Fans',id:'sc-fans',w:135},{label:'# Dampers',id:'sc-dampers',w:135},{label:'Pressure Differential',id:'sc-pressure-val',w:135},{label:'# HVAC Units',id:'sc-hvac-count',w:135}],
+    ],
+    'gas-detection': [
+      [{label:'Manufacturer',id:'gd-mfr',w:180},{label:'Model',id:'gd-model',w:180},{label:'Gas Type',id:'gd-gas-type',w:180}],
+      [{label:'# Sensors',id:'gd-sensor-count',w:135},{label:'# Zones',id:'gd-zones',w:135},{label:'Year Installed',id:'gd-install-date',w:135},{label:'Next Replacement Due',id:'gd-sensor-due',w:135}],
+      [{label:'Low Alarm Setpoint',id:'gd-alarm-setpoint-lo',w:270},{label:'High Alarm Setpoint',id:'gd-alarm-setpoint-hi',w:270}],
+    ],
+    'special-suppression': [
+      [{label:'System Type',id:'ss-type',w:180},{label:'Manufacturer',id:'ss-mfr',w:180},{label:'Protected Area',id:'ss-area',w:180}],
+      [{label:'Agent Name',id:'ss-agent',w:180},{label:'# Cylinders',id:'ss-cylinders',w:180},{label:'Year Installed',id:'ss-install',w:180}],
+      [{label:'Actual Weight (lbs)',id:'ss-actual-wt',w:180},{label:'Min. Required (lbs)',id:'ss-min-wt',w:180},{label:'Cylinder PSI',id:'ss-pressure',w:180}],
+    ],
+    'backflow': [
+      [{label:'Manufacturer',id:'bf-mfr',w:180},{label:'Model',id:'bf-model',w:180},{label:'Serial #',id:'bf-serial',w:180}],
+      [{label:'Device Type',id:'bf-type',w:180},{label:'Size',id:'bf-size',w:180},{label:'Location',id:'bf-location',w:180}],
+      [{label:'Check 1 Open PSI',id:'bf-check1-open',w:135},{label:'Check 1 Close PSI',id:'bf-check1-close',w:135},{label:'Check 2 Open PSI',id:'bf-check2-open',w:135},{label:'Check 2 Close PSI',id:'bf-check2-close',w:135}],
+      [{label:'RV Diff PSI',id:'bf-rv-open',w:180},{label:'Test Date',id:'bf-test-date',w:180},{label:"Tester's Cert #",id:'bf-cert-number',w:180}],
+    ],
+  };
+
+  // Inspection item IDs per system
+  const SYS_ITEMS = {
+    'fire-pump':   ['fp-controller-cond','fp-controller-auto','fp-jockey-type','fp-jockey-cycles','fp-churn-test','fp-flow-test','fp-diesel-start','fp-diesel-fuel','fp-diesel-battery','fp-diesel-coolant','fp-diesel-run','fp-power-fail-alarm','fp-phase-alarm','fp-room-temp','fp-suction-valve'],
+    'standpipe':   ['std-fdc','std-fdc-sign','std-hose-valves','std-prv','std-check-valve','std-flow-test','std-hose-cond','std-nozzle','std-cabinet'],
+    'hood':        ['hood-cylinder-wt','hood-pull-station','hood-auto-detect','hood-micro-switch','hood-nozzle-cond','hood-nozzle-coverage','hood-duct-protected','hood-gas-shutoff','hood-power-shutoff','hood-fa-integration','hood-ansul-reset','hood-grease-buildup','hood-filter-cond','hood-service-tag'],
+    'hydrant':     ['hy-caps','hy-drainage','hy-painted','hy-clearance','hy-operation','hy-gate-valve','hy-outlet-threads','hy-flow-test'],
+    'bda':         ['bda-uplink','bda-downlink','bda-coverage','bda-power','bda-backup-power','bda-donor-antenna','bda-internal-antenna','bda-alarms','bda-fa-interface','bda-permit','bda-coverage-map'],
+    'smoke-control':['sc-fans-op','sc-cfm','sc-pressure','sc-dampers-op','sc-fire-dampers','sc-damper-access','sc-control-panel','sc-fa-integration','sc-override','sc-detector-input'],
+    'gas-detection':['gd-sensor-test','gd-alarm-test','gd-gas-shutoff','gd-ventilation','gd-power','gd-backup','gd-control-panel','gd-fa-integration','gd-calibration-cert'],
+    'special-suppression':['ss-agent-wt','ss-detection','ss-pull','ss-abort','ss-discharge-time','ss-nozzles','ss-coverage','ss-room-integrity','ss-hvac-shutoff','ss-power-shutoff','ss-fa-integration','ss-recharge-cert'],
+    'backflow':    ['bf-test','bf-passed','bf-casing','bf-shutoffs','bf-clearance','bf-freeze'],
+  };
+  const NOTES_ID = {
+    'fire-pump':'fp-notes','standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
+    'bda':'bda-notes','smoke-control':'sc-notes','gas-detection':'gd-notes',
+    'special-suppression':'ss-notes','backflow':'bf-notes',
+  };
+
+  // ── PAGE 1: HEADER ──────────────────────────────────────────────────────────
+  addPage();
+
+  // Red title banner
+  const titleText = SYS_TITLE[sys] || (meta.label.toUpperCase() + ' INSPECTION REPORT');
+  page.drawRectangle({ x: 0, y: PH - 22, width: W, height: 22, color: FIRE_RED });
+  page.drawText(titleText, {
+    x: W/2 - hFont.widthOfTextAtSize(titleText, 12)/2,
+    y: PH - 22 + 5, size: 12, font: hFont, color: white
+  });
+  curY = 22 + 6;
+
+  // Logo + company block
+  const logoAreaH = 84;
+  const logoX = ML, logoW = 88;
+  const infoX = ML + logoW + 6, infoW = 162;
+  const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
+
+  try {
+    const svgText = await fetch('logo.svg').then(r => r.text());
+    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
+    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(svgBlob);
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        const scale = 3;
+        const full = document.createElement('canvas');
+        full.width = 400 * scale; full.height = 600 * scale;
+        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
+        const cropW = 400 * scale, cropH = 445 * scale;
+        const crop = document.createElement('canvas');
+        crop.width = cropW; crop.height = cropH;
+        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
+        const b64 = crop.toDataURL('image/png').split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const logoImg = await pdfDoc.embedPng(ab);
+        const logoDims = logoImg.scaleToFit(66, 66);
+        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - logoDims.height)/2, width: logoDims.width, height: logoDims.height });
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      img.src = url;
+    });
+  } catch(_) {}
+
+  // Company info box
+  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+  const compLines = [
+    { text: 'Fire Life Protection System, Inc.', bold: true, sz: 7.5 },
+    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: 7 },
+    { text: 'Littleton, CO 80127',                bold: false, sz: 7 },
+    { text: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', bold: false, sz: 6.5 },
+    { text: 'Alan.antonio@firelifeprotectionsystems.com',       bold: false, sz: 6.5 },
+  ];
+  let clY = ry(logoAreaH) + logoAreaH - 8;
+  compLines.forEach(l => {
+    page.drawText(l.text, { x: infoX + 4, y: clY, size: l.sz, font: l.bold ? hFont : rFont, color: navy });
+    clY -= l.sz + 4;
+  });
+
+  // Report info box (right side)
+  page.drawRectangle({ x: rtX, y: ry(logoAreaH), width: rtW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+  const rtFields = [
+    { label: 'DATE', val: data.inspection.date || '' },
+    { label: 'REPORT TYPE', val: data.inspection.reportType || '' },
+    { label: 'INSPECTOR', val: data.inspection.inspectorName || '' },
+    { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
+    { label: 'NFPA REF.', val: data.inspection.nfpaRef || NFPA_REF[sys] || '' },
+  ];
+  let rfY = ry(logoAreaH) + logoAreaH - 8;
+  rtFields.forEach(f => {
+    page.drawText(f.label + ':', { x: rtX+3, y: rfY, size: 5.5, font: hFont, color: slate });
+    rfY -= 5;
+    page.drawRectangle({ x: rtX+2, y: rfY - 2, width: rtW-4, height: 9, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const tf = form.createTextField(fid());
+    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY-1, width: rtW-6, height: 7, font: rFont }); tf.setFontSize(7);
+    rfY -= 11;
+  });
+  curY += logoAreaH + 4;
+
+  // Property block
+  secHdr('PROPERTY INFORMATION');
+  const propName = data.property.name || 'Property Not Selected';
+  const addrLine = [data.property.address, data.property.cityStateZip].filter(Boolean).join('  |  ');
+  const contactLine = [data.property.contact, data.property.contactEmail, data.property.company].filter(Boolean).join('  |  ');
+  [
+    { text: propName, sz: 10, font: hFont, color: navy },
+    { text: addrLine, sz: 8, font: rFont, color: navy },
+    { text: contactLine, sz: 7.5, font: rFont, color: slate },
+  ].forEach(l => {
+    if (!l.text) return;
+    wrap(l.text, l.sz, PW - 8).forEach(line => {
+      checkPage(l.sz + 4);
+      page.drawText(line, { x: ML+4, y: ry(l.sz + 4) + 2, size: l.sz, font: l.font, color: l.color });
+      curY += l.sz + 4;
+    });
+  });
+  gap(4);
+
+  // Overall status bar
+  const stVal = (data.overallStatus || '').toUpperCase();
+  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
+  checkPage(22);
+  page.drawRectangle({ x: ML, y: ry(18), width: PW, height: 18, color: stColor });
+  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(18,6), size: 6.5, font: hFont, color: white });
+  page.drawText(stVal || 'PENDING', { x: ML+130, y: ty(18,6), size: 9.5, font: hFont, color: white });
+  curY += 18;
+  gap(6);
+
+  // System info fields
+  const sysFields = SYS_FIELDS[sys];
+  if (sysFields && sysFields.length) {
+    secHdr('SYSTEM INFORMATION');
+    sysFields.forEach(row => {
+      const cols = row.map(c => ({ label: c.label, val: document.getElementById(c.id)?.value?.trim() || '', w: c.w }));
+      dataRow(cols);
+    });
+    gap(4);
+  }
+
+  // Deficiencies
+  if (data.deficiencies.length > 0) {
+    secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
+    data.deficiencies.forEach(d => {
+      checkPage(16);
+      const text = d.item + (d.description ? ': ' + d.description : '');
+      const lines = wrap(text, 8, PW - 16);
+      const rowH = lines.length * 11 + 4;
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
+      page.drawText('\u2022', { x: ML+4, y: ty(rowH, rowH/2 + 3), size: 8, font: hFont, color: red });
+      lines.forEach((line, li) => {
+        page.drawText(line, { x: ML+12, y: ty(rowH, rowH - 4 - li*11), size: 8, font: li===0?hFont:rFont, color: red });
+      });
+      curY += rowH + 3;
+    });
+    gap(4);
+  }
+
+  // Inspection checklist
+  const inspItems = SYS_ITEMS[sys] || [];
+  if (inspItems.length) {
+    secHdr('INSPECTION RESULTS');
+    inspItems.forEach(id => {
+      const row = document.getElementById('row-' + id);
+      if (!row) return;
+      const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
+      const result = (row.dataset.val || '').toUpperCase();
+      const deficTxt = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
+      const rowH = 13;
+      checkPage(rowH + (result === 'FAIL' && deficTxt ? 10 : 0));
+      const bg = result === 'PASS' ? rgb(0.94, 0.99, 0.95) : result === 'FAIL' ? rgb(0.99, 0.93, 0.93) : rgb(0.97, 0.97, 0.97);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
+      wrap(label, 7.5, PW - 60).forEach((line, li) => {
+        page.drawText(line, { x: ML+4, y: ty(rowH, rowH - 4 - li*9), size: 7.5, font: rFont, color: navy });
+      });
+      if (result) {
+        const bColor = result === 'PASS' ? green : result === 'FAIL' ? red : slate;
+        const bW = 30;
+        page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+2, width: bW, height: rowH-4, color: bColor });
+        page.drawText(result, { x: ML+PW-bW/2-hFont.widthOfTextAtSize(result, 6)/2-2, y: ty(rowH, rowH/2+2), size: 6, font: hFont, color: white });
+      }
+      curY += rowH + 1;
+      if (result === 'FAIL' && deficTxt) {
+        const dl = wrap('Deficiency: ' + deficTxt, 7, PW - 16);
+        dl.forEach(line => {
+          checkPage(10);
+          page.drawRectangle({ x: ML+4, y: ry(10), width: PW-4, height: 10, color: rgb(0.99, 0.93, 0.93) });
+          page.drawText(line, { x: ML+8, y: ty(10,3), size: 7, font: rFont, color: red });
+          curY += 10;
+        });
+      }
+    });
+    gap(4);
+  }
+
+  // Notes
+  const notesId = NOTES_ID[sys];
+  const notesVal = notesId ? document.getElementById(notesId)?.value?.trim() : '';
+  if (notesVal) {
+    secHdr('NOTES');
+    const nl = wrap(notesVal, 8, PW - 8);
+    nl.forEach(line => {
+      checkPage(12);
+      page.drawText(line, { x: ML+4, y: ry(12)+3, size: 8, font: rFont, color: navy });
+      curY += 12;
+    });
+    gap(4);
+  }
+
+  // Signature
+  checkPage(50);
+  secHdr('INSPECTOR CERTIFICATION');
+  const sigName = data.signature?.name || '';
+  const sigDate = data.signature?.date || '';
+  const halfW = PW / 2 - 4;
+  page.drawText('Inspector Signature:', { x: ML+2, y: ty(8, 5), size: 6.5, font: hFont, color: navy });
+  page.drawText('Date:', { x: ML+halfW+10, y: ty(8, 5), size: 6.5, font: hFont, color: navy });
+  curY += 8;
+  page.drawRectangle({ x: ML, y: ry(20), width: halfW, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
+  const sf = form.createTextField(fid());
+  sf.setText(sigName); sf.addToPage(page, { x: ML+2, y: ry(20)+2, width: halfW-4, height: 16, font: rFont }); sf.setFontSize(9);
+  page.drawRectangle({ x: ML+halfW+8, y: ry(20), width: halfW, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
+  const df = form.createTextField(fid());
+  df.setText(sigDate); df.addToPage(page, { x: ML+halfW+10, y: ry(20)+2, width: halfW-4, height: 16, font: rFont }); df.setFontSize(9);
+  curY += 20;
+  gap(6);
+  page.drawText('Printed Name:', { x: ML+2, y: ty(8, 5), size: 6.5, font: hFont, color: navy });
+  curY += 8;
+  page.drawRectangle({ x: ML, y: ry(14), width: halfW, height: 14, color: gold, borderColor: sky, borderWidth: 0.5 });
+  const pf2 = form.createTextField(fid());
+  pf2.setText(sigName); pf2.addToPage(page, { x: ML+2, y: ry(14)+2, width: halfW-4, height: 10, font: rFont }); pf2.setFontSize(8);
+  curY += 14;
+
+  return await pdfDoc.save();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXIT SIGN & LIGHTING PDF — pdf-lib editable format
+// ─────────────────────────────────────────────────────────────────────────────
+async function buildExitSignLightingPDFBytes() {
+  if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
+  const data = collectAllData();
+  const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const form   = pdfDoc.getForm();
+  const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 36;
+  let page, curY, _fid = 0;
+  const fid = () => 'esl_' + (++_fid);
+
+  const FIRE_RED = rgb(0.72, 0.08, 0.08);
+  const navy  = rgb(0.13, 0.21, 0.42);
+  const sky   = rgb(0.71, 0.80, 0.93);
+  const gold  = rgb(1.0, 1.0, 0.75);
+  const lgray = rgb(0.94, 0.94, 0.94);
+  const white = rgb(1, 1, 1);
+  const green = rgb(0.06, 0.50, 0.22);
+  const red   = rgb(0.76, 0.10, 0.10);
+  const amber = rgb(0.75, 0.38, 0.00);
+  const slate = rgb(0.39, 0.45, 0.55);
+
+  const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
+  const ry = (h) => PH - curY - h;
+  const ty = (h, a = 3) => PH - curY - h + a;
+  const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
+  const gap = (h) => { curY += h; };
+
+  const wrap = (text, sz, maxW) => {
+    if (!text) return [''];
+    const words = String(text).split(' ');
+    const lines = []; let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  };
+
+  const secHdr = (title) => {
+    checkPage(20);
+    page.drawRectangle({ x: ML, y: ry(17), width: PW, height: 17, color: navy });
+    page.drawText(title, { x: ML+4, y: ty(17,5), size: 9, font: hFont, color: white });
+    curY += 18;
+  };
+
+  // ── HEADER (same logo pattern as other PDFs) ─────────────────────────────
+  addPage();
+  const titleText = 'EXIT SIGN & EMERGENCY LIGHTING INSPECTION REPORT';
+  page.drawRectangle({ x: 0, y: PH - 22, width: W, height: 22, color: FIRE_RED });
+  page.drawText(titleText, {
+    x: W/2 - hFont.widthOfTextAtSize(titleText, 11)/2,
+    y: PH - 22 + 5, size: 11, font: hFont, color: white
+  });
+  curY = 22 + 6;
+
+  const logoAreaH = 84;
+  const logoX = ML, logoW = 88;
+  const infoX = ML + logoW + 6, infoW = 162;
+  const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
+
+  try {
+    const svgText = await fetch('logo.svg').then(r => r.text());
+    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
+    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(svgBlob);
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        const scale = 3;
+        const full = document.createElement('canvas');
+        full.width = 400 * scale; full.height = 600 * scale;
+        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
+        const cropW = 400 * scale, cropH = 445 * scale;
+        const crop = document.createElement('canvas');
+        crop.width = cropW; crop.height = cropH;
+        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
+        const b64 = crop.toDataURL('image/png').split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const logoImg = await pdfDoc.embedPng(ab);
+        const logoDims = logoImg.scaleToFit(66, 66);
+        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - logoDims.height)/2, width: logoDims.width, height: logoDims.height });
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      img.src = url;
+    });
+  } catch(_) {}
+
+  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+  const compLines2 = [
+    { text: 'Fire Life Protection System, Inc.', bold: true, sz: 7.5 },
+    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: 7 },
+    { text: 'Littleton, CO 80127',                bold: false, sz: 7 },
+    { text: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', bold: false, sz: 6.5 },
+    { text: 'Alan.antonio@firelifeprotectionsystems.com',       bold: false, sz: 6.5 },
+  ];
+  let clY2 = ry(logoAreaH) + logoAreaH - 8;
+  compLines2.forEach(l => {
+    page.drawText(l.text, { x: infoX+4, y: clY2, size: l.sz, font: l.bold ? hFont : rFont, color: navy });
+    clY2 -= l.sz + 4;
+  });
+
+  page.drawRectangle({ x: rtX, y: ry(logoAreaH), width: rtW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+  const rtFields2 = [
+    { label: 'DATE',         val: data.inspection.date || '' },
+    { label: 'REPORT TYPE',  val: data.inspection.reportType || '' },
+    { label: 'INSPECTOR',    val: data.inspection.inspectorName || '' },
+    { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
+    { label: 'NFPA REF.',    val: data.inspection.nfpaRef || 'NFPA 101' },
+  ];
+  let rfY2 = ry(logoAreaH) + logoAreaH - 8;
+  rtFields2.forEach(f => {
+    page.drawText(f.label + ':', { x: rtX+3, y: rfY2, size: 5.5, font: hFont, color: slate });
+    rfY2 -= 5;
+    page.drawRectangle({ x: rtX+2, y: rfY2-2, width: rtW-4, height: 9, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const tf = form.createTextField(fid());
+    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY2-1, width: rtW-6, height: 7, font: rFont }); tf.setFontSize(7);
+    rfY2 -= 11;
+  });
+  curY += logoAreaH + 4;
+
+  // Property
+  secHdr('PROPERTY INFORMATION');
+  const propName = data.property.name || 'Property Not Selected';
+  const addrLine = [data.property.address, data.property.cityStateZip].filter(Boolean).join('  |  ');
+  [
+    { text: propName, sz: 10, font: hFont, color: navy },
+    { text: addrLine, sz: 8, font: rFont, color: navy },
+  ].forEach(l => {
+    if (!l.text) return;
+    wrap(l.text, l.sz, PW - 8).forEach(line => {
+      checkPage(l.sz + 4);
+      page.drawText(line, { x: ML+4, y: ry(l.sz+4)+2, size: l.sz, font: l.font, color: l.color });
+      curY += l.sz + 4;
+    });
+  });
+  gap(4);
+
+  // Overall status
+  const stVal2 = (data.overallStatus || '').toUpperCase();
+  const stColor2 = stVal2 === 'COMPLIANT' ? green : stVal2 === 'DEFICIENT' ? red : stVal2 === 'IMPAIRED' ? amber : slate;
+  checkPage(22);
+  page.drawRectangle({ x: ML, y: ry(18), width: PW, height: 18, color: stColor2 });
+  page.drawText('OVERALL STATUS', { x: ML+8, y: ty(18,6), size: 6.5, font: hFont, color: white });
+  page.drawText(stVal2 || 'PENDING', { x: ML+100, y: ty(18,6), size: 9.5, font: hFont, color: white });
+  curY += 18;
+  gap(6);
+
+  // Deficiencies
+  if (data.deficiencies.length > 0) {
+    secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
+    data.deficiencies.forEach(d => {
+      checkPage(14);
+      const text = d.item + (d.description ? ': ' + d.description : '');
+      const lines = wrap(text, 8, PW - 16);
+      const rh = lines.length * 11 + 4;
+      page.drawRectangle({ x: ML, y: ry(rh), width: PW, height: rh, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
+      page.drawText('\u2022', { x: ML+4, y: ty(rh, rh/2+3), size: 8, font: hFont, color: red });
+      lines.forEach((line, li) => {
+        page.drawText(line, { x: ML+12, y: ty(rh, rh-4-li*11), size: 8, font: li===0?hFont:rFont, color: red });
+      });
+      curY += rh + 3;
+    });
+    gap(4);
+  }
+
+  // Helper: draw a device table
+  const drawDeviceTable = (title, units, colDefs) => {
+    if (!units || !units.length) return;
+    secHdr(title);
+    // Table header
+    checkPage(14);
+    let hx = ML;
+    colDefs.forEach(c => {
+      page.drawRectangle({ x: hx, y: ry(13), width: c.w, height: 13, color: navy });
+      page.drawText(c.label, { x: hx+2, y: ty(13,4), size: 5.5, font: hFont, color: white });
+      hx += c.w;
+    });
+    curY += 14;
+
+    units.forEach((u, idx) => {
+      const rowH = 13;
+      checkPage(rowH + 1);
+      const bg = u.pf === 'FAIL' ? rgb(0.99, 0.93, 0.93) : u.pf === 'PASS' ? rgb(0.94, 0.99, 0.95) : rgb(0.97, 0.97, 0.97);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
+      let cx = ML;
+      colDefs.forEach(c => {
+        const val = String(c.get(u, idx) || '');
+        const color = (c.isPF && val === 'FAIL') ? red : (c.isPF && val === 'PASS') ? green : navy;
+        page.drawText(val.slice(0, Math.floor(c.w / 4.5)), { x: cx+2, y: ty(rowH, 4), size: 7, font: c.isPF ? hFont : rFont, color });
+        cx += c.w;
+      });
+      curY += rowH + 1;
+    });
+    gap(6);
+  };
+
+  // EL table
+  drawDeviceTable('EMERGENCY LIGHTING UNITS (NFPA 101 7.9)', data.elUnits, [
+    { label: '#',          w: 22,  get: (u, i) => String(i+1) },
+    { label: 'LOCATION',   w: 140, get: u => u.loc },
+    { label: 'TYPE',       w: 80,  get: u => u.type },
+    { label: '30-SEC',     w: 56,  get: u => u.pf30s },
+    { label: '90-MIN',     w: 56,  get: u => u.pf90m },
+    { label: 'BATTERY',    w: 56,  get: u => u.pfBatt },
+    { label: 'PASS/FAIL',  w: 56,  get: u => u.pf, isPF: true },
+    { label: 'COMMENTS',   w: 74,  get: u => u.comments },
+  ]);
+
+  // ES table
+  drawDeviceTable('EXIT SIGNS (NFPA 101 7.10)', data.esUnits, [
+    { label: '#',          w: 22,  get: (u, i) => String(i+1) },
+    { label: 'LOCATION',   w: 140, get: u => u.loc },
+    { label: 'TYPE',       w: 80,  get: u => u.type },
+    { label: 'ILLUMINATED',w: 60,  get: u => u.pfIllum },
+    { label: 'ARROWS',     w: 52,  get: u => u.pfArrows },
+    { label: 'BATT. BKUP', w: 52,  get: u => u.pfBatt },
+    { label: 'PASS/FAIL',  w: 60,  get: u => u.pf, isPF: true },
+    { label: 'COMMENTS',   w: 74,  get: u => u.comments },
+  ]);
+
+  // Notes
+  const notesVal = document.getElementById('esl-notes')?.value?.trim() || '';
+  if (notesVal) {
+    secHdr('NOTES');
+    wrap(notesVal, 8, PW - 8).forEach(line => {
+      checkPage(12);
+      page.drawText(line, { x: ML+4, y: ry(12)+3, size: 8, font: rFont, color: navy });
+      curY += 12;
+    });
+    gap(4);
+  }
+
+  // Signature
+  checkPage(50);
+  secHdr('INSPECTOR CERTIFICATION');
+  const sigName2 = data.signature?.name || '';
+  const sigDate2 = data.signature?.date || '';
+  const halfW2 = PW / 2 - 4;
+  page.drawText('Inspector Signature:', { x: ML+2, y: ty(8,5), size: 6.5, font: hFont, color: navy });
+  page.drawText('Date:', { x: ML+halfW2+10, y: ty(8,5), size: 6.5, font: hFont, color: navy });
+  curY += 8;
+  page.drawRectangle({ x: ML, y: ry(20), width: halfW2, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
+  const sf2 = form.createTextField(fid());
+  sf2.setText(sigName2); sf2.addToPage(page, { x: ML+2, y: ry(20)+2, width: halfW2-4, height: 16, font: rFont }); sf2.setFontSize(9);
+  page.drawRectangle({ x: ML+halfW2+8, y: ry(20), width: halfW2, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
+  const df2 = form.createTextField(fid());
+  df2.setText(sigDate2); df2.addToPage(page, { x: ML+halfW2+10, y: ry(20)+2, width: halfW2-4, height: 16, font: rFont }); df2.setFontSize(9);
+  curY += 24;
+
+  return await pdfDoc.save();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PDF GENERATION — returns a Uint8Array of the PDF bytes
 // ─────────────────────────────────────────────────────────────────────────────
 async function buildEditablePDFBytes() {
@@ -9666,10 +10149,10 @@ async function saveAndDownload() {
       pdfBytes = await buildEditablePDFBytes();
     } else if (activeInspectionSystem === 'extinguisher') {
       pdfBytes = await buildExtinguisherPDFBytes();
+    } else if (activeInspectionSystem === 'exit-sign-lighting') {
+      pdfBytes = await buildExitSignLightingPDFBytes();
     } else {
-      // All other system types use the generic jsPDF builder
-      const doc = await buildPDFDoc();
-      pdfBytes = new Uint8Array(doc.output('arraybuffer'));
+      pdfBytes = await buildGenericSystemPDFBytes();
     }
     const data = collectAllData();
     const propSlug = buildFileSlug(data);
