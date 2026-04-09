@@ -4231,10 +4231,21 @@ function addELRow(p) {
     <td><input type="text" id="el-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
     <td><button class="del-btn" onclick="removeELRow(${n})">✕</button></td>`;
   tbody.appendChild(tr);
+  // Inline deficiency row (hidden until FAIL)
+  const deficTr = document.createElement('tr');
+  deficTr.id = 'el-defic-tr-' + n;
+  deficTr.style.display = 'none';
+  deficTr.innerHTML = `<td colspan="9" style="padding:4px 8px 8px;background:#fff7ed;border-top:none;">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-size:.72rem;color:var(--amber);font-weight:700;white-space:nowrap;">⚠ Deficiency:</span>
+      <input type="text" id="el-defic-txt-${n}" style="flex:1;" placeholder="Describe the emergency light issue…" oninput="syncESLDefic('el',${n})">
+    </div></td>`;
+  tbody.appendChild(deficTr);
   if (p.pf30s)    setESLSubById('el-30s-' + n, p.pf30s);
   if (p.pf90m)    setESLSubById('el-90m-' + n, p.pf90m);
   if (p.pfBatt)   setESLSubById('el-batt-' + n, p.pfBatt);
   if (p.pf)       setESLPFById('el', n, p.pf);
+  if (p.deficTxt) { const el = document.getElementById('el-defic-txt-' + n); if (el) el.value = p.deficTxt; }
 }
 
 function addESRow(p) {
@@ -4258,10 +4269,21 @@ function addESRow(p) {
     <td><input type="text" id="es-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
     <td><button class="del-btn" onclick="removeESRow(${n})">✕</button></td>`;
   tbody.appendChild(tr);
+  // Inline deficiency row (hidden until FAIL)
+  const deficTr = document.createElement('tr');
+  deficTr.id = 'es-defic-tr-' + n;
+  deficTr.style.display = 'none';
+  deficTr.innerHTML = `<td colspan="9" style="padding:4px 8px 8px;background:#fff7ed;border-top:none;">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-size:.72rem;color:var(--amber);font-weight:700;white-space:nowrap;">⚠ Deficiency:</span>
+      <input type="text" id="es-defic-txt-${n}" style="flex:1;" placeholder="Describe the exit sign issue…" oninput="syncESLDefic('es',${n})">
+    </div></td>`;
+  tbody.appendChild(deficTr);
   if (p.pfIllum)  setESLSubById('es-illum-' + n, p.pfIllum);
   if (p.pfArrows) setESLSubById('es-arrows-' + n, p.pfArrows);
   if (p.pfBatt)   setESLSubById('es-batt-' + n, p.pfBatt);
   if (p.pf)       setESLPFById('es', n, p.pf);
+  if (p.deficTxt) { const el = document.getElementById('es-defic-txt-' + n); if (el) el.value = p.deficTxt; }
 }
 
 function setESLSub(btn, prefix, n, val) {
@@ -4271,7 +4293,6 @@ function setESLSub(btn, prefix, n, val) {
   if (inp) inp.value = val;
   // If a sub-item is FAIL, auto-set the row's overall Pass/Fail to FAIL
   if (val === 'FAIL') {
-    // Determine typeStr from prefix (e.g. 'el-30s' → 'el', 'es-illum' → 'es')
     const typeStr = prefix.startsWith('el') ? 'el' : 'es';
     const pfInp = document.getElementById(typeStr + '-pf-' + n);
     if (pfInp && pfInp.value !== 'FAIL') {
@@ -4281,6 +4302,11 @@ function setESLSub(btn, prefix, n, val) {
         pfGroup.querySelector('.pf-btn.fail')?.classList.add('selected');
       }
       pfInp.value = 'FAIL';
+      // Show inline defic row
+      const deficTr = document.getElementById(typeStr + '-defic-tr-' + n);
+      if (deficTr) deficTr.style.display = '';
+      const dataRow = document.getElementById(typeStr + '-row-' + n);
+      if (dataRow) dataRow.style.background = 'var(--fail-bg)';
       _eslManageDefic(typeStr, n, 'FAIL');
       _eslAutoStatus();
     }
@@ -4304,8 +4330,35 @@ function setESLPF(btn, typeStr, n, val) {
   btn.classList.add('selected');
   const inp = document.getElementById(typeStr + '-pf-' + n);
   if (inp) inp.value = val;
-  _eslManageDefic(typeStr, n, val);
+
+  // Show / hide inline deficiency row
+  const deficTr = document.getElementById(typeStr + '-defic-tr-' + n);
+  if (val === 'FAIL') {
+    if (deficTr) deficTr.style.display = '';
+    // Highlight the data row
+    const dataRow = document.getElementById(typeStr + '-row-' + n);
+    if (dataRow) dataRow.style.background = 'var(--fail-bg)';
+    _eslManageDefic(typeStr, n, 'FAIL');
+    // Pre-fill inline note from existing generic-defic entry if present
+    const deficId = typeStr + '-pf-defic-' + n;
+    const genericDesc = document.getElementById(deficId + '-txt')?.value;
+    const inlineTxt = document.getElementById(typeStr + '-defic-txt-' + n);
+    if (inlineTxt && genericDesc && !inlineTxt.value) inlineTxt.value = genericDesc;
+  } else {
+    if (deficTr) deficTr.style.display = 'none';
+    const dataRow = document.getElementById(typeStr + '-row-' + n);
+    if (dataRow) dataRow.style.background = val === 'PASS' ? 'var(--pass-bg)' : '';
+    _eslManageDefic(typeStr, n, val);
+  }
   _eslAutoStatus();
+}
+
+function syncESLDefic(typeStr, n) {
+  // Sync the inline defic note to the generic-defic-tbody entry
+  const deficId = typeStr + '-pf-defic-' + n;
+  const genericTxt = document.getElementById(deficId + '-txt');
+  const inlineTxt  = document.getElementById(typeStr + '-defic-txt-' + n);
+  if (genericTxt && inlineTxt) genericTxt.value = inlineTxt.value;
 }
 
 function setESLPFById(typeStr, n, val) {
@@ -4319,6 +4372,15 @@ function setESLPFById(typeStr, n, val) {
     });
   }
   inp.value = val;
+  const deficTr = document.getElementById(typeStr + '-defic-tr-' + n);
+  const dataRow  = document.getElementById(typeStr + '-row-' + n);
+  if (val === 'FAIL') {
+    if (deficTr) deficTr.style.display = '';
+    if (dataRow) dataRow.style.background = 'var(--fail-bg)';
+  } else {
+    if (deficTr) deficTr.style.display = 'none';
+    if (dataRow) dataRow.style.background = val === 'PASS' ? 'var(--pass-bg)' : '';
+  }
   _eslManageDefic(typeStr, n, val);
 }
 
@@ -4355,6 +4417,7 @@ function _eslAutoStatus() {
 
 function removeELRow(n) {
   document.getElementById('el-row-' + n)?.remove();
+  document.getElementById('el-defic-tr-' + n)?.remove();
   const defic = document.getElementById('el-pf-defic-' + n);
   if (defic) defic.remove();
   _eslAutoStatus();
@@ -4362,6 +4425,7 @@ function removeELRow(n) {
 
 function removeESRow(n) {
   document.getElementById('es-row-' + n)?.remove();
+  document.getElementById('es-defic-tr-' + n)?.remove();
   const defic = document.getElementById('es-pf-defic-' + n);
   if (defic) defic.remove();
   _eslAutoStatus();
@@ -6441,6 +6505,7 @@ function collectAllData() {
       pfBatt:   document.getElementById('el-batt-' + i)?.value || '',
       pf:       document.getElementById('el-pf-' + i)?.value || '',
       comments: document.getElementById('el-comments-' + i)?.value?.trim() || '',
+      deficTxt: document.getElementById('el-defic-txt-' + i)?.value?.trim() || '',
     });
   }
   const esUnits = [];
@@ -6455,6 +6520,7 @@ function collectAllData() {
       pfBatt:    document.getElementById('es-batt-' + i)?.value || '',
       pf:        document.getElementById('es-pf-' + i)?.value || '',
       comments:  document.getElementById('es-comments-' + i)?.value?.trim() || '',
+      deficTxt:  document.getElementById('es-defic-txt-' + i)?.value?.trim() || '',
     });
   }
 
@@ -9192,10 +9258,11 @@ async function buildExitSignLightingPDFBytes() {
   };
 
   const secHdr = (title) => {
-    checkPage(20);
+    checkPage(24);
     page.drawRectangle({ x: ML, y: ry(17), width: PW, height: 17, color: navy });
-    page.drawText(title, { x: ML+4, y: ty(17,5), size: 9, font: hFont, color: white });
-    curY += 18;
+    page.drawText(title, { x: ML+5, y: ty(17, 5), size: 9, font: hFont, color: white });
+    curY += 17;
+    gap(5); // breathing room between header bar and first field
   };
 
   const mkField = (val, x, fieldY, w, h, multiline) => {
@@ -9207,21 +9274,25 @@ async function buildExitSignLightingPDFBytes() {
     f.setFontSize(8);
   };
 
-  const dataRow = (cols, fh = 12, lh = 8, gapH = 3) => {
+  // Draw a row of labeled fields and advance curY
+  // Layout (top-down): [lh: label text] [fh: gold input field] [gapH: space]
+  const dataRow = (cols, fh = 12, lh = 9, gapH = 5) => {
     checkPage(lh + fh + gapH);
     let x = ML;
     cols.forEach(c => {
-      page.drawText((c.label||'')+':', { x: x+2, y: ty(lh, lh-3), size: 6, font: hFont, color: navy });
-      mkField(c.val, x, ry(lh+fh), c.w, fh, false);
+      // Label sits in the top lh strip; baseline near bottom of that strip
+      page.drawText((c.label||'')+':', { x: x+3, y: PH - curY - lh + 2, size: 6, font: hFont, color: navy });
+      // Field sits in the fh strip directly below the label
+      mkField(c.val, x, ry(lh + fh), c.w, fh, false);
       x += c.w;
     });
     curY += lh + fh + gapH;
   };
 
   const textArea = (val, h) => {
-    checkPage(h + 2);
+    checkPage(h + 4);
     mkField(val, ML, ry(h), PW, h, true);
-    curY += h + 2;
+    curY += h + 4;
   };
 
   // Editable device table with Pass/Fail color coding
@@ -9342,12 +9413,13 @@ async function buildExitSignLightingPDFBytes() {
     { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
     { label: 'NFPA REF.',    val: 'NFPA 101' },
   ];
-  let rfY = ry(logoAreaH) + logoAreaH - 8;
+  let rfY = ry(logoAreaH) + logoAreaH - 9;
+  const fieldH = 9, labelH = 7, fieldGap = 3;
   rtFields.forEach(f => {
-    page.drawText(f.label + ':', { x: rtX+3, y: rfY, size: 5.5, font: hFont, color: slate });
-    rfY -= 5;
-    mkField(f.val, rtX+2, rfY-2, rtW-4, 9, false);
-    rfY -= 12;
+    page.drawText(f.label + ':', { x: rtX+3, y: rfY, size: 5, font: hFont, color: slate });
+    rfY -= labelH;
+    mkField(f.val, rtX+2, rfY - 1, rtW-4, fieldH, false);
+    rfY -= fieldH + fieldGap;
   });
   curY += logoAreaH + 4;
 
@@ -9366,13 +9438,14 @@ async function buildExitSignLightingPDFBytes() {
   // ── OVERALL STATUS ────────────────────────────────────────────────────────
   const stVal = (data.overallStatus || '').toUpperCase();
   const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
-  checkPage(22);
+  checkPage(24);
   page.drawRectangle({ x: ML, y: ry(20), width: PW, height: 20, color: stColor });
-  page.drawText('OVERALL INSPECTION STATUS:', { x: ML+8, y: ty(20, 7), size: 7, font: hFont, color: white });
+  page.drawText('OVERALL INSPECTION STATUS:', { x: ML+6, y: ty(20, 7), size: 6.5, font: hFont, color: white });
   const stLabel = stVal || 'PENDING';
-  page.drawText(stLabel, { x: ML + PW/2 - hFont.widthOfTextAtSize(stLabel, 11)/2, y: ty(20, 7), size: 11, font: hFont, color: white });
+  const stLabelW = hFont.widthOfTextAtSize(stLabel, 11);
+  page.drawText(stLabel, { x: ML + PW/2 - stLabelW/2, y: ty(20, 6), size: 11, font: hFont, color: white });
   curY += 20;
-  gap(6);
+  gap(8);
 
   // ── DEFICIENCIES ──────────────────────────────────────────────────────────
   if (data.deficiencies && data.deficiencies.length > 0) {
