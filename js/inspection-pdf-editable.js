@@ -2659,15 +2659,15 @@ async function buildHoodPDFBytes() {
     secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
     data.deficiencies.forEach(d => {
       const text = d.item + (d.description ? ': ' + d.description : '');
-      const lines = wrap(text, 8, PW - 16);
-      const rowH = lines.length * 11 + 4;
-      checkPage(rowH + 2);
-      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
-      page.drawText('\u2022', { x: ML+4, y: ty(rowH, rowH/2+3), size: 8, font: hFont, color: red });
-      lines.forEach((line, li) => {
-        page.drawText(line, { x: ML+12, y: ty(rowH, rowH - 4 - li*11), size: 8, font: li===0?hFont:rFont, color: red });
-      });
-      curY += rowH + 3;
+      const defRowH = 18;
+      checkPage(defRowH + 2);
+      page.drawRectangle({ x: ML, y: ry(defRowH), width: PW, height: defRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
+      page.drawText('\u2022', { x: ML+4, y: ry(defRowH) + defRowH/2 + 2, size: 8, font: hFont, color: red });
+      const df = form.createTextField(fid());
+      df.setText(text);
+      df.addToPage(page, { x: ML+14, y: ry(defRowH)+2, width: PW-16, height: defRowH-4, font: rFont });
+      df.setFontSize(8);
+      curY += defRowH + 3;
     });
     gap(4);
   }
@@ -2726,48 +2726,47 @@ async function buildHoodPDFBytes() {
     const row = document.getElementById('row-' + item.id);
     const result = (row?.dataset.val || '').toUpperCase();
     const deficTxt = document.getElementById('defic-txt-' + item.id)?.value?.trim() || '';
-    const rowH = 14;
-    checkPage(rowH + (result === 'FAIL' && deficTxt ? 10 : 0));
+    // rowH=20 so two lines of text (label + note) fit without overflowing into adjacent elements
+    const rowH = 20;
+    checkPage(rowH + (result === 'FAIL' && deficTxt ? 16 : 0));
     const bg = result === 'PASS' ? rgb(0.94, 0.99, 0.95) : result === 'FAIL' ? rgb(0.99, 0.93, 0.93) : lgray;
     page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
-    // Label
-    page.drawText(item.label, { x: ML+4, y: ty(rowH, rowH-4), size: 7.5, font: rFont, color: navy });
-    // Note (smaller, italic look)
+    // Label — positioned so cap-height stays inside the row rectangle
+    page.drawText(item.label, { x: ML+4, y: ty(rowH, rowH-8), size: 7.5, font: rFont, color: navy });
+    // Note — smaller text below label
     if (item.note) {
-      page.drawText(item.note, { x: ML+4, y: ty(rowH, rowH-11), size: 6, font: rFont, color: slate });
+      page.drawText(item.note, { x: ML+4, y: ty(rowH, 5), size: 6, font: rFont, color: slate });
     }
     // Result badge — editable field so inspector can update in reader
     const bW = 36;
-    page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+2, width: bW, height: rowH-4, color: result === 'PASS' ? green : result === 'FAIL' ? red : rgb(0.7,0.7,0.7) });
+    page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+3, width: bW, height: rowH-6, color: result === 'PASS' ? green : result === 'FAIL' ? red : rgb(0.7,0.7,0.7) });
     const badgeField = form.createTextField(fid());
     badgeField.setText(result || 'N/A');
-    badgeField.addToPage(page, { x: ML+PW-bW-1, y: ry(rowH)+3, width: bW-2, height: rowH-6, font: hFont });
+    badgeField.addToPage(page, { x: ML+PW-bW-1, y: ry(rowH)+4, width: bW-2, height: rowH-8, font: hFont });
     badgeField.setFontSize(7);
     curY += rowH + 1;
     if (result === 'FAIL' && deficTxt) {
-      const dl = wrap('Deficiency: ' + deficTxt, 7, PW - 16);
-      dl.forEach(line => {
-        checkPage(10);
-        page.drawRectangle({ x: ML+4, y: ry(10), width: PW-4, height: 10, color: rgb(0.99, 0.93, 0.93) });
-        page.drawText(line, { x: ML+8, y: ty(10,3), size: 7, font: rFont, color: red });
-        curY += 10;
-      });
+      // Editable deficiency note row
+      const dRowH = 14;
+      checkPage(dRowH + 2);
+      page.drawRectangle({ x: ML+4, y: ry(dRowH), width: PW-4, height: dRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+      const dnf = form.createTextField(fid());
+      dnf.setText('Deficiency: ' + deficTxt);
+      dnf.addToPage(page, { x: ML+6, y: ry(dRowH)+2, width: PW-8, height: dRowH-4, font: rFont });
+      dnf.setFontSize(7);
+      curY += dRowH + 2;
     }
   });
   gap(6);
 
-  // Notes
+  // Notes — always render as an editable multiline field
+  secHdr('NOTES');
   const notesVal = fd['hood-notes'] || dv('hood-notes') || '';
-  if (notesVal) {
-    secHdr('NOTES');
-    const nl = wrap(notesVal, 8, PW - 8);
-    nl.forEach(line => {
-      checkPage(12);
-      page.drawText(line, { x: ML+4, y: ry(12)+3, size: 8, font: rFont, color: navy });
-      curY += 12;
-    });
-    gap(4);
-  }
+  const notesLineCount = notesVal ? Math.max(3, wrap(notesVal, 8, PW - 8).length) : 3;
+  const notesH = Math.min(120, notesLineCount * 12 + 8);
+  checkPage(notesH + 4);
+  mkField(notesVal, ML, ry(notesH), PW, notesH, true);
+  curY += notesH + 6;
 
   // ── Signatures (same style as fire alarm) ─────────────────────────────────
   checkPage(60);
