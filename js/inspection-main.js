@@ -167,6 +167,9 @@ async function saveAndDownload() {
     setStatus2('Upload to thecomplianceengine.com to complete reporting.', 'var(--slate)');
     toast('✓ Report saved & downloaded!');
 
+    // ── 6b. Update inspection schedule (non-blocking) ─────────────────────────
+    updateInspectionSchedule(data).catch(e => console.warn('[Schedule] Exception:', e.message));
+
     // ── 7. Clear the draft — inspection is complete ────────────────────────────
     clearDraft();
     document.getElementById('new-insp-btn-wrap').style.display = 'block';

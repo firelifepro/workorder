@@ -921,12 +921,9 @@ document.addEventListener('click', e => {
 // ─────────────────────────────────────────────────────────
 const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 
-// ── Inspection Schedule Web App ─────────────────────────────────────────────
-// After deploying InspectionSchedule_AppScript.gs as a Web App, paste the URL:
-// ── INSPECTION SCHEDULE INTEGRATION ────────────────────────────────────────
-// After deploying the Apps Script as a Web App, paste the URL below.
+// ── Apps Script (sheet logger) ───────────────────────────────────────────────
+// Used by logToSheet() to write to the Work Order System Log sheet.
 // Apps Script → Deploy → New Deployment → Web App → Execute as Me → Anyone
-// Also run setSecret() in the Apps Script once after pasting.
 const APPS_SCRIPT_URL    = ''; // ← PASTE WEB APP URL HERE
 const APPS_SCRIPT_SECRET = 'flips-2026-secret'; // must match setSecret() in Apps Script
 
@@ -1991,9 +1988,6 @@ async function createDoc() {
       ).catch(() => {}); // non-blocking, best-effort
     }
 
-    // Update inspection schedule (non-blocking — runs in background)
-    updateInspectionSchedule(data);
-
   } catch(e) {
     // Make auth errors human-readable; collapse technical details
     let errMsg = e.message;
@@ -2584,127 +2578,6 @@ function logToSheet(action, detail, status, error) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ _appsScriptUrl: APPS_SCRIPT_URL, secret: APPS_SCRIPT_SECRET, action: 'log', log: entry })
   }).catch(() => {});
-}
-
-async function updateInspectionSchedule(data) {
-
-  const propertyName  = data['PROPERTY NAME']   || '';
-  const dateCompleted = data['DATE COMPLETED ISO'] || data['DATE COMPLETED'] || '';
-  const svcRaw        = data['SERVICES']         || '';
-  const lineNum       = data['LINE #']           || '';
-
-  logToSheet('WO_SAVE_START',
-    `Line #${lineNum} | Property: ${propertyName} | Date: ${dateCompleted} | Services raw: ${svcRaw.replace(/\n/g,' | ')}`,
-    'INFO');
-
-  if (!propertyName) {
-    logToSheet('WO_SAVE_SKIP', 'No property name on work order', 'WARN'); return;
-  }
-  if (!dateCompleted || dateCompleted === 'N/A') {
-    logToSheet('WO_SAVE_SKIP', `Property: ${propertyName} — Date Completed is blank or N/A`, 'WARN'); return;
-  }
-
-  const parsedDate = parseDisplayDate(dateCompleted);
-  if (!parsedDate) {
-    logToSheet('WO_DATE_PARSE_FAIL',
-      `Could not parse date: "${dateCompleted}" — expected MM/DD/YYYY format`, 'ERROR'); return;
-  }
-  logToSheet('WO_DATE_PARSED', `"${dateCompleted}" → "${parsedDate}"`, 'INFO');
-
-  const SVC_MAP = [
-    { match: /^Fire Alarm\s*[–-]/i,        type: 'Fire Alarm Inspection',           freqKey: true  },
-    { match: /^Sprinkler\s*[–-]/i,          type: 'Sprinkler Inspection',             freqKey: true  },
-    { match: /^Extinguisher\s*[–-]/i,       type: 'Extinguisher Inspection',          freqKey: true  },
-    { match: /^Exit Light\s*[–-]/i,         type: 'Emergency Exit Light Inspection',  freqKey: true  },
-    { match: /5-Year Internal Pipe/i,       type: '5-Year Internal Pipe Inspection',  freq: '5-Year' },
-    { match: /5-Year FDC Hydrostatic/i,     type: '5-Year FDC Hydrostatic Test',      freq: '5-Year' },
-    { match: /3-Year Dry Pipe/i,            type: '3-Year Dry Pipe Test',             freq: '3-Year' },
-    { match: /Annual Backflow Prevention/i, type: 'Annual Backflow Prevention Test',  freq: 'Annual' },
-    { match: /^Hood Inspection\s*[–-]/i,        type: 'Hood Inspection',              freqKey: true },
-    { match: /^Fire Pump Inspection\s*[–-]/i,   type: 'Fire Pump Inspection',         freqKey: true },
-    { match: /^Jockey Pump Inspection\s*[–-]/i, type: 'Jockey Pump Inspection',       freqKey: true },
-  ];
-  const FREQ_MAP = { 'annual':'Annual','semi annual':'Semi Annual','quarterly':'Quarterly','monthly':'Monthly' };
-
-  const checkedSvcs = svcRaw.split('\n').map(s => s.trim()).filter(Boolean);
-  logToSheet('WO_SERVICES_PARSED',
-    `${checkedSvcs.length} service(s) checked: ${checkedSvcs.join(' | ')}`, 'INFO');
-
-  const updates = [];
-  for (const svc of checkedSvcs) {
-    let matched = false;
-    for (const rule of SVC_MAP) {
-      if (rule.match.test(svc)) {
-        let freq = rule.freq || 'Annual';
-        if (rule.freqKey) {
-          const freqPart = svc.replace(/^[^–—-]+[–—-]\s*/i, '').trim().toLowerCase();
-          freq = FREQ_MAP[freqPart] || 'Annual';
-        }
-        updates.push({ propertyName, inspectionType: rule.type, dateCompleted: parsedDate, frequency: freq });
-        logToSheet('WO_SVC_MAPPED', `"${svc}" → type: ${rule.type} | freq: ${freq}`, 'INFO');
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) {
-      logToSheet('WO_SVC_NO_MATCH',
-        `"${svc}" did not match any trackable inspection type — not sent to schedule`, 'WARN');
-    }
-  }
-
-  if (updates.length === 0) {
-    logToSheet('WO_NO_TRACKABLE_SVCS',
-      `Property: ${propertyName} — none of the checked services map to tracked inspection types`, 'WARN');
-    return;
-  }
-
-  logToSheet('WO_POSTING_TO_SCRIPT',
-    `Sending ${updates.length} update(s) to Apps Script web app`, 'INFO');
-
-  try {
-    const resp = await fetch('/api/apps-script', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _appsScriptUrl: APPS_SCRIPT_URL, secret: APPS_SCRIPT_SECRET, updates })
-    });
-
-    if (!resp.ok) {
-      const txt = await resp.text();
-      logToSheet('WO_HTTP_ERROR', `HTTP ${resp.status}: ${txt.substring(0,200)}`, 'ERROR');
-      return;
-    }
-
-    const result = await resp.json();
-    if (result.success) {
-      logToSheet('WO_SAVED',
-        `Work order saved + ${updates.length} inspection record(s) updated for ${propertyName}`, 'OK');
-      console.log('✓ Inspection schedule updated:', updates.length, 'record(s)');
-    } else {
-      logToSheet('WO_SCHEDULE_FAILED',
-        `Apps Script returned error for ${propertyName}`, 'ERROR', result.error);
-      console.warn('Inspection schedule update failed:', result.error);
-    }
-  } catch(e) {
-    logToSheet('WO_FETCH_EXCEPTION',
-      `fetch() to Apps Script threw — is the URL correct?`, 'ERROR', e.message);
-    console.warn('Could not reach inspection schedule web app:', e.message);
-  }
-}
-
-// Parse date string → ISO "YYYY-MM-DD"
-// Handles: YYYY-MM-DD (native date input), MM/DD/YYYY, "Mar 12, 2026"
-function parseDisplayDate(str) {
-  if (!str || str === 'N/A') return null;
-  str = str.trim();
-  // Already ISO: 2026-03-12
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  // MM/DD/YYYY
-  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
-  // "Mar 12, 2026" or "March 12, 2026" — force noon to avoid UTC-midnight timezone shift
-  const d = new Date(str + ' 12:00:00');
-  if (!isNaN(d)) return d.toISOString().slice(0, 10);
-  return null;
 }
 
 // Default trip charge checked and populated on load
