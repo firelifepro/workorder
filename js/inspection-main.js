@@ -90,6 +90,8 @@ async function saveAndDownload() {
       pdfBytes = await buildSprinklerPDFBytes();
     } else if (activeInspectionSystem === 'fire-alarm') {
       pdfBytes = await buildEditablePDFBytes();
+    } else if (activeInspectionSystem === 'hood') {
+      pdfBytes = await buildHoodPDFBytes();
     } else if (activeInspectionSystem === 'extinguisher') {
       pdfBytes = await buildExtinguisherPDFBytes();
     } else if (activeInspectionSystem === 'exit-sign-lighting') {
@@ -101,7 +103,10 @@ async function saveAndDownload() {
     const propSlug = buildFileSlug(data);
     const dateSlug = data.inspection.date || todayMT();
     const sysSlug  = activeInspectionSystem ? activeInspectionSystem.replace(/-/g, '_') : 'inspection';
-    filename = `FLPS_${sysSlug}_${propSlug}_${dateSlug}.pdf`;
+    const hoodSlug = (activeInspectionSystem === 'hood' && activeHoodIdentifier)
+      ? '_' + activeHoodIdentifier.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+      : '';
+    filename = `FLPS_${sysSlug}${hoodSlug}_${propSlug}_${dateSlug}.pdf`;
 
     // ── 4. Save JSON inspection data to Drive ──────────────────────────────────
     if (accessToken) {

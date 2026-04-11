@@ -349,6 +349,16 @@ function renderInspectionStartCards() {
 function startInspectionForSystem(sysKey) {
   activeInspectionSystem = sysKey;
   syncMainNavDisabled();
+
+  // Hood has multiple hoods per property — prev data is loaded after the
+  // identifier is chosen in the picker, so skip loading here.
+  if (sysKey === 'hood') {
+    activeHoodIdentifier = '';
+    window._prevInspectionData = null;
+    buildInspectionForms();
+    return;
+  }
+
   const lastBySystem = (_propertyProfile && _propertyProfile.lastInspBySystem) || {};
   const last = lastBySystem[sysKey];
 
@@ -389,6 +399,12 @@ function toggleSys(el) {
 function buildInspectionForms() {
   if (!activeInspectionSystem) { toast('⚠ Select a system to inspect from the Start an Inspection section'); return; }
   saveBuildingConfig();
+
+  // Hood uses a dedicated identifier picker before the inspection panel
+  if (activeInspectionSystem === 'hood') {
+    showHoodIdentifierPicker();
+    return;
+  }
 
   // Fire alarm and sprinkler use static multi-step navigation
   if (activeInspectionSystem === 'fire-alarm') {
@@ -442,6 +458,90 @@ function _resumeGenericFromDraft(draft) {
   buildItemPanelMap();
   updateDeficiencySummary();
   goStep(3);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KITCHEN HOOD IDENTIFIER PICKER
+// ─────────────────────────────────────────────────────────────────────────────
+function showHoodIdentifierPicker() {
+  const identifiers = (_propertyProfile && _propertyProfile.hoodIdentifiers) || [];
+  const datalist = document.getElementById('hood-ident-list');
+  if (datalist) {
+    datalist.innerHTML = '';
+    identifiers.forEach(id => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      datalist.appendChild(opt);
+    });
+  }
+  const input = document.getElementById('hood-ident-input');
+  if (input) input.value = activeHoodIdentifier || '';
+  document.getElementById('step-2').style.display = 'none';
+  document.getElementById('step-hood-ident').style.display = 'block';
+  updateHoodIdentPrevInfo();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateHoodIdentPrevInfo() {
+  const val = (document.getElementById('hood-ident-input')?.value || '').trim();
+  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
+  const prev = lastByHood[val];
+  const prevEl = document.getElementById('hood-ident-prev-info');
+  const summEl = document.getElementById('hood-ident-prev-summary');
+  const newEl  = document.getElementById('hood-ident-new-notice');
+  if (!val) {
+    if (prevEl) prevEl.style.display = 'none';
+    if (newEl)  newEl.style.display  = 'none';
+    return;
+  }
+  if (prev) {
+    if (summEl) summEl.textContent = ` ${prev.date || '?'} — ${prev.inspector || '?'} — ${prev.status || '?'}`;
+    if (prevEl) prevEl.style.display = 'block';
+    if (newEl)  newEl.style.display  = 'none';
+  } else {
+    if (prevEl) prevEl.style.display = 'none';
+    if (newEl)  newEl.style.display  = 'block';
+  }
+}
+
+function exitHoodIdentPicker() {
+  document.getElementById('step-hood-ident').style.display = 'none';
+  document.getElementById('step-2').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function confirmHoodIdentifier() {
+  const val = (document.getElementById('hood-ident-input')?.value || '').trim();
+  if (!val) { toast('Enter a kitchen hood identifier before continuing.'); return; }
+  activeHoodIdentifier = val;
+
+  // Load previous data for this specific hood from profile
+  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
+  const last = lastByHood[val];
+  window._prevInspectionData = last ? {
+    inspection: { date: last.date, inspectorName: last.inspector, reportType: last.reportType },
+    overallStatus: last.status,
+    systems: ['hood'],
+    fieldData:    last.fieldData    || {},
+    pfStates:     last.pfStates     || {},
+    deficiencies: last.deficiencies || [],
+    extinguishers: [],
+    devices: null
+  } : null;
+
+  document.getElementById('step-hood-ident').style.display = 'none';
+
+  // Check for an existing draft for this system
+  const existingDraft = loadDraft();
+  if (existingDraft && existingDraft.sysKey === 'hood' && existingDraft.sysFormsHTML) {
+    showDraftModal(existingDraft, false,
+      () => { _resumeGenericFromDraft(existingDraft); },
+      () => { clearDraft(); _buildFreshGenericInspection(); },
+      () => { clearDraft(); _buildFreshGenericInspection(); }
+    );
+    return;
+  }
+  _buildFreshGenericInspection();
 }
 
 function _buildFreshGenericInspection() {

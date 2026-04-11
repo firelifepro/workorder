@@ -2452,3 +2452,416 @@ async function buildEditablePDFBytes() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// KITCHEN HOOD SUPPRESSION PDF — fire-alarm-style editable format
+// ─────────────────────────────────────────────────────────────────────────────
+async function buildHoodPDFBytes() {
+  if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
+  const data = collectAllData();
+  const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const form   = pdfDoc.getForm();
+  const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 36;
+  let page, curY, _fid = 0;
+  const fid = () => 'hood_' + (++_fid);
+
+  const FIRE_RED = rgb(0.72, 0.08, 0.08);
+  const amber  = rgb(0.85, 0.47, 0.00);
+  const navy   = rgb(0.13, 0.21, 0.42);
+  const sky    = rgb(0.71, 0.80, 0.93);
+  const gold   = rgb(1.0,  1.0,  0.75);
+  const lgray  = rgb(0.94, 0.94, 0.94);
+  const white  = rgb(1, 1, 1);
+  const blk    = rgb(0, 0, 0);
+  const green  = rgb(0.06, 0.50, 0.22);
+  const red    = rgb(0.76, 0.10, 0.10);
+  const slate  = rgb(0.39, 0.45, 0.55);
+
+  const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
+  const ry = (h) => PH - curY - h;
+  const ty = (h, a = 3) => PH - curY - h + a;
+  const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
+  const gap = (h) => { curY += h; };
+
+  const wrap = (text, sz, maxW) => {
+    if (!text) return [''];
+    const words = String(text).split(' ');
+    const lines = []; let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  };
+
+  const secHdr = (title) => {
+    checkPage(18);
+    page.drawRectangle({ x: ML, y: ry(17), width: PW, height: 17, color: navy });
+    page.drawText(title, { x: ML+4, y: ty(17,5), size: 9, font: hFont, color: white });
+    curY += 18;
+  };
+  const subHdr = (title) => {
+    checkPage(14);
+    page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: sky });
+    page.drawText(title, { x: ML+4, y: ty(13,4), size: 7.5, font: hFont, color: navy });
+    curY += 14;
+  };
+  const mkField = (val, x, fieldY, w, h, multiline) => {
+    page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
+    const f = form.createTextField(fid());
+    f.setText(String(val || ''));
+    if (multiline) f.enableMultiline();
+    f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
+    f.setFontSize(8);
+  };
+  const dataRow = (cols, fh = 12, lh = 8, gp = 3) => {
+    checkPage(lh + fh + gp);
+    let x = ML;
+    cols.forEach(c => {
+      page.drawText((c.label||'')+':', { x: x+2, y: ty(lh, lh-3), size: 6, font: hFont, color: navy });
+      mkField(c.val, x, ry(lh+fh), c.w, fh, false);
+      x += c.w;
+    });
+    curY += lh + fh + gp;
+  };
+
+  const dv = (id) => document.getElementById(id)?.value?.trim() || '';
+  const fd = data.fieldData || {};
+
+  // ── PAGE 1: HEADER ─────────────────────────────────────────────────────────
+  addPage();
+
+  // Red title banner
+  page.drawRectangle({ x: ML, y: ry(22), width: PW, height: 22, color: FIRE_RED });
+  page.drawText('KITCHEN HOOD SUPPRESSION INSPECTION REPORT', {
+    x: ML + PW/2 - hFont.widthOfTextAtSize('KITCHEN HOOD SUPPRESSION INSPECTION REPORT', 12)/2,
+    y: ty(22, 7), size: 12, font: hFont, color: white
+  });
+  curY += 23;
+
+  // Info block: left = logo + company (315pt), right = report type + fields (225pt)
+  const iH = 88;
+  const divX = ML + 315;
+  const rcW  = ML + PW - divX;
+
+  page.drawRectangle({ x: ML, y: ry(iH), width: 313, height: iH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+
+  // Logo
+  try {
+    const svgText = await fetch('logo.svg').then(r => r.text());
+    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
+    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(svgBlob);
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        const scale = 3;
+        const full = document.createElement('canvas');
+        full.width = 400 * scale; full.height = 600 * scale;
+        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
+        const cropW = 400 * scale, cropH = 445 * scale;
+        const crop = document.createElement('canvas');
+        crop.width = cropW; crop.height = cropH;
+        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
+        const b64 = crop.toDataURL('image/png').split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const logoImg = await pdfDoc.embedPng(ab);
+        const logoDims = logoImg.scaleToFit(60, 60);
+        page.drawImage(logoImg, { x: ML+4, y: ry(iH)+(iH-logoDims.height)/2, width: logoDims.width, height: logoDims.height });
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      img.src = url;
+    });
+  } catch(_) {}
+
+  // Company info
+  const compX = ML + 70;
+  const compInfo = [
+    { t: 'Fire Life Protection System, Inc.', sz: 8, f: hFont },
+    { t: '8201 Shaffer Parkway Suite B',       sz: 7.5, f: rFont },
+    { t: 'Littleton, CO 80127',                sz: 7.5, f: rFont },
+    { t: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', sz: 7, f: rFont },
+    { t: 'Alan.antonio@firelifeprotectionsystems.com',       sz: 7, f: rFont },
+  ];
+  let clY = ry(iH) + iH - 10;
+  compInfo.forEach(l => { page.drawText(l.t, { x: compX, y: clY, size: l.sz, font: l.f, color: navy }); clY -= l.sz + 4; });
+
+  // Right column: ANNUAL / SEMI-ANNUAL
+  const rtCur = (data.inspection?.reportType || '').toUpperCase();
+  const rtBoxH = 15;
+  const rtBW = rcW / 2;
+  ['ANNUAL', 'SEMI-ANNUAL'].forEach((t, i) => {
+    const sel = rtCur === t || (t === 'SEMI-ANNUAL' && rtCur.includes('SEMI'));
+    const bx = divX + i * rtBW;
+    page.drawRectangle({ x: bx, y: ry(iH)+iH-rtBoxH, width: rtBW-1, height: rtBoxH, color: sel ? rgb(1,0.85,0) : white, borderColor: sky, borderWidth: 0.5 });
+    page.drawText(t, { x: bx+3, y: ry(iH)+iH-rtBoxH+5, size: 6, font: hFont, color: sel ? rgb(0.4,0.25,0) : navy });
+  });
+
+  const jFields = [
+    ['DATE PERFORMED', data.inspection?.date || ''],
+    ['INSPECTOR',      data.inspection?.inspectorName || ''],
+    ['LICENSE / CERT', data.inspection?.inspectorCert || ''],
+    ['NFPA REFERENCE', 'NFPA 17A'],
+  ];
+  let jY = ry(iH) + iH - rtBoxH - 3;
+  jFields.forEach(([lbl, val]) => {
+    jY -= 7;
+    page.drawText(lbl, { x: divX+2, y: jY, size: 5.5, font: hFont, color: navy });
+    jY -= 10;
+    page.drawRectangle({ x: divX, y: jY, width: rcW, height: 10, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const jf = form.createTextField(fid());
+    jf.setText(val);
+    jf.addToPage(page, { x: divX+1, y: jY+1, width: rcW-2, height: 8, font: rFont });
+    jf.setFontSize(7);
+    jY -= 2;
+  });
+  curY += iH + 4;
+
+  // Hood identifier bar
+  const hoodId = data.hoodIdentifier || activeHoodIdentifier || '';
+  checkPage(22);
+  page.drawRectangle({ x: ML, y: ry(18), width: PW, height: 18, color: amber });
+  page.drawText('HOOD IDENTIFIER:', { x: ML+8, y: ty(18,6), size: 7, font: hFont, color: white });
+  page.drawText(hoodId || '(not specified)', { x: ML+100, y: ty(18,6), size: 9, font: hFont, color: white });
+  curY += 18;
+  gap(2);
+
+  // Overall status bar
+  const stVal = (data.overallStatus || '').toUpperCase();
+  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
+  checkPage(22);
+  page.drawRectangle({ x: ML, y: ry(18), width: PW, height: 18, color: stColor });
+  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(18,6), size: 6.5, font: hFont, color: white });
+  page.drawText(stVal || 'PENDING', { x: ML+130, y: ty(18,6), size: 9.5, font: hFont, color: white });
+  curY += 18;
+  gap(6);
+
+  // Property info
+  dataRow([{ label: 'BUILDING / PROPERTY NAME', val: data.property?.name || '', w: PW }]);
+  dataRow([
+    { label: 'SERVICE ADDRESS',    val: data.property?.address || '',      w: PW * 0.6 },
+    { label: 'CITY / STATE / ZIP', val: data.property?.cityStateZip || '', w: PW * 0.4 },
+  ]);
+  dataRow([
+    { label: 'PROPERTY CONTACT', val: data.property?.contact || '',      w: PW / 2 },
+    { label: 'COMPANY',          val: data.property?.company || '',       w: PW / 2 },
+  ]);
+  gap(6);
+
+  // Deficiencies
+  if (data.deficiencies.length > 0) {
+    secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
+    data.deficiencies.forEach(d => {
+      const text = d.item + (d.description ? ': ' + d.description : '');
+      const lines = wrap(text, 8, PW - 16);
+      const rowH = lines.length * 11 + 4;
+      checkPage(rowH + 2);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
+      page.drawText('\u2022', { x: ML+4, y: ty(rowH, rowH/2+3), size: 8, font: hFont, color: red });
+      lines.forEach((line, li) => {
+        page.drawText(line, { x: ML+12, y: ty(rowH, rowH - 4 - li*11), size: 8, font: li===0?hFont:rFont, color: red });
+      });
+      curY += rowH + 3;
+    });
+    gap(4);
+  }
+
+  // System Information
+  secHdr('SYSTEM INFORMATION');
+  dataRow([
+    { label: 'MANUFACTURER',      val: fd['hood-mfr']   || '', w: 180 },
+    { label: 'MODEL / CYLINDER #', val: fd['hood-model'] || '', w: 180 },
+    { label: 'YEAR INSTALLED',    val: fd['hood-install']|| '', w: 180 },
+  ]);
+  dataRow([
+    { label: 'SUPPRESSION AGENT TYPE', val: fd['hood-agent']        || '', w: 180 },
+    { label: '# OF NOZZLES',           val: fd['hood-nozzle-count'] || '', w: 180 },
+    { label: 'LAST SERVICE DATE',      val: fd['hood-last-service'] || '', w: 180 },
+  ]);
+  dataRow([
+    { label: 'KITCHEN EQUIPMENT PROTECTED', val: fd['hood-area']      || '', w: 270 },
+    { label: 'APPLIANCE MANUFACTURER',      val: fd['hood-appliance'] || '', w: 270 },
+  ]);
+  dataRow([
+    { label: 'ACTUAL CYLINDER WEIGHT (LBS)', val: fd['hood-cyl-wt-actual'] || '', w: 180 },
+    { label: 'MIN ACCEPTABLE WEIGHT (LBS)',  val: fd['hood-cyl-wt-min']    || '', w: 180 },
+    { label: 'NEXT SERVICE DUE',             val: fd['hood-next-service']  || '', w: 180 },
+  ]);
+  dataRow([
+    { label: 'TAG COLOR / ID', val: fd['hood-tag-color'] || '', w: 270 },
+  ]);
+  gap(4);
+
+  // ── Inspection Results ────────────────────────────────────────────────────
+  const HOOD_ITEMS = [
+    { id: 'hood-cylinder-wt',    section: 'AGENT CYLINDERS & ACTUATION',  label: 'Cylinder Weight / Pressure Check',        note: 'Within manufacturer spec; not expired' },
+    { id: 'hood-pull-station',   section: null,                            label: 'Manual Pull Station',                     note: 'Accessible; pin and seal intact' },
+    { id: 'hood-auto-detect',    section: null,                            label: 'Fusible Links / Detectors',               note: 'Replaced as required; properly positioned' },
+    { id: 'hood-micro-switch',   section: null,                            label: 'Micro-Switch Actuation',                  note: 'Gas shut-off activates on system discharge' },
+    { id: 'hood-nozzle-cond',    section: 'NOZZLES & DISTRIBUTION',       label: 'Nozzle Condition',                        note: 'No blockage; proper orientation and caps' },
+    { id: 'hood-nozzle-coverage',section: null,                            label: 'Nozzle Coverage',                         note: 'All appliances and plenum protected per design' },
+    { id: 'hood-duct-protected', section: null,                            label: 'Duct & Plenum Protection',                note: 'Entire duct and plenum covered' },
+    { id: 'hood-gas-shutoff',    section: 'INTERLOCK & SUPPRESSION TEST', label: 'Gas Shutoff Interlock',                   note: 'Gas valve closes on system activation' },
+    { id: 'hood-power-shutoff',  section: null,                            label: 'Electrical Interlock',                    note: 'Power to cooking equipment cut on alarm' },
+    { id: 'hood-fa-integration', section: null,                            label: 'Fire Alarm Integration',                  note: 'Alarm transmitted to fire alarm panel' },
+    { id: 'hood-ansul-reset',    section: null,                            label: 'System Reset Procedure Verified',         note: 'Staff aware of reset; recharge service tag' },
+    { id: 'hood-grease-buildup', section: 'HOOD & GREASE MANAGEMENT',     label: 'Grease Buildup — Hood & Filters',         note: 'Excessive grease noted (document)' },
+    { id: 'hood-filter-cond',    section: null,                            label: 'Filter Condition & Clearance',            note: 'Filters in place; properly seated' },
+    { id: 'hood-service-tag',    section: null,                            label: 'Current Inspection Tag Affixed',          note: 'Tag shows contractor, date, and next due' },
+  ];
+
+  secHdr('INSPECTION RESULTS');
+  let lastSection = null;
+  HOOD_ITEMS.forEach(item => {
+    if (item.section && item.section !== lastSection) {
+      subHdr(item.section);
+      lastSection = item.section;
+    }
+    const row = document.getElementById('row-' + item.id);
+    const result = (row?.dataset.val || '').toUpperCase();
+    const deficTxt = document.getElementById('defic-txt-' + item.id)?.value?.trim() || '';
+    const rowH = 14;
+    checkPage(rowH + (result === 'FAIL' && deficTxt ? 10 : 0));
+    const bg = result === 'PASS' ? rgb(0.94, 0.99, 0.95) : result === 'FAIL' ? rgb(0.99, 0.93, 0.93) : lgray;
+    page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
+    // Label
+    page.drawText(item.label, { x: ML+4, y: ty(rowH, rowH-4), size: 7.5, font: rFont, color: navy });
+    // Note (smaller, italic look)
+    if (item.note) {
+      page.drawText(item.note, { x: ML+4, y: ty(rowH, rowH-11), size: 6, font: rFont, color: slate });
+    }
+    // Result badge — editable field so inspector can update in reader
+    const bW = 36;
+    page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+2, width: bW, height: rowH-4, color: result === 'PASS' ? green : result === 'FAIL' ? red : rgb(0.7,0.7,0.7) });
+    const badgeField = form.createTextField(fid());
+    badgeField.setText(result || 'N/A');
+    badgeField.addToPage(page, { x: ML+PW-bW-1, y: ry(rowH)+3, width: bW-2, height: rowH-6, font: hFont });
+    badgeField.setFontSize(7);
+    curY += rowH + 1;
+    if (result === 'FAIL' && deficTxt) {
+      const dl = wrap('Deficiency: ' + deficTxt, 7, PW - 16);
+      dl.forEach(line => {
+        checkPage(10);
+        page.drawRectangle({ x: ML+4, y: ry(10), width: PW-4, height: 10, color: rgb(0.99, 0.93, 0.93) });
+        page.drawText(line, { x: ML+8, y: ty(10,3), size: 7, font: rFont, color: red });
+        curY += 10;
+      });
+    }
+  });
+  gap(6);
+
+  // Notes
+  const notesVal = fd['hood-notes'] || dv('hood-notes') || '';
+  if (notesVal) {
+    secHdr('NOTES');
+    const nl = wrap(notesVal, 8, PW - 8);
+    nl.forEach(line => {
+      checkPage(12);
+      page.drawText(line, { x: ML+4, y: ry(12)+3, size: 8, font: rFont, color: navy });
+      curY += 12;
+    });
+    gap(4);
+  }
+
+  // ── Signatures (same style as fire alarm) ─────────────────────────────────
+  checkPage(60);
+  secHdr('CERTIFICATION & SIGNATURES');
+  gap(4);
+  const sigH = 35, sigW = PW / 2 - 10;
+
+  // Inspector sig box
+  page.drawRectangle({ x: ML, y: ry(sigH), width: sigW, height: sigH, color: lgray, borderColor: navy, borderWidth: 0.5 });
+  page.drawText('INSPECTOR SIGNATURE:', { x: ML+3, y: ry(sigH)+sigH-8, size: 7, font: hFont, color: navy });
+  if (sigHasData) {
+    try {
+      const sc  = document.getElementById('sig-canvas');
+      const b64 = sc.toDataURL('image/png').split(',')[1];
+      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+      const sImg  = await pdfDoc.embedPng(ab);
+      const sDims = sImg.scaleToFit(sigW - 8, sigH - 14);
+      page.drawImage(sImg, { x: ML+4, y: ry(sigH)+3, width: sDims.width, height: sDims.height });
+    } catch(_) {}
+  } else {
+    const sf = form.createTextField(fid());
+    sf.setText(data.signature?.name || '');
+    sf.addToPage(page, { x: ML+2, y: ry(sigH)+2, width: sigW-4, height: sigH-12, font: rFont });
+    sf.setFontSize(9);
+  }
+
+  // Client sig box
+  page.drawRectangle({ x: ML+PW/2+10, y: ry(sigH), width: sigW, height: sigH, color: lgray, borderColor: navy, borderWidth: 0.5 });
+  page.drawText('CLIENT / REPRESENTATIVE SIGNATURE:', { x: ML+PW/2+13, y: ry(sigH)+sigH-8, size: 7, font: hFont, color: navy });
+  if (typeof custSigHasData !== 'undefined' && custSigHasData) {
+    try {
+      const cc  = document.getElementById('cust-sig-canvas');
+      const b64 = cc.toDataURL('image/png').split(',')[1];
+      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+      const cImg  = await pdfDoc.embedPng(ab);
+      const cDims = cImg.scaleToFit(sigW - 8, sigH - 14);
+      page.drawImage(cImg, { x: ML+PW/2+14, y: ry(sigH)+3, width: cDims.width, height: cDims.height });
+    } catch(_) {}
+  } else {
+    const cf = form.createTextField(fid());
+    cf.setText('');
+    cf.addToPage(page, { x: ML+PW/2+12, y: ry(sigH)+2, width: sigW-4, height: sigH-12, font: rFont });
+    cf.setFontSize(9);
+  }
+  curY += sigH + 4;
+
+  dataRow([
+    { label: 'INSPECTOR DATE', val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
+    { label: 'CLIENT DATE',    val: '', w: PW/2 },
+  ]);
+  gap(4);
+  dataRow([
+    { label: 'INSPECTOR PRINTED NAME', val: data.signature?.name || '', w: PW/2 },
+    { label: 'CLIENT PRINTED NAME',    val: dv('cust-sig-name') || '', w: PW/2 },
+  ]);
+
+  // ── Photos ────────────────────────────────────────────────────────────────
+  if (inspectionPhotos && inspectionPhotos.length > 0) {
+    addPage();
+    secHdr('INSPECTION PHOTOS');
+    const photoW = Math.floor((PW - 10) / 2);
+    const photoH = 140;
+    let col = 0;
+    for (let i = 0; i < inspectionPhotos.length; i++) {
+      const photo = inspectionPhotos[i];
+      checkPage(photoH + 30);
+      const px = ML + col * (photoW + 10);
+      try {
+        const b64 = photo.dataUrl.split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const img = photo.dataUrl.startsWith('data:image/png')
+          ? await pdfDoc.embedPng(ab)
+          : await pdfDoc.embedJpg(ab);
+        const dims = img.scaleToFit(photoW, photoH);
+        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
+      } catch(_) {
+        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: rgb(0.93,0.93,0.93) });
+        page.drawText('Image unavailable', { x: px+photoW/2-30, y: ry(photoH)+photoH/2, size: 8, font: rFont, color: rgb(0.5,0.5,0.5) });
+      }
+      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: 12, color: rgb(0,0,0) });
+      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: 7, font: hFont, color: white });
+      if (photo.note) {
+        const noteLines = wrap(photo.note, 7, photoW);
+        noteLines.forEach((l, li) => {
+          page.drawText(l, { x: px, y: ry(photoH) - 10 - li*9, size: 7, font: rFont, color: blk });
+        });
+      }
+      col++;
+      if (col >= 2) { col = 0; curY += photoH + 22; }
+    }
+    if (col > 0) curY += photoH + 22;
+  }
+
+  return await pdfDoc.save();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────

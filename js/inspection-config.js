@@ -26,6 +26,7 @@ let overallStatusUserSet = false;
 let sigDrawing = false;
 let sigCtx = null;
 let sigHasData = false;
+let activeHoodIdentifier = '';
 
 const SYS_META = {
   'fire-alarm':          { label: 'Fire Alarm',              icon: '🔔' },

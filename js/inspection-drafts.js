@@ -594,7 +594,7 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
   profile.systems = [...activeSystems];
   profile.updatedAt = data.inspection.date || todayMT();
   profile.lastInspBySystem = profile.lastInspBySystem || {};
-  profile.lastInspBySystem[sysKey] = {
+  const inspRecord = {
     date:         data.inspection.date || todayMT(),
     inspector:    data.inspection.inspectorName || '',
     reportType:   data.inspection.reportType || '',
@@ -605,6 +605,17 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
     extinguishers:data.extinguishers || [],
     devices:      sysKey === 'fire-alarm' ? collectFADeviceRows() : undefined
   };
+  profile.lastInspBySystem[sysKey] = inspRecord;
+
+  // For hood, also save per-identifier data so multiple hoods are tracked separately
+  if (sysKey === 'hood' && activeHoodIdentifier) {
+    profile.lastInspByHood = profile.lastInspByHood || {};
+    profile.lastInspByHood[activeHoodIdentifier] = inspRecord;
+    profile.hoodIdentifiers = profile.hoodIdentifiers || [];
+    if (!profile.hoodIdentifiers.includes(activeHoodIdentifier)) {
+      profile.hoodIdentifiers.push(activeHoodIdentifier);
+    }
+  }
 
   _propertyProfile = profile;
   await savePropertyProfile(propName, profile);
