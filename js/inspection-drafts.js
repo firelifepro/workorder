@@ -566,8 +566,9 @@ async function loadPropertyProfile(propName) {
 
 async function savePropertyProfile(propName, profile) {
   const folderId = await findOrCreateFolder('FLPS Property Profiles', await getFlpsRootFolderId());
+  const acctPart = _currentPropertyAcct ? `_${_currentPropertyAcct.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
   const slug = propName.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 60);
-  const fileName = `FLPS_Profile_${slug}.json`;
+  const fileName = `FLPS_Profile_${acctPart ? acctPart.slice(1) + '_' : ''}${slug}.json`;
   const existingId = profile._fileId || null;
   const content = JSON.stringify(profile, null, 2);
   const uploaded = await driveUploadFile(fileName, 'application/json', content, folderId, existingId);
