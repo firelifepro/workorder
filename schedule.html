@@ -384,10 +384,22 @@ async function loadSchedule(forceRefresh = false) {
 
       const dateRaw = stripTime(get(iDate));
       const dateObj = parseSheetDate(dateRaw);
+      const source  = get(iSource);
       const key = (acct ? 'acct:' + acct : 'name:' + property) + '\x00' + type;
       const cur = bestMap.get(key);
 
-      if (!cur || (dateObj && (!cur.dateObj || dateObj > cur.dateObj))) {
+      // Manual entries (from the pencil edit) take priority over automatic ones
+      // regardless of date — this lets users correct a wrong date even to an older one.
+      // Among entries of the same source type, the most recent date wins.
+      const curIsManual = cur?.source === 'Manual';
+      const newIsManual = source === 'Manual';
+      const newerDate   = dateObj && (!cur?.dateObj || dateObj > cur.dateObj);
+      const shouldReplace = !cur
+        || (!curIsManual && newIsManual)
+        || (curIsManual  && newIsManual && newerDate)
+        || (!curIsManual && !newIsManual && newerDate);
+
+      if (shouldReplace) {
         bestMap.set(key, {
           property,
           acct,
@@ -396,7 +408,7 @@ async function loadSchedule(forceRefresh = false) {
           freq:    get(iFreq) || 'Annual',
           last:    dateRaw,
           dateObj,
-          source:  get(iSource),
+          source,
           notes:   get(iNotes),
         });
       }
@@ -751,6 +763,7 @@ function showEmpty(msg) {
 
 function displayToIso(str) {
   if (!str) return '';
+  str = stripTime(str); // handle cached dates that still carry a time component
   const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
