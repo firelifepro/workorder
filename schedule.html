@@ -382,7 +382,7 @@ async function loadSchedule(forceRefresh = false) {
       const type     = get(iType);
       if (!property || !type) continue;
 
-      const dateRaw = get(iDate);
+      const dateRaw = stripTime(get(iDate));
       const dateObj = parseSheetDate(dateRaw);
       const key = (acct ? 'acct:' + acct : 'name:' + property) + '\x00' + type;
       const cur = bestMap.get(key);
@@ -488,16 +488,19 @@ async function migrateOldData() {
   }
 }
 
+function stripTime(str) {
+  // Remove any trailing time component — e.g. "3/15/2024 12:00:00" → "3/15/2024"
+  return str ? str.trim().replace(/\s+\d{1,2}:\d{2}(:\d{2})?(\s*(AM|PM))?$/i, '').trim() : str;
+}
+
 function parseSheetDate(str) {
   if (!str) return null;
-  // Sheets returns dates as "M/D/YYYY" or "YYYY-MM-DD" or serial numbers
-  // Try M/D/YYYY first
+  str = stripTime(str);
+  // Sheets returns dates as "M/D/YYYY" or "YYYY-MM-DD"
   const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (mdy) return new Date(parseInt(mdy[3]), parseInt(mdy[1])-1, parseInt(mdy[2]), 12);
-  // ISO
   const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2])-1, parseInt(iso[3]), 12);
-  // Fallback
   const d = new Date(str);
   return isNaN(d) ? null : d;
 }

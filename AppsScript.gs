@@ -225,7 +225,11 @@ function appendInspectionHistory(propertyName, acctNum, inspectionType, dateComp
     return { success: false, error: 'Inspection History tab not found — run setupHistoryTab() first' };
   }
   const address = getAddressForProperty(propertyName);
-  const dateVal = parseDateMT(dateCompleted);
+  const dateObj = parseDateMT(dateCompleted);
+  // Write as a plain date string (M/d/yyyy) so Sheets never appends a time component.
+  const dateVal = dateObj
+    ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'M/d/yyyy')
+    : (dateCompleted || '');
   sheet.appendRow([
     propertyName,
     acctNum      || '',
