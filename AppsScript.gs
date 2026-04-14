@@ -203,6 +203,19 @@ function doPost(e) {
     }
   }
 
+  // ── Delete all history rows for a property+type combination ──────────────
+  if (action === 'delete_schedule_entry') {
+    try {
+      const result = deleteScheduleEntries(payload.acctNum, payload.propertyName, payload.inspectionType);
+      writeLog('doPost', 'DELETE_DONE',
+        `Deleted ${result.deleted} row(s) for "${payload.propertyName}" | "${payload.inspectionType}"`, 'OK', '');
+      return jsonOut({ success: true, deleted: result.deleted });
+    } catch(err) {
+      writeLog('doPost', 'DELETE_ERROR', `"${payload.propertyName}" | "${payload.inspectionType}"`, 'ERROR', err.message);
+      return jsonOut({ success: false, error: err.message });
+    }
+  }
+
   writeLog('doPost', 'UNKNOWN_ACTION', 'action = "' + action + '"', 'WARN', '');
   return jsonOut({ success: false, error: 'Unknown action: ' + action });
 }
@@ -241,6 +254,50 @@ function appendInspectionHistory(propertyName, acctNum, inspectionType, dateComp
     notes        || '',
   ]);
   return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DELETE SCHEDULE ENTRIES
+// Removes all Inspection History rows that match a given property+type.
+// Matches by acct# when both the row and the request have one; otherwise
+// matches by property name (case-insensitive). Iterates bottom-to-top so
+// row deletion doesn't shift indices.
+// ═══════════════════════════════════════════════════════════════════════════
+function deleteScheduleEntries(acctNum, propertyName, inspectionType) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(HISTORY_TAB);
+  if (!sheet) throw new Error('Inspection History tab not found');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { deleted: 0 };
+
+  const data    = sheet.getRange(1, 1, lastRow, sheet.getLastColumn()).getValues();
+  const headers = data[0].map(h => String(h).trim().toLowerCase());
+  const iProp   = headers.findIndex(h => h.includes('property'));
+  const iAcct   = headers.findIndex(h => h.includes('acct'));
+  const iType   = headers.findIndex(h => h.includes('inspection') || h.includes('type'));
+
+  if (iProp === -1 || iType === -1) throw new Error('Could not locate required columns');
+
+  const targetAcct = String(acctNum  || '').trim();
+  const targetProp = String(propertyName  || '').trim().toLowerCase();
+  const targetType = String(inspectionType || '').trim().toLowerCase();
+
+  let deleted = 0;
+  // Iterate bottom-to-top so deletions don't shift subsequent row indices
+  for (let i = lastRow - 1; i >= 1; i--) {
+    const rowAcct = iAcct >= 0 ? String(data[i][iAcct] || '').trim() : '';
+    const rowProp = String(data[i][iProp] || '').trim().toLowerCase();
+    const rowType = String(data[i][iType] || '').trim().toLowerCase();
+
+    // Match on acct# when both sides have one; fall back to name match
+    const propMatch = (targetAcct && rowAcct) ? rowAcct === targetAcct : rowProp === targetProp;
+    if (propMatch && rowType === targetType) {
+      sheet.deleteRow(i + 1); // +1 because sheet rows are 1-based
+      deleted++;
+    }
+  }
+  return { deleted };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

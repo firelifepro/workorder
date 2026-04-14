@@ -143,6 +143,29 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
 .date-save-btn:disabled { opacity: 0.5; cursor: default; }
 .date-cancel-btn { background: #f3f4f6; color: #555; border: 1px solid #ddd; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 0.72rem; }
 
+/* ── Add entry modal ── */
+#modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center; }
+#modal-backdrop.open { display:flex; }
+#add-modal { background:white; border-radius:10px; padding:24px 28px; width:440px; max-width:92vw; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+#add-modal h2 { font-size:1rem; font-weight:700; color:#1a1a2e; margin-bottom:18px; }
+.modal-field { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.modal-field label { font-size:0.72rem; font-weight:600; color:#555; text-transform:uppercase; letter-spacing:0.04em; }
+.modal-field select, .modal-field input[type=date] { border:1px solid #ddd; border-radius:4px; padding:7px 10px; font-size:0.82rem; font-family:inherit; outline:none; }
+.modal-field select:focus, .modal-field input[type=date]:focus { border-color:#2e6da4; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+.btn-primary { background:#2e6da4; color:white; border:none; padding:7px 18px; border-radius:4px; cursor:pointer; font-size:0.82rem; font-weight:600; }
+.btn-primary:hover { background:#4a86e8; }
+.btn-primary:disabled { opacity:0.55; cursor:default; }
+.btn-secondary { background:#f3f4f6; color:#555; border:1px solid #ddd; padding:7px 14px; border-radius:4px; cursor:pointer; font-size:0.82rem; }
+.btn-secondary:hover { background:#e5e7eb; }
+
+/* ── Delete row button ── */
+.del-row-btn { background:none; border:none; cursor:pointer; color:#ddd; padding:0 3px; line-height:1; transition:color 0.15s; vertical-align:middle; display:inline-flex; align-items:center; }
+tbody tr:hover .del-row-btn { color:#e53935; }
+.col-del { width:28px; text-align:center; }
+thead th.col-del { cursor:default; }
+thead th.col-del:hover { background:#1a1a2e; }
+
 /* ── Empty / loading states ── */
 #loading, #empty-state { text-align: center; padding: 60px 20px; color: #888; }
 .spinner-lg { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #2e6da4; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
@@ -221,6 +244,7 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
       <option value="">All types</option>
     </select>
     <button id="refresh-btn" onclick="loadClientList(true); loadSchedule(true);">↺ Refresh</button>
+    <button id="add-entry-btn" onclick="openAddModal()" style="background:#27ae60;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:0.78rem;font-weight:600;">+ Add Entry</button>
     <span class="filter-count" id="filter-count"></span>
   </div>
 
@@ -240,10 +264,59 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
           <th onclick="sortBy('next')" data-col="next">Next Due <span class="sort-arrow">↕</span></th>
           <th onclick="sortBy('days')" data-col="days" class="sorted">Days <span class="sort-arrow">↑</span></th>
           <th onclick="sortBy('status')" data-col="status">Status <span class="sort-arrow">↕</span></th>
+          <th class="col-del"></th>
         </tr>
       </thead>
       <tbody id="sched-body"></tbody>
     </table>
+  </div>
+</div>
+
+<div id="modal-backdrop" onclick="handleBackdropClick(event)">
+  <div id="add-modal">
+    <h2>Add Schedule Entry</h2>
+    <div class="modal-field">
+      <label>Property</label>
+      <select id="modal-property">
+        <option value="">— Select property —</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Inspection Type</label>
+      <select id="modal-type">
+        <option value="">— Select type —</option>
+        <option>Fire Alarm Inspection</option>
+        <option>Sprinkler Inspection</option>
+        <option>Extinguisher Inspection</option>
+        <option>Emergency Exit Light Inspection</option>
+        <option>Hood Inspection</option>
+        <option>Fire Pump Inspection</option>
+        <option>Jockey Pump Inspection</option>
+        <option>Annual Backflow Prevention Test</option>
+        <option>5-Year Internal Pipe Inspection</option>
+        <option>5-Year FDC Hydrostatic Test</option>
+        <option>3-Year Dry Pipe Test</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Frequency</label>
+      <select id="modal-freq">
+        <option value="Annual">Annual</option>
+        <option value="Semi Annual">Semi Annual</option>
+        <option value="Quarterly">Quarterly</option>
+        <option value="Monthly">Monthly</option>
+        <option value="3-Year">3-Year</option>
+        <option value="5-Year">5-Year</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Last Done Date</label>
+      <input type="date" id="modal-date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-primary" id="modal-save-btn" onclick="saveNewEntry()">Save</button>
+    </div>
   </div>
 </div>
 
@@ -713,9 +786,10 @@ function renderRows(rows) {
   document.getElementById('filter-count').textContent = `Showing ${s.length} of ${allRows.length}`;
   const tbody = document.getElementById('sched-body');
   if (s.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#888;">No records match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#888;">No records match your filters.</td></tr>';
     return;
   }
+  const trash = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
   tbody.innerHTML = s.map(r => {
     const daysPill = r.daysUntil === null ? '<span style="color:#aaa;">—</span>'
       : r.daysUntil < 0
@@ -737,6 +811,7 @@ function renderRows(rows) {
       <td class="col-next">${escHtml(r.next)}</td>
       <td class="col-days">${daysPill}</td>
       <td class="col-status">${badge}</td>
+      <td class="col-del"><button class="del-row-btn" onclick="confirmDelete(${r._idx})" title="Delete all history for this entry">${trash}</button></td>
     </tr>`;
   }).join('');
 }
@@ -846,6 +921,95 @@ async function saveLastDone(idx) {
   } catch(e) {
     toast('✗ Save failed: ' + e.message);
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+  }
+}
+
+// ── Add entry modal ────────────────────────────────────────
+function openAddModal() {
+  const sel = document.getElementById('modal-property');
+  const prevVal = sel.value;
+  sel.innerHTML = '<option value="">— Select property —</option>';
+  clientList.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.name; o.textContent = c.name; o.dataset.acct = c.acct;
+    sel.appendChild(o);
+  });
+  // Pre-select the currently filtered property if one is active
+  const activeProp = document.getElementById('property-select').value;
+  sel.value = activeProp || prevVal || '';
+  document.getElementById('modal-type').value  = '';
+  document.getElementById('modal-freq').value  = 'Annual';
+  document.getElementById('modal-date').value  = '';
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeAddModal() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleBackdropClick(e) {
+  if (e.target === document.getElementById('modal-backdrop')) closeAddModal();
+}
+
+async function saveNewEntry() {
+  const propSel  = document.getElementById('modal-property');
+  const propName = propSel.value;
+  const acct     = propSel.options[propSel.selectedIndex]?.dataset?.acct || '';
+  const type     = document.getElementById('modal-type').value;
+  const freq     = document.getElementById('modal-freq').value;
+  const date     = document.getElementById('modal-date').value;
+
+  if (!propName) { toast('⚠ Select a property'); return; }
+  if (!type)     { toast('⚠ Select an inspection type'); return; }
+  if (!date)     { toast('⚠ Select a date'); return; }
+
+  const saveBtn = document.getElementById('modal-save-btn');
+  saveBtn.disabled = true; saveBtn.textContent = '…';
+
+  try {
+    const resp = await fetch('/api/apps-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        updates: [{ propertyName: propName, acctNum: acct, inspectionType: type, dateCompleted: date, frequency: freq, source: 'Manual' }]
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || 'Apps Script error');
+
+    try { sessionStorage.removeItem('flips_schedule_cache'); } catch(_) {}
+    toast('✓ Entry added');
+    closeAddModal();
+    await loadSchedule(true);
+  } catch(e) {
+    toast('✗ Save failed: ' + e.message);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = 'Save';
+  }
+}
+
+// ── Delete entry ───────────────────────────────────────────
+async function confirmDelete(idx) {
+  const row = allRows[idx];
+  if (!row) return;
+  if (!confirm(`Delete all inspection history for:\n\n"${row.property}"\n${row.type}\n\nThis removes every history row for this property + inspection type and cannot be undone. Continue?`)) return;
+
+  try {
+    const resp = await fetch('/api/apps-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_schedule_entry', acctNum: row.acct, propertyName: row.property, inspectionType: row.type })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || 'Apps Script error');
+
+    try { sessionStorage.removeItem('flips_schedule_cache'); } catch(_) {}
+    toast('✓ Entry deleted');
+    await loadSchedule(true);
+  } catch(e) {
+    toast('✗ Delete failed: ' + e.message);
   }
 }
 
