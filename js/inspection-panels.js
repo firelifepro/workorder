@@ -708,10 +708,18 @@ function addExtUnitRow(prefill) {
 
 function setPFTable(btn, id, val) {
   const input = document.getElementById(id);
-  if (input) input.value = val;
   const group = btn.closest('.pf-group') || btn.parentElement;
-  group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
+
+  // If already selected, toggle it off
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+    if (input) input.value = '';
+    val = '';
+  } else {
+    if (input) input.value = val;
+    group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
 
   // Detection row deficiency + summary
   const detMatch = id.match(/^fa-det-(?:alarm|sup)-(\d+)$/);
