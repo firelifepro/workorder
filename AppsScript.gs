@@ -3,7 +3,8 @@
 // Google Apps Script
 //
 // SETUP ORDER (run each function once from the Apps Script editor):
-//   1. setupHistoryTab        — creates Inspection History tab + headers
+//   1. upgradeHistoryTab      — adds FLPS Acct # column to existing tab
+//                               (or run setupHistoryTab if starting fresh)
 //   2. setSecret              — stores the shared secret
 //   3. migrateFromScheduleTab — ONE-TIME: copies old "Inspection Schedule"
 //                               rows with dates → Inspection History as
@@ -23,12 +24,13 @@ const LOG_FOLDER_NAME = 'FLPS Software Files';
 
 // ── Inspection History column positions (1-based) ───────────────────────────
 const H_PROP   = 1;  // A - Property Name
-const H_ADDR   = 2;  // B - Service Address
-const H_TYPE   = 3;  // C - Inspection Type
-const H_DATE   = 4;  // D - Date Completed
-const H_FREQ   = 5;  // E - Frequency
-const H_SOURCE = 6;  // F - Source
-const H_NOTES  = 7;  // G - Notes
+const H_ACCT   = 2;  // B - FLPS Acct #
+const H_ADDR   = 3;  // C - Service Address
+const H_TYPE   = 4;  // D - Inspection Type
+const H_DATE   = 5;  // E - Date Completed
+const H_FREQ   = 6;  // F - Frequency
+const H_SOURCE = 7;  // G - Source
+const H_NOTES  = 8;  // H - Notes
 
 // ── Log verbosity ────────────────────────────────────────────────────────────
 const LOG_LEVEL_DEFAULT = 'NORMAL';
@@ -166,12 +168,17 @@ function doPost(e) {
     for (const u of updates) {
       try {
         const r = appendInspectionHistory(
-          u.propertyName, u.inspectionType, u.dateCompleted,
+          u.propertyName, u.acctNum, u.inspectionType, u.dateCompleted,
           u.frequency, u.source, u.notes
         );
         writeLog('doPost', r.success ? 'HISTORY_APPENDED' : 'HISTORY_FAIL',
-          `"${u.propertyName}" | "${u.inspectionType}" | ${u.dateCompleted} | source: ${u.source || ''}`,
+          `"${u.propertyName}" | acct: ${u.acctNum || '(none)'} | "${u.inspectionType}" | ${u.dateCompleted} | source: ${u.source || ''}`,
           r.success ? 'OK' : 'ERROR', r.error || '');
+        if (!u.acctNum) {
+          writeLog('doPost', 'MISSING_ACCT',
+            `No FLPS Acct # for "${u.propertyName}" — property may be missing acct # in Client List`,
+            'WARN', '');
+        }
         results.push(r);
       } catch(err) {
         writeLog('doPost', 'UPDATE_EXCEPTION',
@@ -209,8 +216,9 @@ function jsonOut(obj) {
 // ═══════════════════════════════════════════════════════════════════════════
 // APPEND TO INSPECTION HISTORY
 // Core write function — all sources (Work Order, Inspection, Manual) use this.
+// acctNum is the FLPS Acct # — used as the stable match key in schedule.html.
 // ═══════════════════════════════════════════════════════════════════════════
-function appendInspectionHistory(propertyName, inspectionType, dateCompleted, frequency, source, notes) {
+function appendInspectionHistory(propertyName, acctNum, inspectionType, dateCompleted, frequency, source, notes) {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(HISTORY_TAB);
   if (!sheet) {
@@ -220,12 +228,13 @@ function appendInspectionHistory(propertyName, inspectionType, dateCompleted, fr
   const dateVal = parseDateMT(dateCompleted);
   sheet.appendRow([
     propertyName,
+    acctNum      || '',
     address,
     inspectionType,
     dateVal,
-    frequency || 'Annual',
-    source    || '',
-    notes     || '',
+    frequency    || 'Annual',
+    source       || '',
+    notes        || '',
   ]);
   return { success: true };
 }
@@ -241,20 +250,55 @@ function setupHistoryTab() {
     Logger.log('Created tab: ' + HISTORY_TAB);
   }
   if (!sheet.getRange('A1').getValue()) {
-    const headers = ['Property Name', 'Service Address', 'Inspection Type',
+    const headers = ['Property Name', 'FLPS Acct #', 'Service Address', 'Inspection Type',
                      'Date Completed', 'Frequency', 'Source', 'Notes'];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     const hr = sheet.getRange(1, 1, 1, headers.length);
     hr.setBackground('#2e6da4'); hr.setFontColor('#ffffff'); hr.setFontWeight('bold');
-    sheet.setColumnWidth(1, 220); sheet.setColumnWidth(2, 200); sheet.setColumnWidth(3, 220);
-    sheet.setColumnWidth(4, 120); sheet.setColumnWidth(5, 100);
-    sheet.setColumnWidth(6, 110); sheet.setColumnWidth(7, 200);
+    sheet.setColumnWidth(1, 200); sheet.setColumnWidth(2, 90);  sheet.setColumnWidth(3, 190);
+    sheet.setColumnWidth(4, 220); sheet.setColumnWidth(5, 120); sheet.setColumnWidth(6, 100);
+    sheet.setColumnWidth(7, 110); sheet.setColumnWidth(8, 200);
     sheet.setFrozenRows(1);
     Logger.log('Headers written.');
   } else {
-    Logger.log('Tab already has data — headers not overwritten.');
+    Logger.log('Tab already has data — headers not overwritten. Run upgradeHistoryTab() to add Acct # column.');
   }
   Logger.log('setupHistoryTab complete.');
+}
+
+// ── One-time upgrade: inserts FLPS Acct # column into an existing tab ───────
+// Safe to run when the tab has only the header row (no data rows).
+// If data rows exist, it inserts the column and back-fills acct # from Client List.
+function upgradeHistoryTab() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(HISTORY_TAB);
+  if (!sheet) { Logger.log('Inspection History tab not found — run setupHistoryTab() first.'); return; }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+
+  // Already upgraded?
+  if (headers.some(h => h.toLowerCase().includes('acct'))) {
+    Logger.log('FLPS Acct # column already present — nothing to do.');
+    return;
+  }
+
+  // Insert a column after column A (Property Name) → becomes column B
+  sheet.insertColumnAfter(1);
+  sheet.getRange(1, H_ACCT).setValue('FLPS Acct #');
+  const hr = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+  hr.setBackground('#2e6da4'); hr.setFontColor('#ffffff'); hr.setFontWeight('bold');
+  sheet.setColumnWidth(H_ACCT, 90);
+
+  // Back-fill acct # from Client List for any existing data rows
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const propCol  = sheet.getRange(2, H_PROP, lastRow - 1, 1).getValues();
+    const acctVals = propCol.map(([prop]) => [getAcctForProperty(String(prop || '').trim())]);
+    sheet.getRange(2, H_ACCT, lastRow - 1, 1).setValues(acctVals);
+    Logger.log('Back-filled acct # for ' + (lastRow - 1) + ' data row(s).');
+  }
+
+  Logger.log('upgradeHistoryTab complete.');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -292,10 +336,11 @@ function migrateFromScheduleTab() {
     const prop = String(data[i][iProp] || '').trim();
     const type = String(data[i][iType] || '').trim();
     if (!prop || !type) { skipped++; continue; }
-    const addr = iAddr >= 0 ? String(data[i][iAddr] || '').trim() : '';
-    const freq = iFreq >= 0 ? String(data[i][iFreq] || 'Annual').trim() : 'Annual';
+    const addr   = iAddr >= 0 ? String(data[i][iAddr] || '').trim() : '';
+    const freq   = iFreq >= 0 ? String(data[i][iFreq] || 'Annual').trim() : 'Annual';
+    const acct   = getAcctForProperty(prop);
     const dateVal = (lastVal instanceof Date) ? lastVal : parseDateMT(String(lastVal));
-    newRows.push([prop, addr, type, dateVal, freq, 'Work Order', '']);
+    newRows.push([prop, acct, addr, type, dateVal, freq, 'Work Order', '']);
     migrated++;
   }
 
@@ -310,22 +355,35 @@ function migrateFromScheduleTab() {
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
-function getAddressForProperty(propName) {
+// Returns [address, acctNum] for a property — single sheet read, used by both helpers below.
+function _getClientRow(propName) {
   const ss          = SpreadsheetApp.getActiveSpreadsheet();
   const clientSheet = ss.getSheetByName(CLIENT_TAB);
-  if (!clientSheet) return '';
+  if (!clientSheet) return {};
   const data    = clientSheet.getDataRange().getValues();
   const headers = data[0].map(h => String(h).trim());
   const propCol = headers.indexOf('Property Name');
-  const addrCol = headers.indexOf('Service Address');
-  if (propCol === -1) return '';
+  if (propCol === -1) return {};
+  const addrCol = headers.findIndex(h => h === 'Service Address');
+  const acctCol = headers.findIndex(h => h.toLowerCase().includes('acct') || h.toLowerCase().includes('account number'));
   const name = propName.trim().toLowerCase();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][propCol] || '').trim().toLowerCase() === name) {
-      return addrCol >= 0 ? String(data[i][addrCol] || '').replace(/\n/g, ', ').trim() : '';
+      return {
+        address: addrCol >= 0 ? String(data[i][addrCol] || '').replace(/\n/g, ', ').trim() : '',
+        acct:    acctCol >= 0 ? String(data[i][acctCol] || '').trim() : '',
+      };
     }
   }
-  return '';
+  return {};
+}
+
+function getAddressForProperty(propName) {
+  return _getClientRow(propName).address || '';
+}
+
+function getAcctForProperty(propName) {
+  return _getClientRow(propName).acct || '';
 }
 
 function setSecret() {

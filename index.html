@@ -2517,6 +2517,7 @@ window.addEventListener('load', () => {
 // ─────────────────────────────────────────────────────────
 async function updateInspectionSchedule(data) {
   const propertyName  = data['PROPERTY NAME']     || '';
+  const acctNum       = data['FLPS ACCT #']        || '';
   const dateCompleted = data['DATE COMPLETED ISO'] || data['DATE COMPLETED'] || '';
   const svcRaw        = data['SERVICES']           || '';
   const lineNum       = data['LINE #']             || '';
@@ -2560,7 +2561,7 @@ async function updateInspectionSchedule(data) {
           const freqPart = svc.replace(/^[^–—-]+[–—-]\s*/i, '').trim().toLowerCase();
           freq = FREQ_MAP[freqPart] || 'Annual';
         }
-        updates.push({ propertyName, inspectionType: rule.type, dateCompleted: parsedDate, frequency: freq, source: 'Work Order' });
+        updates.push({ propertyName, acctNum, inspectionType: rule.type, dateCompleted: parsedDate, frequency: freq, source: 'Work Order' });
         break;
       }
     }

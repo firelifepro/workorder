@@ -361,6 +361,7 @@ async function loadSchedule(forceRefresh = false) {
     const headers = rows[0].map(h => h.trim().toLowerCase());
     const col = (name) => headers.findIndex(h => h.includes(name));
     const iProp   = col('property');
+    const iAcct   = col('acct');
     const iAddr   = col('address') >= 0 ? col('address') : col('service');
     const iType   = col('inspection') >= 0 ? col('inspection') : col('type');
     const iDate   = col('date');
@@ -368,23 +369,26 @@ async function loadSchedule(forceRefresh = false) {
     const iSource = col('source');
     const iNotes  = col('notes');
 
-    // For each property+type, keep only the most recent completion
+    // For each property+type, keep only the most recent completion.
+    // Key by acct#+type when acct# is present, otherwise property name+type.
     const bestMap = new Map();
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const get = (idx) => (idx >= 0 ? (r[idx] || '').trim() : '');
       const property = get(iProp);
+      const acct     = get(iAcct);
       const type     = get(iType);
       if (!property || !type) continue;
 
       const dateRaw = get(iDate);
       const dateObj = parseSheetDate(dateRaw);
-      const key = property + '\x00' + type;
+      const key = (acct ? 'acct:' + acct : 'name:' + property) + '\x00' + type;
       const cur = bestMap.get(key);
 
       if (!cur || (dateObj && (!cur.dateObj || dateObj > cur.dateObj))) {
         bestMap.set(key, {
           property,
+          acct,
           address: get(iAddr),
           type,
           freq:    get(iFreq) || 'Annual',
@@ -414,6 +418,7 @@ async function loadSchedule(forceRefresh = false) {
       }
       allRows.push({
         property: entry.property,
+        acct:     entry.acct,
         address:  entry.address,
         type:     entry.type,
         freq:     entry.freq,
@@ -731,6 +736,7 @@ async function saveLastDone(idx) {
         secret: APPS_SCRIPT_SECRET,
         updates: [{
           propertyName:   row.property,
+          acctNum:        row.acct,
           inspectionType: row.type,
           dateCompleted:  input.value,
           frequency:      row.freq,

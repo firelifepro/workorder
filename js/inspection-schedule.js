@@ -30,6 +30,7 @@ const INSP_FREQ_MAP = {
 // ─────────────────────────────────────────────────────────────────────────────
 async function updateInspectionSchedule(data) {
   const propertyName  = data.property?.name || '';
+  const acctNum       = data.property?.acct || '';
   const dateCompleted = data.inspection?.date || '';
   const sysKey        = data.inspectionSystem || activeInspectionSystem || '';
 
@@ -58,7 +59,7 @@ async function updateInspectionSchedule(data) {
     : (data.inspection?.reportType || 'Annual').toLowerCase();
   const frequency = INSP_FREQ_MAP[rawFreq] || 'Annual';
 
-  const updates = [{ propertyName, inspectionType, dateCompleted, frequency, source: 'Inspection' }];
+  const updates = [{ propertyName, acctNum, inspectionType, dateCompleted, frequency, source: 'Inspection' }];
 
   console.log(`[Schedule] Posting update → ${propertyName} | ${inspectionType} | ${frequency} | ${dateCompleted}`);
 
