@@ -1543,6 +1543,7 @@ function addELRow(p) {
   if (p.pf90m)    setESLSubById('el-90m-' + n, p.pf90m);
   if (p.pfBatt)   setESLSubById('el-batt-' + n, p.pfBatt);
   if (p.pf)       setESLPFById('el', n, p.pf);
+  if (!p) saveDraft();
 }
 
 function addESRow(p) {
@@ -1570,6 +1571,7 @@ function addESRow(p) {
   if (p.pfArrows) setESLSubById('es-arrows-' + n, p.pfArrows);
   if (p.pfBatt)   setESLSubById('es-batt-' + n, p.pfBatt);
   if (p.pf)       setESLPFById('es', n, p.pf);
+  if (!p) saveDraft();
 }
 
 function setESLSub(btn, prefix, n, val) {
