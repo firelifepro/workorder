@@ -220,7 +220,7 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
     <select id="filter-type" onchange="applyFilters()">
       <option value="">All types</option>
     </select>
-    <button id="refresh-btn" onclick="loadSchedule(true)">↺ Refresh</button>
+    <button id="refresh-btn" onclick="loadClientList(true); loadSchedule(true);">↺ Refresh</button>
     <span class="filter-count" id="filter-count"></span>
   </div>
 
@@ -252,12 +252,14 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
 <script>
 const SHEET_ID          = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 const HISTORY_TAB_NAME  = 'Inspection History';
+const CLIENT_LIST_GID   = '1899870347';
 const SCOPES            = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 // Secret is a Cloudflare env var (APPS_SCRIPT_SECRET) — injected by the worker at /api/apps-script.
 
 let accessToken = null;
 let tokenClient = null;
 let allRows = [];
+let clientList = []; // [{name, acct}] from Client List tab — drives the property dropdown
 let sortCol = 'days';
 let sortAsc = true;
 
@@ -290,6 +292,7 @@ function initGoogle() {
         localStorage.setItem('flips_access_token', accessToken);
         localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
         setStatus('✓ Connected', 'ok');
+        loadClientList();
         loadSchedule();
       },
       error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
@@ -333,7 +336,6 @@ async function loadSchedule(forceRefresh = false) {
       if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
         allRows = cached.data;
         allRows.forEach((r, i) => r._idx = i);
-        buildPropDropdown();
         renderTable();
         return;
       }
@@ -435,7 +437,6 @@ async function loadSchedule(forceRefresh = false) {
     allRows.forEach((r, i) => r._idx = i);
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: allRows })); } catch(_) {}
     populateTypeFilter();
-    buildPropDropdown();
     renderTable();
   } catch(e) {
     showEmpty('Error loading schedule: ' + e.message);
@@ -501,12 +502,73 @@ function parseSheetDate(str) {
   return isNaN(d) ? null : d;
 }
 
+// ── Client List loader ─────────────────────────────────────
+// Reads the Client List tab (same tab as work order / inspection pages).
+// Populates `clientList` with [{name, acct}] so the property dropdown
+// shows exactly what's in the master client list — not what's in history.
+async function loadClientList(forceRefresh = false) {
+  const CACHE_KEY = 'flips_client_cache';
+  const CACHE_TTL = 30 * 60 * 1000;
+  if (!forceRefresh) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+        clientList = extractClientList(cached.data);
+        buildPropDropdown();
+        return;
+      }
+    } catch(_) {}
+  }
+  try {
+    const metaRes = await googleFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`
+    );
+    if (!metaRes.ok) throw new Error('Meta error ' + metaRes.status);
+    const metaJson = await metaRes.json();
+    let tabName = metaJson.sheets[0].properties.title;
+    for (const s of metaJson.sheets) {
+      if (String(s.properties.sheetId) === String(CLIENT_LIST_GID)) { tabName = s.properties.title; break; }
+    }
+    const valRes = await googleFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`
+    );
+    if (!valRes.ok) throw new Error('Values error ' + valRes.status);
+    const { values: rows = [] } = await valRes.json();
+    if (rows.length < 2) return;
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const nameIdx = headers.findIndex(h => ['property name','property','site name','name'].some(k => h.includes(k)));
+    const acctIdx = headers.findIndex(h => h.includes('acct') || h.includes('account'));
+    const raw = {};
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const name = (nameIdx >= 0 ? r[nameIdx] : r[0] || '').trim();
+      if (!name) continue;
+      const acct = (acctIdx >= 0 ? r[acctIdx] : '').trim();
+      raw[name] = { acct };
+    }
+    // Store in same format as the work-order page so both share the session cache
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: raw })); } catch(_) {}
+    clientList = Object.entries(raw).map(([name, obj]) => ({ name, acct: obj.acct || '' }));
+    buildPropDropdown();
+  } catch(e) {
+    console.warn('[ClientList] Failed to load:', e.message);
+  }
+}
+
+// Convert the cached clientData object ({name: {acct, ...}}) to our [{name, acct}] array.
+function extractClientList(data) {
+  return Object.entries(data).map(([name, obj]) => {
+    const acctKey = Object.keys(obj).find(k => k.toLowerCase().includes('acct') || k.toLowerCase().includes('account'));
+    return { name, acct: (acctKey && obj[acctKey]) ? String(obj[acctKey]).trim() : '' };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // ── Property search dropdown ────────────────────────────────
 function buildPropDropdown() {
   const sel = document.getElementById('property-select');
   const prevVal = sel.value;
   sel.innerHTML = '<option value="">— All properties —</option>';
-  const names = [...new Set(allRows.map(r => r.property))].sort();
+  const names = clientList.length ? clientList.map(c => c.name) : [...new Set(allRows.map(r => r.property))].sort();
   names.forEach(name => {
     const o = document.createElement('option');
     o.value = name; o.textContent = name;
@@ -521,7 +583,7 @@ function filterPropDropdown(query) {
   const q = query.trim().toLowerCase();
   clear.style.display = q ? 'block' : 'none';
   const prevVal = sel.value;
-  const names = [...new Set(allRows.map(r => r.property))].sort();
+  const names = clientList.length ? clientList.map(c => c.name) : [...new Set(allRows.map(r => r.property))].sort();
   const matches = names.filter(n => !q || n.toLowerCase().includes(q));
   sel.innerHTML = '';
   const ph = document.createElement('option');
@@ -552,8 +614,23 @@ function applyFilters() {
   const status = document.getElementById('filter-status').value;
   const type   = document.getElementById('filter-type').value;
 
+  // Look up the FLPS Acct # for the selected client-list property.
+  // When both the client and the history row have an acct#, match on that
+  // so slight name differences across entries don't cause missed matches.
+  let selectedAcct = '';
+  if (prop) {
+    const client = clientList.find(c => c.name === prop);
+    if (client) selectedAcct = client.acct;
+  }
+
   const filtered = allRows.filter(r => {
-    if (prop   && r.property !== prop) return false;
+    if (prop) {
+      if (selectedAcct && r.acct) {
+        if (r.acct !== selectedAcct) return false;
+      } else {
+        if (r.property !== prop) return false;
+      }
+    }
     if (status && r.bucket !== status) return false;
     if (type   && r.type !== type) return false;
     return true;
@@ -789,6 +866,7 @@ window.addEventListener('load', () => {
     if (cachedToken && Date.now() < tokenExpiry) {
       accessToken = cachedToken;
       setStatus('✓ Connected', 'ok');
+      loadClientList();
       loadSchedule();
     } else {
       setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open');
