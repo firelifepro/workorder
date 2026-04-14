@@ -212,15 +212,31 @@ window.addEventListener('load', () => {
   document.getElementById('insp-date').value = todayMT();
 
   if (k && c) {
+    // Always set up tokenClient so mid-session expiry is handled silently by googleFetch
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: c, scope: SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { setStatus('✗ ' + resp.error, 'err'); return; }
+          accessToken = resp.access_token;
+          localStorage.setItem('flips_access_token', accessToken);
+          localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+          setStatus('✓ Connected', 'ok');
+          if (!clientData?.length) loadSheet();
+        },
+        error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
+      });
+    } catch(e) { console.warn('[Auth] GSI init failed:', e.message); }
+
     const cachedToken  = localStorage.getItem('flips_access_token');
     const tokenExpiry  = Number(localStorage.getItem('flips_token_expiry')) || 0;
     if (cachedToken && Date.now() < tokenExpiry) {
       accessToken = cachedToken;
       setStatus('✓ Connected', 'ok');
       loadSheet();
-    } else {
-      setStatus('⚠ Session expired', 'err');
-      document.getElementById('conn-drawer').classList.add('open');
+    } else if (tokenClient) {
+      setStatus('⏳ Reconnecting…', '');
+      tokenClient.requestAccessToken({ prompt: '' });
     }
   }
 
