@@ -501,6 +501,7 @@ async function buildPDFDoc() {
   // INSPECTION RESULT ROW
   // ══════════════════════════════════════════════════════════
   function inspRow(label, result, deficDesc) {
+    label = (label || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
     checkPage(result === 'FAIL' && deficDesc ? 14 : 8);
     const bgColor = result === 'PASS' ? C.passGrn : result === 'FAIL' ? C.failRed :
                     result === 'N/A'  ? [248,250,252] : [255,255,255];
