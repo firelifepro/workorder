@@ -456,7 +456,9 @@ async function buildPDFDoc() {
     let dy = y + 13;
     data.deficiencies.forEach(d => {
       setFont(FS.small,'bold'); setTxt([180,20,20]);
-      const dtxt = doc.splitTextToSize('- ' + d.item + (d.description ? ': ' + d.description : ''), usableW - 8);
+      const ditem = (d.item || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
+      const ddesc2 = (d.description || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
+      const dtxt = doc.splitTextToSize('- ' + ditem + (ddesc2 ? ': ' + ddesc2 : ''), usableW - 8);
       doc.text(dtxt, ML + 5, dy);
       dy += dtxt.length * 4;
     });
