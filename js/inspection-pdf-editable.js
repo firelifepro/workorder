@@ -1446,7 +1446,8 @@ async function buildGenericSystemPDFBytes() {
     secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
     data.deficiencies.forEach(d => {
       checkPage(16);
-      const text = d.item + (d.description ? ': ' + d.description : '');
+      const sanitize = s => (s || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
+      const text = sanitize(d.item) + (d.description ? ': ' + sanitize(d.description) : '');
       const lines = wrap(text, 8, PW - 16);
       const rowH = lines.length * 11 + 4;
       page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
@@ -1466,7 +1467,7 @@ async function buildGenericSystemPDFBytes() {
     inspItems.forEach(id => {
       const row = document.getElementById('row-' + id);
       if (!row) return;
-      const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
+      const label = (row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id).replace(/≥/g, '>=').replace(/≤/g, '<=');
       const result = (row.dataset.val || '').toUpperCase();
       const deficTxt = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
       const rowH = 13;
