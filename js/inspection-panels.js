@@ -450,12 +450,7 @@ function buildFirePumpPanel() {
     ${makeRow('fp-power-fail-alarm','Power Failure Alarm','Loss of power transmitted to fire alarm panel')}
     ${makeRow('fp-phase-alarm','Phase Reversal / Loss Alarm','Tested and operational')}
     ${makeRow('fp-room-temp','Pump Room Temperature','Maintained above 40°F')}
-    ${makeRow('fp-suction-valve','Suction Valve Open & Supervised','Fully open; tamper alarm tested')}
-
-    <div class="field-group" style="margin-top:8px;">
-      <label>Fire Pump Notes</label>
-      <textarea id="fp-notes" rows="3"></textarea>
-    </div>`;
+    ${makeRow('fp-suction-valve','Suction Valve Open & Supervised','Fully open; tamper alarm tested')}`;
   return makePanel('fire-pump', '🔄', 'Fire Pump (NFPA 25 Ch. 8)', body);
 }
 

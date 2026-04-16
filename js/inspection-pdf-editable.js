@@ -1314,7 +1314,7 @@ async function buildGenericSystemPDFBytes() {
     'backflow':    ['bf-test','bf-passed','bf-casing','bf-shutoffs','bf-clearance','bf-freeze'],
   };
   const NOTES_ID = {
-    'fire-pump':'fp-notes','standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
+    'standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
     'bda':'bda-notes','smoke-control':'sc-notes','gas-detection':'gd-notes',
     'special-suppression':'ss-notes','backflow':'bf-notes',
   };
@@ -1332,7 +1332,7 @@ async function buildGenericSystemPDFBytes() {
   curY = 22 + 6;
 
   // Logo + company block
-  const logoAreaH = 84;
+  const logoAreaH = 104;
   const logoX = ML, logoW = 88;
   const infoX = ML + logoW + 6, infoW = 162;
   const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
@@ -1390,14 +1390,14 @@ async function buildGenericSystemPDFBytes() {
     { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
     { label: 'NFPA REF.', val: data.inspection.nfpaRef || NFPA_REF[sys] || '' },
   ];
-  let rfY = ry(logoAreaH) + logoAreaH - 8;
+  let rfY = ry(logoAreaH) + logoAreaH - 7;
   rtFields.forEach(f => {
-    page.drawText(f.label + ':', { x: rtX+3, y: rfY, size: 5.5, font: hFont, color: slate });
-    rfY -= 5;
-    page.drawRectangle({ x: rtX+2, y: rfY - 2, width: rtW-4, height: 9, color: gold, borderColor: sky, borderWidth: 0.3 });
+    page.drawText(f.label + ':', { x: rtX+3, y: rfY, size: 6, font: hFont, color: slate });
+    rfY -= 7;
+    page.drawRectangle({ x: rtX+2, y: rfY - 2, width: rtW-4, height: 10, color: gold, borderColor: sky, borderWidth: 0.3 });
     const tf = form.createTextField(fid());
-    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY-1, width: rtW-6, height: 7, font: rFont }); tf.setFontSize(7);
-    rfY -= 11;
+    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY-1, width: rtW-6, height: 8, font: rFont }); tf.setFontSize(7);
+    rfY -= 13;
   });
   curY += logoAreaH + 4;
 
@@ -1434,6 +1434,7 @@ async function buildGenericSystemPDFBytes() {
   const sysFields = SYS_FIELDS[sys];
   if (sysFields && sysFields.length) {
     secHdr('SYSTEM INFORMATION');
+    gap(4);
     sysFields.forEach(row => {
       const cols = row.map(c => ({ label: c.label, val: document.getElementById(c.id)?.value?.trim() || '', w: c.w }));
       dataRow(cols);
@@ -1444,18 +1445,20 @@ async function buildGenericSystemPDFBytes() {
   // Deficiencies
   if (data.deficiencies.length > 0) {
     secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
+    gap(2);
     data.deficiencies.forEach(d => {
-      checkPage(16);
       const sanitize = s => (s || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
       const text = sanitize(d.item) + (d.description ? ': ' + sanitize(d.description) : '');
-      const lines = wrap(text, 8, PW - 16);
-      const rowH = lines.length * 11 + 4;
-      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
-      page.drawText('\u2022', { x: ML+4, y: ty(rowH, rowH/2 + 3), size: 8, font: hFont, color: red });
-      lines.forEach((line, li) => {
-        page.drawText(line, { x: ML+12, y: ty(rowH, rowH - 4 - li*11), size: 8, font: li===0?hFont:rFont, color: red });
-      });
-      curY += rowH + 3;
+      const rowH = 13;
+      checkPage(rowH + 2);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: 12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+      page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH/2 - 1, size: 8, font: hFont, color: red });
+      page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+      const dff = form.createTextField(fid());
+      dff.setText(text);
+      dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
+      dff.setFontSize(7.5);
+      curY += rowH + 2;
     });
     gap(4);
   }
@@ -1464,34 +1467,40 @@ async function buildGenericSystemPDFBytes() {
   const inspItems = SYS_ITEMS[sys] || [];
   if (inspItems.length) {
     secHdr('INSPECTION RESULTS');
+    gap(2);
     inspItems.forEach(id => {
       const row = document.getElementById('row-' + id);
       if (!row) return;
       const label = (row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id).replace(/≥/g, '>=').replace(/≤/g, '<=');
       const result = (row.dataset.val || '').toUpperCase();
       const deficTxt = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
-      const rowH = 13;
-      checkPage(rowH + (result === 'FAIL' && deficTxt ? 10 : 0));
+      const labelLines = wrap(label, 7.5, PW - 50);
+      const rowH = Math.max(13, labelLines.length * 9 + 4);
+      checkPage(rowH + (result === 'FAIL' && deficTxt ? 13 : 0) + 1);
       const bg = result === 'PASS' ? rgb(0.94, 0.99, 0.95) : result === 'FAIL' ? rgb(0.99, 0.93, 0.93) : rgb(0.97, 0.97, 0.97);
       page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
-      wrap(label, 7.5, PW - 60).forEach((line, li) => {
-        page.drawText(line, { x: ML+4, y: ty(rowH, rowH - 4 - li*9), size: 7.5, font: rFont, color: navy });
+      labelLines.forEach((line, li) => {
+        page.drawText(line, { x: ML+4, y: ry(rowH) + rowH - 7 - li*9, size: 7.5, font: rFont, color: navy });
       });
-      if (result) {
-        const bColor = result === 'PASS' ? green : result === 'FAIL' ? red : slate;
-        const bW = 30;
-        page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+2, width: bW, height: rowH-4, color: bColor });
-        page.drawText(result, { x: ML+PW-bW/2-hFont.widthOfTextAtSize(result, 6)/2-2, y: ty(rowH, rowH/2+2), size: 6, font: hFont, color: white });
-      }
+      // Editable result badge with colored background
+      const bColor = result === 'PASS' ? green : result === 'FAIL' ? red : (result ? slate : lgray);
+      const bW = 36;
+      const bX = ML + PW - bW - 2;
+      page.drawRectangle({ x: bX, y: ry(rowH)+1, width: bW, height: rowH-2, color: bColor });
+      const rf = form.createTextField(fid());
+      rf.setText(result || '');
+      rf.addToPage(page, { x: bX+1, y: ry(rowH)+2, width: bW-2, height: rowH-4, font: hFont });
+      rf.setFontSize(7);
       curY += rowH + 1;
       if (result === 'FAIL' && deficTxt) {
-        const dl = wrap('Deficiency: ' + deficTxt, 7, PW - 16);
-        dl.forEach(line => {
-          checkPage(10);
-          page.drawRectangle({ x: ML+4, y: ry(10), width: PW-4, height: 10, color: rgb(0.99, 0.93, 0.93) });
-          page.drawText(line, { x: ML+8, y: ty(10,3), size: 7, font: rFont, color: red });
-          curY += 10;
-        });
+        const defH = 12;
+        checkPage(defH + 1);
+        page.drawRectangle({ x: ML+4, y: ry(defH), width: PW-4, height: defH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+        const defField = form.createTextField(fid());
+        defField.setText('Deficiency: ' + deficTxt);
+        defField.addToPage(page, { x: ML+6, y: ry(defH)+1, width: PW-10, height: defH-2, font: rFont });
+        defField.setFontSize(7);
+        curY += defH + 1;
       }
     });
     gap(4);
@@ -1511,29 +1520,87 @@ async function buildGenericSystemPDFBytes() {
     gap(4);
   }
 
-  // Signature
-  checkPage(50);
-  secHdr('INSPECTOR CERTIFICATION');
-  const sigName = data.signature?.name || '';
-  const sigDate = data.signature?.date || '';
-  const halfW = PW / 2 - 4;
-  page.drawText('Inspector Signature:', { x: ML+2, y: ty(8, 5), size: 6.5, font: hFont, color: navy });
-  page.drawText('Date:', { x: ML+halfW+10, y: ty(8, 5), size: 6.5, font: hFont, color: navy });
-  curY += 8;
-  page.drawRectangle({ x: ML, y: ry(20), width: halfW, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
-  const sf = form.createTextField(fid());
-  sf.setText(sigName); sf.addToPage(page, { x: ML+2, y: ry(20)+2, width: halfW-4, height: 16, font: rFont }); sf.setFontSize(9);
-  page.drawRectangle({ x: ML+halfW+8, y: ry(20), width: halfW, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
-  const df = form.createTextField(fid());
-  df.setText(sigDate); df.addToPage(page, { x: ML+halfW+10, y: ry(20)+2, width: halfW-4, height: 16, font: rFont }); df.setFontSize(9);
-  curY += 20;
+  // Photos
+  if (inspectionPhotos && inspectionPhotos.length > 0) {
+    addPage();
+    secHdr('INSPECTION PHOTOS');
+    const photoW = Math.floor((PW - 10) / 2);
+    const photoH = 140;
+    let col = 0;
+    for (let i = 0; i < inspectionPhotos.length; i++) {
+      const photo = inspectionPhotos[i];
+      checkPage(photoH + 30);
+      const px = ML + col * (photoW + 10);
+      try {
+        const b64 = photo.dataUrl.split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const img = photo.dataUrl.startsWith('data:image/png')
+          ? await pdfDoc.embedPng(ab) : await pdfDoc.embedJpg(ab);
+        const dims = img.scaleToFit(photoW, photoH);
+        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
+      } catch(_) {
+        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: lgray });
+      }
+      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: 12, color: rgb(0,0,0) });
+      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: 7, font: hFont, color: white });
+      if (photo.note) {
+        wrap(photo.note, 7, photoW).forEach((l, li) => {
+          page.drawText(l, { x: px, y: ry(photoH) - 10 - li * 9, size: 7, font: rFont, color: navy });
+        });
+      }
+      col++;
+      if (col >= 2) { col = 0; curY += photoH + 22; }
+    }
+    if (col > 0) curY += photoH + 22;
+  }
+
+  // Signatures
+  checkPage(120);
+  secHdr('OVERALL STATUS & SIGNATURES');
+  gap(4);
+  dataRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', w: PW }]);
   gap(6);
-  page.drawText('Printed Name:', { x: ML+2, y: ty(8, 5), size: 6.5, font: hFont, color: navy });
-  curY += 8;
-  page.drawRectangle({ x: ML, y: ry(14), width: halfW, height: 14, color: gold, borderColor: sky, borderWidth: 0.5 });
-  const pf2 = form.createTextField(fid());
-  pf2.setText(sigName); pf2.addToPage(page, { x: ML+2, y: ry(14)+2, width: halfW-4, height: 10, font: rFont }); pf2.setFontSize(8);
-  curY += 14;
+  const genSigH = 40, genSigW = PW / 2 - 6;
+  page.drawText('INSPECTOR SIGNATURE:', { x: ML, y: ry(genSigH) + genSigH + 4, size: 7, font: hFont, color: navy });
+  page.drawRectangle({ x: ML, y: ry(genSigH), width: genSigW, height: genSigH, color: gold, borderColor: sky, borderWidth: 0.5 });
+  if (sigHasData) {
+    try {
+      const sc = document.getElementById('sig-canvas');
+      const b64 = sc.toDataURL('image/png').split(',')[1];
+      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+      const sImg = await pdfDoc.embedPng(ab);
+      const sDims = sImg.scaleToFit(genSigW - 8, genSigH - 8);
+      page.drawImage(sImg, { x: ML + 4, y: ry(genSigH) + 4, width: sDims.width, height: sDims.height });
+    } catch(_) {}
+  } else {
+    const sf2 = form.createTextField(fid());
+    sf2.setText(''); sf2.addToPage(page, { x: ML+2, y: ry(genSigH)+2, width: genSigW-4, height: genSigH-4, font: rFont }); sf2.setFontSize(9);
+  }
+  page.drawText('CLIENT SIGNATURE:', { x: ML+PW/2+10, y: ry(genSigH) + genSigH + 4, size: 7, font: hFont, color: navy });
+  page.drawRectangle({ x: ML+PW/2+8, y: ry(genSigH), width: genSigW, height: genSigH, color: gold, borderColor: sky, borderWidth: 0.5 });
+  if (custSigHasData) {
+    try {
+      const cc = document.getElementById('cust-sig-canvas');
+      const b64 = cc.toDataURL('image/png').split(',')[1];
+      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+      const cImg = await pdfDoc.embedPng(ab);
+      const cDims = cImg.scaleToFit(genSigW - 8, genSigH - 8);
+      page.drawImage(cImg, { x: ML+PW/2+12, y: ry(genSigH) + 4, width: cDims.width, height: cDims.height });
+    } catch(_) {}
+  } else {
+    const cf2 = form.createTextField(fid());
+    cf2.setText(''); cf2.addToPage(page, { x: ML+PW/2+10, y: ry(genSigH)+2, width: genSigW-4, height: genSigH-4, font: rFont }); cf2.setFontSize(9);
+  }
+  curY += genSigH + 4;
+  dataRow([
+    { label: 'INSPECTOR DATE',      val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
+    { label: 'CLIENT DATE',         val: document.getElementById('cust-sig-date')?.value || '', w: PW/2 },
+  ]);
+  dataRow([
+    { label: 'INSPECTOR PRINT NAME', val: data.signature?.name || data.inspection?.inspectorName || '', w: PW/2 },
+    { label: 'CLIENT PRINT NAME',    val: document.getElementById('cust-sig-name')?.value || '', w: PW/2 },
+  ]);
+  gap(4);
 
   return await pdfDoc.save();
 }
