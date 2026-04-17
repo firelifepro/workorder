@@ -13,6 +13,7 @@ const INSP_SYS_TYPE_MAP = {
   'hood':               'Hood Inspection',
   'fire-pump':          'Fire Pump Inspection',
   'backflow':           'Annual Backflow Prevention Test',
+  'hospital':           'Hospital TJC/CMS Inspection',
 };
 
 // Maps report-type field values → canonical frequency strings for the schedule sheet

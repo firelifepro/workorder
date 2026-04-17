@@ -3244,29 +3244,150 @@ function _draftModalHideConfirm() {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  SAVE & DOWNLOAD — collect data then build PDF
+//  PDF BYTES WRAPPER — returns Uint8Array for shared Drive upload
 // ════════════════════════════════════════════════════════════════
-function hospSaveAndDownload() {
-  const sigWarn = document.getElementById('h-sig-warning');
-  if (!H.inspSig) {
-    sigWarn.textContent = 'Please sign before generating the report.';
-    sigWarn.classList.add('visible');
+async function buildHospitalPDFBytes() {
+  const doc = buildHospPDF(true); // returnDoc=true
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SAVE & DOWNLOAD — full flow: Drive JSON + Drive PDF + schedule
+// ════════════════════════════════════════════════════════════════
+async function hospSaveAndDownload() {
+  // ── Drive connection check ────────────────────────────────────
+  if (!accessToken) {
+    if (!confirm('⚠ Not connected to Google Drive — PDF will download locally only.\n\nDrive save, schedule update, and property profile will be skipped.\n\nOK to continue?')) return;
+  }
+
+  // ── Signature + name check ────────────────────────────────────
+  const sigWarn  = document.getElementById('h-sig-warning');
+  const sigName  = fv('h-sig-name');
+  const hasSig   = !!H.inspSig;
+  const hasName  = sigName.length > 0;
+  if (!hasSig || !hasName) {
+    if (sigWarn) {
+      sigWarn.textContent = !hasSig && !hasName
+        ? '⚠ Please draw your signature AND enter your printed name before saving.'
+        : !hasSig
+          ? '⚠ Please draw your signature in the signature box.'
+          : '⚠ Please enter your printed name below the signature.';
+      sigWarn.classList.add('visible');
+    }
+    document.getElementById('sig-canvas')?.scrollIntoView({ behavior:'smooth', block:'center' });
     return;
   }
-  sigWarn.classList.remove('visible');
-  saveDraft(); // persist before generating
-  const status = document.getElementById('h-pdf-status');
-  status.textContent = '⏳ Generating PDF…';
-  setTimeout(() => {
-    try {
-      buildHospPDF();
-      status.textContent = '✅ PDF downloaded successfully.';
-      document.getElementById('h-new-insp-btn-wrap').style.display = 'block';
-    } catch(e) {
-      status.textContent = '❌ PDF error: ' + e.message;
-      console.error(e);
+  if (sigWarn) sigWarn.classList.remove('visible');
+
+  // ── Button + status setup ─────────────────────────────────────
+  const btn      = document.getElementById('h-save-download-btn');
+  const statusEl = document.getElementById('h-pdf-status');
+  if (btn)      { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+  if (statusEl)   statusEl.innerHTML = '';
+  const setStatus = (msg, color) => {
+    if (statusEl) statusEl.innerHTML += `<div style="color:${color||'inherit'}">${msg}</div>`;
+  };
+  document.getElementById('h-new-insp-btn-wrap').style.display = 'none';
+
+  saveDraft();
+
+  let pdfBytes = null;
+  let filename  = '';
+
+  const downloadPDF = (bytes, name) => {
+    const blob = new Blob([bytes], { type:'application/pdf' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  try {
+    // ── 1. Build PDF ──────────────────────────────────────────────
+    setStatus('Building PDF…', 'var(--slate)');
+    pdfBytes = await buildHospitalPDFBytes();
+
+    const propName = fv('property-name') || 'Hospital';
+    const propSlug = propName.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,30);
+    const dateStr  = fv('insp-date') || todayMT();
+    const dateSlug = dateStr.replace(/-/g,'');
+    filename = `FLPS_hospital_${propSlug}_${dateSlug}.pdf`;
+
+    if (accessToken) {
+      // ── 2. Save JSON to Drive ───────────────────────────────────
+      try {
+        setStatus('Saving inspection data…', 'var(--slate)');
+        const formState   = collectFormState();
+        const jsonName    = `FLPS_Insp_hospital_${propSlug}_${dateStr}.json`;
+        const rootId      = await getFlpsRootFolderId();
+        const histFolderId = await findOrCreateFolder('FLPS Inspection History', rootId);
+        await driveUploadFile(jsonName, 'application/json', JSON.stringify(formState, null, 2), histFolderId, null);
+        setStatus('✓ Inspection data saved to FLPS Inspection History', 'var(--green)');
+
+        // ── 2b. Update property profile ─────────────────────────
+        try {
+          setStatus('Updating property profile…', 'var(--slate)');
+          const hospData = {
+            property:    { name: propName, acct: '' },
+            inspection:  { date: dateStr, reportType: fv('hosp-report-type') || H.reportType || 'Annual',
+                           inspectorName: sigName },
+            overallStatus: H.overallStatus || '',
+            inspectionSystem: 'hospital',
+            deficiencies: Array.from(document.querySelectorAll('#h-defic-tbody tr td:nth-child(2) input'))
+                              .map(i => i.value.trim()).filter(Boolean),
+            fieldData: formState.fields || {},
+            pfStates:  {},
+          };
+          await updatePropertyProfileAfterSave(hospData, 'hospital');
+          setStatus('✓ Property profile updated', 'var(--green)');
+        } catch(e) {
+          setStatus('⚠ Profile update failed: ' + e.message, 'var(--amber)');
+        }
+      } catch(e) {
+        setStatus('⚠ Data save failed: ' + e.message + ' (PDF still saving)', 'var(--amber)');
+      }
+
+      // ── 3. Save PDF to Drive ────────────────────────────────────
+      try {
+        setStatus('Saving PDF to Drive…', 'var(--slate)');
+        const binary   = Array.from(new Uint8Array(pdfBytes)).map(b => String.fromCharCode(b)).join('');
+        const b64      = btoa(binary);
+        const rootId2  = await getFlpsRootFolderId();
+        const rptFolderId = await findOrCreateFolder('FLPS Inspection Reports', rootId2);
+        await driveUploadFile(filename, 'application/pdf', b64, rptFolderId, null);
+        setStatus('✓ PDF saved to FLPS Inspection Reports', 'var(--green)');
+      } catch(e) {
+        setStatus('⚠ PDF Drive save failed: ' + e.message, 'var(--amber)');
+      }
+    } else {
+      setStatus('⚠ Not connected to Google — skipping Drive saves', 'var(--amber)');
     }
-  }, 100);
+
+    // ── 4. Download PDF locally ─────────────────────────────────
+    downloadPDF(pdfBytes, filename);
+    setStatus(`✓ Downloaded: ${filename}`, 'var(--green)');
+    setStatus('Upload to thecomplianceengine.com to complete reporting.', 'var(--slate)');
+    showToast('✓ Report saved & downloaded!');
+
+    // ── 5. Update inspection schedule (non-blocking) ────────────
+    const schedData = {
+      property:    { name: propName, acct: '' },
+      inspection:  { date: dateStr, reportType: fv('hosp-report-type') || H.reportType || 'Annual' },
+      inspectionSystem: 'hospital',
+    };
+    updateInspectionSchedule(schedData).catch(e => console.warn('[Schedule] Exception:', e.message));
+
+    // ── 6. Clean up ──────────────────────────────────────────────
+    discardDraft();
+    document.getElementById('h-new-insp-btn-wrap').style.display = 'block';
+
+  } catch(e) {
+    setStatus('✗ Error: ' + e.message, 'var(--red)');
+    showToast('✗ Save failed: ' + e.message);
+    if (pdfBytes) { try { downloadPDF(pdfBytes, filename || 'hospital_inspection.pdf'); } catch(_) {} }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Save & Download PDF'; }
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
