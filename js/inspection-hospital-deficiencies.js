@@ -4,7 +4,8 @@
 //   1. Sprinkler checklist (Y/N/NA rows marked N with notes)
 //   2. Device detail sheets (any row where a PASS/FAIL select = 'FAIL')
 //   3. Pre/Post inspection checklist ('NO' answers)
-//   4. Explicit h-defic-tbody manual entries
+// Auto-detected items are written as data-auto rows in h-defic-tbody (cleared and
+// re-added on each call). Manually added rows have no data-auto and are preserved.
 // SP_CHECKLIST, SP_DRY_ITEMS, SP_5YR_ITEMS are runtime refs — defined in
 // hospital inline script which loads after this file, so they're available
 // by the time any function here is actually called.
@@ -38,8 +39,9 @@ const HOSP_DEVICE_SHEETS = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 // rebuildHospDeficList
-// Aggregates all deficiencies from every source and updates the banner/count.
-// Called on step navigation to 'defic' and on any FAIL select change.
+// Aggregates all deficiencies from every source and writes them as editable
+// rows in the main h-defic-tbody table. Called on step navigation to 'defic'
+// and on any FAIL/NO change.
 // ─────────────────────────────────────────────────────────────────────────────
 function rebuildHospDeficList() {
   const list = []; // [{text, source}]
@@ -89,19 +91,48 @@ function rebuildHospDeficList() {
     }
   });
 
-  // ── 4. Explicit manual deficiency table entries ───────────────────────────
-  document.querySelectorAll('#h-defic-tbody tr td:nth-child(2) input').forEach(inp => {
-    if (inp.value.trim()) list.push({ text: inp.value.trim(), source: 'Manual' });
+  // ── Update DOM ────────────────────────────────────────────────────────────
+  // Write auto-detected deficiencies as editable rows in the main defic table.
+  // Rows marked data-auto are replaced on every call; manual rows are preserved.
+  const tbody = document.getElementById('h-defic-tbody');
+  if (!tbody) return;
+
+  // Remove previously auto-generated rows
+  Array.from(tbody.querySelectorAll('tr[data-auto]')).forEach(r => r.remove());
+
+  // Prepend new auto rows (reversed so first item lands at top)
+  list.slice().reverse().forEach(d => {
+    const tr = document.createElement('tr');
+    tr.dataset.auto = '1';
+    tr.style.background = '#fefce8'; // subtle tint to distinguish from manual rows
+
+    const numTd  = document.createElement('td');
+    const descTd = document.createElement('td');
+    const mmTd   = document.createElement('td');
+    const delTd  = document.createElement('td');
+
+    const descInp = document.createElement('input');
+    descInp.type  = 'text';
+    descInp.style.width = '100%';
+    descInp.value = d.text;
+
+    const mmInp = document.createElement('input');
+    mmInp.type  = 'text';
+    mmInp.style.width = '100%';
+    mmInp.placeholder = 'Make/Model…';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del-btn';
+    delBtn.textContent = '✕';
+    delBtn.onclick = () => tr.remove();
+
+    descTd.appendChild(descInp);
+    mmTd.appendChild(mmInp);
+    delTd.appendChild(delBtn);
+    tr.append(numTd, descTd, mmTd, delTd);
+    tbody.insertBefore(tr, tbody.firstChild);
   });
 
-  // ── Update DOM ────────────────────────────────────────────────────────────
-  const pill   = document.getElementById('h-defic-count-pill');
-  const listEl = document.getElementById('h-defic-list');
-  const banner = document.getElementById('h-defic-summary');
-
-  if (pill)   pill.textContent = list.length;
-  if (listEl) listEl.innerHTML = list.map(d =>
-    `<div class="defic-item">⚠ <strong>${typeof escHtml === 'function' ? escHtml(d.source) : d.source}:</strong> ${typeof escHtml === 'function' ? escHtml(d.text) : d.text}</div>`
-  ).join('');
-  if (banner) banner.classList.toggle('has-defics', list.length > 0);
+  // Renumber all rows (auto + manual)
+  Array.from(tbody.children).forEach((tr, i) => { tr.cells[0].textContent = i + 1; });
 }
