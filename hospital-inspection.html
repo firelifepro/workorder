@@ -176,45 +176,60 @@ body {
 .pf-btn:not(.pass):not(.fail):not(.na):hover,
 .pf-btn:not(.pass):not(.fail):not(.na).selected { background: var(--hosp); border-color: var(--hosp); color: white; }
 
+/* Type column dropdown — always wide enough to show at least 4 chars */
+.h-device-sheet .dyn-table tbody td[data-label="Type"] select,
+.h-ext-card-table tbody td[data-label="Type"] select { min-width: 72px; }
+
 /* Device row FAIL highlight */
 .device-fail-row { background: #fef2f2 !important; }
 .fail-note-required { border-color: var(--red) !important; background: #fff5f5 !important; }
 
-/* ── RESPONSIVE DEVICE SHEETS — reflow instead of horizontal scroll ── */
-@media (max-width: 1024px) {
-  .h-device-sheet .card-body,
-  #step-hosp-extinguish .card-body { overflow-x: visible !important; }
+/* ── DEVICE SHEET CARD ROWS — label-per-cell layout, all screen sizes ── */
+/* Device and extinguisher tables always use card rows */
+.h-device-sheet .dyn-table thead,
+.h-ext-card-table thead { display: none; }
 
-  .h-device-sheet .dyn-table,
-  #step-hosp-extinguish .dyn-table { display: block; width: 100%; }
+.h-device-sheet .dyn-table,
+.h-ext-card-table { display: block; width: 100%; border-collapse: collapse; }
 
-  .h-device-sheet .dyn-table thead,
-  #step-hosp-extinguish .dyn-table thead { display: none; }
+.h-device-sheet .dyn-table tbody,
+.h-ext-card-table tbody { display: block; }
 
-  .h-device-sheet .dyn-table tbody,
-  #step-hosp-extinguish .dyn-table tbody { display: block; }
-
-  .h-device-sheet .dyn-table tbody tr,
-  #step-hosp-extinguish .dyn-table tbody tr {
-    display: flex; flex-wrap: wrap; gap: 4px;
-    border: 1.5px solid var(--border); border-radius: 6px;
-    padding: 6px; margin-bottom: 8px; background: white;
-  }
-  .h-device-sheet .dyn-table tbody td,
-  #step-hosp-extinguish .dyn-table tbody td {
-    flex: 1 1 80px; min-width: 60px; padding: 2px; box-sizing: border-box;
-  }
-  /* Delete button cell — don't stretch */
-  .h-device-sheet .dyn-table tbody td:last-child,
-  #step-hosp-extinguish .dyn-table tbody td:last-child { flex: 0 0 auto; align-self: flex-end; }
-  /* Location cell — let it grow more */
-  .h-device-sheet .dyn-table tbody td:nth-child(3),
-  #step-hosp-extinguish .dyn-table tbody td:nth-child(3) { flex: 2 1 160px; }
-  .h-device-sheet .dyn-table tbody td input,
-  .h-device-sheet .dyn-table tbody td select,
-  #step-hosp-extinguish .dyn-table tbody td input,
-  #step-hosp-extinguish .dyn-table tbody td select { width: 100%; box-sizing: border-box; min-width: 0; }
+.h-device-sheet .dyn-table tbody tr,
+.h-ext-card-table tbody tr {
+  display: flex; flex-wrap: wrap; gap: 4px 6px;
+  border: 1.5px solid var(--border); border-radius: 7px;
+  padding: 6px 8px; margin-bottom: 8px; background: white;
+  position: relative;
 }
+.h-device-sheet .dyn-table tbody tr.device-fail-row,
+.h-ext-card-table tbody tr.device-fail-row { background: #fef2f2 !important; }
+
+.h-device-sheet .dyn-table tbody td,
+.h-ext-card-table tbody td {
+  display: flex; flex-direction: column; flex: 1 1 70px; min-width: 60px;
+  padding: 2px 2px 4px; box-sizing: border-box;
+}
+/* Label above each input/select */
+.h-device-sheet .dyn-table tbody td::before,
+.h-ext-card-table tbody td::before {
+  content: attr(data-label);
+  display: block; font-size: .66rem; font-weight: 700; color: var(--slate);
+  text-transform: uppercase; letter-spacing: .03em;
+  margin-bottom: 2px; white-space: nowrap;
+}
+/* Location cell wider */
+.h-device-sheet .dyn-table tbody td[data-label="Location"],
+.h-ext-card-table tbody td[data-label="Location"] { flex: 2 1 160px; }
+/* Delete cell: no label, no grow, align to bottom */
+.h-device-sheet .dyn-table tbody td[data-label=""],
+.h-ext-card-table tbody td[data-label=""] {
+  flex: 0 0 auto; align-self: flex-end; padding-bottom: 2px;
+}
+.h-device-sheet .dyn-table tbody td input,
+.h-device-sheet .dyn-table tbody td select,
+.h-ext-card-table tbody td input,
+.h-ext-card-table tbody td select { width: 100%; box-sizing: border-box; min-width: 0; flex: 1; }
 
 /* Y/N/NA row buttons */
 .yna-group { display: flex; gap: 4px; }
@@ -1257,7 +1272,13 @@ canvas#cust-sig-canvas, canvas#sig-canvas {
             <tbody id="h-supervisory-tbody"></tbody>
           </table>
           <button class="add-row-btn" onclick="addHDeviceRow('supervisory','SPV')">+ Add Device</button>
-          <div style="margin-top:8px;font-size:.75rem;color:var(--slate);">Equipment Count: SPV <strong id="h-supervisory-count">0</strong></div>
+          <div style="margin-top:8px;font-size:.72rem;color:var(--slate);line-height:1.6;">
+            <strong>Type Key:</strong>
+            <span style="margin-left:6px;"><strong>SPV</strong> = Supervisory Signal</span> &nbsp;
+            <span><strong>LA</strong> = Low Air Device</span> &nbsp;
+            <span><strong>HA</strong> = High Air Device</span>
+          </div>
+          <div style="margin-top:4px;font-size:.75rem;color:var(--slate);">Equipment Count: SPV <strong id="h-supervisory-count">0</strong></div>
         </div>
       </div>
     </div>
@@ -1271,8 +1292,13 @@ canvas#cust-sig-canvas, canvas#sig-canvas {
             <thead><tr><th style="width:40px;">Floor</th><th style="width:60px;">Type</th><th>Location</th><th style="width:80px;">Address</th><th style="width:60px;">Visual</th><th style="width:70px;">Functional</th><th style="width:70px;">Time (sec)</th><th style="width:30px;">Note</th><th style="width:30px;"></th></tr></thead>
             <tbody id="h-flow-tbody"></tbody>
           </table>
-          <button class="add-row-btn" onclick="addHDeviceRow('flow','FS')">+ Add Flow Switch</button>
-          <div style="margin-top:8px;font-size:.75rem;color:var(--slate);">Equipment Count: FS <strong id="h-flow-fs-count">0</strong> &nbsp; PRS <strong id="h-flow-prs-count">0</strong></div>
+          <button class="add-row-btn" onclick="addHDeviceRow('flow','FS')">+ Add Flow/Pressure Switch</button>
+          <div style="margin-top:8px;font-size:.72rem;color:var(--slate);line-height:1.6;">
+            <strong>Type Key:</strong>
+            <span style="margin-left:6px;"><strong>FS</strong> = Water Flow Switch</span> &nbsp;
+            <span><strong>PRS</strong> = Pressure Switch</span>
+          </div>
+          <div style="margin-top:4px;font-size:.75rem;color:var(--slate);">Equipment Count: FS <strong id="h-flow-fs-count">0</strong> &nbsp; PRS <strong id="h-flow-prs-count">0</strong></div>
         </div>
       </div>
     </div>
@@ -1635,23 +1661,13 @@ canvas#cust-sig-canvas, canvas#sig-canvas {
         <p style="font-size:.78rem;color:var(--slate);margin-bottom:10px;">
           ABC units: service required every 6 years (alternating 6yr and hydrostatic). K-Class and specialty: 5-year hydrostatic.
         </p>
-        <table class="dyn-table" id="h-ext-table">
+        <table class="h-ext-card-table" id="h-ext-table">
           <thead>
             <tr>
-              <th style="width:40px;">Floor</th>
-              <th>Location</th>
-              <th style="width:60px;">Mount Style</th>
-              <th style="width:90px;">Cabinet: Mallet/Glass/Sign?</th>
-              <th style="width:60px;">Mfg Date</th>
-              <th style="width:60px;">Size (lb/gal)</th>
-              <th style="min-width:100px;">Type</th>
-              <th style="width:80px;">Pass/Fail/NF</th>
-              <th style="min-width:85px;">6-Yr Due</th>
-              <th style="width:70px;">Hydro Due</th>
-              <th style="width:60px;">Recharge?</th>
-              <th style="width:60px;">New Unit?</th>
-              <th style="width:30px;">Note</th>
-              <th style="width:30px;"></th>
+              <th>Floor</th><th>Location</th><th>Mount</th><th>Cabinet</th>
+              <th>Mfg Date</th><th>Size</th><th>Type</th><th>Pass/Fail/NF</th>
+              <th>6-Yr Due</th><th>Hydro Due</th><th>Recharge?</th><th>New Unit?</th>
+              <th>Note</th><th></th>
             </tr>
           </thead>
           <tbody id="h-ext-tbody"></tbody>
@@ -2199,10 +2215,21 @@ function initGoogle() {
         await loadSheet();
         showToast('✅ Google connected');
       },
-      error_callback: (err) => { setConnStatus('warn', 'Not connected'); showToast('OAuth error: ' + (err.message || err)); }
+      error_callback: (err) => {
+        const msg = err.type === 'popup_closed' ? 'Sign-in popup was closed — please try again'
+                  : err.type === 'access_denied' ? 'Access denied — check OAuth scopes and consent'
+                  : 'Auth error: ' + (err.message || err.type || JSON.stringify(err));
+        setConnStatus('warn', 'Not connected');
+        showToast('❌ ' + msg);
+        console.error('[Hospital initGoogle error_callback]', err);
+      }
     });
     tokenClient.requestAccessToken({ prompt: '' });
-  } catch(e) { setConnStatus('warn', 'Not connected'); showToast('Connection failed: ' + e.message); }
+  } catch(e) {
+    setConnStatus('warn', 'Not connected');
+    showToast('❌ Connection failed: ' + e.message);
+    console.error('[Hospital initGoogle]', e);
+  }
 }
 
 // ── Property select — overrides shared onPropertySelect ──────────
@@ -2544,41 +2571,47 @@ function setYNA(btn, val) {
 function addHDeviceRow(sheet, defaultType) {
   const tbody = document.getElementById('h-'+sheet+'-tbody');
   if(!tbody) return;
-  const i = tbody.children.length + 1;
   const tr = document.createElement('tr');
   const cols = getDeviceCols(sheet, defaultType);
   tr.innerHTML = cols;
   tbody.appendChild(tr);
   updateCount(sheet);
+  saveDraft();
 }
 function getDeviceCols(sheet, type) {
-  const flr  = `<td><input type="text" placeholder="1" style="width:100%;"></td>`;
-  const loc  = `<td><input type="text" placeholder="Location…" style="width:100%;"></td>`;
-  const addr = `<td><input type="text" placeholder="L1-M001" style="width:100%;"></td>`;
-  const vis  = `<td><select style="width:100%;" onchange="onDeviceSelectChange(this)"><option value="">—</option><option>PASS</option><option>FAIL</option><option>NT</option><option>NF</option></select></td>`;
-  const func = `<td><select style="width:100%;" onchange="onDeviceSelectChange(this)"><option value="">—</option><option>PASS</option><option>FAIL</option><option>NT</option><option>NF</option></select></td>`;
-  const note = `<td><input type="text" style="width:100%;"></td>`;
-  const del  = `<td><button class="del-btn" onclick="this.closest('tr').remove();updateCount('${sheet}')">✕</button></td>`;
-  const typ  = `<td><input type="text" value="${type}" style="width:100%;"></td>`; // single-type sheets
+  const td = (label, inner) => `<td data-label="${label}">${inner}</td>`;
+  const inp = (attrs='') => `<input type="text" style="width:100%;" ${attrs}>`;
+  const num = (attrs='') => `<input type="number" style="width:100%;" ${attrs}>`;
+  const pf4 = `<select style="width:100%;" onchange="onDeviceSelectChange(this)"><option value="">—</option><option>PASS</option><option>FAIL</option><option>NT</option><option>NF</option></select>`;
+  const pf2 = `<select style="width:100%;" onchange="onDeviceSelectChange(this)"><option value="">—</option><option>PASS</option><option>FAIL</option></select>`;
 
-  // Multi-type sheets: first option = passed default
+  const flr  = td('Floor',    inp('placeholder="1"'));
+  const loc  = td('Location', inp('placeholder="Location…"'));
+  const addr = td('Address',  inp('placeholder="L1-M001"'));
+  const vis  = td('Visual',   pf4);
+  const func = td('Functional', pf4);
+  const note = td('Note',     inp());
+  const del  = td('',         `<button class="del-btn" onclick="this.closest('tr').remove();updateCount('${sheet}')">✕</button>`);
+  const typ  = td('Type',     inp(`value="${type}"`));
+
   function typeSel(opts) {
     const dflt = type || opts[0];
-    return `<td><select style="width:100%;">${opts.map(o=>`<option${o===dflt?' selected':''}>${o}</option>`).join('')}</select></td>`;
+    const sel = `<select style="width:100%;">${opts.map(o=>`<option${o===dflt?' selected':''}>${o}</option>`).join('')}</select>`;
+    return td('Type', sel);
   }
 
   switch(sheet) {
     case 'supervisory': return flr + typeSel(['SPV','LA','HA']) + loc + addr + vis + func + note + del;
-    case 'flow':        return flr + typeSel(['FS','PRS']) + loc + addr + vis + func + `<td><input type="number" placeholder="0" style="width:100%;"></td>` + note + del;
-    case 'smoke':       return flr + typeSel(['SD','CBO','CO2']) + loc + addr + `<td><select style="width:100%;"><option>AL</option><option>SPV</option></select></td>` + vis + func + note + del;
+    case 'flow':        return flr + typeSel(['FS','PRS']) + loc + addr + vis + func + td('Time (s)', num('placeholder="0"')) + note + del;
+    case 'smoke':       return flr + typeSel(['SD','CBO','CO2']) + loc + addr + td('AL/SPV', `<select style="width:100%;"><option>AL</option><option>SPV</option></select>`) + vis + func + note + del;
     case 'av':          return flr + typeSel(['HSC','SSC','HN','ST','SP','BL','CH']) + loc + vis + func + note + del;
     case 'door-release':return flr + typeSel(['MAG','CA','OT']) + loc + vis + func + note + del;
-    case 'fdc':         return flr + typeSel(['FDC','SPRINKLER','STANDPIPE','COMBO']) + loc + vis + func + `<td><input type="text" style="width:100%;"></td><td><input type="text" placeholder="UNK" style="width:100%;"></td>` + note + del;
-    case 'hose-valve':  return flr + typ + loc + vis + func + `<td><input type="text" style="width:100%;"></td><td><input type="text" placeholder="2.5" style="width:100%;"></td>` + note + del;
-    case 'standpipe':   return flr + typ + loc + vis + `<td><input type="text" placeholder="UNK" style="width:100%;"></td><td><input type="number" placeholder="6" style="width:100%;"></td>` + note + del;
-    case 'valves':      return flr + typ + loc + vis + func + `<td><input type="text" placeholder="OS&amp;Y" style="width:100%;"></td>` + note + del;
-    case 'gauges':      return flr + typ + loc + vis + func + `<td><input type="text" placeholder="2023" style="width:100%;"></td>` + note + del;
-    case 'hydraulic':   return flr + typ + loc + vis + `<td><select style="width:100%;" onchange="onDeviceSelectChange(this)"><option value="">—</option><option>PASS</option><option>FAIL</option></select></td>` + note + del;
+    case 'fdc':         return flr + typeSel(['FDC','SPRINKLER','STANDPIPE','COMBO']) + loc + vis + func + td('Inlet', inp()) + td('Condition', inp('placeholder="UNK"')) + note + del;
+    case 'hose-valve':  return flr + typ + loc + vis + func + td('Cap Style', inp()) + td('Size', inp('placeholder="2.5"')) + note + del;
+    case 'standpipe':   return flr + typ + loc + vis + td('Condition', inp('placeholder="UNK"')) + td('Size (in)', num('placeholder="6"')) + note + del;
+    case 'valves':      return flr + typ + loc + vis + func + td('Valve Type', inp('placeholder="OS&Y"')) + note + del;
+    case 'gauges':      return flr + typ + loc + vis + func + td('Cert Year', inp('placeholder="2023"')) + note + del;
+    case 'hydraulic':   return flr + typ + loc + vis + td('Legible', pf2) + note + del;
     case 'ahu':         return flr + typ + loc + addr + vis + func + note + del;
     default:            return flr + typ + loc + addr + vis + func + note + del;
   }
@@ -3038,20 +3071,20 @@ function addHExtRow() {
   if (!tbody) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="text" style="width:100%"></td>
-    <td><input type="text" style="width:100%"></td>
-    <td><select style="width:100%;"><option>HK</option><option>FK</option><option>CAB.</option><option>NM</option></select></td>
-    <td><select style="width:100%;"><option value="">—</option><option>YES TO ALL</option><option>NO MALLET</option><option>NO GLASS</option><option>NO SIGN</option><option>NA</option></select></td>
-    <td><input type="number" placeholder="2022" style="width:100%"></td>
-    <td><input type="number" placeholder="10" style="width:100%"></td>
-    <td><select style="width:100%;min-width:95px;"><option>ABC</option><option>K CLASS</option><option>CO2</option><option>HALOTRON</option><option>FE36</option><option>HALON</option><option>FOAM</option><option>BC</option><option>CLASS D</option></select></td>
-    <td><select style="width:100%;"><option value="">—</option><option>PASS</option><option>FAIL</option><option>NF</option></select></td>
-    <td><input type="number" placeholder="2028" style="width:100%;min-width:75px;"></td>
-    <td><input type="number" placeholder="2034" style="width:100%"></td>
-    <td><select style="width:100%;"><option value="">—</option><option>YES</option><option>NO</option></select></td>
-    <td><select style="width:100%;"><option value="">—</option><option>YES</option><option>NO</option></select></td>
-    <td><input type="text" style="width:100%"></td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove();updateHExtCount();rebuildExtSummary();">✕</button></td>`;
+    <td data-label="Floor"><input type="text" style="width:100%"></td>
+    <td data-label="Location"><input type="text" style="width:100%"></td>
+    <td data-label="Mount"><select style="width:100%;"><option>HK</option><option>FK</option><option>CAB.</option><option>NM</option></select></td>
+    <td data-label="Cabinet"><select style="width:100%;"><option value="">—</option><option>YES TO ALL</option><option>NO MALLET</option><option>NO GLASS</option><option>NO SIGN</option><option>NA</option></select></td>
+    <td data-label="Mfg Date"><input type="number" placeholder="2022" style="width:100%"></td>
+    <td data-label="Size"><input type="number" placeholder="10" style="width:100%"></td>
+    <td data-label="Type"><select style="width:100%;"><option>ABC</option><option>K CLASS</option><option>CO2</option><option>HALOTRON</option><option>FE36</option><option>HALON</option><option>FOAM</option><option>BC</option><option>CLASS D</option></select></td>
+    <td data-label="Pass/Fail/NF"><select style="width:100%;"><option value="">—</option><option>PASS</option><option>FAIL</option><option>NF</option></select></td>
+    <td data-label="6-Yr Due"><input type="number" placeholder="2028" style="width:100%"></td>
+    <td data-label="Hydro Due"><input type="number" placeholder="2034" style="width:100%"></td>
+    <td data-label="Recharge?"><select style="width:100%;"><option value="">—</option><option>YES</option><option>NO</option></select></td>
+    <td data-label="New Unit?"><select style="width:100%;"><option value="">—</option><option>YES</option><option>NO</option></select></td>
+    <td data-label="Note"><input type="text" style="width:100%"></td>
+    <td data-label=""><button class="del-btn" onclick="this.closest('tr').remove();updateHExtCount();rebuildExtSummary();">✕</button></td>`;
   // Rebuild summary on any change
   tr.querySelectorAll('input,select').forEach(el => {
     el.addEventListener('change', () => { updateHExtCount(); rebuildExtSummary(); });
@@ -3059,6 +3092,7 @@ function addHExtRow() {
   tbody.appendChild(tr);
   updateHExtCount();
   rebuildExtSummary();
+  saveDraft();
 }
 
 // ════════════════════════════════════════════════════════════════
