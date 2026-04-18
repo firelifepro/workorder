@@ -1734,17 +1734,14 @@ canvas#cust-sig-canvas, canvas#sig-canvas {
 
     <!-- DEFICIENCY LIST -->
     <div class="card">
-      <div class="card-header"><span class="icon">⚠️</span><span>Deficiency List &amp; Proposed Solutions</span></div>
+      <div class="card-header"><span class="icon">⚠️</span><span>Deficiencies</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
           <thead>
             <tr>
               <th style="width:32px;">#</th>
-              <th>Deficiency / Proposed Solution</th>
+              <th>Deficiency</th>
               <th style="width:80px;">Make/Model</th>
-              <th style="width:90px;">Severity</th>
-              <th style="width:80px;">Repair Date</th>
-              <th style="width:70px;">Tech Initials</th>
               <th style="width:30px;"></th>
             </tr>
           </thead>
@@ -2786,11 +2783,8 @@ function addHDeficRow() {
   const n = tbody.children.length + 1;
   const tr = document.createElement('tr');
   tr.innerHTML = `<td>${n}</td>
-    <td><input type="text" style="width:100%" placeholder="Describe deficiency and proposed solution…"></td>
-    <td><input type="text" style="width:100%"></td>
-    <td><select style="width:100%;">${(typeof HOSP_SEV_OPTS !== 'undefined' ? HOSP_SEV_OPTS : ['','Life Safety','Critical','Non Critical']).map(o => `<option>${o}</option>`).join('')}</select></td>
-    <td><input type="date" style="width:100%"></td>
-    <td><input type="text" style="width:100%"></td>
+    <td><input type="text" style="width:100%" placeholder="Describe deficiency…"></td>
+    <td><input type="text" style="width:100%" placeholder="Make/Model…"></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();rebuildHospDeficList()">✕</button></td>`;
   tbody.appendChild(tr);
   rebuildHospDeficList();
@@ -3431,6 +3425,84 @@ function hospDraftKey() {
   return propKey ? `flips_draft_${propKey}_hospital` : 'flps_hosp_draft_unknown';
 }
 
+// ── Draft tbody serialization helpers ────────────────────────────────────────
+// Captures all dynamic table content (device rows, ext rows, result tables, etc.)
+// by cloning each tbody, stamping current .value into attributes so innerHTML
+// round-trips correctly, then saving the HTML string.
+const _DRAFT_TBODY_IDS = [
+  'h-supervisory-tbody','h-flow-tbody','h-tamper-tbody','h-smoke-tbody',
+  'h-heat-tbody','h-pull-tbody','h-duct-tbody','h-av-tbody',
+  'h-door-release-tbody','h-fdc-tbody','h-hose-valve-tbody','h-standpipe-tbody',
+  'h-spare-heads-tbody','h-valves-tbody','h-gauges-tbody','h-hydraulic-tbody',
+  'h-ahu-tbody','h-offprem-tbody','h-ext-tbody','h-defic-tbody','h-notes-tbody',
+  'h-main-drain-tbody','h-fa-result-tbody','h-sp-result-tbody',
+  'h-eoc-checklist-tbody','h-recurring-tbody',
+  'h-ov-fa-tbody','h-ov-sp-tbody','h-ov-special-tbody','h-35yr-tbody',
+  'h-fa-key-tbody','h-sp-key-tbody',
+];
+
+function serializeTbodies() {
+  const out = {};
+  _DRAFT_TBODY_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || !el.children.length) return;
+    const clone = el.cloneNode(true);
+    // Stamp current .value into the value attribute so innerHTML preserves it
+    clone.querySelectorAll('input, textarea').forEach(inp => {
+      inp.setAttribute('value', inp.value);
+    });
+    clone.querySelectorAll('select').forEach(sel => {
+      sel.setAttribute('data-restore-val', sel.value);
+    });
+    // Stamp pf-btn selected states
+    clone.querySelectorAll('.pf-btn').forEach(btn => {
+      if (btn.classList.contains('selected')) btn.setAttribute('data-sel', '1');
+      else btn.removeAttribute('data-sel');
+    });
+    out[id] = clone.innerHTML;
+  });
+  return out;
+}
+
+function restoreTbodies(tbodyMap) {
+  Object.entries(tbodyMap || {}).forEach(([id, html]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = html;
+    // Rehydrate select values (setting innerHTML doesn't restore selectedIndex)
+    el.querySelectorAll('select[data-restore-val]').forEach(sel => {
+      sel.value = sel.getAttribute('data-restore-val');
+      sel.removeAttribute('data-restore-val');
+    });
+    // Restore pf-btn selected states
+    el.querySelectorAll('.pf-btn[data-sel]').forEach(btn => {
+      btn.classList.add('selected');
+      btn.removeAttribute('data-sel');
+    });
+  });
+}
+
+// Syncs the visual selected state of pre/post checklist pf-btn groups
+// from their corresponding hidden input values (which are restored via fields{}).
+function syncChkYNAVisuals() {
+  ['h-pre-checklist', 'h-post-checklist'].forEach(cid => {
+    const container = document.getElementById(cid);
+    if (!container) return;
+    container.querySelectorAll('.pf-group').forEach(group => {
+      const firstBtn = group.querySelector('.pf-btn');
+      if (!firstBtn) return;
+      const m = firstBtn.getAttribute('onclick')?.match(/setChkYNA\(this,'([^']+)'/);
+      if (!m) return;
+      const val = document.getElementById(m[1])?.value;
+      if (!val) return;
+      group.querySelectorAll('.pf-btn').forEach(btn => {
+        const bm = btn.getAttribute('onclick')?.match(/'([A-Z]+)'\)$/);
+        btn.classList.toggle('selected', !!(bm && bm[1] === val));
+      });
+    });
+  });
+}
+
 function collectFormState() {
   const state = { ts: Date.now(), savedAt: new Date().toISOString(), fields: {}, systems: [], recurring: [], notes: [], defic: [], batteries: [] };
   // Simple text/select/date inputs
@@ -3459,6 +3531,8 @@ function collectFormState() {
     const inputs = row.querySelectorAll('input[type="number"]');
     state.keySheet.sp.push({ key: m[1], current: inputs[0]?.value || '', previous: inputs[1]?.value || '' });
   });
+  // Serialize all dynamic table contents
+  state.tbodies = serializeTbodies();
   return state;
 }
 
@@ -3500,6 +3574,10 @@ function loadDraft() {
     // Restore sig onto canvas if present
     if (state.inspSig) drawDataUrlToCanvas('sig-canvas', state.inspSig);
     if (state.custSig) drawDataUrlToCanvas('cust-sig-canvas', state.custSig);
+    // Restore all dynamic table rows
+    restoreTbodies(state.tbodies);
+    // Sync pre/post checklist button visuals from their restored hidden inputs
+    syncChkYNAVisuals();
     updateHospStartButton();
     return true;
   } catch(e) {
@@ -3563,6 +3641,7 @@ function showDraftModal(prop, ageStr) {
 
 function _draftModalResume() {
   document.getElementById('draft-modal-overlay').style.display = 'none';
+  startHospInspection(); // build all table skeletons before restoring data
   loadDraft();
   showToast('Draft restored');
 }
@@ -4523,19 +4602,16 @@ function buildHospPDF(returnDoc) {
   newPage('Deficiency Information');
 
   // Deficiency list
-  sectionHeader('Deficiency List & Proposed Solutions', DARK);
+  sectionHeader('Deficiencies', DARK);
   const defRows = document.querySelectorAll('#h-defic-tbody tr');
-  const defCols = [{label:'#',w:CW*0.05},{label:'Deficiency / Proposed Solution',w:CW*0.44},{label:'Make/Model',w:CW*0.14},{label:'Severity',w:CW*0.13},{label:'Repair Date',w:CW*0.12},{label:'Tech',w:CW*0.12}];
+  const defCols = [{label:'#',w:CW*0.06},{label:'Deficiency',w:CW*0.78},{label:'Make/Model',w:CW*0.16}];
   tableHeader(defCols);
   if (defRows.length) {
     defRows.forEach((row, i) => {
       const ins = row.querySelectorAll('input');
-      const sls = row.querySelectorAll('select');
       checkPageBreak(6);
       tableRow(defCols.map(c=>({w:c.w})),
-        [String(i+1), ins[0]?.value||'', ins[1]?.value||'',
-         sls[0]?.options[sls[0].selectedIndex]?.text||'',
-         ins[2]?.value||'', ins[3]?.value||''], i%2===0);
+        [String(i+1), ins[0]?.value||'', ins[1]?.value||''], i%2===0);
     });
   } else {
     doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(150,150,150);
