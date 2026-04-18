@@ -3107,6 +3107,7 @@ function markHospStepDone(step) {
 // Override goHospStep to auto-mark previous step done
 const _baseGoHospStep = goHospStep;
 function goHospStep(step) {
+  saveDraft();
   // Find current active step and mark it done
   const active = document.querySelector('#hosp-step-nav .step-tab.active');
   if (active && active.dataset.hstep && active.dataset.hstep !== step) {
