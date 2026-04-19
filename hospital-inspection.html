@@ -2350,6 +2350,50 @@ function onPropertySelect() {
   updateHospStartButton();
   if (accessToken) searchPreviousInspection(propName);
 
+  // Load property profile → pre-fill panel fields from last hospital inspection
+  if (accessToken) {
+    loadPropertyProfile(propName).then(profile => {
+      if (!profile) return;
+      _propertyProfile = profile;
+      const last = profile.lastInspBySystem && profile.lastInspBySystem.hospital;
+      if (!last) return;
+      // Show prev-insp banner from profile (source of truth)
+      const prevBanner = document.getElementById('prev-insp-banner');
+      if (prevBanner) {
+        prevBanner.style.display = 'block';
+        const sum = document.getElementById('prev-insp-summary');
+        if (sum) sum.textContent = ` ${last.date || '—'}  |  ${last.inspector || '—'}  |  ${last.reportType || '—'}`;
+      }
+      // Load prior deficiencies from profile
+      if (last.deficiencies && last.deficiencies.length) {
+        H.prevDefic = last.deficiencies;
+        document.querySelectorAll('[data-hstep="prevdefic"]').forEach(t => t.style.display = 'flex');
+      }
+      // Pre-fill panel/monitoring fields from previous fieldData
+      const fd = last.fieldData || {};
+      const setField = (id, val) => { if (!val) return; const el = document.getElementById(id); if (el) el.value = val; };
+      setField('h-cp-make',            fd['h-cp-make']);
+      setField('h-cp-model',           fd['h-cp-model']);
+      setField('h-cp-location',        fd['h-cp-location']);
+      setField('h-cp-year',            fd['h-cp-year']);
+      setField('h-cp-batt-date',       fd['h-cp-batt-date']);
+      setField('h-dr-make',            fd['h-dr-make']);
+      setField('h-dr-model',           fd['h-dr-model']);
+      setField('h-dr-location',        fd['h-dr-location']);
+      setField('h-dr-type',            fd['h-dr-type']);
+      setField('h-panel-instructions', fd['h-panel-instructions']);
+      setField('h-monitored',          fd['h-monitored']);
+      setField('h-monitor-company',    fd['h-monitor-company']);
+      setField('h-monitor-phone',      fd['h-monitor-phone']);
+      setField('h-monitor-account',    fd['h-monitor-account']);
+      setField('h-smoke-ctrl-present', fd['h-smoke-ctrl-present']);
+      setField('h-smoke-ctrl-op',      fd['h-smoke-ctrl-op']);
+      setField('h-smoke-ctrl-method',  fd['h-smoke-ctrl-method']);
+      setField('h-smoke-ctrl-notes',   fd['h-smoke-ctrl-notes']);
+      setField('h-site-instructions',  fd['h-site-instructions']);
+    }).catch(e => console.warn('[hospital loadPropertyProfile]', e.message));
+  }
+
   // Check for a saved draft for this specific property now that we know who it is
   checkForDraft();
 }
