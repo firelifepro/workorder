@@ -2067,6 +2067,17 @@ const H = {
   prevContainers: null,
   draft: null,
 };
+let _profileLoadPromise = null;
+
+function _restoreHospFromProfile(last) {
+  _suppressDraftSave = true;
+  try {
+    if (last.devices)       restoreHospDevices(last.devices);
+    if (last.extinguishers && last.extinguishers.length) restoreHospExtinguishers(last.extinguishers);
+  } finally {
+    _suppressDraftSave = false;
+  }
+}
 
 
 // ════════════════════════════════════════════════════════════════
@@ -2348,14 +2359,16 @@ function onPropertySelect() {
   // Set account number for per-property draft keys (shared _currentPropertyAcct from inspection-config.js)
   const acctHeader = Object.keys(d).find(h => h.includes('acct') || h.includes('account'));
   _currentPropertyAcct = (acctHeader && d[acctHeader]) ? d[acctHeader].trim() : '';
+  _profileLoadPromise = null;
+  _propertyProfile = null;
 
   updateHospStartButton();
   if (accessToken) searchPreviousInspection(propName);
 
   // Load property profile → pre-fill panel fields from last hospital inspection
   if (accessToken) {
-    loadPropertyProfile(propName).then(profile => {
-      if (!profile) return;
+    _profileLoadPromise = loadPropertyProfile(propName).then(profile => {
+      if (!profile) return null;
       _propertyProfile = profile;
       const last = profile.lastInspBySystem && profile.lastInspBySystem.hospital;
       if (!last) return;
@@ -2395,7 +2408,8 @@ function onPropertySelect() {
       setField('h-smoke-ctrl-method',  fd['h-smoke-ctrl-method']);
       setField('h-smoke-ctrl-notes',   fd['h-smoke-ctrl-notes']);
       setField('h-site-instructions',  fd['h-site-instructions']);
-    }).catch(e => console.warn('[hospital loadPropertyProfile]', e.message));
+      return profile;
+    }).catch(e => { console.warn('[hospital loadPropertyProfile]', e.message); return null; });
   }
 
   // Check for a saved draft for this specific property now that we know who it is
@@ -2476,15 +2490,16 @@ function startHospInspection() {
   document.getElementById('hosp-step-nav').style.display = 'flex';
   document.getElementById('hosp-active-banner').style.display = 'block';
   initHospData();
-  const lastHosp = _propertyProfile?.lastInspBySystem?.hospital;
-  if (lastHosp) {
-    _suppressDraftSave = true;
-    try {
-      if (lastHosp.devices)       restoreHospDevices(lastHosp.devices);
-      if (lastHosp.extinguishers) restoreHospExtinguishers(lastHosp.extinguishers);
-    } finally {
-      _suppressDraftSave = false;
-    }
+  // If profile already loaded (fast path), restore immediately
+  const lastHospNow = _propertyProfile?.lastInspBySystem?.hospital;
+  if (lastHospNow) {
+    _restoreHospFromProfile(lastHospNow);
+  } else if (_profileLoadPromise) {
+    // Profile still loading — wait for it then restore
+    _profileLoadPromise.then(profile => {
+      const last = profile?.lastInspBySystem?.hospital;
+      if (last) _restoreHospFromProfile(last);
+    }).catch(() => {});
   }
   goHospStep('panel');
 }
