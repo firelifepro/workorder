@@ -158,16 +158,18 @@ async function buildHospPDF() {
   const lgray  = rgb(0.94, 0.94, 0.94);
   const white  = rgb(1, 1, 1);
   const blk    = rgb(0, 0, 0);
-  const PGREEN = rgb(0.06, 0.50, 0.22);
-  const PRED   = rgb(0.76, 0.10, 0.10);
-  const AMBER  = rgb(0.75, 0.38, 0.00);
+  const PGREEN       = rgb(0.06, 0.50, 0.22);
+  const PRED        = rgb(0.76, 0.10, 0.10);
+  const AMBER       = rgb(0.75, 0.38, 0.00);
+  const PGREEN_LIGHT = rgb(0.82, 0.93, 0.82);
+  const PRED_LIGHT  = rgb(0.98, 0.84, 0.84);
 
   // ── Coordinate helpers ──
   // curY = distance from TOP of page (increases downward)
   // ry(h) converts to PDF coords (from bottom)
   const ry = (h) => PH - curY - h;
   const ty = (h, a = 3) => PH - curY - h + a;
-  const HDR_H = 22; // two-bar per-page header height
+  const HDR_H = 28; // two-bar per-page header height
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
   const gap = (h) => { curY += h; };
 
@@ -193,8 +195,8 @@ async function buildHospPDF() {
   };
 
   // ── Editable field ──
-  const mkField = (val, x, fieldY, w, h, fs = 7) => {
-    page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
+  const mkField = (val, x, fieldY, w, h, fs = 8, bg = gold) => {
+    page.drawRectangle({ x, y: fieldY, width: w, height: h, color: bg, borderColor: sky, borderWidth: 0.3 });
     const f = form.createTextField(fid());
     f.setText(String(val || ''));
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
@@ -202,12 +204,13 @@ async function buildHospPDF() {
   };
 
   // ── Label + editable field row ──
-  const dataRow = (cols, fh = 12, lh = 8, gp = 3) => {
+  const dataRow = (cols, fh = 14, lh = 9, gp = 3) => {
     checkPage(lh + fh + gp);
     let x = ML;
     cols.forEach(c => {
-      page.drawText((c.label || '') + ':', { x: x+2, y: ty(lh, lh-2), size: 6, font: hFont, color: navy });
-      mkField(c.val, x, ry(lh + fh), c.w, fh);
+      if (!c.label && !c.val) { x += c.w; return; }
+      page.drawText((c.label || '') + ':', { x: x+3, y: ty(lh, lh-2), size: 7, font: hFont, color: navy });
+      mkField(c.val, x, ry(lh + fh), c.w, fh, 8);
       x += c.w;
     });
     curY += lh + fh + gp;
@@ -218,67 +221,60 @@ async function buildHospPDF() {
     pageNum++;
     page = pdfDoc.addPage([W, PH]);
     // Dark top bar
-    page.drawRectangle({ x: 0, y: PH - 12, width: W, height: 12, color: navy });
-    page.drawText('Fire Life Protection Systems', { x: ML, y: PH - 8.5, size: 7, font: hFont, color: white });
-    page.drawText(`Page ${pageNum}`, { x: W - 58, y: PH - 8.5, size: 7, font: rFont, color: white });
+    page.drawRectangle({ x: 0, y: PH - 15, width: W, height: 15, color: navy });
+    page.drawText('Fire Life Protection Systems', { x: ML, y: PH - 10, size: 8.5, font: hFont, color: white });
+    page.drawText(`Page ${pageNum}`, { x: W - 65, y: PH - 10, size: 8.5, font: rFont, color: white });
     // Blue subheader — building + date only
-    page.drawRectangle({ x: 0, y: PH - 22, width: W, height: 10, color: midnav });
-    page.drawText(`BUILDING: ${bldName}`, { x: ML, y: PH - 19.5, size: 6.5, font: hFont, color: white });
-    page.drawText(`DATE: ${inspDate}`, { x: W - 140, y: PH - 19.5, size: 6.5, font: hFont, color: white });
+    page.drawRectangle({ x: 0, y: PH - 28, width: W, height: 13, color: midnav });
+    page.drawText(`BUILDING: ${bldName}`, { x: ML, y: PH - 24.5, size: 8, font: hFont, color: white });
+    page.drawText(`DATE: ${inspDate}`, { x: W - 155, y: PH - 24.5, size: 8, font: hFont, color: white });
     curY = HDR_H;
     if (title) secHdr(title);
   };
 
   // ── Section header (navy bar) ──
   const secHdr = (text) => {
-    checkPage(18);
-    page.drawRectangle({ x: ML, y: ry(17), width: PW, height: 17, color: navy });
-    page.drawText(text.toUpperCase(), { x: ML+4, y: ty(17, 5), size: 8, font: hFont, color: white });
-    curY += 18;
+    checkPage(21);
+    page.drawRectangle({ x: ML, y: ry(19), width: PW, height: 19, color: navy });
+    page.drawText(text.toUpperCase(), { x: ML+4, y: ty(19, 6), size: 9.5, font: hFont, color: white });
+    curY += 21;
   };
 
   // ── Sub-header (sky bar) ──
   const subHdr = (text) => {
-    checkPage(14);
-    page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: sky });
-    page.drawText(text, { x: ML+4, y: ty(13, 4), size: 7, font: hFont, color: navy });
-    curY += 14;
+    checkPage(17);
+    page.drawRectangle({ x: ML, y: ry(15), width: PW, height: 15, color: sky });
+    page.drawText(text, { x: ML+4, y: ty(15, 5), size: 8.5, font: hFont, color: navy });
+    curY += 16;
   };
 
   // ── Table header row ──
   const tblHdr = (cols) => {
-    checkPage(14);
+    checkPage(17);
     let x = ML;
     cols.forEach(col => {
-      page.drawRectangle({ x, y: ry(13), width: col.w, height: 13, color: navy });
-      page.drawText(wrap(col.label || '', 5.5, col.w - 3)[0] || '', { x: x+2, y: ty(13, 4), size: 5.5, font: hFont, color: white });
+      page.drawRectangle({ x, y: ry(16), width: col.w, height: 16, color: navy });
+      page.drawText(wrap(col.label || '', 7, col.w - 4)[0] || '', { x: x+3, y: ty(16, 5.5), size: 7, font: hFont, color: white });
       x += col.w;
     });
-    curY += 14;
+    curY += 17;
   };
 
   // ── Table data row — pfColIdx = index of PASS/FAIL column (-1 = none) ──
-  const tblRow = (cols, vals, pfColIdx = -1) => {
-    const cellH = 13;
+  const tblRow = (cols, vals, pfColIdx = -1, rowColor = null) => {
+    const cellH = 16;
     checkPage(cellH + 1);
+    const pfVal = pfColIdx >= 0 ? String(vals[pfColIdx] ?? '').toUpperCase() : '';
+    const rowBg = rowColor ?? (pfVal === 'PASS' ? PGREEN_LIGHT : pfVal === 'FAIL' ? PRED_LIGHT : gold);
     let x = ML;
     cols.forEach((col, i) => {
       const v = String(vals[i] ?? '');
       const isPF = i === pfColIdx;
-      const bgColor = isPF && v === 'PASS' ? PGREEN
-                    : isPF && v === 'FAIL' ? PRED
-                    : isPF && v === 'N/A'  ? gold
-                    : gold;
-      page.drawRectangle({ x, y: ry(cellH), width: col.w, height: cellH, color: bgColor, borderColor: sky, borderWidth: 0.3 });
-      if (isPF && (v === 'PASS' || v === 'FAIL')) {
-        const tw = hFont.widthOfTextAtSize(v, 6);
-        page.drawText(v, { x: x + col.w/2 - tw/2, y: ty(cellH, 4), size: 6, font: hFont, color: white });
-      } else {
-        const f = form.createTextField(fid());
-        f.setText(v);
-        f.addToPage(page, { x: x+1, y: ry(cellH)+1, width: col.w-2, height: cellH-2, font: rFont });
-        f.setFontSize(5.5);
-      }
+      const bg = isPF && pfVal === 'PASS' ? PGREEN
+               : isPF && pfVal === 'FAIL' ? PRED
+               : isPF && pfVal === 'N/A'  ? sky
+               : rowBg;
+      mkField(v, x, ry(cellH), col.w, cellH, 7.5, bg);
       x += col.w;
     });
     curY += cellH + 1;
@@ -286,12 +282,12 @@ async function buildHospPDF() {
 
   // ── Y/N/NA highlight row (question | Y col | N col | NA col | notes) ──
   const ynaRow = (label, ynaVal, note, lblW, btnW, noteW) => {
-    const h = 13;
+    const h = 16;
     checkPage(h + 1);
     // Label cell (static text)
     page.drawRectangle({ x: ML, y: ry(h), width: lblW, height: h, color: lgray, borderColor: sky, borderWidth: 0.3 });
-    wrap(label, 6, lblW - 4).forEach((ln, li) => {
-      page.drawText(ln, { x: ML+3, y: ry(h) + h - 6 - li * 7, size: 6, font: rFont, color: blk });
+    wrap(label, 7.5, lblW - 6).forEach((ln, li) => {
+      page.drawText(ln, { x: ML+4, y: ry(h) + h - 7 - li * 8, size: 7.5, font: rFont, color: blk });
     });
     // Y / N / NA cells
     let bx = ML + lblW;
@@ -301,13 +297,13 @@ async function buildHospPDF() {
       const tc  = sel && (opt === 'Y' || opt === 'N') ? white : blk;
       page.drawRectangle({ x: bx, y: ry(h), width: btnW, height: h, color: bg, borderColor: sky, borderWidth: 0.3 });
       if (sel) {
-        const tw = hFont.widthOfTextAtSize('X', 7);
-        page.drawText('X', { x: bx + btnW/2 - tw/2, y: ty(h, 4), size: 7, font: hFont, color: tc });
+        const tw = hFont.widthOfTextAtSize('X', 8);
+        page.drawText('X', { x: bx + btnW/2 - tw/2, y: ty(h, 5), size: 8, font: hFont, color: tc });
       }
       bx += btnW;
     });
     // Notes cell (editable)
-    mkField(note, bx, ry(h), noteW, h, 6);
+    mkField(note, bx, ry(h), noteW, h, 7.5);
     curY += h + 1;
   };
 
@@ -322,12 +318,12 @@ async function buildHospPDF() {
     if (!rows.length) {
       checkPage(14);
       page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: lgray, borderColor: sky, borderWidth: 0.3 });
-      page.drawText('No devices recorded.', { x: ML+4, y: ty(13, 4), size: 7, font: rFont, color: blk });
+      page.drawText('No devices recorded.', { x: ML+4, y: ty(13, 4), size: 8.5, font: rFont, color: blk });
       curY += 14;
     } else {
       rows.forEach((row) => { tblRow(cols, getters.map(fn => fn(row)), pfColIdx); });
       checkPage(14);
-      page.drawText(`EQUIPMENT COUNT: ${rows.length}`, { x: ML, y: ty(13, 4), size: 6.5, font: hFont, color: navy });
+      page.drawText(`EQUIPMENT COUNT: ${rows.length}`, { x: ML, y: ty(13, 4), size: 8, font: hFont, color: navy });
       curY += 14;
     }
   };
@@ -338,7 +334,7 @@ async function buildHospPDF() {
       addPage(title);
       checkPage(14);
       page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: lgray, borderColor: sky, borderWidth: 0.3 });
-      page.drawText('No devices recorded.', { x: ML+4, y: ty(13, 4), size: 7, font: rFont, color: blk });
+      page.drawText('No devices recorded.', { x: ML+4, y: ty(13, 4), size: 8.5, font: rFont, color: blk });
       curY += 14;
       return;
     }
@@ -348,7 +344,7 @@ async function buildHospPDF() {
       allRows.slice(start, start + rpp).forEach(row => { tblRow(cols, getters.map(fn => fn(row)), pfColIdx); });
       if (start + rpp >= allRows.length) {
         checkPage(14);
-        page.drawText(`EQUIPMENT COUNT: ${allRows.length}`, { x: ML, y: ty(13, 4), size: 6.5, font: hFont, color: navy });
+        page.drawText(`EQUIPMENT COUNT: ${allRows.length}`, { x: ML, y: ty(13, 4), size: 8, font: hFont, color: navy });
         curY += 14;
       }
     }
@@ -426,14 +422,14 @@ async function buildHospPDF() {
   const rtUC  = rt.toUpperCase();
   const rtTypes = ['ANNUAL','SEMI-ANNUAL','QUARTERLY','MONTHLY','3/4/5/6 YR INTERVAL'];
   let rtY = ry(logoAreaH) + logoAreaH - 8;
-  page.drawText('REPORT TYPE', { x: rtX+4, y: rtY, size: 5.5, font: hFont, color: navy });
+  page.drawText('REPORT TYPE', { x: rtX+4, y: rtY, size: 7, font: hFont, color: navy });
   rtY -= 4;
   rtTypes.forEach(t => {
     const sel = rtUC === t || (t === 'SEMI-ANNUAL' && rtUC.includes('SEMI'));
-    rtY -= 12;
-    page.drawRectangle({ x: rtX+4, y: rtY, width: rtW-8, height: 11,
+    rtY -= 13;
+    page.drawRectangle({ x: rtX+4, y: rtY, width: rtW-8, height: 12,
       color: sel ? navy : white, borderColor: sky, borderWidth: 0.3 });
-    page.drawText(t, { x: rtX+7, y: rtY+3.5, size: 5.5, font: sel ? hFont : rFont, color: sel ? white : navy });
+    page.drawText(t, { x: rtX+7, y: rtY+3.5, size: 7, font: sel ? hFont : rFont, color: sel ? white : navy });
   });
   // Job fields below type boxes
   const jFields = [
@@ -443,10 +439,10 @@ async function buildHospPDF() {
   ];
   let jY = rtY - 5;
   jFields.forEach(([lbl, val]) => {
-    jY -= 7;
-    page.drawText(lbl, { x: rtX+2, y: jY, size: 5, font: hFont, color: navy });
-    jY -= 10;
-    mkField(val, rtX, jY, rtW, 9, 6.5);
+    jY -= 8;
+    page.drawText(lbl, { x: rtX+2, y: jY, size: 6.5, font: hFont, color: navy });
+    jY -= 11;
+    mkField(val, rtX, jY, rtW, 10, 7.5);
     jY -= 2;
   });
 
@@ -470,11 +466,11 @@ async function buildHospPDF() {
   secHdr('Site Contact Information');
   const halfW = PW / 2 - 3;
   // Header row
-  page.drawRectangle({ x: ML,           y: ry(13), width: halfW, height: 13, color: midnav });
-  page.drawText('PRIMARY CONTACT', { x: ML+4, y: ty(13,4), size: 7, font: hFont, color: white });
-  page.drawRectangle({ x: ML+halfW+6,   y: ry(13), width: halfW, height: 13, color: midnav });
-  page.drawText('SECONDARY CONTACT', { x: ML+halfW+10, y: ty(13,4), size: 7, font: hFont, color: white });
-  curY += 14;
+  page.drawRectangle({ x: ML,           y: ry(16), width: halfW, height: 16, color: midnav });
+  page.drawText('PRIMARY CONTACT', { x: ML+4, y: ty(16,5.5), size: 8.5, font: hFont, color: white });
+  page.drawRectangle({ x: ML+halfW+6,   y: ry(16), width: halfW, height: 16, color: midnav });
+  page.drawText('SECONDARY CONTACT', { x: ML+halfW+10, y: ty(16,5.5), size: 8.5, font: hFont, color: white });
+  curY += 17;
   const contFields = [
     ['NAME',  'primary-name',  'secondary-name'],
     ['TITLE', 'primary-title', 'secondary-title'],
@@ -482,24 +478,45 @@ async function buildHospPDF() {
     ['EMAIL', 'primary-email', 'secondary-email'],
   ];
   contFields.forEach(([label, id1, id2]) => {
-    checkPage(20);
-    page.drawText(label+':', { x: ML+2, y: ty(8, 6), size: 5.5, font: hFont, color: navy });
-    page.drawText(label+':', { x: ML+halfW+8, y: ty(8, 6), size: 5.5, font: hFont, color: navy });
-    mkField(fv(id1), ML, ry(20), halfW, 12);
-    mkField(fv(id2), ML+halfW+6, ry(20), halfW, 12);
-    curY += 20;
+    checkPage(26);
+    page.drawText(label+':', { x: ML+3, y: ty(9, 7), size: 7, font: hFont, color: navy });
+    page.drawText(label+':', { x: ML+halfW+9, y: ty(9, 7), size: 7, font: hFont, color: navy });
+    mkField(fv(id1), ML, ry(23), halfW, 14, 8);
+    mkField(fv(id2), ML+halfW+6, ry(23), halfW, 14, 8);
+    curY += 26;
   });
   gap(6);
 
   // NFPA References and Procedure
   secHdr('NFPA References and Procedure');
-  const nfpaText = 'Your entire fire alarm system is required to be thoroughly inspected, tested and maintained each year by an approved servicing company in accordance with Chapter 14 of NFPA 72. Testing must include control equipment, remote annunciators, initiating devices, HVAC shutdown devices and alarm notification appliances. All sprinkler systems shall be inspected, tested and maintained in accordance with NFPA 25. This report documents TJC/CMS Environment of Care requirements per EC.02.03.05 and LS 02.01.34 / 02.01.35.';
-  const nfpaWrapped = wrap(nfpaText, 6.5, PW - 8);
-  const nfpaBlockH  = nfpaWrapped.length * 8 + 10;
+  const nfpaLines = [
+    'YOUR ENTIRE FIRE ALARM SYSTEM IS REQUIRED TO BE THOROUGHLY INSPECTED, TESTED AND MAINTAINED EACH YEAR BY AN APPROVED SERVICING',
+    'COMPANY IN ACCORDANCE WITH THE FOLLOWING NFPA CHAPER REFERENCES:',
+    'CHAPTER 14 OF NFPA 72 [SEE NFPA 72(10), TABLES 14.3.1 AND 14.4.5; SEE ALSO: NFPA 90A(12), SEC. 6.4.1].',
+    'TESTING MUST INCLUDE CONTROL EQUIPMENT, REMOTE ANNUNCIATORS, INITIATING DEVICES, HVAC SHUTDOWN DEVICES AND ALARM',
+    'NOTIFICATION APPLIANCES. SEE THE BELOW LIST OF VARIOUS TESTING DEVICES:',
+    '\u2022 VISUAL AND FUNCTIONAL TESTING OF THE FIRE ALARM CONTROL PANEL (FACP) AND COMPONENTS.',
+    '\u2022 VISUAL AND FUNCTIONAL TESTING OF THE REMOTE POWER SUPPLIES (IF APPLICABLE).',
+    '\u2022 VISUAL AND FUNCTIONAL LOAD TESTING OF THE FACP AND REMOTE POWER SUPPLY BATTERIES. (ANNUAL & SEMI ANNUAL)',
+    '\u2022 VISUAL AND FUNCTIONAL TESTING OF THE AUTOMATIC AND MANUAL ALARM INITIATING DEVICES. (ANNUAL ONLY/FUNCTIONAL)',
+    '\u2022 VISUAL AND FUNCTIONAL TESTING OF THE TAMPER AND WATER FLOW DEVICES.',
+    '\u2022 VISUAL AND FUNCTIONAL TESTING OF AUDIBLE AND VISUAL NOTIFICATION APPLIANCES (ANNUAL ONLY/FUNCTIONAL).',
+    '\u2022 ALARM SIGNAL TRANSMISSION TO CENTRAL STATION VERIFICATION (IF APPLICABLE)',
+    '\u2022 VISUAL AND FUNCTIONAL TESTING OF THE REMOTE SYSTEM ANNUNCIATORS (IF APPLICABLE).',
+    '\u2022 GRAPHIC MAP DEVICE LOCATION VERIFICATION & ACCURACY (IF APPLICABLE).',
+    '\u2022 HVAC AND DAMPER CONTROL RELAYS FUNCTIONAL TESTING (ANNUAL ONLY/FUNCTIONAL).',
+    '\u2022 DOOR RELEASING RELAYS FUNCTIONAL TESTING (IF APPLICABLE) (ANNUAL ONLY/FUNCTIONAL).',
+    '\u2022 DOCUMENTATION OF SYSTEM TESTING AND WHEN APPLICABLE GENERATION OF SYSTEM DEFICIENCIES REPORT.',
+  ];
+  const nfpaBlockH = nfpaLines.length * 10 + 12;
   checkPage(nfpaBlockH);
   page.drawRectangle({ x: ML, y: ry(nfpaBlockH), width: PW, height: nfpaBlockH, color: lgray, borderColor: sky, borderWidth: 0.3 });
-  let nfpaY = ry(nfpaBlockH) + nfpaBlockH - 9;
-  nfpaWrapped.forEach(ln => { page.drawText(ln, { x: ML+5, y: nfpaY, size: 6.5, font: rFont, color: blk }); nfpaY -= 8; });
+  let nfpaY = ry(nfpaBlockH) + nfpaBlockH - 11;
+  nfpaLines.forEach(ln => {
+    const indent = ln.startsWith('\u2022') ? ML + 10 : ML + 6;
+    page.drawText(ln, { x: indent, y: nfpaY, size: 7.5, font: ln.startsWith('\u2022') ? rFont : hFont, color: blk });
+    nfpaY -= 10;
+  });
   curY += nfpaBlockH + 4;
 
   // ════════════════════════════════════════════════════════════════
@@ -508,27 +525,31 @@ async function buildHospPDF() {
   addPage('Main Fire Alarm Control Panel Information');
 
   subHdr('Panel');
+  gap(4);
   [['MAKE','h-cp-make'],['MODEL','h-cp-model'],['LOCATION','h-cp-location']].forEach(([l,id]) => {
-    dataRow([{ label: l, val: fv(id), w: PW/2 }, { label: '', val: '', w: PW/2 }], 12, 8, 2);
+    dataRow([{ label: l, val: fv(id), w: PW }], 14, 9, 3);
   });
   gap(4);
   subHdr('Monitoring');
+  gap(4);
   [['COMPANY','h-monitor-company'],['PHONE','h-monitor-phone'],['ACCOUNT','h-monitor-account'],
    ['TIME OFFLINE','h-monitor-offline'],['TIME ONLINE','h-monitor-online']].forEach(([l,id]) => {
-    dataRow([{ label: l, val: fv(id), w: PW/2 }, { label: '', val: '', w: PW/2 }], 12, 8, 2);
+    dataRow([{ label: l, val: fv(id), w: PW }], 14, 9, 3);
   });
   gap(4);
   subHdr('Panel Testing / Disable Instructions');
+  gap(4);
   const instrTxt = fv('h-panel-instructions') || '—';
-  const instrLines = wrap(instrTxt, 7, PW - 8);
-  const instrH = instrLines.length * 9 + 8;
+  const instrLines = wrap(instrTxt, 8, PW - 8);
+  const instrH = Math.max(instrLines.length * 10 + 10, 28);
   checkPage(instrH);
-  mkField(instrTxt, ML, ry(instrH), PW, instrH, 7);
+  mkField(instrTxt, ML, ry(instrH), PW, instrH, 8);
   curY += instrH + 4;
 
   subHdr('Dialer / Radio');
+  gap(4);
   [['MAKE','h-dr-make'],['MODEL','h-dr-model'],['LOCATION','h-dr-location'],['TYPE','h-dr-type']].forEach(([l,id]) => {
-    dataRow([{ label: l, val: fv(id), w: PW/2 }, { label: '', val: '', w: PW/2 }], 12, 8, 2);
+    dataRow([{ label: l, val: fv(id), w: PW }], 14, 9, 3);
   });
   gap(4);
 
@@ -561,9 +582,14 @@ async function buildHospPDF() {
   ];
   tblHdr(recCols);
   document.querySelectorAll('#h-recurring-tbody tr').forEach(row => {
+    const cells  = row.querySelectorAll('td');
     const inputs = row.querySelectorAll('input');
-    const vals   = Array.from(inputs).map(inp => inp.value);
-    tblRow(recCols, [vals[0]||'', vals[1]||'', vals[2]||'', vals[3]||'']);
+    tblRow(recCols, [
+      cells[0]?.textContent?.trim() || '',
+      inputs[0]?.value || '',
+      cells[2]?.textContent?.trim() || '',
+      inputs[1]?.value || '',
+    ]);
   });
 
   // ════════════════════════════════════════════════════════════════
@@ -581,15 +607,19 @@ async function buildHospPDF() {
   ];
   tblHdr(kCols);
   document.querySelectorAll('#h-fa-key-tbody tr').forEach(row => {
-    const cells = row.querySelectorAll('td');
+    const cells    = row.querySelectorAll('td');
+    const fullCode = cells[4]?.textContent?.trim() || '';
+    const m        = fullCode.match(/^(.+?\(\d{4}\))\s+(.*)$/);
+    const codePub  = m ? m[1].trim() : fullCode;
+    const codeAct  = m ? m[2].trim() : '';
     tblRow(kCols, [
       cells[0]?.textContent?.trim() || '',
       row.querySelector('input:nth-of-type(1)')?.value || '',
       row.querySelector('input:nth-of-type(2)')?.value || '',
       cells[3]?.textContent?.trim() || '',
-      cells[4]?.textContent?.trim() || '',
+      codePub,
+      codeAct,
       cells[5]?.textContent?.trim() || '',
-      cells[6]?.textContent?.trim() || '',
     ]);
   });
 
@@ -599,14 +629,18 @@ async function buildHospPDF() {
   addPage('TJC/CMS Testing Interval Key Sheet — Sprinkler, Hood, Extinguishers, Dampers, Doors, Emergency Lights');
   tblHdr(kCols);
   document.querySelectorAll('#h-sp-key-tbody tr').forEach(row => {
-    const cells = row.querySelectorAll('td');
+    const cells    = row.querySelectorAll('td');
+    const fullCode = cells[4]?.textContent?.trim() || '';
+    const m        = fullCode.match(/^(.+?\(\d{4}\))\s+(.*)$/);
+    const codePub  = m ? m[1].trim() : fullCode;
+    const codeAct  = m ? m[2].trim() : '';
     tblRow(kCols, [
       cells[0]?.textContent?.trim() || '',
       row.querySelector('input:nth-of-type(1)')?.value || '',
       row.querySelector('input:nth-of-type(2)')?.value || '',
       cells[3]?.textContent?.trim() || '',
-      cells[4]?.textContent?.trim() || '',
-      '',
+      codePub,
+      codeAct,
       cells[5]?.textContent?.trim() || '',
     ]);
   });
@@ -689,22 +723,23 @@ async function buildHospPDF() {
       const inspEl = cells[3]?.querySelector('.pf-btn.selected');
       const insp   = inspEl?.textContent?.trim() || '';
       const notes  = cells[4]?.querySelector('input')?.value || '';
-      const h = 13;
+      const h = 16;
+      const rowBg = yna === 'Y' ? PGREEN_LIGHT : yna === 'N' ? PRED_LIGHT : gold;
       checkPage(h + 1);
       // Q cell (static)
-      page.drawRectangle({ x: ML, y: ry(h), width: ovLblW, height: h, color: lgray, borderColor: sky, borderWidth: 0.3 });
-      wrap(q, 6, ovLblW - 4).forEach((ln, li) => {
-        page.drawText(ln, { x: ML+3, y: ry(h) + h - 6 - li * 7, size: 6, font: rFont, color: blk });
+      page.drawRectangle({ x: ML, y: ry(h), width: ovLblW, height: h, color: rowBg, borderColor: sky, borderWidth: 0.3 });
+      wrap(q, 7.5, ovLblW - 6).forEach((ln, li) => {
+        page.drawText(ln, { x: ML+4, y: ry(h) + h - 7 - li * 8, size: 7.5, font: rFont, color: blk });
       });
       // YNA cell
-      const ynaColor = yna === 'Y' ? PGREEN : yna === 'N' ? PRED : gold;
+      const ynaColor = yna === 'Y' ? PGREEN : yna === 'N' ? PRED : rowBg;
       const ynaTc    = (yna === 'Y' || yna === 'N') ? white : blk;
       page.drawRectangle({ x: ML+ovLblW, y: ry(h), width: ovBtnW, height: h, color: ynaColor, borderColor: sky, borderWidth: 0.3 });
-      if (yna) { const tw = hFont.widthOfTextAtSize(yna, 6.5); page.drawText(yna, { x: ML+ovLblW + ovBtnW/2 - tw/2, y: ty(h,4), size: 6.5, font: hFont, color: ynaTc }); }
+      if (yna) { const tw = hFont.widthOfTextAtSize(yna, 7.5); page.drawText(yna, { x: ML+ovLblW + ovBtnW/2 - tw/2, y: ty(h,5), size: 7.5, font: hFont, color: ynaTc }); }
       // Count, Inspecting, Notes — editable
-      mkField(cnt,   ML+ovLblW+ovBtnW,              ry(h), ovCntW,  h, 6);
-      mkField(insp,  ML+ovLblW+ovBtnW+ovCntW,        ry(h), ovInspW, h, 6);
-      mkField(notes, ML+ovLblW+ovBtnW+ovCntW+ovInspW, ry(h), ovNoteW, h, 6);
+      mkField(cnt,   ML+ovLblW+ovBtnW,               ry(h), ovCntW,  h, 7.5, rowBg);
+      mkField(insp,  ML+ovLblW+ovBtnW+ovCntW,         ry(h), ovInspW, h, 7.5, rowBg);
+      mkField(notes, ML+ovLblW+ovBtnW+ovCntW+ovInspW, ry(h), ovNoteW, h, 7.5, rowBg);
       curY += h + 1;
     });
     gap(3);
@@ -850,7 +885,7 @@ async function buildHospPDF() {
     gap(4);
   });
   checkPage(14);
-  page.drawText(`ELEVATOR BANK TOTAL COUNT: ${bankCards.length}`, { x: ML, y: ty(13,4), size: 6.5, font: hFont, color: navy });
+  page.drawText(`ELEVATOR BANK TOTAL COUNT: ${bankCards.length}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
   curY += 14;
 
   // ════════════════════════════════════════════════════════════════
@@ -879,7 +914,7 @@ async function buildHospPDF() {
       });
     }
     checkPage(14);
-    page.drawText(`FACP, SUB PANEL AND POWER SUPPLY TOTAL COUNT: ${spRows.length}`, { x: ML, y: ty(13,4), size: 6.5, font: hFont, color: navy });
+    page.drawText(`FACP, SUB PANEL AND POWER SUPPLY TOTAL COUNT: ${spRows.length}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
     curY += 14;
   }
 
@@ -899,14 +934,14 @@ async function buildHospPDF() {
       const ins  = card.querySelectorAll('input');
       const sls  = card.querySelectorAll('select');
       page.drawRectangle({ x: cx, y: ry(13), width: hw, height: 13, color: midnav });
-      page.drawText('ANNUNCIATOR', { x: cx+4, y: ty(13,4), size: 7, font: hFont, color: white });
+      page.drawText('ANNUNCIATOR', { x: cx+4, y: ty(13,4), size: 8.5, font: hFont, color: white });
       curY += 14;
       [['MAKE', ins[0]?.value||''], ['MODEL', ins[1]?.value||''],
        ['LOCATION', ins[2]?.value||''], ['PASS/FAIL', sls[0]?.options[sls[0].selectedIndex]?.text||''],
        ['NOTES', ins[3]?.value||'']].forEach(([l, v]) => {
-        page.drawText(l+':', { x: cx+2, y: ty(8, 6), size: 5.5, font: hFont, color: navy });
-        mkField(v, cx, ry(20), hw, 12);
-        curY += 20;
+        page.drawText(l+':', { x: cx+3, y: ty(9, 7), size: 7, font: hFont, color: navy });
+        mkField(v, cx, ry(23), hw, 14, 8);
+        curY += 26;
       });
     };
     const savedY = curY;
@@ -919,7 +954,7 @@ async function buildHospPDF() {
     annIdx += 2;
   }
   checkPage(14);
-  page.drawText(`ANNUNCIATOR TOTAL COUNT: ${annCards.length}`, { x: ML, y: ty(13,4), size: 6.5, font: hFont, color: navy });
+  page.drawText(`ANNUNCIATOR TOTAL COUNT: ${annCards.length}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
   curY += 14;
 
   // ════════════════════════════════════════════════════════════════
@@ -947,7 +982,7 @@ async function buildHospPDF() {
   });
   const mdCount = document.querySelectorAll('#h-main-drain-tbody tr').length;
   checkPage(14);
-  page.drawText(`EQUIPMENT COUNT: MD ${mdCount}`, { x: ML, y: ty(13,4), size: 6.5, font: hFont, color: navy });
+  page.drawText(`EQUIPMENT COUNT: MD ${mdCount}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
   curY += 14;
 
   // PAGE 23: FDC
@@ -1014,33 +1049,34 @@ async function buildHospPDF() {
       const ynaGroup = document.querySelector(`[data-id="${item.id}"] .yna-group`);
       const selBtn   = ynaGroup?.querySelector('.yna-btn.selected')?.textContent?.trim() || '';
       const note     = document.getElementById('sp-defic-note-' + item.id)?.value || '';
-      const h = 13;
+      const h = 16;
+      const rowBg = selBtn === 'Y' ? PGREEN_LIGHT : selBtn === 'N' ? PRED_LIGHT : gold;
       checkPage(h + 1);
       // Label
-      page.drawRectangle({ x: ML, y: ry(h), width: spLblW, height: h, color: lgray, borderColor: sky, borderWidth: 0.3 });
-      wrap(item.label, 6, spLblW - 4).forEach((ln, li) => {
-        page.drawText(ln, { x: ML+3, y: ry(h) + h - 6 - li * 7, size: 6, font: rFont, color: blk });
+      page.drawRectangle({ x: ML, y: ry(h), width: spLblW, height: h, color: rowBg, borderColor: sky, borderWidth: 0.3 });
+      wrap(item.label, 7.5, spLblW - 6).forEach((ln, li) => {
+        page.drawText(ln, { x: ML+4, y: ry(h) + h - 7 - li * 8, size: 7.5, font: rFont, color: blk });
       });
       // Y / N / NA buttons
       let bx = ML + spLblW;
       ['Y','N','NA'].forEach(opt => {
         const sel = selBtn === opt;
-        const bg  = sel && opt === 'Y' ? PGREEN : sel && opt === 'N' ? PRED : sel && opt === 'NA' ? sky : gold;
+        const bg  = sel && opt === 'Y' ? PGREEN : sel && opt === 'N' ? PRED : sel && opt === 'NA' ? sky : rowBg;
         const tc  = sel && (opt === 'Y' || opt === 'N') ? white : blk;
         page.drawRectangle({ x: bx, y: ry(h), width: spBtnW, height: h, color: bg, borderColor: sky, borderWidth: 0.3 });
         if (sel) {
-          const tw = hFont.widthOfTextAtSize('X', 7);
-          page.drawText('X', { x: bx + spBtnW/2 - tw/2, y: ty(h,4), size: 7, font: hFont, color: tc });
+          const tw = hFont.widthOfTextAtSize('X', 8);
+          page.drawText('X', { x: bx + spBtnW/2 - tw/2, y: ty(h,5), size: 8, font: hFont, color: tc });
         } else {
           const f = form.createTextField(fid());
           f.setText('');
           f.addToPage(page, { x: bx+1, y: ry(h)+1, width: spBtnW-2, height: h-2, font: rFont });
-          f.setFontSize(7);
+          f.setFontSize(8);
         }
         bx += spBtnW;
       });
       // Notes
-      mkField(note, bx, ry(h), spNoteW, h, 6);
+      mkField(note, bx, ry(h), spNoteW, h, 7.5, rowBg);
       curY += h + 1;
     });
     gap(3);
@@ -1091,7 +1127,7 @@ async function buildHospPDF() {
   const addedCount   = Array.from(invRows).filter(r => r.querySelector('select')?.value === 'ADDED').length;
   const removedCount = invRows.length - addedCount;
   checkPage(14);
-  page.drawText(`STATUS — ADDED: ${addedCount}   REMOVED: ${removedCount}`, { x: ML, y: ty(13,4), size: 6.5, font: hFont, color: navy });
+  page.drawText(`STATUS — ADDED: ${addedCount}   REMOVED: ${removedCount}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
   curY += 14;
 
   // ════════════════════════════════════════════════════════════════
@@ -1144,7 +1180,7 @@ async function buildHospPDF() {
     });
     gap(4);
     checkPage(14);
-    page.drawText(`TOTAL EXTINGUISHERS ON REPORT: ${_extUnits.length}`, { x: ML, y: ty(13,4), size: 7, font: hFont, color: navy });
+    page.drawText(`TOTAL EXTINGUISHERS ON REPORT: ${_extUnits.length}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
     curY += 14;
 
     // Detail pages — 33 per page
@@ -1164,7 +1200,7 @@ async function buildHospPDF() {
       });
       if (start + 33 >= _extUnits.length) {
         checkPage(14);
-        page.drawText(`UNIT COUNT: ${_extUnits.length}`, { x: ML, y: ty(13,4), size: 6.5, font: hFont, color: navy });
+        page.drawText(`UNIT COUNT: ${_extUnits.length}`, { x: ML, y: ty(13,4), size: 8, font: hFont, color: navy });
         curY += 14;
       }
     }
@@ -1183,12 +1219,12 @@ async function buildHospPDF() {
   if (defRows.length) {
     defRows.forEach((row, i) => {
       const ins = row.querySelectorAll('input');
-      tblRow(defCols, [String(i+1), ins[0]?.value||'', ins[1]?.value||'']);
+      tblRow(defCols, [String(i+1), ins[0]?.value||'', ins[1]?.value||''], -1, PRED_LIGHT);
     });
   } else {
     checkPage(14);
     page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: lgray, borderColor: sky, borderWidth: 0.3 });
-    page.drawText('No deficiencies recorded.', { x: ML+4, y: ty(13,4), size: 7, font: rFont, color: blk });
+    page.drawText('No deficiencies recorded.', { x: ML+4, y: ty(13,4), size: 8.5, font: rFont, color: blk });
     curY += 14;
   }
   gap(4);
@@ -1207,7 +1243,7 @@ async function buildHospPDF() {
   } else {
     checkPage(14);
     page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: lgray, borderColor: sky, borderWidth: 0.3 });
-    page.drawText('No battery failures recorded.', { x: ML+4, y: ty(13,4), size: 7, font: rFont, color: blk });
+    page.drawText('No battery failures recorded.', { x: ML+4, y: ty(13,4), size: 8.5, font: rFont, color: blk });
     curY += 14;
   }
   gap(4);
@@ -1224,7 +1260,7 @@ async function buildHospPDF() {
   } else {
     checkPage(14);
     page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: lgray, borderColor: sky, borderWidth: 0.3 });
-    page.drawText('No general notes recorded.', { x: ML+4, y: ty(13,4), size: 7, font: rFont, color: blk });
+    page.drawText('No general notes recorded.', { x: ML+4, y: ty(13,4), size: 8.5, font: rFont, color: blk });
     curY += 14;
   }
   gap(6);
@@ -1236,8 +1272,8 @@ async function buildHospPDF() {
     checkPage(16);
     page.drawRectangle({ x: ML, y: ry(14), width: PW, height: 14, color: stColor });
     const stTxt = `OVERALL STATUS: ${stVal}`;
-    const stTxtW = hFont.widthOfTextAtSize(stTxt, 11);
-    page.drawText(stTxt, { x: W/2 - stTxtW/2, y: ty(14, 4), size: 11, font: hFont, color: white });
+    const stTxtW = hFont.widthOfTextAtSize(stTxt, 13);
+    page.drawText(stTxt, { x: W/2 - stTxtW/2, y: ty(14, 4), size: 13, font: hFont, color: white });
     curY += 18;
   }
 
@@ -1277,8 +1313,8 @@ async function buildHospPDF() {
   checkPage(60);
   secHdr('Signatures');
   const sigH = 40, sigW = PW / 2 - 6;
-  page.drawText('INSPECTOR SIGNATURE:', { x: ML, y: ty(sigH) + sigH + 3, size: 7, font: hFont, color: navy });
-  page.drawText('CUSTOMER SIGNATURE (Optional):', { x: ML+PW/2+10, y: ty(sigH) + sigH + 3, size: 7, font: hFont, color: navy });
+  page.drawText('INSPECTOR SIGNATURE:', { x: ML, y: ty(sigH) + sigH + 3, size: 8.5, font: hFont, color: navy });
+  page.drawText('CUSTOMER SIGNATURE (Optional):', { x: ML+PW/2+10, y: ty(sigH) + sigH + 3, size: 8.5, font: hFont, color: navy });
   if (H.inspSig) {
     try {
       const b64 = H.inspSig.split(',')[1];
@@ -1314,8 +1350,8 @@ async function buildHospPDF() {
   // ── Footer on every page ──
   pdfDoc.getPages().forEach(pg => {
     const footerTxt = 'Fire Life Protection Systems  |  firelifeprotection.com';
-    const ftW = rFont.widthOfTextAtSize(footerTxt, 6);
-    pg.drawText(footerTxt, { x: W/2 - ftW/2, y: 10, size: 6, font: rFont, color: rgb(0.47, 0.47, 0.47) });
+    const ftW = rFont.widthOfTextAtSize(footerTxt, 7.5);
+    pg.drawText(footerTxt, { x: W/2 - ftW/2, y: 10, size: 7.5, font: rFont, color: rgb(0.47, 0.47, 0.47) });
   });
 
   return await pdfDoc.save();
