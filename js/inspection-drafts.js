@@ -604,7 +604,10 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
     fieldData:    data.fieldData || {},
     pfStates:     data.pfStates || {},
     extinguishers:data.extinguishers || [],
-    devices:      sysKey === 'fire-alarm' ? collectFADeviceRows() : undefined
+    devices:      sysKey === 'fire-alarm' ? collectFADeviceRows() : undefined,
+    keySheet:     data.keySheet   || undefined,
+    tbodies:      data.tbodies    || undefined,
+    containers:   data.containers || undefined,
   };
   profile.lastInspBySystem[sysKey] = inspRecord;
 
