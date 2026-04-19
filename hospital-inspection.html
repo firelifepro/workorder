@@ -2063,6 +2063,8 @@ const H = {
   custSig: null,
   inspSig: null,
   prevDefic: [],
+  prevTbodies: null,
+  prevContainers: null,
   draft: null,
 };
 
@@ -2432,9 +2434,9 @@ async function searchPreviousInspection(propKey) {
       H.prevDefic = rec.deficiencies;
       document.querySelectorAll('[data-hstep="prevdefic"]').forEach(t => t.style.display = 'flex');
     }
-    if (rec.keySheet) {
-      H.prevKeySheet = rec.keySheet;
-    }
+    if (rec.keySheet)    H.prevKeySheet    = rec.keySheet;
+    if (rec.tbodies)     H.prevTbodies     = rec.tbodies;
+    if (rec.containers)  H.prevContainers  = rec.containers;
   } catch(e) {
     console.warn('Previous inspection search failed:', e.message);
   }
@@ -2472,6 +2474,18 @@ function startHospInspection() {
   document.getElementById('hosp-step-nav').style.display = 'flex';
   document.getElementById('hosp-active-banner').style.display = 'block';
   initHospData();
+  if (H.prevTbodies || H.prevContainers) {
+    const SKIP = new Set(['h-defic-tbody', 'h-fa-key-tbody', 'h-sp-key-tbody']);
+    const filteredTbodies = H.prevTbodies
+      ? Object.fromEntries(Object.entries(H.prevTbodies).filter(([id]) => !SKIP.has(id)))
+      : {};
+    restoreTbodies(filteredTbodies);
+    if (H.prevContainers) restoreContainers(H.prevContainers);
+    // Sync extUnitCount with restored extinguisher rows
+    const extIds = Array.from(document.querySelectorAll('#ext-tbody tr[id^="ext-unit-row-"]'))
+      .map(tr => parseInt(tr.id.replace('ext-unit-row-', ''))).filter(n => !isNaN(n));
+    if (extIds.length) extUnitCount = Math.max(...extIds);
+  }
   goHospStep('panel');
 }
 function exitHospInspection(dest) {
