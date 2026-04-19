@@ -224,11 +224,13 @@ async function buildHospPDF() {
     page.drawRectangle({ x: 0, y: PH - 15, width: W, height: 15, color: navy });
     page.drawText('Fire Life Protection Systems', { x: ML, y: PH - 10, size: 8.5, font: hFont, color: white });
     page.drawText(`Page ${pageNum}`, { x: W - 65, y: PH - 10, size: 8.5, font: rFont, color: white });
-    // Blue subheader — building + date only
-    page.drawRectangle({ x: 0, y: PH - 28, width: W, height: 13, color: midnav });
-    page.drawText(`BUILDING: ${bldName}`, { x: ML, y: PH - 24.5, size: 8, font: hFont, color: white });
-    page.drawText(`DATE: ${inspDate}`, { x: W - 155, y: PH - 24.5, size: 8, font: hFont, color: white });
-    curY = HDR_H;
+    if (pageNum > 1) {
+      // Blue subheader — building + date only (skip on cover page)
+      page.drawRectangle({ x: 0, y: PH - 28, width: W, height: 13, color: midnav });
+      page.drawText(`BUILDING: ${bldName}`, { x: ML, y: PH - 24.5, size: 8, font: hFont, color: white });
+      page.drawText(`DATE: ${inspDate}`, { x: W - 155, y: PH - 24.5, size: 8, font: hFont, color: white });
+    }
+    curY = pageNum > 1 ? HDR_H : 15;
     if (title) secHdr(title);
   };
 
@@ -307,6 +309,17 @@ async function buildHospPDF() {
     curY += h + 1;
   };
 
+  // ── Inline label + editable field on one row ──
+  const inlineRow = (label, val) => {
+    const rowH = 15;
+    checkPage(rowH + 2);
+    const lblStr = label + ':';
+    const lblW = hFont.widthOfTextAtSize(lblStr, 8) + 6;
+    page.drawText(lblStr, { x: ML+3, y: ty(rowH, 5), size: 8, font: hFont, color: navy });
+    mkField(val, ML + lblW, ry(rowH), PW - lblW, rowH, 8);
+    curY += rowH + 2;
+  };
+
   // ── Generic device page helper ──
   const inp = (n) => (row) => row.querySelectorAll('input')[n]?.value || '';
   const selOpt = (n) => (row) => { const el = row.querySelectorAll('select')[n]; return el?.options[el.selectedIndex]?.text || ''; };
@@ -356,12 +369,12 @@ async function buildHospPDF() {
   addPage();
 
   // Title banner
-  const titleH = 20;
-  page.drawRectangle({ x: 0, y: ry(titleH - HDR_H), width: W, height: titleH - HDR_H, color: navy });
+  const bannerH = 16;
+  page.drawRectangle({ x: 0, y: ry(bannerH), width: W, height: bannerH, color: navy });
   const titleTxt = 'ANNUAL TJC / CMS INSPECTION REPORT';
   const titleW   = hFont.widthOfTextAtSize(titleTxt, 12);
-  page.drawText(titleTxt, { x: W/2 - titleW/2, y: ry(titleH - HDR_H) + 5, size: 12, font: hFont, color: white });
-  curY = titleH + 2;
+  page.drawText(titleTxt, { x: W/2 - titleW/2, y: ty(bannerH, 5), size: 12, font: hFont, color: white });
+  curY += bannerH + 6;
 
   // Logo + company info + report type block
   const logoAreaH = 88;
@@ -431,20 +444,6 @@ async function buildHospPDF() {
       color: sel ? navy : white, borderColor: sky, borderWidth: 0.3 });
     page.drawText(t, { x: rtX+7, y: rtY+3.5, size: 7, font: sel ? hFont : rFont, color: sel ? white : navy });
   });
-  // Job fields below type boxes
-  const jFields = [
-    ['JOB NUMBER', fv('job-number')],
-    ['DATE PERFORMED', fv('insp-date')],
-    ['INSPECTOR(S) INITIALS', fv('inspector-initials')],
-  ];
-  let jY = rtY - 5;
-  jFields.forEach(([lbl, val]) => {
-    jY -= 8;
-    page.drawText(lbl, { x: rtX+2, y: jY, size: 6.5, font: hFont, color: navy });
-    jY -= 11;
-    mkField(val, rtX, jY, rtW, 10, 7.5);
-    jY -= 2;
-  });
 
   curY += logoAreaH + 4;
 
@@ -456,9 +455,8 @@ async function buildHospPDF() {
     { label: 'CITY, STATE, ZIP', val: fv('city-state-zip'), w: PW * 0.4 },
   ], 12, 8, 2);
   dataRow([
-    { label: 'JURISDICTION', val: fv('jurisdiction'), w: PW * 0.4 },
-    { label: 'JOB NUMBER', val: fv('job-number'), w: PW * 0.3 },
-    { label: 'DATE PERFORMED', val: fv('insp-date'), w: PW * 0.3 },
+    { label: 'JURISDICTION', val: fv('jurisdiction'), w: PW * 0.5 },
+    { label: 'DATE PERFORMED', val: fv('insp-date'), w: PW * 0.5 },
   ], 12, 8, 2);
   gap(4);
 
@@ -525,16 +523,16 @@ async function buildHospPDF() {
   addPage('Main Fire Alarm Control Panel Information');
 
   subHdr('Panel');
-  gap(4);
+  gap(3);
   [['MAKE','h-cp-make'],['MODEL','h-cp-model'],['LOCATION','h-cp-location']].forEach(([l,id]) => {
-    dataRow([{ label: l, val: fv(id), w: PW }], 14, 9, 3);
+    inlineRow(l, fv(id));
   });
   gap(4);
   subHdr('Monitoring');
-  gap(4);
+  gap(3);
   [['COMPANY','h-monitor-company'],['PHONE','h-monitor-phone'],['ACCOUNT','h-monitor-account'],
    ['TIME OFFLINE','h-monitor-offline'],['TIME ONLINE','h-monitor-online']].forEach(([l,id]) => {
-    dataRow([{ label: l, val: fv(id), w: PW }], 14, 9, 3);
+    inlineRow(l, fv(id));
   });
   gap(4);
   subHdr('Panel Testing / Disable Instructions');
@@ -547,9 +545,9 @@ async function buildHospPDF() {
   curY += instrH + 4;
 
   subHdr('Dialer / Radio');
-  gap(4);
+  gap(3);
   [['MAKE','h-dr-make'],['MODEL','h-dr-model'],['LOCATION','h-dr-location'],['TYPE','h-dr-type']].forEach(([l,id]) => {
-    dataRow([{ label: l, val: fv(id), w: PW }], 14, 9, 3);
+    inlineRow(l, fv(id));
   });
   gap(4);
 
@@ -788,57 +786,57 @@ async function buildHospPDF() {
     'h-supervisory-tbody',
     [{ label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
+    [inp(0), selOpt(0), inp(1), inp(2), selOpt(1), selOpt(2)], 5);
 
   // PAGE 9: FLOW & PRESSURE SWITCHES
   devicePage('Flow & Pressure Switches — EC.02.03.05 EP 02', 'h-flow-tbody',
     [{label:'Floor',w:PW*0.08},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.28},
      {label:'Address',w:PW*0.13},{label:'Visual',w:PW*0.10},{label:'Functional',w:PW*0.10},
      {label:'Time (sec)',w:PW*0.12},{label:'Note',w:PW*0.10}],
-    [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1), inp(4), inp(5)], 5);
+    [inp(0), selOpt(0), inp(1), inp(2), selOpt(1), selOpt(2), inp(3), inp(4)], 5);
 
   // PAGE 10: TAMPER SWITCHES
   devicePage('Tamper Switches (Supervisory) — EC.02.03.05 EP 02', 'h-tamper-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
+    [inp(0), selOpt(0), inp(1), inp(2), selOpt(1), selOpt(2)], 5);
 
   // PAGES 11+: SMOKE DETECTORS (30/page)
-  const smokeAlSel = (row) => { const el = row.querySelectorAll('select')[0]; return el?.options[el.selectedIndex]?.text || 'AL'; };
+  const smokeAlSel = (row) => { const el = row.querySelectorAll('select')[1]; return el?.options[el.selectedIndex]?.text || 'AL'; };
   pagedDevicePage('Smoke Detectors — EC.02.03.05 EP 03', 'h-smoke-tbody',
     [{label:'Floor',w:PW*0.07},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.31},
      {label:'Address',w:PW*0.14},{label:'AL/SPV',w:PW*0.09},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.16}],
-    [inp(0), inp(1), inp(2), inp(3), smokeAlSel, selOpt(1), selOpt(2)], 6, 30);
+    [inp(0), selOpt(0), inp(1), inp(2), smokeAlSel, selOpt(2), selOpt(3)], 6, 30);
 
   // PAGE 12: HEAT DETECTORS
   devicePage('Heat Detectors — EC.02.03.05 EP 03', 'h-heat-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
+    [inp(0), selOpt(0), inp(1), inp(2), selOpt(1), selOpt(2)], 5);
 
   // PAGES 13+: MANUAL PULL STATIONS
   pagedDevicePage('Manual Pull Stations — EC.02.03.05 EP 03', 'h-pull-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5, 30);
+    [inp(0), selOpt(0), inp(1), inp(2), selOpt(1), selOpt(2)], 5, 30);
 
   // PAGE 14: DUCT DETECTORS
   devicePage('Duct Detectors — EC.02.03.05 EP 03', 'h-duct-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
+    [inp(0), selOpt(0), inp(1), inp(2), selOpt(1), selOpt(2)], 5);
 
   // PAGES 15+: AUDIO/VISUAL
   pagedDevicePage('Audio/Visual Notification — EC.02.03.05 EP 04', 'h-av-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.12},{label:'Location',w:PW*0.51},
      {label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), selOpt(0), selOpt(1)], 4, 33);
+    [inp(0), selOpt(0), inp(1), selOpt(1), selOpt(2)], 4, 33);
 
   // PAGE 16: DOOR RELEASING DEVICES
   devicePage('Door Releasing Devices — EC.02.03.05 EP 04', 'h-door-release-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.12},{label:'Location',w:PW*0.51},
      {label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
-    [inp(0), inp(1), inp(2), selOpt(0), selOpt(1)], 4);
+    [inp(0), selOpt(0), inp(1), selOpt(1), selOpt(2)], 4);
 
   // ════════════════════════════════════════════════════════════════
   // PAGE 17: OFF-PREMISE MONITORING
@@ -988,8 +986,8 @@ async function buildHospPDF() {
   // PAGE 23: FDC
   devicePage('Fire Department Connections (FDC) — EC.02.03.05 EP 10', 'h-fdc-tbody',
     [{label:'Floor',w:PW*0.07},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.32},
-     {label:'Visual',w:PW*0.11},{label:'Functional',w:PW*0.11},{label:'Cap Style',w:PW*0.14},{label:'Hydro Year',w:PW*0.16}],
-    [inp(0), inp(1), inp(2), selOpt(0), selOpt(1), inp(3), inp(4)], 4);
+     {label:'Visual',w:PW*0.11},{label:'Functional',w:PW*0.11},{label:'Inlet',w:PW*0.14},{label:'Condition',w:PW*0.16}],
+    [inp(0), selOpt(0), inp(1), selOpt(1), selOpt(2), inp(2), inp(3)], 4);
 
   // PAGE 24: HOSE VALVES
   devicePage('Hose Valve Connections — EC.02.03.05 EP 10', 'h-hose-valve-tbody',
@@ -1008,7 +1006,7 @@ async function buildHospPDF() {
     [{label:'Floor',w:PW*0.06},{label:'Type',w:PW*0.08},{label:'Location',w:PW*0.23},
      {label:'Visual',w:PW*0.09},{label:'Count',w:PW*0.08},{label:'Head Type',w:PW*0.10},
      {label:'Temp °F',w:PW*0.09},{label:'Response',w:PW*0.10},{label:'Note',w:PW*0.17}],
-    [inp(0), inp(1), inp(2), selOpt(0), inp(3), selOpt(1), inp(4), selOpt(2), inp(5)], 3);
+    [inp(0), selOpt(0), inp(1), selOpt(3), inp(2), selOpt(1), inp(3), selOpt(2), inp(4)], 3);
 
   // PAGE 27: SPRINKLER CONTROL VALVES
   devicePage('Sprinkler Control Valves — LS 02.01.35 EP 14', 'h-valves-tbody',
@@ -1168,6 +1166,11 @@ async function buildHospPDF() {
     gap(5);
 
     subHdr('Services Due Now Summary');
+    // Ensure the services table is populated from unit data
+    if (typeof buildExtSvcTable === 'function' && !document.getElementById('ext-svc-tbody')?.children.length) {
+      buildExtSvcTable();
+    }
+    if (typeof autoFillExtSvcFromUnits === 'function') autoFillExtSvcFromUnits();
     const extSumCols = [
       {label:'Type',w:PW*0.20},{label:'6-Year Maint',w:PW*0.16},{label:'Hydrostatic',w:PW*0.16},
       {label:'Recharge',w:PW*0.16},{label:'New Unit',w:PW*0.16},{label:'Notes',w:PW*0.16},
@@ -1211,8 +1214,6 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   addPage('Deficiency Information');
 
-  // Deficiencies
-  secHdr('Deficiencies');
   const defRows = document.querySelectorAll('#h-defic-tbody tr');
   const defCols = [{label:'#',w:PW*0.06},{label:'Deficiency',w:PW*0.78},{label:'Make/Model',w:PW*0.16}];
   tblHdr(defCols);
