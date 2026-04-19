@@ -83,10 +83,9 @@ async function hospSaveAndDownload() {
                               .map(i => i.value.trim()).filter(Boolean),
             fieldData:    formState.fields || {},
             pfStates:     {},
-            extinguishers: formState.extinguishers || [],
+            devices:      collectHospDevices(),
+            extinguishers: collectHospExtinguishers(),
             keySheet:     formState.keySheet || null,
-            tbodies:      formState.tbodies || null,
-            containers:   formState.containers || null,
           };
           await updatePropertyProfileAfterSave(hospData, 'hospital');
           setStatus('✓ Property profile updated', 'var(--green)');

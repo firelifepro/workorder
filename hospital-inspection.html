@@ -2371,6 +2371,8 @@ function onPropertySelect() {
         H.prevDefic = last.deficiencies;
         document.querySelectorAll('[data-hstep="prevdefic"]').forEach(t => t.style.display = 'flex');
       }
+      // Stash key sheet counts as "previous" for next inspection
+      if (last.keySheet) H.prevKeySheet = last.keySheet;
       // Pre-fill panel/monitoring fields from previous fieldData
       const fd = last.fieldData || {};
       const setField = (id, val) => { if (!val) return; const el = document.getElementById(id); if (el) el.value = val; };
@@ -2474,17 +2476,10 @@ function startHospInspection() {
   document.getElementById('hosp-step-nav').style.display = 'flex';
   document.getElementById('hosp-active-banner').style.display = 'block';
   initHospData();
-  if (H.prevTbodies || H.prevContainers) {
-    const SKIP = new Set(['h-defic-tbody', 'h-fa-key-tbody', 'h-sp-key-tbody']);
-    const filteredTbodies = H.prevTbodies
-      ? Object.fromEntries(Object.entries(H.prevTbodies).filter(([id]) => !SKIP.has(id)))
-      : {};
-    restoreTbodies(filteredTbodies);
-    if (H.prevContainers) restoreContainers(H.prevContainers);
-    // Sync extUnitCount with restored extinguisher rows
-    const extIds = Array.from(document.querySelectorAll('#ext-tbody tr[id^="ext-unit-row-"]'))
-      .map(tr => parseInt(tr.id.replace('ext-unit-row-', ''))).filter(n => !isNaN(n));
-    if (extIds.length) extUnitCount = Math.max(...extIds);
+  const lastHosp = _propertyProfile?.lastInspBySystem?.hospital;
+  if (lastHosp) {
+    if (lastHosp.devices)      restoreHospDevices(lastHosp.devices);
+    if (lastHosp.extinguishers) restoreHospExtinguishers(lastHosp.extinguishers);
   }
   goHospStep('panel');
 }
@@ -3013,6 +3008,231 @@ function addHNoteRow() {
   const tr = document.createElement('tr');
   tr.innerHTML = `<td>${n}</td><td><input type="text" style="width:100%" placeholder="Note or site observation…"></td><td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>`;
   tbody.appendChild(tr);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  HOSPITAL DEVICE JSON COLLECT / RESTORE
+// ════════════════════════════════════════════════════════════════
+
+// Generic: read every td[data-label] in a tbody into an array of objects
+function _collectTableByLabel(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+    const obj = {};
+    tr.querySelectorAll('td[data-label]').forEach(td => {
+      const label = td.getAttribute('data-label');
+      if (!label) return;
+      const el = td.querySelector('input, select');
+      if (el) obj[label] = el.value;
+    });
+    return obj;
+  }).filter(obj => Object.keys(obj).length > 0);
+}
+
+// Generic: after calling an addFn(), fill the last row in tbody by data-label
+function _fillLastRowByLabel(tbodyId, rowData) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const tr = tbody.lastElementChild;
+  if (!tr) return;
+  tr.querySelectorAll('td[data-label]').forEach(td => {
+    const label = td.getAttribute('data-label');
+    if (!label || rowData[label] === undefined) return;
+    const el = td.querySelector('input, select');
+    if (el) el.value = rowData[label];
+  });
+}
+
+function collectHospDevices() {
+  // Main drain has no data-labels — read by column position
+  function collectMainDrain() {
+    const tbody = document.getElementById('h-main-drain-tbody');
+    if (!tbody) return [];
+    return Array.from(tbody.querySelectorAll('tr')).map(tr => {
+      const cells = tr.querySelectorAll('td');
+      return {
+        location:  cells[1]?.querySelector('input')?.value  || '',
+        staticPsi: cells[2]?.querySelector('input')?.value  || '',
+        residual:  cells[3]?.querySelector('input')?.value  || '',
+        post:      cells[4]?.querySelector('input')?.value  || '',
+        pf:        cells[5]?.querySelector('select')?.value || '',
+      };
+    });
+  }
+
+  // Elevator banks — read by label inside each .data-field
+  function collectElevators() {
+    return Array.from(document.querySelectorAll('#h-elevator-banks .h-elevator-bank')).map(bank => {
+      const obj = {};
+      bank.querySelectorAll('.data-field').forEach(field => {
+        const label = field.querySelector('label')?.textContent?.trim();
+        const el = field.querySelector('input, select');
+        if (label && el) obj[label] = el.value;
+      });
+      return obj;
+    });
+  }
+
+  // Annunciator cards — same pattern
+  function collectAnnunciators() {
+    return Array.from(document.querySelectorAll('#h-annunciator-grid .h-ann-card')).map(card => {
+      const obj = {};
+      card.querySelectorAll('.data-field').forEach(field => {
+        const label = field.querySelector('label')?.textContent?.trim();
+        const el = field.querySelector('input, select');
+        if (label && el) obj[label] = el.value;
+      });
+      return obj;
+    });
+  }
+
+  return {
+    supervisory:  _collectTableByLabel('h-supervisory-tbody'),
+    flow:         _collectTableByLabel('h-flow-tbody'),
+    tamper:       _collectTableByLabel('h-tamper-tbody'),
+    smoke:        _collectTableByLabel('h-smoke-tbody'),
+    heat:         _collectTableByLabel('h-heat-tbody'),
+    pull:         _collectTableByLabel('h-pull-tbody'),
+    duct:         _collectTableByLabel('h-duct-tbody'),
+    av:           _collectTableByLabel('h-av-tbody'),
+    doorRelease:  _collectTableByLabel('h-door-release-tbody'),
+    ahu:          _collectTableByLabel('h-ahu-tbody'),
+    fdc:          _collectTableByLabel('h-fdc-tbody'),
+    hoseValve:    _collectTableByLabel('h-hose-valve-tbody'),
+    standpipe:    _collectTableByLabel('h-standpipe-tbody'),
+    spareHeads:   _collectTableByLabel('h-spare-heads-tbody'),
+    valves:       _collectTableByLabel('h-valves-tbody'),
+    gauges:       _collectTableByLabel('h-gauges-tbody'),
+    hydraulic:    _collectTableByLabel('h-hydraulic-tbody'),
+    inventory:    _collectTableByLabel('h-inventory-tbody'),
+    offprem:      _collectTableByLabel('h-offprem-tbody'),
+    subpanel:     _collectTableByLabel('h-subpanel-tbody'),
+    battery:      _collectTableByLabel('h-battery-tbody'),
+    mainDrain:    collectMainDrain(),
+    elevators:    collectElevators(),
+    annunciators: collectAnnunciators(),
+  };
+}
+
+function collectHospExtinguishers() {
+  const result = [];
+  for (let i = 1; i <= extUnitCount; i++) {
+    if (!document.getElementById('ext-unit-row-' + i)) continue;
+    const g = id => document.getElementById(id + i)?.value || '';
+    result.push({
+      flr:      g('u-flr-'),
+      loc:      g('u-loc-'),
+      mount:    g('u-mount-'),
+      mfg:      g('u-mfg-'),
+      size:     g('u-size-'),
+      type:     g('u-type-'),
+      cabM:     g('u-cab-m-'),
+      cabG:     g('u-cab-g-'),
+      cabS:     g('u-cab-s-'),
+      pf:       g('u-pf-'),
+      hydroDue: g('u-hydro-'),
+      recharge: g('u-recharge-'),
+      newUnit:  g('u-newunit-'),
+      deficTxt: g('u-defic-txt-'),
+      noteTxt:  g('u-note-txt-'),
+    });
+  }
+  return result;
+}
+
+function restoreHospDevices(devices) {
+  if (!devices) return;
+
+  // Standard device sheets all use addHDeviceRow
+  const SHEET_MAP = [
+    ['h-supervisory-tbody', 'supervisory', devices.supervisory],
+    ['h-flow-tbody',         'flow',        devices.flow],
+    ['h-tamper-tbody',       'tamper',      devices.tamper],
+    ['h-smoke-tbody',        'smoke',       devices.smoke],
+    ['h-heat-tbody',         'heat',        devices.heat],
+    ['h-pull-tbody',         'pull',        devices.pull],
+    ['h-duct-tbody',         'duct',        devices.duct],
+    ['h-av-tbody',           'av',          devices.av],
+    ['h-door-release-tbody', 'door-release',devices.doorRelease],
+    ['h-ahu-tbody',          'ahu',         devices.ahu],
+    ['h-fdc-tbody',          'fdc',         devices.fdc],
+    ['h-hose-valve-tbody',   'hose-valve',  devices.hoseValve],
+    ['h-standpipe-tbody',    'standpipe',   devices.standpipe],
+    ['h-valves-tbody',       'valves',      devices.valves],
+    ['h-gauges-tbody',       'gauges',      devices.gauges],
+    ['h-hydraulic-tbody',    'hydraulic',   devices.hydraulic],
+  ];
+  SHEET_MAP.forEach(([tbodyId, sheet, rows]) => {
+    if (!rows || !rows.length) return;
+    rows.forEach(rowData => {
+      addHDeviceRow(sheet, rowData['Type'] || '');
+      _fillLastRowByLabel(tbodyId, rowData);
+    });
+    updateCount(sheet);
+  });
+
+  // Special tables — call their own add functions then fill by data-label
+  function restoreSpecial(rows, tbodyId, addFn, postFn) {
+    if (!rows || !rows.length) return;
+    rows.forEach(rowData => {
+      addFn();
+      _fillLastRowByLabel(tbodyId, rowData);
+    });
+    if (postFn) postFn();
+  }
+  restoreSpecial(devices.offprem,    'h-offprem-tbody',     addHOffPremRow);
+  restoreSpecial(devices.subpanel,   'h-subpanel-tbody',    addHSubpanelRow,  updateHSubpanelCount);
+  restoreSpecial(devices.battery,    'h-battery-tbody',     addHBatteryRow);
+  restoreSpecial(devices.spareHeads, 'h-spare-heads-tbody', addHSpareHeadRow, updateHSpareHeadCounts);
+  restoreSpecial(devices.inventory,  'h-inventory-tbody',   addHInventoryRow, updateHInventoryCounts);
+
+  // Main drain — no data-labels, fill by column index
+  (devices.mainDrain || []).forEach(d => {
+    addHMainDrainRow();
+    const tbody = document.getElementById('h-main-drain-tbody');
+    const cells = tbody?.lastElementChild?.querySelectorAll('td');
+    if (!cells) return;
+    if (cells[1]) cells[1].querySelector('input').value  = d.location  || '';
+    if (cells[2]) cells[2].querySelector('input').value  = d.staticPsi || '';
+    if (cells[3]) cells[3].querySelector('input').value  = d.residual  || '';
+    if (cells[4]) cells[4].querySelector('input').value  = d.post      || '';
+    if (cells[5]) cells[5].querySelector('select').value = d.pf        || '';
+  });
+
+  // Elevator banks
+  (devices.elevators || []).forEach(elev => {
+    addHElevatorBank();
+    const banks = document.querySelectorAll('#h-elevator-banks .h-elevator-bank');
+    const bank = banks[banks.length - 1];
+    if (!bank) return;
+    bank.querySelectorAll('.data-field').forEach(field => {
+      const label = field.querySelector('label')?.textContent?.trim();
+      const el = field.querySelector('input, select');
+      if (label && el && elev[label] !== undefined) el.value = elev[label];
+    });
+  });
+
+  // Annunciator cards
+  (devices.annunciators || []).forEach(ann => {
+    addHAnnunciatorCard();
+    const cards = document.querySelectorAll('#h-annunciator-grid .h-ann-card');
+    const card = cards[cards.length - 1];
+    if (!card) return;
+    card.querySelectorAll('.data-field').forEach(field => {
+      const label = field.querySelector('label')?.textContent?.trim();
+      const el = field.querySelector('input, select');
+      if (label && el && ann[label] !== undefined) el.value = ann[label];
+    });
+  });
+}
+
+function restoreHospExtinguishers(extinguishers) {
+  if (!extinguishers || !extinguishers.length) return;
+  const tbody = document.getElementById('ext-tbody');
+  if (tbody) tbody.innerHTML = '';
+  extUnitCount = 0;
+  extinguishers.forEach(ext => addExtUnitRow(ext));
 }
 
 // ════════════════════════════════════════════════════════════════
