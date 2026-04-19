@@ -3216,6 +3216,22 @@ function goHospStep(step) {
     }
     autoFillExtSvcFromUnits();
   }
+  // Auto-set overall status when entering Sign step — DEFICIENT if any deficiencies, else COMPLIANT.
+  // Only fires if the user hasn't already picked a status (or if we're auto-defaulting).
+  if (step === 'sign') {
+    const hasDefic = document.querySelector('#h-defic-tbody tr') !== null;
+    const suggestedStatus = hasDefic ? 'DEFICIENT' : 'COMPLIANT';
+    // Always apply the suggestion so the default tracks current deficiency state,
+    // but don't override IMPAIRED if the user explicitly chose it.
+    if (H.overallStatus !== 'IMPAIRED') {
+      H.overallStatus = suggestedStatus;
+      document.querySelectorAll('#step-hosp-sign .ost-btn').forEach(b => {
+        const matches = (suggestedStatus === 'COMPLIANT' && b.textContent.includes('COMPLIANT'))
+                     || (suggestedStatus === 'DEFICIENT' && b.textContent.includes('DEFICIENT'));
+        b.classList.toggle('selected', matches);
+      });
+    }
+  }
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
