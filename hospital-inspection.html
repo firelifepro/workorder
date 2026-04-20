@@ -4167,32 +4167,39 @@ function collectFormState() {
 }
 
 let _suppressDraftSave = false;
+let _driveSaveTimer = null;
+
 function saveDraft() {
   if (_suppressDraftSave) return;
   try {
     const state = collectFormState();  // photos always [] — never in localStorage
-    // Drive backup: attach photos (base64 data URLs) only for the Drive copy
-    if (typeof saveDraftToDrive === 'function') {
-      const photos = [];
-      document.querySelectorAll('#h-photo-grid .photo-thumb').forEach(thumb => {
-        const src = thumb.querySelector('img')?.src || '';
-        const caption = thumb.querySelector('textarea')?.value || '';
-        if (src) photos.push({ src, caption });
-      });
-      const driveState = photos.length ? Object.assign({}, state, { photos }) : state;
-      saveDraftToDrive(driveState, hospDraftKey()).catch(() => {});
-    }
     localStorage.setItem(hospDraftKey(), JSON.stringify(state));
     showToast('💾 Draft saved');
+    // Debounced Drive backup: many rapid saves (e.g. during restore, step navigation)
+    // collapse into a single upload fired 4 seconds after the last save call.
+    if (typeof saveDraftToDrive === 'function') {
+      clearTimeout(_driveSaveTimer);
+      _driveSaveTimer = setTimeout(() => {
+        const photos = [];
+        document.querySelectorAll('#h-photo-grid .photo-thumb').forEach(thumb => {
+          const src = thumb.querySelector('img')?.src || '';
+          const caption = thumb.querySelector('textarea')?.value || '';
+          if (src) photos.push({ src, caption });
+        });
+        const driveState = photos.length ? Object.assign({}, state, { photos }) : state;
+        saveDraftToDrive(driveState, hospDraftKey()).catch(() => {});
+      }, 4000);
+    }
   } catch(e) {
     showToast('Could not save draft: ' + e.message);
   }
 }
 
 function loadDraft() {
+  const raw = localStorage.getItem(hospDraftKey());
+  if (!raw) return false;
+  _suppressDraftSave = true;
   try {
-    const raw = localStorage.getItem(hospDraftKey());
-    if (!raw) return false;
     const state = JSON.parse(raw);
     // Restore simple fields
     Object.entries(state.fields || {}).forEach(([id, val]) => {
@@ -4242,6 +4249,8 @@ function loadDraft() {
     return true;
   } catch(e) {
     return false;
+  } finally {
+    _suppressDraftSave = false;
   }
 }
 
