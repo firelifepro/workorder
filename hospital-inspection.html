@@ -636,8 +636,9 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
 
   <!-- ── HOSPITAL ACTIVE BANNER ── -->
   <div id="hosp-active-banner">
-    <div style="display:flex;align-items:center;gap:10px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span style="flex:1;">🏥 Inspecting: Hospital TJC/CMS (NFPA 72 / NFPA 25 / TJC EC.02.03.05)</span>
+      <button id="h-save-profile-btn" onclick="saveHospPropertyProfile()" title="Saves panel, monitoring, and recurring month fields to the property profile in Google Drive so they pre-fill on future inspections." style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.4);color:white;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;font-weight:600;font-family:inherit;white-space:nowrap;">🏥 Save Profile</button>
       <button onclick="saveDraft()" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.4);color:white;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.72rem;font-weight:600;font-family:inherit;white-space:nowrap;">💾 Save Draft</button>
     </div>
   </div>
@@ -2117,6 +2118,43 @@ function restoreRecurringMonths(months) {
   });
 }
 
+// ── Save Property Profile — persists panel/monitoring/recurring fields without
+//    completing the inspection. Safe to call mid-inspection at any time.
+async function saveHospPropertyProfile() {
+  if (!accessToken) { showToast('⚠ Not connected — connect Google Drive first'); return; }
+  const propName = fv('property-name');
+  if (!propName) { showToast('⚠ Select a property first'); return; }
+  const btn = document.getElementById('h-save-profile-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+  try {
+    const profile = _propertyProfile || { property: propName, acct: _currentPropertyAcct, systems: [], lastInspBySystem: {} };
+    if (_currentPropertyAcct) profile.acct = _currentPropertyAcct;
+    // Collect current panel / monitoring / site field values
+    const fieldIds = [
+      'h-cp-make','h-cp-model','h-cp-location','h-cp-year','h-cp-batt-date',
+      'h-dr-make','h-dr-model','h-dr-location','h-dr-type',
+      'h-panel-instructions','h-monitored','h-monitor-company','h-monitor-phone',
+      'h-monitor-account','h-smoke-ctrl-present','h-smoke-ctrl-op',
+      'h-smoke-ctrl-method','h-smoke-ctrl-notes','h-site-instructions',
+    ];
+    const fieldData = {};
+    fieldIds.forEach(id => { const el = document.getElementById(id); if (el) fieldData[id] = el.value; });
+    // Merge into the hospital record's fieldData without touching the rest of the inspRecord
+    profile.lastInspBySystem = profile.lastInspBySystem || {};
+    const hosp = profile.lastInspBySystem.hospital || {};
+    hosp.fieldData = Object.assign({}, hosp.fieldData || {}, fieldData);
+    hosp.recurringMonths = collectRecurringMonths();
+    profile.lastInspBySystem.hospital = hosp;
+    profile.updatedAt = (typeof todayMT === 'function') ? todayMT() : new Date().toISOString().slice(0, 10);
+    _propertyProfile = profile;
+    await savePropertyProfile(propName, profile);
+    showToast('✓ Property profile saved');
+  } catch(e) {
+    showToast('✗ Profile save failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🏥 Save Profile'; }
+  }
+}
 
 // ════════════════════════════════════════════════════════════════
 //  GLOBAL HELPERS — fv/sv available everywhere (also re-used
