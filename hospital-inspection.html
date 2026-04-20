@@ -2485,23 +2485,26 @@ function goStep(n) {
 }
 const HOSP_STEPS = ['prevdefic','panel','sysoverview','eockey','device-detail','extinguish','fa-results','sp-results','defic','sign'];
 // goHospStep and showDeviceSheet — defined fully below with done-state tracking
-function startHospInspection() {
+function startHospInspection(skipProfileRestore) {
   activeInspectionSystem = 'hospital'; // enables draftKey() and saveDraftToDrive()
   [1,2,4].forEach(i => document.getElementById('step-'+i).style.display='none');
   document.getElementById('step-nav').style.display = 'none';
   document.getElementById('hosp-step-nav').style.display = 'flex';
   document.getElementById('hosp-active-banner').style.display = 'block';
   initHospData();
-  // If profile already loaded (fast path), restore immediately
-  const lastHospNow = _propertyProfile?.lastInspBySystem?.hospital;
-  if (lastHospNow) {
-    _restoreHospFromProfile(lastHospNow);
-  } else if (_profileLoadPromise) {
-    // Profile still loading — wait for it then restore
-    _profileLoadPromise.then(profile => {
-      const last = profile?.lastInspBySystem?.hospital;
-      if (last) _restoreHospFromProfile(last);
-    }).catch(() => {});
+  // If profile already loaded (fast path), restore immediately.
+  // Skip when resuming a draft — loadDraft() will restore all device rows.
+  if (!skipProfileRestore) {
+    const lastHospNow = _propertyProfile?.lastInspBySystem?.hospital;
+    if (lastHospNow) {
+      _restoreHospFromProfile(lastHospNow);
+    } else if (_profileLoadPromise) {
+      // Profile still loading — wait for it then restore
+      _profileLoadPromise.then(profile => {
+        const last = profile?.lastInspBySystem?.hospital;
+        if (last) _restoreHospFromProfile(last);
+      }).catch(() => {});
+    }
   }
   goHospStep('panel');
 }
@@ -4346,7 +4349,7 @@ function restoreAllCounts() {
 
 function _draftModalResume() {
   document.getElementById('draft-modal-overlay').style.display = 'none';
-  startHospInspection(); // build all table skeletons before restoring data
+  startHospInspection(true); // skip profile restore — loadDraft() owns all device rows
   loadDraft();
   restoreAllCounts();
   // Re-apply FAIL row visuals and regenerate deficiency list from restored device selects
