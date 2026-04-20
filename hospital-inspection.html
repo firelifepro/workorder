@@ -2070,6 +2070,7 @@ const H = {
 let _profileLoadPromise = null;
 
 function _restoreHospFromProfile(last) {
+  console.log('[_restoreHospFromProfile] devices:', !!last.devices, 'extinguishers:', last.extinguishers?.length ?? 0, 'ext-tbody:', !!document.getElementById('ext-tbody'));
   _suppressDraftSave = true;
   try {
     if (last.devices)       restoreHospDevices(last.devices);
@@ -2077,6 +2078,7 @@ function _restoreHospFromProfile(last) {
   } finally {
     _suppressDraftSave = false;
   }
+  console.log('[_restoreHospFromProfile] done, ext rows:', document.querySelectorAll('#ext-tbody tr[id^="ext-unit-row-"]').length);
 }
 
 
