@@ -2776,7 +2776,7 @@ function getDeviceCols(sheet, type) {
     case 'door-release':return flr + typeSel(['MAG','CA','OT']) + loc + vis + func + note + del;
     case 'fdc':         return flr + typeSel(['FDC','SPRINKLER','STANDPIPE','COMBO']) + loc + vis + func + td('Cap', inp()) + td('Hydro Year', inp('placeholder="UNK…"')) + note + del;
     case 'hose-valve':  return flr + typ + loc + vis + func + td('Cap Style', inp()) + td('Size', inp('placeholder="2.5…"')) + note + del;
-    case 'standpipe':   return flr + typ + loc + vis + td('Condition', inp('placeholder="UNK…"')) + td('Size (in)', num('placeholder="6…"')) + note + del;
+    case 'standpipe':   return flr + typ + loc + vis + td('Hydro Year', inp('placeholder="UNK…"')) + td('Size (in)', num('placeholder="6…"')) + note + del;
     case 'valves':      return flr + typ + loc + vis + func + td('Valve Type', inp('placeholder="OS&Y…"')) + note + del;
     case 'gauges':      return flr + typ + loc + vis + func + td('Cert Year', inp('placeholder="2023…"')) + note + del;
     case 'hydraulic':   return flr + typ + loc + vis + td('Legible', pf2) + note + del;
