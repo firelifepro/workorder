@@ -514,6 +514,17 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
 .pf-btn.fail.selected{background:var(--fail-bg);box-shadow:0 0 0 2px var(--fail-ring);color:var(--fail-ring);}
 /* ── SYS SECTION DIVIDER (used in ext summary) ── */
 .sys-section{font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;padding-bottom:4px;border-bottom:1.5px solid #bfdbfe;}
+@keyframes pdf-spin { to { transform: rotate(360deg); } }
+.pdf-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: pdf-spin .7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
 </style>
 </head>
 <body>
@@ -2069,29 +2080,11 @@ const H = {
 };
 let _profileLoadPromise = null;
 
-// If a device array is exactly doubled (first half === second half), strip the duplicate.
-// This heals profiles that were saved when the double-restore bug was present.
-function _dedupeDeviceArrays(devices) {
-  if (!devices) return devices;
-  const out = {};
-  Object.entries(devices).forEach(([key, val]) => {
-    if (!Array.isArray(val) || val.length < 2 || val.length % 2 !== 0) {
-      out[key] = val;
-      return;
-    }
-    const half = val.length / 2;
-    const first  = val.slice(0, half);
-    const second = val.slice(half);
-    out[key] = JSON.stringify(first) === JSON.stringify(second) ? first : val;
-  });
-  return out;
-}
-
 function _restoreHospFromProfile(last) {
   console.log('[_restoreHospFromProfile] devices:', !!last.devices, 'extinguishers:', last.extinguishers?.length ?? 0, 'ext-tbody:', !!document.getElementById('ext-tbody'));
   _suppressDraftSave = true;
   try {
-    if (last.devices)       restoreHospDevices(_dedupeDeviceArrays(last.devices));
+    if (last.devices)       restoreHospDevices(last.devices);
     if (last.extinguishers && last.extinguishers.length) restoreHospExtinguishers(last.extinguishers);
   } finally {
     _suppressDraftSave = false;
@@ -4108,7 +4101,7 @@ function restoreTableData(data) {
   // spare heads, valves, gauges, main drain, battery, inventory, offprem,
   // subpanel, elevator banks, and annunciator cards.
   if (data.devices) {
-    restoreHospDevices(_dedupeDeviceArrays(data.devices));
+    restoreHospDevices(data.devices);
   }
   // Extinguisher units — addExtUnitRow(prefill) increments extUnitCount and
   // calls _restoreExtBtns internally when pf is set, so no extra work needed.

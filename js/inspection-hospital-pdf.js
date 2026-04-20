@@ -33,13 +33,20 @@ async function hospSaveAndDownload() {
   const btn      = document.getElementById('h-save-download-btn');
   const statusEl = document.getElementById('h-pdf-status');
   if (btn)      { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
-  if (statusEl)   statusEl.innerHTML = '';
+  if (statusEl)   statusEl.innerHTML = '<div><span class="pdf-spinner"></span><span style="color:var(--slate)">Preparing…</span></div>';
   const setStatus = (msg, color) => {
-    if (statusEl) statusEl.innerHTML += `<div style="color:${color||'inherit'}">${msg}</div>`;
+    if (statusEl) {
+      // Remove the initial spinner line once real status messages start
+      const spinnerLine = statusEl.querySelector('div:has(.pdf-spinner)');
+      if (spinnerLine) spinnerLine.remove();
+      statusEl.innerHTML += `<div style="color:${color||'inherit'}">${msg}</div>`;
+    }
   };
   document.getElementById('h-new-insp-btn-wrap').style.display = 'none';
 
+  // Save current state once before starting, then suppress auto-saves for the duration
   saveDraft();
+  _suppressDraftSave = true;
 
   let pdfBytes = null;
   let filename  = '';
@@ -131,6 +138,7 @@ async function hospSaveAndDownload() {
     showToast('✗ Save failed: ' + e.message);
     if (pdfBytes) { try { downloadPDF(pdfBytes, filename || 'hospital_inspection.pdf'); } catch(_) {} }
   } finally {
+    _suppressDraftSave = false;
     if (btn) { btn.disabled = false; btn.textContent = '📄 Save & Download PDF'; }
   }
 }
