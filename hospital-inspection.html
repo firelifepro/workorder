@@ -1906,7 +1906,7 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
           <button class="sig-clear" onclick="hospAutoSign()" style="background:#e0f2fe;border-color:#0284c7;color:#0369a1;">✦ Auto Sign</button>
         </div>
         <div style="margin-top:12px;" class="field-grid">
-          <div class="field-group"><label>Print Name</label><input type="text" id="h-sig-name" value="Alan Antonio"></div>
+          <div class="field-group"><label>Print Name</label><input type="text" id="h-sig-name" value="Alan Antonio, F.P.E."></div>
           <div class="field-group"><label>Date Signed</label><input type="date" id="h-sig-date"></div>
         </div>
       </div>
@@ -4029,12 +4029,20 @@ function saveDraft() {
   if (_suppressDraftSave) return;
   try {
     const state = collectFormState();
-    localStorage.setItem(hospDraftKey(), JSON.stringify(state));
-    showToast('💾 Draft saved');
-    // Background Drive backup — uses shared saveDraftToDrive from inspection-drafts.js
+    // Drive backup always gets the full state (photos included)
     if (typeof saveDraftToDrive === 'function') {
       saveDraftToDrive(state, hospDraftKey()).catch(() => {});
     }
+    try {
+      localStorage.setItem(hospDraftKey(), JSON.stringify(state));
+    } catch(quotaErr) {
+      // Photos are large — strip them and retry; Drive has the full copy
+      const slim = Object.assign({}, state, { photos: [] });
+      localStorage.setItem(hospDraftKey(), JSON.stringify(slim));
+      showToast('💾 Draft saved (photos backed up to Drive)');
+      return;
+    }
+    showToast('💾 Draft saved');
   } catch(e) {
     showToast('Could not save draft: ' + e.message);
   }
