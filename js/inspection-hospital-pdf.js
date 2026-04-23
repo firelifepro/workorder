@@ -1,4 +1,22 @@
 // ════════════════════════════════════════════════════════════════
+//  PDF GENERATION OVERLAY HELPERS
+// ════════════════════════════════════════════════════════════════
+function showPdfOverlay(msg) {
+  const el    = document.getElementById('pdf-gen-overlay');
+  const msgEl = document.getElementById('pdf-gen-overlay-msg');
+  if (msgEl) msgEl.textContent = msg || 'Generating PDF…';
+  if (el)    el.classList.add('active');
+}
+function hidePdfOverlay() {
+  const el = document.getElementById('pdf-gen-overlay');
+  if (el) el.classList.remove('active');
+}
+function updatePdfOverlay(msg) {
+  const msgEl = document.getElementById('pdf-gen-overlay-msg');
+  if (msgEl) msgEl.textContent = msg;
+}
+
+// ════════════════════════════════════════════════════════════════
 //  PDF BYTES WRAPPER
 // ════════════════════════════════════════════════════════════════
 async function buildHospitalPDFBytes() {
@@ -34,6 +52,7 @@ async function hospSaveAndDownload() {
   const statusEl = document.getElementById('h-pdf-status');
   if (btn)      { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
   if (statusEl)   statusEl.innerHTML = '<div><span class="pdf-spinner"></span><span style="color:var(--slate)">Preparing…</span></div>';
+  showPdfOverlay('Preparing inspection data…');
   const setStatus = (msg, color) => {
     if (statusEl) {
       // Remove the initial spinner line once real status messages start
@@ -66,6 +85,7 @@ async function hospSaveAndDownload() {
 
   try {
     setStatus('Building PDF…', 'var(--slate)');
+    updatePdfOverlay('Building PDF… this may take a minute');
     pdfBytes = await buildHospitalPDFBytes();
 
     const propName = fv('property-name') || 'Hospital';
@@ -77,6 +97,7 @@ async function hospSaveAndDownload() {
     if (accessToken) {
       try {
         setStatus('Saving inspection data…', 'var(--slate)');
+        updatePdfOverlay('Saving inspection data to Drive…');
         const formState    = collectFormState();
         const jsonName     = `FLPS_Insp_hospital_${propSlug}_${dateStr}.json`;
         const rootId       = await getFlpsRootFolderId();
@@ -86,6 +107,7 @@ async function hospSaveAndDownload() {
 
         try {
           setStatus('Updating property profile…', 'var(--slate)');
+          updatePdfOverlay('Updating property profile…');
           const hospData = {
             property:    { name: propName, acct: '' },
             inspection:  { date: dateStr, reportType: fv('hosp-report-type') || H.reportType || 'Annual', inspectorName: sigName },
@@ -111,6 +133,7 @@ async function hospSaveAndDownload() {
 
       try {
         setStatus('Saving PDF to Drive…', 'var(--slate)');
+        updatePdfOverlay('Saving PDF to Drive…');
         const binary   = Array.from(new Uint8Array(pdfBytes)).map(b => String.fromCharCode(b)).join('');
         const b64      = btoa(binary);
         const rootId2  = await getFlpsRootFolderId();
@@ -125,6 +148,7 @@ async function hospSaveAndDownload() {
     }
 
     downloadPDF(pdfBytes, filename);
+    updatePdfOverlay('Done! Downloading…');
     setStatus(`✓ Downloaded: ${filename}`, 'var(--green)');
     setStatus('Upload to thecomplianceengine.com to complete reporting.', 'var(--slate)');
     showToast('✓ Report saved & downloaded!');
@@ -144,6 +168,7 @@ async function hospSaveAndDownload() {
     showToast('✗ Save failed: ' + e.message);
     if (pdfBytes) { try { downloadPDF(pdfBytes, filename || 'hospital_inspection.pdf'); } catch(_) {} }
   } finally {
+    hidePdfOverlay();
     _suppressDraftSave = false;
     if (btn) { btn.disabled = false; btn.textContent = '📄 Close Inspection, Save & Download PDF'; }
   }
@@ -155,6 +180,7 @@ async function hospSaveAndDownload() {
 async function hospPreviewPDF() {
   const btn = document.getElementById('h-preview-pdf-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
+  showPdfOverlay('Building PDF preview… this may take a minute');
   try {
     const pdfBytes = await buildHospitalPDFBytes();
     const propName = (typeof fv === 'function' ? fv('property-name') : '') || 'Hospital';
@@ -172,6 +198,7 @@ async function hospPreviewPDF() {
     if (typeof showToast === 'function') showToast('✗ Preview failed: ' + e.message);
     alert('PDF preview failed: ' + e.message);
   } finally {
+    hidePdfOverlay();
     if (btn) { btn.disabled = false; btn.textContent = '👁 Preview PDF'; }
   }
 }
@@ -188,6 +215,7 @@ async function buildHospPDF() {
   const form   = pdfDoc.getForm();
   const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const yld    = () => new Promise(r => setTimeout(r, 0));
 
   // ── Page dimensions ──
   const W = 612, PH = 792, ML = 36, PW = 540, MB = 36;
@@ -582,6 +610,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 2: PANEL & MONITORING
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Main Fire Alarm Control Panel Information');
 
   subHdr('Panel');
@@ -655,6 +684,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 3: TJC KEY SHEET — FIRE ALARM
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('TJC/CMS Testing Interval Key Sheet — Fire Alarm Systems & Components');
   const kCols = [
     { label: 'System Device Specifics',     w: PW * 0.28 },
@@ -687,6 +717,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 4: TJC KEY SHEET — SPRINKLER/OTHER
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('TJC/CMS Testing Interval Key Sheet — Sprinkler, Hood, Extinguishers, Dampers, Doors, Emergency Lights');
   tblHdr(kCols);
   document.querySelectorAll('#h-sp-key-tbody tr').forEach(row => {
@@ -710,6 +741,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 5: FA OVERALL RESULT SUMMARY
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Fire Alarm Systems Overall Test Summary — Device/System Result Summary Page (Alarm)');
   const resCols = [
     { label: 'Devices/Signals/Systems', w: PW * 0.22 },
@@ -762,6 +794,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 7: EXISTING SYSTEMS OVERVIEW
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Existing Life Safety Systems Overview Information');
 
   const ovLblW = PW * 0.43, ovBtnW = PW * 0.08, ovCntW = PW * 0.07, ovInspW = PW * 0.10, ovNoteW = PW * 0.24;
@@ -837,6 +870,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGES 8+: INDIVIDUAL DEVICE SHEETS
   // ════════════════════════════════════════════════════════════════
+  await yld();
   const stdCols6 = (c1w, c2w, c3w, c4w, c5w, c6w, c1l, c2l, c3l, c4l, c5l, c6l) => [
     { label: c1l, w: PW*c1w }, { label: c2l, w: PW*c2w }, { label: c3l, w: PW*c3w },
     { label: c4l, w: PW*c4w }, { label: c5l, w: PW*c5w }, { label: c6l, w: PW*c6w },
@@ -863,6 +897,7 @@ async function buildHospPDF() {
     [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
 
   // PAGES 11+: SMOKE DETECTORS (30/page)
+  await yld();
   const smokeAlSel = (row) => { const el = row.querySelectorAll('select')[1]; return el?.options[el.selectedIndex]?.text || 'AL'; };
   pagedDevicePage('Smoke Detectors — EC.02.03.05 EP 03', 'h-smoke-tbody',
     [{label:'Floor',w:PW*0.07},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.31},
@@ -876,6 +911,7 @@ async function buildHospPDF() {
     [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
 
   // PAGES 13+: MANUAL PULL STATIONS  (Type is a text input, not select)
+  await yld();
   pagedDevicePage('Manual Pull Stations — EC.02.03.05 EP 03', 'h-pull-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
@@ -888,6 +924,7 @@ async function buildHospPDF() {
     [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
 
   // PAGES 15+: AUDIO/VISUAL
+  await yld();
   pagedDevicePage('Audio/Visual Notification — EC.02.03.05 EP 04', 'h-av-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.12},{label:'Location',w:PW*0.51},
      {label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
@@ -901,6 +938,7 @@ async function buildHospPDF() {
 
   // ════════════════════════════════════════════════════════════════
   // PAGE 17: OFF-PREMISE MONITORING
+  await yld();
   // ════════════════════════════════════════════════════════════════
   addPage('Off Premise Monitoring — EC.02.03.05 EP 05');
   const offCols = [
@@ -925,6 +963,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 18: ELEVATOR RECALL
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Annual — Elevator Recall Testing — LS 02.01.50 EP 07');
   const bankCards = document.querySelectorAll('#h-elevator-banks > div');
   const elvCols = [
@@ -956,6 +995,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGES 19+: SUB PANEL / POWER SUPPLY
   // ════════════════════════════════════════════════════════════════
+  await yld();
   const spRows = Array.from(document.querySelectorAll('#h-subpanel-tbody tr'));
   if (spRows.length) {
     const spCols = [
@@ -986,6 +1026,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 20: ANNUNCIATORS
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Annunciator Information — LS 02.01.34 EP 10');
   const annCards = document.querySelectorAll('#h-annunciator-grid > div');
   let annIdx = 0;
@@ -1033,6 +1074,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 22: MAIN DRAIN
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Main Drain Results — EC.02.03.05 EP 09');
   const mdCols = [
     {label:'#',w:PW*0.06},{label:'System Location',w:PW*0.36},{label:'Static PSI',w:PW*0.14},
@@ -1096,6 +1138,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 30: SPRINKLER CHECKLIST
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Sprinkler Inspection Checklist — LS 02.01.35 EP 14');
 
   const spLblW = PW * 0.50, spBtnW = PW * 0.09, spNoteW = PW - spLblW - spBtnW * 3;
@@ -1162,6 +1205,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 31: INVENTORY CHANGE SHEET
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Inventory Change Sheet');
   const invCols = [
     {label:'Floor',w:PW*0.07},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.31},
@@ -1187,6 +1231,7 @@ async function buildHospPDF() {
 
   // ════════════════════════════════════════════════════════════════
   // PAGES 32+: FIRE EXTINGUISHER RESULTS
+  await yld();
   // ════════════════════════════════════════════════════════════════
   const _extUnits = [];
   for (let _ei = 1; _ei <= extUnitCount; _ei++) {
@@ -1269,6 +1314,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // LAST PAGE: DEFICIENCY INFORMATION
   // ════════════════════════════════════════════════════════════════
+  await yld();
   addPage('Deficiency Information');
 
   const defRows = document.querySelectorAll('#h-defic-tbody tr');

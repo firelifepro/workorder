@@ -525,9 +525,45 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   vertical-align: middle;
   margin-right: 6px;
 }
+/* ── PDF generation overlay ── */
+#pdf-gen-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 55, 0.75);
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+#pdf-gen-overlay.active { display: flex; }
+.pdf-big-spinner {
+  width: 64px; height: 64px;
+  border: 5px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pdf-spin .85s linear infinite;
+}
+#pdf-gen-overlay-msg {
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 600;
+  margin-top: 18px;
+  text-align: center;
+  max-width: 280px;
+  line-height: 1.5;
+  font-family: inherit;
+}
 </style>
 </head>
 <body>
+
+<!-- PDF generation overlay — shown while building/saving PDF -->
+<div id="pdf-gen-overlay">
+  <div class="pdf-big-spinner"></div>
+  <div id="pdf-gen-overlay-msg">Generating PDF…</div>
+</div>
 
 <!-- ══════════════════════════════════════════════════
      TOP BAR
