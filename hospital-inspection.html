@@ -3311,6 +3311,21 @@ function collectHospExtinguishers() {
 function restoreHospDevices(devices) {
   if (!devices) return;
 
+  // Clear all device tables first — prevents double-population if called
+  // more than once (async profile load race, inspection restart, etc.)
+  [
+    'h-supervisory-tbody','h-flow-tbody','h-tamper-tbody','h-smoke-tbody',
+    'h-heat-tbody','h-pull-tbody','h-duct-tbody','h-av-tbody',
+    'h-door-release-tbody','h-ahu-tbody','h-fdc-tbody','h-hose-valve-tbody',
+    'h-standpipe-tbody','h-valves-tbody','h-gauges-tbody','h-hydraulic-tbody',
+    'h-offprem-tbody','h-subpanel-tbody','h-battery-tbody',
+    'h-spare-heads-tbody','h-inventory-tbody','h-main-drain-tbody',
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+  const elevBanks = document.getElementById('h-elevator-banks');
+  if (elevBanks) elevBanks.innerHTML = '';
+  const annGrid = document.getElementById('h-annunciator-grid');
+  if (annGrid) annGrid.innerHTML = '';
+
   // Standard device sheets all use addHDeviceRow
   const SHEET_MAP = [
     ['h-supervisory-tbody', 'supervisory', devices.supervisory],
@@ -4529,6 +4544,37 @@ function _draftModalResume() {
   restoreFailVisuals();
   rebuildHospDeficList();
   showToast('Draft restored');
+}
+
+// ─── One-time fix: remove consecutive duplicate rows from every device tbody ───
+// Run from the browser console after the doubled data appears:  deduplicateHospDevices()
+// Then click "Save Profile" to persist the fixed data back to Drive.
+function deduplicateHospDevices() {
+  const tbodyIds = [
+    'h-supervisory-tbody','h-flow-tbody','h-tamper-tbody','h-smoke-tbody',
+    'h-heat-tbody','h-pull-tbody','h-duct-tbody','h-av-tbody',
+    'h-door-release-tbody','h-ahu-tbody','h-fdc-tbody','h-hose-valve-tbody',
+    'h-standpipe-tbody','h-valves-tbody','h-gauges-tbody','h-hydraulic-tbody',
+    'h-offprem-tbody','h-subpanel-tbody','h-battery-tbody',
+    'h-spare-heads-tbody','h-inventory-tbody','h-main-drain-tbody',
+  ];
+  const rowSig = tr => Array.from(tr.querySelectorAll('input,select,textarea')).map(el => el.value).join('|');
+  let total = 0;
+  tbodyIds.forEach(id => {
+    const tbody = document.getElementById(id);
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const seen = new Set();
+    rows.forEach(tr => {
+      const sig = rowSig(tr);
+      if (seen.has(sig)) { tr.remove(); total++; }
+      else seen.add(sig);
+    });
+  });
+  if (typeof restoreAllCounts === 'function') restoreAllCounts();
+  const msg = `Removed ${total} duplicate row${total !== 1 ? 's' : ''}. Review tables, then click Save Profile.`;
+  showToast(msg);
+  console.log('[deduplicateHospDevices]', msg);
 }
 
 function restoreFailVisuals() {
