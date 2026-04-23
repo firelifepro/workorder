@@ -216,6 +216,7 @@ async function buildHospPDF() {
   const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const yld    = () => new Promise(r => setTimeout(r, 0));
+  const yldMsg = async (msg) => { updatePdfOverlay(msg); await yld(); };
 
   // ── Page dimensions ──
   const W = 612, PH = 792, ML = 36, PW = 540, MB = 36;
@@ -443,6 +444,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 1: COVER PAGE
   // ════════════════════════════════════════════════════════════════
+  updatePdfOverlay('Building: cover page…');
   addPage();
 
   // Title banner
@@ -610,7 +612,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 2: PANEL & MONITORING
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: panel & monitoring (pg 2)…');
   addPage('Main Fire Alarm Control Panel Information');
 
   subHdr('Panel');
@@ -684,7 +686,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 3: TJC KEY SHEET — FIRE ALARM
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: TJC key sheet — fire alarm (pg 3)…');
   addPage('TJC/CMS Testing Interval Key Sheet — Fire Alarm Systems & Components');
   const kCols = [
     { label: 'System Device Specifics',     w: PW * 0.28 },
@@ -717,7 +719,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 4: TJC KEY SHEET — SPRINKLER/OTHER
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: TJC key sheet — sprinkler/other (pg 4)…');
   addPage('TJC/CMS Testing Interval Key Sheet — Sprinkler, Hood, Extinguishers, Dampers, Doors, Emergency Lights');
   tblHdr(kCols);
   document.querySelectorAll('#h-sp-key-tbody tr').forEach(row => {
@@ -741,7 +743,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 5: FA OVERALL RESULT SUMMARY
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: overall result summaries (pgs 5–6)…');
   addPage('Fire Alarm Systems Overall Test Summary — Device/System Result Summary Page (Alarm)');
   const resCols = [
     { label: 'Devices/Signals/Systems', w: PW * 0.22 },
@@ -794,7 +796,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 7: EXISTING SYSTEMS OVERVIEW
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: existing systems overview (pg 7)…');
   addPage('Existing Life Safety Systems Overview Information');
 
   const ovLblW = PW * 0.43, ovBtnW = PW * 0.08, ovCntW = PW * 0.07, ovInspW = PW * 0.10, ovNoteW = PW * 0.24;
@@ -870,7 +872,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGES 8+: INDIVIDUAL DEVICE SHEETS
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: supervisory / flow / tamper (pgs 8–10)…');
   const stdCols6 = (c1w, c2w, c3w, c4w, c5w, c6w, c1l, c2l, c3l, c4l, c5l, c6l) => [
     { label: c1l, w: PW*c1w }, { label: c2l, w: PW*c2w }, { label: c3l, w: PW*c3w },
     { label: c4l, w: PW*c4w }, { label: c5l, w: PW*c5w }, { label: c6l, w: PW*c6w },
@@ -897,7 +899,7 @@ async function buildHospPDF() {
     [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
 
   // PAGES 11+: SMOKE DETECTORS (30/page)
-  await yld();
+  await yldMsg('Building: smoke detectors (pgs 11+)…');
   const smokeAlSel = (row) => { const el = row.querySelectorAll('select')[1]; return el?.options[el.selectedIndex]?.text || 'AL'; };
   pagedDevicePage('Smoke Detectors — EC.02.03.05 EP 03', 'h-smoke-tbody',
     [{label:'Floor',w:PW*0.07},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.31},
@@ -911,7 +913,7 @@ async function buildHospPDF() {
     [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
 
   // PAGES 13+: MANUAL PULL STATIONS  (Type is a text input, not select)
-  await yld();
+  await yldMsg('Building: heat detectors / pull stations (pgs 12–13+)…');
   pagedDevicePage('Manual Pull Stations — EC.02.03.05 EP 03', 'h-pull-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.10},{label:'Location',w:PW*0.38},
      {label:'Address',w:PW*0.15},{label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
@@ -924,7 +926,7 @@ async function buildHospPDF() {
     [inp(0), inp(1), inp(2), inp(3), selOpt(0), selOpt(1)], 5);
 
   // PAGES 15+: AUDIO/VISUAL
-  await yld();
+  await yldMsg('Building: duct detectors / audio-visual (pgs 14–15+)…');
   pagedDevicePage('Audio/Visual Notification — EC.02.03.05 EP 04', 'h-av-tbody',
     [{label:'Floor',w:PW*0.09},{label:'Type',w:PW*0.12},{label:'Location',w:PW*0.51},
      {label:'Visual',w:PW*0.14},{label:'Functional',w:PW*0.14}],
@@ -938,7 +940,7 @@ async function buildHospPDF() {
 
   // ════════════════════════════════════════════════════════════════
   // PAGE 17: OFF-PREMISE MONITORING
-  await yld();
+  await yldMsg('Building: door releasing / off-premise monitoring (pgs 16–17)…');
   // ════════════════════════════════════════════════════════════════
   addPage('Off Premise Monitoring — EC.02.03.05 EP 05');
   const offCols = [
@@ -963,7 +965,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 18: ELEVATOR RECALL
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: elevator recall (pg 18)…');
   addPage('Annual — Elevator Recall Testing — LS 02.01.50 EP 07');
   const bankCards = document.querySelectorAll('#h-elevator-banks > div');
   const elvCols = [
@@ -995,7 +997,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGES 19+: SUB PANEL / POWER SUPPLY
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: sub-panel / power supply (pgs 19+)…');
   const spRows = Array.from(document.querySelectorAll('#h-subpanel-tbody tr'));
   if (spRows.length) {
     const spCols = [
@@ -1026,7 +1028,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 20: ANNUNCIATORS
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: annunciators / AHU shutdown (pgs 20–21)…');
   addPage('Annunciator Information — LS 02.01.34 EP 10');
   const annCards = document.querySelectorAll('#h-annunciator-grid > div');
   let annIdx = 0;
@@ -1074,7 +1076,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 22: MAIN DRAIN
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: main drain / FDC / hose valves / standpipes (pgs 22–25)…');
   addPage('Main Drain Results — EC.02.03.05 EP 09');
   const mdCols = [
     {label:'#',w:PW*0.06},{label:'System Location',w:PW*0.36},{label:'Static PSI',w:PW*0.14},
@@ -1138,7 +1140,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 30: SPRINKLER CHECKLIST
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: sprinkler checklist (pg 30)…');
   addPage('Sprinkler Inspection Checklist — LS 02.01.35 EP 14');
 
   const spLblW = PW * 0.50, spBtnW = PW * 0.09, spNoteW = PW - spLblW - spBtnW * 3;
@@ -1205,7 +1207,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // PAGE 31: INVENTORY CHANGE SHEET
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: inventory change sheet (pg 31)…');
   addPage('Inventory Change Sheet');
   const invCols = [
     {label:'Floor',w:PW*0.07},{label:'Type',w:PW*0.09},{label:'Location',w:PW*0.31},
@@ -1231,7 +1233,7 @@ async function buildHospPDF() {
 
   // ════════════════════════════════════════════════════════════════
   // PAGES 32+: FIRE EXTINGUISHER RESULTS
-  await yld();
+  await yldMsg('Building: fire extinguishers (pgs 32+)…');
   // ════════════════════════════════════════════════════════════════
   const _extUnits = [];
   for (let _ei = 1; _ei <= extUnitCount; _ei++) {
@@ -1314,7 +1316,7 @@ async function buildHospPDF() {
   // ════════════════════════════════════════════════════════════════
   // LAST PAGE: DEFICIENCY INFORMATION
   // ════════════════════════════════════════════════════════════════
-  await yld();
+  await yldMsg('Building: deficiencies / signatures (final pages)…');
   addPage('Deficiency Information');
 
   const defRows = document.querySelectorAll('#h-defic-tbody tr');
