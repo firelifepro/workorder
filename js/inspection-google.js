@@ -1,6 +1,36 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // GOOGLE AUTH
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Dispatches to whichever status function the host page defines.
+// inspection.html uses setStatus(msg, cls); hospital uses setConnStatus(state, msg).
+function _updateConnStatus(state, msg) {
+  if (typeof setStatus === 'function') setStatus(msg, state);
+  else if (typeof setConnStatus === 'function') setConnStatus(state, msg);
+}
+
+// Schedules a silent token refresh 5 minutes before the current token expires,
+// so the 401 retry path in googleFetch is never needed for active sessions.
+function _scheduleTokenRefresh() {
+  const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+  const delay  = expiry - Date.now() - 5 * 60 * 1000;
+  if (delay <= 0 || !tokenClient) return;
+  setTimeout(() => {
+    if (!tokenClient) return;
+    const savedCb = tokenClient.callback;
+    tokenClient.callback = (resp) => {
+      tokenClient.callback = savedCb;
+      if (resp.error) return;
+      accessToken = resp.access_token;
+      localStorage.setItem('flips_access_token', accessToken);
+      localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+      _updateConnStatus('ok', '✓ Connected');
+      _scheduleTokenRefresh();
+    };
+    tokenClient.requestAccessToken({ prompt: '' });
+  }, delay);
+}
+
 function initGoogle() {
   const apiKey   = document.getElementById('api-key').value.trim();
   const clientId = document.getElementById('client-id').value.trim();
@@ -17,6 +47,7 @@ function initGoogle() {
         localStorage.setItem('flips_access_token', accessToken);
         localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
         setStatus('✓ Connected', 'ok');
+        _scheduleTokenRefresh();
         loadSheet();
       },
       error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
@@ -35,17 +66,19 @@ async function googleFetch(url, method = 'GET', body = null) {
   let res = await fetch(url, makeOpts());
   if (res.status === 401) {
     if (!tokenClient) {
-      setStatus('⚠ Session expired — reconnect', 'err');
+      _updateConnStatus('err', '⚠ Session expired — reconnect');
       document.getElementById('conn-drawer').classList.add('open');
       throw new Error('Session expired — please reconnect Google');
     }
-    toast('⏳ Reconnecting…');
+    if (typeof toast === 'function') toast('⏳ Reconnecting…');
     await new Promise((resolve, reject) => {
       tokenClient.callback = async (resp) => {
         if (resp.error) { reject(new Error(resp.error)); return; }
         accessToken = resp.access_token;
         localStorage.setItem('flips_access_token', accessToken);
         localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        _updateConnStatus('ok', '✓ Connected');
+        _scheduleTokenRefresh();
         resolve();
       };
       tokenClient.requestAccessToken({ prompt: '' });
@@ -95,7 +128,7 @@ async function loadSheet(forceRefresh = false) {
     buildDropdown();
     toast('✓ Loaded ' + Object.keys(clientData).length + ' properties');
   } catch(e) {
-    setStatus('⚠ ' + e.message, 'err');
+    _updateConnStatus('err', '⚠ ' + e.message);
   } finally {
     document.getElementById('prop-loading')?.style && (document.getElementById('prop-loading').style.display = 'none');
   }
@@ -109,6 +142,29 @@ function buildDropdown() {
     o.value = name; o.textContent = name;
     sel.appendChild(o);
   });
+  // Dropdown rebuild always resets to placeholder — clear any browser-restored
+  // field values so they don't look like a real property selection.
+  if (!sel.value) _clearPropertyFields();
+}
+
+function _clearPropertyFields() {
+  ['property-name','service-address','city-state-zip','client-company',
+   'property-contact-name','property-contact-email','primary-name'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  _updatePropertyBadge('');
+}
+
+function _updatePropertyBadge(propName) {
+  const badge = document.getElementById('prop-selected-badge');
+  if (!badge) return;
+  if (propName) {
+    badge.textContent = '✓ ' + propName;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 function filterPropDropdown(query) {
@@ -144,7 +200,7 @@ function clearPropSearch() {
 
 function onPropertySelect() {
   const propName = document.getElementById('property-select').value;
-  if (!propName || !clientData[propName]) return;
+  if (!propName || !clientData[propName]) { _updatePropertyBadge(''); return; }
   const d = clientData[propName];
   const fill = (id, ...keys) => {
     const el = document.getElementById(id);
@@ -178,6 +234,7 @@ function onPropertySelect() {
   }
   fill('property-contact-name', 'property manager','contact name');
   fill('property-contact-email', 'contact email','email','e-mail');
+  _updatePropertyBadge(propName);
 
   // Extract FLPS account number for stable Drive profile lookup
   const acctHeader = Object.keys(d).find(h => h.includes('acct') || h.includes('account'));

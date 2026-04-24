@@ -696,6 +696,7 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
             <select id="property-select" onchange="onPropertySelect()" style="border:1.5px solid var(--border);border-radius:7px;padding:9px 11px;font-size:0.88rem;font-family:inherit;color:var(--navy);outline:none;width:100%;background:white;margin-top:5px;">
               <option value="">— Connect Google to load properties —</option>
             </select>
+            <div id="prop-selected-badge" style="display:none;margin-top:6px;font-size:0.75rem;font-weight:600;color:#166534;background:#dcfce7;border:1px solid #bbf7d0;border-radius:5px;padding:3px 10px;"></div>
           </div>
           <div class="field-group">
             <label>Building / Facility Name</label>
@@ -2447,6 +2448,7 @@ function initGoogle() {
         localStorage.setItem('flips_access_token', accessToken);
         localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
         setConnStatus('ok', '✓ Connected');
+        _scheduleTokenRefresh();
         toggleDrawer();
         await loadSheet();
         showToast('✅ Google connected');
@@ -4709,7 +4711,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update start button
   updateHospStartButton();
 
-  // Restore saved credentials and silently reconnect if token still valid
+  // Restore saved credentials and silently reconnect.
   // Uses same localStorage keys as inspection-google.js (flips_api_key, etc.)
   const _savedApiKey   = localStorage.getItem('flips_api_key');
   const _savedClientId = localStorage.getItem('flips_client_id');
@@ -4721,6 +4723,26 @@ document.addEventListener('DOMContentLoaded', () => {
     accessToken = _savedToken;
     setConnStatus('ok', '✓ Connected');
     loadSheet();
+    _scheduleTokenRefresh();
+  } else if (_savedApiKey && _savedClientId) {
+    // Token expired but credentials are saved — try silent reconnect (no popup).
+    setConnStatus('', '⏳ Reconnecting…');
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: _savedClientId, scope: SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { setConnStatus('warn', 'Not connected'); return; }
+          accessToken = resp.access_token;
+          localStorage.setItem('flips_access_token', accessToken);
+          localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+          setConnStatus('ok', '✓ Connected');
+          loadSheet();
+          _scheduleTokenRefresh();
+        },
+        error_callback: () => setConnStatus('warn', 'Not connected')
+      });
+      tokenClient.requestAccessToken({ prompt: '' });
+    } catch(e) { setConnStatus('warn', 'Not connected'); }
   }
 
   // Ensure draft modal DOM is ready (check happens in onPropertySelect, not here)
