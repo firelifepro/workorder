@@ -372,6 +372,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <a href="clients.html">👥 Client Management</a>
 	    <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
       <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
+      <a href="estimate.html">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
     </div>
   </div>
   <h1>🔥 Fire Life Protection – Work Order Form</h1>
@@ -393,6 +395,13 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     <div class="conn-divider"></div>
     <button class="conn-btn grey" id="test-conn-btn" onclick="testScriptConnection()" title="Ping Apps Script and write a test log row">🔌 Test Schedule Connection</button>
   </div>
+</div>
+
+<!-- ESTIMATE PRE-FILL BANNER -->
+<div id="estimate-banner" style="display:none;background:#fffbdd;border:2px solid #f0c040;padding:12px 16px;margin:8px;border-radius:6px;font-size:0.9rem;">
+  <strong>⚡ Estimate Pre-fill Available</strong> — <span id="estimate-banner-text"></span>
+  <button onclick="loadFromEstimate()" style="margin-left:12px;background:#2e7d50;color:white;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;">Load Estimate</button>
+  <button onclick="dismissEstimateBanner()" style="margin-left:6px;background:#888;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">Dismiss</button>
 </div>
 
 <!-- SETUP GUIDE (commented out — uncomment if needed for first-time setup)
@@ -903,6 +912,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 <!-- Google Identity Services only - no gapi needed -->
 <script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-shared.js"></script>
 
 <script>
 
@@ -918,629 +928,21 @@ document.addEventListener('click', e => {
 });
 
 // ─────────────────────────────────────────────────────────
-// CONFIG
+// CONFIG  (shared vars — accessToken, tokenClient, clientData, API_KEY_VAL,
+//          SHEET_ID, SHEET_GID — are in js/flips-shared.js)
 // ─────────────────────────────────────────────────────────
-const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 
 // ── Apps Script (sheet logger) ───────────────────────────────────────────────
 // URL and secret are Cloudflare env vars (APPS_SCRIPT_URL, APPS_SCRIPT_SECRET).
 // The worker at /api/apps-script injects them server-side — no secrets in client code.
 
 // ── Log verbosity ────────────────────────────────────────────────────────────
-// 'NORMAL'  — only logs WO/invoice creation and errors (production default)
-// 'VERBOSE' — logs every step (use when debugging a specific issue)
-// Change this constant and redeploy, or use browser console to override:
-//   flipsLogLevel = 'VERBOSE'  /  flipsLogLevel = 'NORMAL'
 let flipsLogLevel = 'NORMAL';
-const SHEET_GID = '1899870347';
 const TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc';
 const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets.readonly';
 
-let accessToken = null;
-let tokenClient = null;
-let clientData  = {};
-let API_KEY_VAL = '';  // set on connect
-
-// ─────────────────────────────────────────────────────────
-// GOOGLE AUTH
-// ─────────────────────────────────────────────────────────
-async function initGoogle() {
-  const apiKey   = document.getElementById('api-key').value.trim();
-  const clientId = document.getElementById('client-id').value.trim();
-  if (!apiKey || !clientId) { toast('⚠ Enter both API Key and Client ID'); return; }
-
-  localStorage.setItem('flips_api_key', apiKey);
-  localStorage.setItem('flips_client_id', clientId);
-  API_KEY_VAL = apiKey;
-  setStatus('conn-status', 'Connecting…', '');
-
-  // No gapi — use Google Identity Services token client directly
-  try {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: SCOPES,
-      callback: async (resp) => {
-        if (resp.error) {
-          setStatus('conn-status', '✗ ' + resp.error, 'err');
-          console.error('Token error:', resp);
-          return;
-        }
-        accessToken = resp.access_token;
-        // Cache token with expiry (tokens last ~1 hour)
-        localStorage.setItem('flips_access_token', accessToken);
-        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
-        setStatus('conn-status', '✓ Connected', 'ok');
-        document.getElementById('refresh-props-btn').style.display = 'inline-block';
-        await loadSheet();
-      },
-      error_callback: (err) => {
-        setStatus('conn-status', '✗ ' + (err.message || err.type), 'err');
-        console.error('OAuth error:', err);
-      }
-    });
-    tokenClient.requestAccessToken({ prompt: '' });
-  } catch(e) {
-    setStatus('conn-status', '✗ ' + e.message, 'err');
-    console.error('initGoogle error:', e);
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────
-// LOAD CLIENT SHEET
-// Tries 3 strategies in order:
-//  1. Sheets API v4  (native Google Sheets)
-//  2. Drive CSV export  (uploaded .xlsx not yet converted)
-//  3. Clear error telling user to convert the file
-// ─────────────────────────────────────────────────────────
-async function loadSheet(forceRefresh = false) {
-  // Cache client list in sessionStorage for 30 min — avoids two API calls on every page open.
-  // Pass forceRefresh=true (or click the Refresh button) to bypass.
-  const CACHE_KEY = 'flips_client_cache';
-  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-  if (!forceRefresh) {
-    try {
-      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
-      if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
-        clientData = cached.data;
-        buildDropdown();
-        console.log('[loadSheet] Loaded', Object.keys(clientData).length, 'properties from session cache');
-        return;
-      }
-    } catch(_) { /* bad cache — fall through to fetch */ }
-  }
-
-  document.getElementById('prop-loading').style.display = 'block';
-  try {
-
-    // ── Strategy 1: Sheets API (native Google Sheets only) ──
-    const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`;
-    const metaRes = await googleFetch(sheetsUrl);
-
-    if (metaRes.ok) {
-      console.log('✓ Native Google Sheet — using Sheets API');
-      const metaJson = await metaRes.json();
-      let tabName = metaJson.sheets[0].properties.title;
-      for (const s of metaJson.sheets) {
-        if (String(s.properties.sheetId) === String(SHEET_GID)) { tabName = s.properties.title; break; }
-      }
-      const valRes = await googleFetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`
-      );
-      if (!valRes.ok) throw new Error('Sheets values error ' + valRes.status);
-      const valJson = await valRes.json();
-      return parseRows(valJson.values || []);
-    }
-
-    // ── Strategy 2: Drive CSV export (works for .xlsx uploaded to Drive) ──
-    console.log('Sheets API returned ' + metaRes.status + ', trying Drive CSV export...');
-    const csvRes = await googleFetch(
-      `https://www.googleapis.com/drive/v3/files/${SHEET_ID}/export?mimeType=text/csv`
-    );
-
-    if (csvRes.ok) {
-      console.log('✓ Drive CSV export succeeded');
-      const csvText = await csvRes.text();
-      return parseRows(parseCSV(csvText));
-    }
-
-    // ── Strategy 3: Nothing worked ──
-    const errBody = await metaRes.json().catch(() => ({}));
-    const code = errBody.error?.code;
-    if (code === 400 || errBody.error?.status === 'FAILED_PRECONDITION') {
-      throw new Error(
-        'Your spreadsheet is an uploaded Excel file, not a native Google Sheet. ' +
-        'Fix: open it in Google Drive, click File → Save as Google Sheets, ' +
-        'then paste the new URL here and update the SHEET_ID in the code.'
-      );
-    }
-    throw new Error('Could not read spreadsheet (status ' + metaRes.status + '): ' + (errBody.error?.message || 'unknown error'));
-
-  } catch(e) {
-    setStatus('conn-status', '⚠ ' + e.message, 'err');
-    toast('Client list failed — see top bar for details');
-    console.error('loadSheet error:', e);
-  } finally {
-    document.getElementById('prop-loading').style.display = 'none';
-  }
-}
-
-function parseRows(rows) {
-  if (!rows || rows.length < 2) { toast('Sheet appears empty'); return; }
-  const headers = rows[0].map(h => (h || '').trim().toLowerCase());
-  clientData = {};
-  for (let i = 1; i < rows.length; i++) {
-    const obj = {};
-    headers.forEach((h, idx) => { obj[h] = (rows[i][idx] || '').trim(); });
-    // Key the dropdown by Property Name specifically
-    const nameKey = findKey(headers, ['property name','property','site name','site','name']);
-    const label = obj[nameKey] || `Row ${i + 1}`;
-    if (label.trim()) clientData[label] = obj;
-  }
-  // Cache for 30 min so next page load skips the two API calls
-  try { sessionStorage.setItem('flips_client_cache', JSON.stringify({ ts: Date.now(), data: clientData })); } catch(_) {}
-  buildDropdown();
-}
-
-function parseCSV(text) {
-  // Simple but robust: split lines, then split by comma respecting quotes
-  return text.split(/\r?\n/).filter(l => l.trim()).map(line => {
-    const cols = [];
-    let cur = '', q = false;
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"' && !q) { q = true; continue; }
-      if (line[i] === '"' && q && line[i+1] === '"') { cur += '"'; i++; continue; }
-      if (line[i] === '"' && q) { q = false; continue; }
-      if (line[i] === ',' && !q) { cols.push(cur.trim()); cur = ''; continue; }
-      cur += line[i];
-    }
-    cols.push(cur.trim());
-    return cols;
-  });
-}
-function findKey(headers, candidates) {
-  for (const c of candidates) {
-    const h = headers.find(h => h === c || h.includes(c));
-    if (h) return h;
-  }
-  return headers[0];
-}
-
-function buildDropdown() {
-  const sel = document.getElementById('property-select');
-  sel.innerHTML = '<option value="">— Select property —</option>';
-  Object.keys(clientData).sort().forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  });
-  toast('✓ Loaded ' + Object.keys(clientData).length + ' properties');
-  // Clear any stale search when list reloads
-  clearPropertySearch();
-}
-
-function filterPropertyDropdown(query) {
-  const sel   = document.getElementById('property-select');
-  const clear = document.getElementById('prop-search-clear');
-  const q = query.trim().toLowerCase();
-  clear.style.display = q ? 'block' : 'none';
-  const prevVal = sel.value;
-
-  // Rebuild options filtered by query
-  sel.innerHTML = '';
-  const names = Object.keys(clientData).sort();
-  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = q ? `— ${matches.length} match${matches.length !== 1 ? 'es' : ''} —` : '— Select property —';
-  sel.appendChild(placeholder);
-  matches.forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  });
-
-  // Auto-select if exactly one match
-  if (matches.length === 1) {
-    sel.value = matches[0];
-    if (matches[0] !== prevVal) onPropertySelect();
-  } else if (prevVal && matches.includes(prevVal)) {
-    sel.value = prevVal; // keep existing selection visible when search widens
-  }
-}
-
-function clearPropertySearch() {
-  const input = document.getElementById('prop-search');
-  const clear = document.getElementById('prop-search-clear');
-  if (!input) return;
-  input.value = '';
-  clear.style.display = 'none';
-  filterPropertyDropdown('');
-  input.focus();
-}
-
-// ─────────────────────────────────────────────────────────
-// AUTO-POPULATE ON SELECT
-// ─────────────────────────────────────────────────────────
-function onPropertySelect() {
-  const propName = document.getElementById('property-select').value;
-  if (!propName || !clientData[propName]) return;
-  const d = clientData[propName];
-
-  function fill(id, ...keys) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    for (const k of keys) {
-      const match = Object.keys(d).find(h => h === k || h.includes(k));
-      if (match && d[match]) { el.value = d[match]; return; }
-    }
-    el.value = '';
-  }
-
-  // Standard fills
-  fill('client-company',  'property management','management company','management','client','company');
-  fill('flps-acct-num',   'flps internal account number','internal account number','account number','account no','acct');
-  fill('billing-email',   'billing email');
-  fill('access-info',     'building access entry info','access entry info','access','entry','lockbox','gate code','access info','entry info');
-  fill('monitoring-co',   'monitoring company','alarm company','monitoring');
-
-  // ── Service Address + City/State/Zip parsing ──────────────────
-  // Get the raw address field (may contain full address with city/state/zip inline)
-  const addrKey = Object.keys(d).find(h =>
-    ['address','service address','street address','street'].some(k => h.includes(k))
-  );
-  const rawAddr = addrKey ? d[addrKey] : '';
-
-  // Try to find a dedicated city/state/zip column first
-  const csvKey = Object.keys(d).find(h =>
-    ['city','city/state','city / state','city, state','zip','city state zip'].some(k => h.includes(k))
-  );
-  const rawCsv = csvKey ? d[csvKey] : '';
-
-  if (rawAddr) {
-    // Split on newlines first (some cells have street on line 1, city/state/zip on line 2)
-    const lines = rawAddr.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
-    if (lines.length >= 2) {
-      // Multi-line: first line = street, last line = city/state/zip
-      document.getElementById('service-address').value = lines[0];
-      document.getElementById('city-state-zip').value  = rawCsv || lines[lines.length - 1];
-    } else {
-      // Single line — try to split on last comma that precedes a state abbreviation pattern
-      // e.g. "2620 W. Bellview Ave, Littleton, CO 80123"
-      const commaIdx = rawAddr.search(/,\s*[A-Z]{2}\s+\d{5}/);
-      if (commaIdx > 0) {
-        // Find the comma before the state
-        const prevComma = rawAddr.lastIndexOf(',', commaIdx - 1);
-        const splitAt = prevComma > 0 ? prevComma : commaIdx;
-        document.getElementById('service-address').value = rawAddr.slice(0, splitAt).trim();
-        document.getElementById('city-state-zip').value  = rawCsv || rawAddr.slice(splitAt + 1).trim();
-      } else if (rawAddr.includes(',')) {
-        // Fallback: split at last comma
-        const last = rawAddr.lastIndexOf(',');
-        document.getElementById('service-address').value = rawAddr.slice(0, last).trim();
-        document.getElementById('city-state-zip').value  = rawCsv || rawAddr.slice(last + 1).trim();
-      } else {
-        document.getElementById('service-address').value = rawAddr;
-        document.getElementById('city-state-zip').value  = rawCsv || '';
-      }
-    }
-  } else {
-    document.getElementById('service-address').value = '';
-    document.getElementById('city-state-zip').value  = rawCsv || '';
-  }
-
-  // ── Property Contact parsing ──────────────────────────────────
-  // Sheet has these relevant columns:
-  //   "Property Manager"          — name only (e.g. "Mark Best")
-  //   "Property Manger Contact info" — combined name+email+phone cell
-  //   "Billing Email"             — billing only, not contact email
-  //
-  // Strategy:
-  //   1. Prefer a "contact info" style column (combined) for regex extraction
-  //   2. Fall back to dedicated phone/email columns if they exist
-  //   3. Use "property manager" column for name if no combined cell found
-
-  const reEmail = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
-  const rePhone = /\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/;
-
-  const keys = Object.keys(d);
-
-  // 1. Find combined "contact info" column first (highest priority)
-  const contactInfoKey = keys.find(h =>
-    h.includes('contact info') || h.includes('contact information')
-  );
-
-  // 2. Find dedicated phone column (not billing, not sub-contractor)
-  const phoneKey = keys.find(h =>
-    ['contact phone','phone number','mobile','cell','phone'].some(k => h.includes(k))
-    && !h.includes('billing') && !h.includes('sub') && !h.includes('info')
-  );
-
-  // 3. Find dedicated email column (not billing)
-  const emailKey = keys.find(h =>
-    ['contact email','e-mail','email address','email'].some(k => h.includes(k))
-    && !h.includes('billing') && !h.includes('sub') && !h.includes('info')
-  );
-
-  // 4. Find name-only column as fallback (e.g. "property manager")
-  const nameOnlyKey = keys.find(h =>
-    ['property contact','contact name','property manager','on-site contact'].some(k => h.includes(k))
-    && !h.includes('info') && !h.includes('phone') && !h.includes('email')
-    && !h.includes('billing') && !h.includes('company') && !h.includes('management')
-  );
-
-  const rawCombined = contactInfoKey ? d[contactInfoKey] : '';
-  const rawPhone    = phoneKey       ? d[phoneKey]       : '';
-  const rawEmail    = emailKey       ? d[emailKey]       : '';
-  const rawNameOnly = nameOnlyKey    ? d[nameOnlyKey]    : '';
-
-  // Extract email and phone from combined cell
-  const emailFromCell = rawCombined ? (rawCombined.match(reEmail) || [])[0] || '' : '';
-  const phoneFromCell = rawCombined ? (rawCombined.match(rePhone) || [])[0] || '' : '';
-
-  // Dedicated columns win; fall back to combined cell extraction
-  const resolvedPhone = rawPhone || phoneFromCell;
-  const resolvedEmail = rawEmail || emailFromCell;
-
-  // Name: strip email/phone/role from first line of combined cell, or use name-only column
-  let resolvedName = '';
-  const nameSource = rawCombined || rawNameOnly;
-  if (nameSource) {
-    const firstLine = nameSource.split(/[\r\n]+/)[0].trim();
-    resolvedName = firstLine
-      .replace(reEmail, '')
-      .replace(rePhone, '')
-      .replace(/\s*\([^)]*\)\s*/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (!resolvedName) resolvedName = nameSource.replace(/[\r\n]+/g, ' ').trim();
-  }
-
-  document.getElementById('property-contact').value = resolvedName;
-  document.getElementById('contact-phone').value    = resolvedPhone;
-  document.getElementById('contact-email').value    = resolvedEmail;
-
-  // ── Capture Bill To address from sheet ───────────────────────────────────
-  const billToKey = Object.keys(d).find(h => h.includes('bill to') || h.includes('invoice info'));
-  const billToVal = billToKey ? d[billToKey] : '';
-  // Store in a hidden field so collectForm can read it
-  let billToHidden = document.getElementById('bill-to-address');
-  if (!billToHidden) {
-    billToHidden = document.createElement('input');
-    billToHidden.type = 'hidden';
-    billToHidden.id = 'bill-to-address';
-    document.body.appendChild(billToHidden);
-  }
-  billToHidden.value = billToVal;
-}
-
-// ─────────────────────────────────────────────────────────
-// EXPENSE CALC
-
-// ─────────────────────────────────────────────────────────
-// MARKUP HELPERS
-// ─────────────────────────────────────────────────────────
-function getMarkupPct() {
-  return (parseFloat(document.getElementById('markup-pct')?.value) || 0) / 100;
-}
-
-function setMarkupAndTotal(expenseId, markupId, totalId) {
-  const expense = parseFloat(document.getElementById(expenseId)?.value) || 0;
-  const markup  = expense * getMarkupPct();
-  const elM = document.getElementById(markupId);
-  const elT = document.getElementById(totalId);
-  if (elM) elM.value = markup.toFixed(2);
-  if (elT) elT.value = (expense + markup).toFixed(2);
-}
-
-function onExpenseChange(prefix) {
-  setMarkupAndTotal(prefix + '-expense', prefix + '-markup', prefix + '-total');
-  calcTotal();
-}
-
-function recalcAllMarkups() {
-  setMarkupAndTotal('sub-head-expense', 'sub-head-markup', 'sub-head-total');
-  document.querySelectorAll('[id^="sub-row-"]').forEach(row => {
-    const n = row.id.replace('sub-row-', '');
-    setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
-  });
-  setMarkupAndTotal('mat-head-expense', 'mat-head-markup', 'mat-head-total');
-  document.querySelectorAll('[id^="mat-row-"]').forEach(row => {
-    const n = row.id.replace('mat-row-', '');
-    setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
-  });
-  setMarkupAndTotal('misc-expense', 'misc-markup', 'misc-total');
-  // Labor, trip, compliance: NOT auto-markup — user enters manually
-  calcTotal();
-}
-
-function onSubHeadExpenseChange() {
-  setMarkupAndTotal('sub-head-expense', 'sub-head-markup', 'sub-head-total');
-  calcTotal();
-}
-
-function onMatHeadExpenseChange() {
-  setMarkupAndTotal('mat-head-expense', 'mat-head-markup', 'mat-head-total');
-  calcTotal();
-}
-
-function onLaborMarkupChange(n) {
-  const expense = parseFloat(document.getElementById('labor' + n + '-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value)  || 0;
-  const totEl   = document.getElementById('labor' + n + '-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-function onTripMarkupChange() {
-  const expense = parseFloat(document.getElementById('trip-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('trip-markup')?.value)  || 0;
-  const totEl   = document.getElementById('trip-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-function onComplianceExpenseChange() {
-  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
-  const totEl   = document.getElementById('compliance-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-function onComplianceMarkupChange() {
-  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
-  const totEl   = document.getElementById('compliance-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-// ─────────────────────────────────────────────────────────
-// DYNAMIC SUB-CONTRACTOR ROWS
-// ─────────────────────────────────────────────────────────
-let subRowCount = 0;
-
-function addSubRow(labelVal, expenseVal) {
-  const displayNum = document.querySelectorAll('[id^="sub-row-"]').length + 2;
-  const n = ++subRowCount;
-  const tr = document.createElement('tr');
-  tr.id = 'sub-row-' + n;
-  tr.innerHTML =
-    '<td class="exp-label" style="white-space:nowrap;padding-right:4px;">' +
-    '<span style="font-size:0.8rem;color:#555;">Sub-Contractor/Vendor ' + displayNum + '</span>&nbsp;' +
-    '<button id="sub-minus-' + n + '" type="button" onclick="removeSubRow(' + n + ')" title="Remove this Sub-Contractor/Vendor row" ' +
-    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
-    '<td class="value-cell"><input type="text" id="sub-label-' + n + '" value="' + (labelVal||'') + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
-    '<td class="value-cell"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-expense-' + n + '" value="' + (expenseVal||'') + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onSubExpenseChange(' + n + ')"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
-  // Insert after the last sub-row, or after the header row if none exist
-  const existing = [...document.querySelectorAll('[id^="sub-row-"]')];
-  const anchor = existing.length > 0 ? existing[existing.length - 1] : document.getElementById('sub-add-row');
-  anchor.insertAdjacentElement('afterend', tr);
-  updateSubRowMinus();
-  if (expenseVal) setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
-  calcTotal();
-}
-
-function updateSubRowMinus() {
-  document.querySelectorAll('[id^="sub-row-"]').forEach(tr => {
-    const btn = document.getElementById('sub-minus-' + tr.id.replace('sub-row-', ''));
-    if (btn) btn.style.visibility = 'visible';
-  });
-}
-
-function onSubExpenseChange(n) {
-  setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
-  calcTotal();
-}
-
-function removeSubRow(idx) {
-  const tr = document.getElementById('sub-row-' + idx);
-  if (tr) tr.remove();
-  calcTotal();
-}
-
-function getSubRows() {
-  const rows = [];
-  // Permanent first row
-  rows.push({
-    label:   document.getElementById('sub-head-label')?.value?.trim()        || '',
-    expense: parseFloat(document.getElementById('sub-head-expense')?.value)  || 0,
-    markup:  parseFloat(document.getElementById('sub-head-markup')?.value)   || 0,
-    total:   parseFloat(document.getElementById('sub-head-total')?.value)    || 0,
-  });
-  // Additional dynamic rows
-  document.querySelectorAll('[id^="sub-row-"]').forEach(tr => {
-    const n = tr.id.replace('sub-row-', '');
-    rows.push({
-      label:   document.getElementById('sub-label-'   + n)?.value?.trim()       || '',
-      expense: parseFloat(document.getElementById('sub-expense-' + n)?.value)   || 0,
-      markup:  parseFloat(document.getElementById('sub-markup-'  + n)?.value)   || 0,
-      total:   parseFloat(document.getElementById('sub-total-'   + n)?.value)   || 0,
-    });
-  });
-  return rows;
-}
-
-// ─────────────────────────────────────────────────────────
-// DYNAMIC MATERIALS ROWS
-// ─────────────────────────────────────────────────────────
-let matRowCount = 0;
-
-function addMatRow(descVal, qtyVal, expenseVal) {
-  const displayNum = document.querySelectorAll('[id^="mat-row-"]').length + 2;
-  const n = ++matRowCount;
-  const tr = document.createElement('tr');
-  tr.id = 'mat-row-' + n;
-  tr.innerHTML =
-    '<td class="exp-label" style="white-space:nowrap;padding-right:4px;">' +
-    '<span style="font-size:0.8rem;color:#555;">Materials ' + displayNum + '</span>&nbsp;' +
-    '<button id="mat-minus-' + n + '" type="button" onclick="removeMatRow(' + n + ')" title="Remove this Materials row" ' +
-    'style="background:#fde8e8;border:1px solid #e53935;color:#e53935;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:0.75rem;">−</button></td>' +
-    '<td class="value-cell"><input type="text" id="mat-desc-' + n + '" value="' + (descVal||'') + '" style="width:100%;"></td>' +
-    '<td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty-' + n + '" value="' + (qtyVal||'') + '" min="0" step="1" style="text-align:center;"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="mat-expense-' + n + '" value="' + (expenseVal||'') + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onMatExpenseChange(' + n + ')"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="mat-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="mat-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
-  // Insert after the last mat-row, or after the header row if none exist
-  const existing = [...document.querySelectorAll('[id^="mat-row-"]')];
-  const anchor = existing.length > 0 ? existing[existing.length - 1] : document.getElementById('mat-add-row');
-  anchor.insertAdjacentElement('afterend', tr);
-  updateMatRowMinus();
-  if (expenseVal) setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
-  calcTotal();
-}
-
-function updateMatRowMinus() {
-  document.querySelectorAll('[id^="mat-row-"]').forEach(tr => {
-    const btn = document.getElementById('mat-minus-' + tr.id.replace('mat-row-', ''));
-    if (btn) btn.style.visibility = 'visible';
-  });
-}
-
-function onMatExpenseChange(n) {
-  setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
-  calcTotal();
-}
-
-function removeMatRow(idx) {
-  const tr = document.getElementById('mat-row-' + idx);
-  if (tr) tr.remove();
-  calcTotal();
-}
-
-function getMatRows() {
-  const rows = [];
-  // Permanent first row
-  rows.push({
-    desc:    document.getElementById('mat-head-desc')?.value?.trim()         || '',
-    qty:     document.getElementById('mat-head-qty')?.value?.trim()          || '',
-    expense: parseFloat(document.getElementById('mat-head-expense')?.value)  || 0,
-    markup:  parseFloat(document.getElementById('mat-head-markup')?.value)   || 0,
-    total:   parseFloat(document.getElementById('mat-head-total')?.value)    || 0,
-  });
-  // Additional dynamic rows
-  document.querySelectorAll('[id^="mat-row-"]').forEach(tr => {
-    const n = tr.id.replace('mat-row-', '');
-    rows.push({
-      desc:    document.getElementById('mat-desc-'    + n)?.value?.trim()      || '',
-      qty:     document.getElementById('mat-qty-'     + n)?.value?.trim()      || '',
-      expense: parseFloat(document.getElementById('mat-expense-' + n)?.value)  || 0,
-      markup:  parseFloat(document.getElementById('mat-markup-'  + n)?.value)  || 0,
-      total:   parseFloat(document.getElementById('mat-total-'   + n)?.value)  || 0,
-    });
-  });
-  return rows;
-}
+// loadSheet, parseRows, parseCSV, findKey, buildDropdown, filterPropertyDropdown,
+// clearPropertySearch, onPropertySelect — moved to js/flips-shared.js
 
 // ─────────────────────────────────────────────────────────
 // COMPLIANCE REPORT
@@ -1576,20 +978,6 @@ function hasInspectionChecked() {
 // ─────────────────────────────────────────────────────────
 // FLAT RATE
 // ─────────────────────────────────────────────────────────
-function setGrandTotalStyle(isFixed) {
-  const el = document.getElementById('grand-total');
-  if (!el) return;
-  el.style.color      = isFixed ? '#c0392b' : '';
-  el.style.fontWeight = isFixed ? '900'     : '700';
-  const lbl = document.getElementById('grand-total-label');
-  if (lbl) {
-    lbl.textContent    = isFixed ? '★ FIXED RATE =' : 'Total to Invoice =';
-    lbl.style.color    = isFixed ? '#c0392b' : '';
-    lbl.style.fontWeight = isFixed ? '900' : '';
-  }
-  const origRow = document.getElementById('original-total-row');
-  if (origRow) origRow.style.display = isFixed ? '' : 'none';
-}
 function onFlatRateChange() {
   const cb    = document.getElementById('flat-rate-cb');
   const amtEl = document.getElementById('flat-rate-amount');
@@ -1603,59 +991,6 @@ function onFlatRateChange() {
 function onFlatRateAmountChange() {
   const amt = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
   document.getElementById('grand-total').value = amt.toFixed(2);
-}
-
-// ─────────────────────────────────────────────────────────
-function calcTotal() {
-  const subRows   = getSubRows ? getSubRows() : [];
-  const subAmt    = subRows.reduce((s, r) => s + r.total, 0);
-  const matRows   = getMatRows ? getMatRows() : [];
-  const matAmt    = matRows.reduce((s, r) => s + r.total, 0);
-  const labor1Amt = parseFloat(document.getElementById('labor1-total')?.value) || 0;
-  const labor2Amt = parseFloat(document.getElementById('labor2-total')?.value) || 0;
-  const tripAmt   = parseFloat(document.getElementById('trip-total')?.value)   || 0;
-  const miscAmt   = parseFloat(document.getElementById('misc-total')?.value)   || 0;
-  const compliAmt = document.getElementById('compliance-cb')?.checked
-    ? (parseFloat(document.getElementById('compliance-total')?.value) || 0) : 0;
-  const computedSum = subAmt + matAmt + labor1Amt + labor2Amt + tripAmt + miscAmt + compliAmt;
-  const origEl = document.getElementById('original-total');
-  if (origEl) origEl.value = computedSum.toFixed(2);
-  if (document.getElementById('flat-rate-cb')?.checked) {
-    const flat = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
-    document.getElementById('grand-total').value = flat.toFixed(2);
-    setGrandTotalStyle(true);
-    return;
-  }
-  setGrandTotalStyle(false);
-  document.getElementById('grand-total').value = computedSum.toFixed(2);
-}
-
-function onTripChange() {
-  const cb = document.getElementById('trip-cb');
-  const expEl = document.getElementById('trip-expense');
-  if (cb.checked) {
-    expEl.value = '90.00';
-    // Total = $90 + whatever markup user entered manually
-    const markup = parseFloat(document.getElementById('trip-markup')?.value) || 0;
-    document.getElementById('trip-total').value = (90 + markup).toFixed(2);
-  } else {
-    expEl.value = '';
-    document.getElementById('trip-total').value = '';
-  }
-  calcTotal();
-}
-
-function calcLaborRow(n) {
-  const rate   = parseFloat(document.getElementById('labor' + n + '-rate')?.value) || 0;
-  const qty    = parseFloat(document.getElementById('labor' + n + '-qty')?.value)  || 0;
-  const expEl  = document.getElementById('labor' + n + '-expense');
-  if (expEl) expEl.value = (rate && qty) ? (rate * qty).toFixed(2) : '';
-  // Total = expense + whatever markup user entered manually (no auto-markup for labor)
-  const expense = parseFloat(expEl?.value) || 0;
-  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value) || 0;
-  const totEl   = document.getElementById('labor' + n + '-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -2381,102 +1716,6 @@ function buildWorkOrderHTML(d) {
   return html;
 }
 
-
-// ─────────────────────────────────────────────────────────
-// FIND FOLDER
-// Searches My Drive AND all Shared Drives for
-// "FLPS Work Flow", then finds "2 - Ready to Invoice"
-// inside it. Shared drives require includeItemsFromAllDrives
-// and supportsAllDrives params.
-// ─────────────────────────────────────────────────────────
-async function findTargetFolder(folderName) {
-  try {
-    const q = encodeURIComponent(`mimeType="application/vnd.google-apps.folder" and trashed=false`);
-    const res = await apiFetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}` +
-      `&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives&pageSize=1000`
-    );
-    if (!res.ok) { console.warn('Folder list failed:', await res.text()); return null; }
-    const json = await res.json();
-    const folder = json.files?.find(f => f.name.trim().toLowerCase() === folderName.trim().toLowerCase());
-    if (!folder) { console.warn(`Folder "${folderName}" not found`); toast(`⚠ Folder "${folderName}" not found`); return null; }
-    console.log(`✓ Found folder "${folder.name}" id=${folder.id}`);
-    return folder.id;
-  } catch(e) {
-    console.warn('findTargetFolder error:', e.message);
-    return null;
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────
-function apiFetch(url, method = 'GET', body = null) {
-  return googleFetch(url, method, body);
-}
-
-// Wrapper around fetch() that adds the Google Bearer token.
-// On 401 (token revoked mid-session), silently prompts re-auth via GIS
-// then retries the request once.
-async function googleFetch(url, method = 'GET', body = null) {
-  const makeOpts = () => {
-    const opts = { method, headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' } };
-    if (body) opts.body = JSON.stringify(body);
-    return opts;
-  };
-  let res = await fetch(url, makeOpts());
-  if (res.status === 401) {
-    console.warn('[Google] 401 received — token may have been revoked. Requesting fresh token…');
-    toast('⏳ Google session expired — reconnecting…');
-    // Silently request a new token (no popup if consent already granted)
-    await new Promise((resolve, reject) => {
-      if (!tokenClient) { reject(new Error('Not initialized')); return; }
-      tokenClient.callback = async (resp) => {
-        if (resp.error) { reject(new Error(resp.error)); return; }
-        accessToken = resp.access_token;
-        localStorage.setItem('flips_access_token', accessToken);
-        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
-        resolve();
-      };
-      tokenClient.requestAccessToken({ prompt: '' });
-    });
-    res = await fetch(url, makeOpts());
-  }
-  return res;
-}
-
-function fmtDate(val) {
-  if (!val) return '';
-  const d = new Date(val + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function setStatus(id, msg, cls) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (id === 'conn-status') {
-    el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
-    el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn');
-    if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
-  } else {
-    el.textContent = msg; el.className = cls;
-  }
-}
-function toggleDrawer() {
-  document.getElementById('conn-drawer').classList.toggle('open');
-}
-
-function toggleDrawer() {
-  document.getElementById('conn-drawer').classList.toggle('open');
-}
-
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
-}
-
 // ─────────────────────────────────────────────────────────
 // ON LOAD
 // ─────────────────────────────────────────────────────────
@@ -2485,11 +1724,8 @@ window.addEventListener('load', () => {
   const c = localStorage.getItem('flips_client_id');
   if (k) { document.getElementById('api-key').value = k; API_KEY_VAL = k; }
   if (c) document.getElementById('client-id').value = c;
-  // date-requested field is now 'Date Completed' — default to today
-  // Date Completed intentionally left blank — user must pick it
   calcTotal();
 
-  // Auto-connect: reuse cached token if still valid (no popup needed)
   if (k && c) {
     const cachedToken  = localStorage.getItem('flips_access_token');
     const tokenExpiry  = Number(localStorage.getItem('flips_token_expiry')) || 0;
@@ -2500,14 +1736,125 @@ window.addEventListener('load', () => {
       document.getElementById('refresh-props-btn').style.display = 'inline-block';
       loadSheet();
     } else {
-      // Token missing or expired — load properties from cache so the dropdown
-      // is ready, but make it obvious the user still needs to Connect.
-      loadSheet(); // will hit session cache instantly, no API call
-      setStatus('conn-status', '⚠ Session expired', 'warn'); document.getElementById('conn-drawer').classList.add('open');
+      loadSheet();
+      setStatus('conn-status', '⚠ Session expired', 'warn');
+      document.getElementById('conn-drawer').classList.add('open');
       document.getElementById('refresh-props-btn').style.display = 'inline-block';
     }
   }
+
+  checkPendingEstimate();
 });
+
+// ─────────────────────────────────────────────────────────
+// ESTIMATE PRE-FILL
+// ─────────────────────────────────────────────────────────
+function checkPendingEstimate() {
+  try {
+    const raw = localStorage.getItem('flips_pending_estimate');
+    if (!raw) return;
+    const est = JSON.parse(raw);
+    const banner = document.getElementById('estimate-banner');
+    const txt    = document.getElementById('estimate-banner-text');
+    if (banner && txt) {
+      txt.textContent = `Estimate for ${est.propertyName || 'Unknown Property'} (${est.estDate || ''}) is ready to load.`;
+      banner.style.display = 'block';
+    }
+  } catch(_) {}
+}
+
+function dismissEstimateBanner() {
+  localStorage.removeItem('flips_pending_estimate');
+  const banner = document.getElementById('estimate-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function loadFromEstimate() {
+  try {
+    const raw = localStorage.getItem('flips_pending_estimate');
+    if (!raw) return;
+    const est = JSON.parse(raw);
+
+    // Property picker
+    const sel = document.getElementById('property-select');
+    if (sel && est.propertyName) {
+      sel.value = est.propertyName;
+      onPropertySelect();
+    }
+
+    // Requested by / description
+    const rbEl = document.getElementById('requested-by');
+    if (rbEl && est.requestedBy) rbEl.value = est.requestedBy;
+    const wdEl = document.getElementById('work-description');
+    if (wdEl && est.description) wdEl.value = est.description;
+
+    // Markup
+    const mkEl = document.getElementById('markup-pct');
+    if (mkEl && est.markupPct != null) mkEl.value = est.markupPct;
+
+    // Sub-contractor rows
+    if (est.subRows) {
+      const head = est.subRows[0];
+      if (head) {
+        const lEl = document.getElementById('sub-head-label');
+        const eEl = document.getElementById('sub-head-expense');
+        if (lEl) lEl.value = head.label || '';
+        if (eEl) { eEl.value = head.expense || ''; onSubHeadExpenseChange(); }
+      }
+      for (let i = 1; i < est.subRows.length; i++) {
+        addSubRow(est.subRows[i].label || '', est.subRows[i].expense || '');
+      }
+    }
+
+    // Materials rows
+    if (est.matRows) {
+      const head = est.matRows[0];
+      if (head) {
+        const dEl = document.getElementById('mat-head-desc');
+        const qEl = document.getElementById('mat-head-qty');
+        const eEl = document.getElementById('mat-head-expense');
+        if (dEl) dEl.value = head.desc || '';
+        if (qEl) qEl.value = head.qty || '';
+        if (eEl) { eEl.value = head.expense || ''; onMatHeadExpenseChange(); }
+      }
+      for (let i = 1; i < est.matRows.length; i++) {
+        addMatRow(est.matRows[i].desc || '', est.matRows[i].qty || '', est.matRows[i].expense || '');
+      }
+    }
+
+    // Labor rows
+    if (est.laborRows) {
+      est.laborRows.forEach((lr, idx) => {
+        const n = idx + 1;
+        const rEl = document.getElementById(`labor${n}-rate`);
+        const qEl = document.getElementById(`labor${n}-qty`);
+        if (rEl) rEl.value = lr.rate || '';
+        if (qEl) qEl.value = lr.qty || '';
+        if (rEl && qEl) calcLaborRow(n);
+      });
+    }
+
+    // Trip charge
+    if (est.tripCharge) {
+      const cb = document.getElementById('trip-cb');
+      if (cb && !cb.checked) { cb.checked = true; onTripChange(); }
+    }
+
+    // Misc
+    if (est.misc?.expense) {
+      const eEl = document.getElementById('misc-expense');
+      if (eEl) { eEl.value = est.misc.expense; onExpenseChange('misc'); }
+      const dEl = document.getElementById('misc-desc');
+      if (dEl && est.misc.desc) dEl.value = est.misc.desc;
+    }
+
+    calcTotal();
+    dismissEstimateBanner();
+    toast('✓ Estimate loaded — review and save as work order');
+  } catch(e) {
+    toast('✗ Failed to load estimate: ' + e.message);
+  }
+}
 
 // ─────────────────────────────────────────────────────────
 // UPDATE INSPECTION SCHEDULE

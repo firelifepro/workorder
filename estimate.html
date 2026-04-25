@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<title>Fire Life Protection – Estimate</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; padding: 20px; }
+
+/* ── Top bar ── */
+#top-bar { background: #1a1a2e; color: white; padding: 8px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid #c0392b; }
+#top-bar h1 { font-size: 1rem; font-weight: 700; flex: 1; min-width: 200px; }
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: none; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 1.1rem; }
+.nav-menu { display: none; position: absolute; top: 110%; left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 220px; z-index: 200; flex-direction: column; padding: 6px 0; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+.nav-menu.open { display: flex; }
+.nav-menu a { color: rgba(255,255,255,0.85); text-decoration: none; padding: 8px 16px; font-size: 0.82rem; font-weight: 500; }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fffb8; font-weight: 700; }
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-btn.grey { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+.conn-btn.grey:hover { background: rgba(255,255,255,0.25); }
+.conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; margin: 0 4px; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Document wrapper ── */
+#doc-wrapper { max-width: 900px; margin: 16px auto; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+
+/* ── Tables ── */
+.wo-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+.wo-table td, .wo-table th { border: 1px solid #ccc; padding: 5px 6px; vertical-align: middle; }
+.section-header { background: #1a1a2e; color: white; font-weight: 700; font-size: 10pt; padding: 6px 8px !important; }
+.label-cell { background: #f0f0f0; font-weight: 600; white-space: nowrap; width: 18%; }
+.value-cell { background: white; }
+.value-cell input[type="text"],
+.value-cell input[type="number"],
+.value-cell input[type="date"],
+.value-cell input[type="email"],
+.value-cell textarea { width: 100%; border: 1px solid #ddd; padding: 3px 5px; border-radius: 3px; font-family: inherit; font-size: 9.5pt; }
+.value-cell textarea { resize: vertical; min-height: 60px; }
+.dollar-prefix { font-size: 0.8rem; color: #555; margin-right: 2px; }
+.exp-col-header { background: #e8e8e8; font-weight: 600; font-size: 9pt; padding: 4px 6px !important; text-align: left; }
+.exp-label { background: #f7f7f7; font-weight: 600; font-size: 9pt; white-space: nowrap; }
+.total-label { background: #e8e8e8; font-weight: 700; text-align: right; padding-right: 8px !important; }
+
+/* ── Property search ── */
+.prop-search-wrap { display: flex; gap: 6px; align-items: center; }
+.prop-search-wrap input { flex: 1; }
+#prop-search-clear { cursor: pointer; color: #c0392b; font-weight: 700; font-size: 1.1rem; display: none; background: none; border: none; padding: 0 4px; }
+#prop-loading { display: none; color: #888; font-size: 0.8rem; padding: 4px 6px; }
+
+/* ── Save button ── */
+#generate-btn { background: #c0392b; color: white; border: none; padding: 10px 24px; border-radius: 5px; cursor: pointer; font-size: 0.95rem; font-weight: 700; margin-top: 8px; }
+#generate-btn:hover { background: #a93226; }
+#generate-btn:disabled { background: #999; cursor: not-allowed; }
+
+/* ── Post-save actions ── */
+#post-save-actions { display: none; margin-top: 12px; padding: 12px; background: #f0fff4; border: 1px solid #27ae60; border-radius: 6px; }
+#post-save-actions button { background: #2e6da4; color: white; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; margin-right: 8px; }
+#post-save-actions button:hover { background: #4a86e8; }
+
+/* ── Status area ── */
+#save-status { margin-top: 8px; font-size: 0.85rem; line-height: 1.6; }
+#save-status div { padding: 2px 0; }
+
+/* ── Toast ── */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 20px; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
+      <a href="estimate.html" class="active">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
+    </div>
+  </div>
+  <h1>📝 Fire Life Protection – Estimate</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com">
+    </div>
+    <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <button id="refresh-props-btn" class="conn-btn grey" onclick="loadSheet(true)" style="display:none;" title="Re-fetch client list from Google Sheet">↺ Refresh Properties</button>
+  </div>
+</div>
+
+<div id="doc-wrapper">
+
+  <!-- ══ ESTIMATE INFO ══ -->
+  <table class="wo-table">
+    <tr><td colspan="4" class="section-header">ESTIMATE INFORMATION</td></tr>
+    <tr>
+      <td class="label-cell">Estimate Date:</td>
+      <td class="value-cell"><input type="date" id="est-date"></td>
+      <td class="label-cell">Requested By:</td>
+      <td class="value-cell"><input type="text" id="requested-by" placeholder="Contact or manager name"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Property:</td>
+      <td class="value-cell" colspan="3">
+        <div id="prop-loading">Loading properties…</div>
+        <div class="prop-search-wrap">
+          <input type="text" id="prop-search" placeholder="Search properties…" oninput="filterPropertyDropdown(this.value)" autocomplete="off">
+          <button id="prop-search-clear" onclick="clearPropertySearch()" title="Clear search">✕</button>
+        </div>
+        <select id="property-select" onchange="onPropertySelect()" style="width:100%;margin-top:4px;">
+          <option value="">— Select property —</option>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td class="label-cell">Property Contact:</td>
+      <td class="value-cell"><input type="text" id="property-contact" placeholder="Contact name"></td>
+      <td class="label-cell">Contact Email:</td>
+      <td class="value-cell"><input type="email" id="contact-email" placeholder="email@example.com"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Contact Phone:</td>
+      <td class="value-cell"><input type="text" id="contact-phone" placeholder="(720) 555-1234"></td>
+      <td class="label-cell">Service Address:</td>
+      <td class="value-cell"><input type="text" id="service-address"></td>
+    </tr>
+    <tr>
+      <td class="label-cell">City / State / Zip:</td>
+      <td class="value-cell" colspan="3"><input type="text" id="city-state-zip" style="max-width:300px;"></td>
+    </tr>
+  </table>
+
+  <!-- ══ DESCRIPTION ══ -->
+  <table class="wo-table">
+    <tr><td colspan="2" class="section-header">DESCRIPTION OF WORK REQUESTED</td></tr>
+    <tr>
+      <td colspan="2" class="value-cell">
+        <textarea id="work-description" style="width:100%;min-height:80px;resize:vertical;" placeholder="Describe the work to be performed…"></textarea>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ══ FLPS EXPENSES ══ -->
+  <table class="wo-table" id="expenses-table">
+    <tr><td colspan="6" class="section-header">FLPS EXPENSES</td></tr>
+    <tr>
+      <td class="exp-col-header" style="width:14%;">Expense Name</td>
+      <td class="exp-col-header" style="width:22%;">Description</td>
+      <td class="exp-col-header" style="width:8%;text-align:center;">Qty</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Expense</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Markup&nbsp;(<input type="number" id="markup-pct" value="25" min="0" max="999" step="1" style="width:38px;font-size:0.85em;padding:1px 3px;border:1px solid #aaa;border-radius:2px;font-weight:normal;" oninput="recalcAllMarkups()">%)</td>
+      <td class="exp-col-header" style="width:18%;text-align:center;">Total</td>
+    </tr>
+    <!-- Sub-Contractor first/permanent row -->
+    <tr id="sub-add-row">
+      <td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor&nbsp;<button type="button" onclick="addSubRow()" title="Add Sub-Contractor/Vendor" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
+      <td class="value-cell"><input type="text" id="sub-head-label" placeholder="Sub-contractor name / description" style="width:100%;"></td>
+      <td class="value-cell"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onSubHeadExpenseChange()"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Materials first/permanent row -->
+    <tr id="mat-add-row">
+      <td class="exp-label" style="white-space:nowrap;">Materials&nbsp;<button type="button" onclick="addMatRow()" title="Add Materials Line" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
+      <td class="value-cell"><input type="text" id="mat-head-desc" style="width:100%;"></td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="mat-head-qty" min="0" step="1" style="text-align:center;"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onMatHeadExpenseChange()"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Labor 1 -->
+    <tr>
+      <td class="exp-label">Labor 1</td>
+      <td class="value-cell">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:0.78rem;color:#555;">$</span>
+          <input type="number" id="labor1-rate" min="0" step="0.5" value="135" style="width:68px;" oninput="calcLaborRow(1)">
+          <span style="font-size:0.78rem;color:#555;">/hr</span>
+        </div>
+      </td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="labor1-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(1)"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(1)" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Labor 2 -->
+    <tr>
+      <td class="exp-label">Labor 2</td>
+      <td class="value-cell">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:0.78rem;color:#555;">$</span>
+          <input type="number" id="labor2-rate" min="0" step="0.5" value="85" style="width:68px;" oninput="calcLaborRow(2)">
+          <span style="font-size:0.78rem;color:#555;">/hr</span>
+        </div>
+      </td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="labor2-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(2)"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(2)" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Trip Charge -->
+    <tr>
+      <td class="exp-label">Trip Charge</td>
+      <td class="value-cell">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label><input type="checkbox" id="trip-cb" onchange="onTripChange()" checked> $90.00</label>
+        </div>
+      </td>
+      <td class="value-cell"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onTripMarkupChange()" placeholder="0"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Misc -->
+    <tr>
+      <td class="exp-label">Misc:</td>
+      <td class="value-cell"><input type="text" id="misc-desc"></td>
+      <td class="value-cell" style="text-align:center;"><input type="number" id="misc-qty" min="0" step="1" style="text-align:center;"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseChange('misc')"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+    </tr>
+    <!-- Grand Total -->
+    <tr>
+      <td colspan="4"></td>
+      <td class="total-label">Total Estimate =</td>
+      <td class="value-cell" style="font-weight:700;"><span class="dollar-prefix">$</span><input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;" readonly tabindex="-1"></td>
+    </tr>
+  </table>
+
+  <!-- ══ GENERATE BUTTON ══ -->
+  <div style="margin-top:8px;">
+    <button id="generate-btn" onclick="generateEstimate()">📄 Generate Estimate PDF</button>
+  </div>
+  <div id="save-status" style="margin-top:8px;font-size:0.85rem;line-height:1.7;"></div>
+
+  <!-- ══ POST-SAVE ACTIONS ══ -->
+  <div id="post-save-actions">
+    <strong>✓ Estimate saved!</strong> &nbsp;Estimate #<span id="est-num-display"></span>
+    <div style="margin-top:8px;">
+      <button onclick="createEmailDraft()">✉ Create Email Draft</button>
+      <button onclick="location.href='estimate-tracker.html'" style="background:#1a1a2e;">📊 View All Estimates</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-shared.js"></script>
+<script>
+
+// ── Nav toggle ──────────────────────────────────────────
+function toggleNav() {
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-hamburger')) {
+    const m = document.getElementById('nav-menu');
+    if (m) m.classList.remove('open');
+  }
+});
+
+// ── Config ──────────────────────────────────────────────
+const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.compose';
+const WR_SHEET_ID  = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+const EST_FOLDER_ID = '1Ma-hUFL3t4l6NsWdmPRB45JJMaaK1Oc1';
+
+let authedUserEmail = '';
+let currentEstFileId = null;  // set when editing an existing estimate
+let lastEstData = null;       // stored after save for email draft
+let lastPdfBytes = null;
+
+// ── Page hooks called by flips-shared ──────────────────
+async function onAfterAuth() {
+  try {
+    const res = await googleFetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json');
+    if (res.ok) {
+      const info = await res.json();
+      authedUserEmail = info.email || '';
+    }
+  } catch(_) {}
+  await checkEditMode();
+}
+
+function onPropertySelectExtras(d) {
+  // Auto-fill Requested By from contact name if blank
+  const rbEl = document.getElementById('requested-by');
+  if (rbEl && !rbEl.value.trim()) {
+    const pcEl = document.getElementById('property-contact');
+    if (pcEl && pcEl.value.trim()) rbEl.value = pcEl.value.trim();
+  }
+}
+
+// ── Edit mode (?id=DRIVE_FILE_ID) ─────────────────────
+async function checkEditMode() {
+  const params = new URLSearchParams(location.search);
+  const fileId = params.get('id');
+  if (!fileId || !accessToken) return;
+  currentEstFileId = fileId;
+  try {
+    const setStatus2 = (msg) => { const el = document.getElementById('save-status'); if (el) el.innerHTML += `<div style="color:#888">${msg}</div>`; };
+    setStatus2('Loading estimate…');
+    const res = await googleFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    if (!res.ok) throw new Error('Could not load estimate file');
+    const est = await res.json();
+    populateFromEstimate(est);
+    document.getElementById('save-status').innerHTML = '';
+    toast('✓ Estimate loaded for editing');
+  } catch(e) {
+    toast('✗ Could not load estimate: ' + e.message);
+  }
+}
+
+function populateFromEstimate(est) {
+  const v = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  v('est-date', est.estDate);
+  v('requested-by', est.requestedBy);
+  v('work-description', est.description);
+  v('markup-pct', est.markupPct != null ? est.markupPct : 25);
+  v('contact-email', est.contactEmail);
+  v('contact-phone', est.contactPhone);
+  v('service-address', est.serviceAddress);
+  v('city-state-zip', est.cityStateZip);
+  v('property-contact', est.propertyContact);
+
+  // Set property dropdown
+  const sel = document.getElementById('property-select');
+  if (sel && est.propertyName) {
+    if ([...sel.options].find(o => o.value === est.propertyName)) {
+      sel.value = est.propertyName;
+    } else {
+      const o = document.createElement('option');
+      o.value = est.propertyName; o.textContent = est.propertyName;
+      sel.appendChild(o);
+      sel.value = est.propertyName;
+    }
+  }
+
+  // Sub rows
+  if (est.subRows?.length > 0) {
+    v('sub-head-label', est.subRows[0].label);
+    v('sub-head-expense', est.subRows[0].expense || '');
+    if (est.subRows[0].expense) onSubHeadExpenseChange();
+    for (let i = 1; i < est.subRows.length; i++) addSubRow(est.subRows[i].label, est.subRows[i].expense);
+  }
+
+  // Mat rows
+  if (est.matRows?.length > 0) {
+    v('mat-head-desc', est.matRows[0].desc);
+    v('mat-head-qty', est.matRows[0].qty);
+    v('mat-head-expense', est.matRows[0].expense || '');
+    if (est.matRows[0].expense) onMatHeadExpenseChange();
+    for (let i = 1; i < est.matRows.length; i++) addMatRow(est.matRows[i].desc, est.matRows[i].qty, est.matRows[i].expense);
+  }
+
+  // Labor rows
+  if (est.laborRows) {
+    est.laborRows.forEach((lr, idx) => {
+      const n = idx + 1;
+      v(`labor${n}-rate`, lr.rate);
+      v(`labor${n}-qty`, lr.qty);
+      if (lr.rate && lr.qty) calcLaborRow(n);
+    });
+  }
+
+  // Trip charge
+  const tripCb = document.getElementById('trip-cb');
+  if (tripCb) { tripCb.checked = !!est.tripCharge; onTripChange(); }
+
+  // Misc
+  if (est.misc) {
+    v('misc-desc', est.misc.desc);
+    v('misc-expense', est.misc.expense || '');
+    if (est.misc.expense) onExpenseChange('misc');
+  }
+
+  calcTotal();
+}
+
+// ── Collect form data ──────────────────────────────────
+function collectEstimate() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const propName = document.getElementById('property-select')?.value || '';
+  const labor1qty = parseFloat(v('labor1-qty')) || 0;
+  const labor2qty = parseFloat(v('labor2-qty')) || 0;
+  const labor1tot = parseFloat(v('labor1-total')) || 0;
+  const labor2tot = parseFloat(v('labor2-total')) || 0;
+
+  return {
+    estDate:       v('est-date') || todayMT(),
+    requestedBy:   v('requested-by'),
+    propertyName:  propName,
+    propertyContact: v('property-contact'),
+    contactEmail:  v('contact-email'),
+    contactPhone:  v('contact-phone'),
+    serviceAddress: v('service-address'),
+    cityStateZip:  v('city-state-zip'),
+    description:   v('work-description'),
+    markupPct:     parseFloat(v('markup-pct')) || 25,
+    subRows:       getSubRows(),
+    matRows:       getMatRows(),
+    laborRows: [
+      { rate: parseFloat(v('labor1-rate')) || 0, qty: labor1qty, expense: parseFloat(v('labor1-expense')) || 0, markup: parseFloat(v('labor1-markup')) || 0, total: labor1tot },
+      { rate: parseFloat(v('labor2-rate')) || 0, qty: labor2qty, expense: parseFloat(v('labor2-expense')) || 0, markup: parseFloat(v('labor2-markup')) || 0, total: labor2tot },
+    ],
+    tripCharge: document.getElementById('trip-cb')?.checked || false,
+    tripTotal:  parseFloat(v('trip-total')) || 0,
+    misc: { desc: v('misc-desc'), expense: parseFloat(v('misc-expense')) || 0, markup: parseFloat(v('misc-markup')) || 0, total: parseFloat(v('misc-total')) || 0 },
+    total: parseFloat(v('grand-total')) || 0,
+    status: 'Pending',
+  };
+}
+
+// ── Build slug for filename ────────────────────────────
+function buildEstSlug(est) {
+  return (est.propertyName || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').substring(0, 30);
+}
+
+// ── Append row to Work Requests sheet ────────────────
+async function appendToWorkRequests(est, estNum) {
+  const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+  if (!metaRes.ok) throw new Error('Could not read WR sheet metadata');
+  const meta = await metaRes.json();
+  const tabName = meta.sheets[0].properties.title;
+
+  const row = [
+    estNum,
+    est.estDate,
+    est.propertyName,
+    est.propertyContact,
+    est.contactEmail,
+    est.contactPhone,
+    est.serviceAddress + (est.cityStateZip ? ', ' + est.cityStateZip : ''),
+    est.description,
+    est.total.toFixed(2),
+    'Pending',
+    '', // PDF Drive ID (filled in after upload)
+    '', // JSON Drive ID (filled in after upload)
+  ];
+
+  const appendRes = await googleFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(tabName + '!A:L')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    'POST',
+    { values: [row] }
+  );
+  if (!appendRes.ok) {
+    const txt = await appendRes.text();
+    throw new Error('Sheet append failed: ' + txt.substring(0, 200));
+  }
+  const appendJson = await appendRes.json();
+  // Parse row number from updatedRange (e.g. "Sheet1!A52:L52")
+  const rangeMatch = (appendJson.updates?.updatedRange || '').match(/:?(\d+)$/);
+  return rangeMatch ? parseInt(rangeMatch[1]) : null;
+}
+
+async function patchSheetRow(rowNum, pdfId, jsonId) {
+  if (!rowNum) return;
+  const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+  if (!metaRes.ok) return;
+  const meta = await metaRes.json();
+  const tabName = meta.sheets[0].properties.title;
+  const range = `${tabName}!K${rowNum}:L${rowNum}`;
+  await googleFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+    'PUT',
+    { values: [[pdfId || '', jsonId || '']] }
+  );
+}
+
+// ── Build PDF bytes ────────────────────────────────────
+function buildEstimatePDF(est, estNum) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const W = doc.internal.pageSize.getWidth();
+  const margin = 40;
+  let y = margin;
+
+  // ── Header ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('Fire Life Protection System, Inc.', margin, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  y += 15;
+  doc.text('8201 Shaffer Parkway Suite B', margin, y); y += 12;
+  doc.text('Littleton, CO 80127', margin, y); y += 12;
+  doc.text('Office: (720) 974-1570', margin, y);
+
+  // Estimate # + date on right
+  const estLabel = `ESTIMATE`;
+  const estNumStr = `#${String(estNum).padStart(4,'0')}`;
+  const dateStr = fmtDate(est.estDate) || est.estDate;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text(estLabel, W - margin, margin, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text(estNumStr, W - margin, margin + 26, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(dateStr, W - margin, margin + 40, { align: 'right' });
+
+  // Navy divider
+  y = margin + 60;
+  doc.setDrawColor(26, 26, 46);
+  doc.setLineWidth(1.5);
+  doc.line(margin, y, W - margin, y);
+  y += 14;
+
+  // ── Prepared For ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 100, 100);
+  doc.text('PREPARED FOR', margin, y);
+  doc.setTextColor(0, 0, 0);
+  y += 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(est.propertyName || '', margin, y); y += 14;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  if (est.serviceAddress) { doc.text(est.serviceAddress, margin, y); y += 12; }
+  if (est.cityStateZip)   { doc.text(est.cityStateZip,   margin, y); y += 12; }
+  if (est.propertyContact) {
+    doc.text('Attn: ' + est.propertyContact, margin, y); y += 12;
+  }
+  y += 6;
+
+  // ── Description of Work ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 100, 100);
+  doc.text('DESCRIPTION OF WORK', margin, y);
+  doc.setTextColor(0, 0, 0);
+  y += 10;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const descLines = doc.splitTextToSize(est.description || 'See scope of work.', W - margin * 2);
+  // Draw box around description
+  const descHeight = descLines.length * 12 + 14;
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, y, W - margin * 2, descHeight);
+  doc.text(descLines, margin + 6, y + 12);
+  y += descHeight + 14;
+
+  // ── Pricing Summary ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 100, 100);
+  doc.text('PRICING SUMMARY', margin, y);
+  doc.setTextColor(0, 0, 0);
+  y += 12;
+
+  const tableX1 = margin;
+  const tableX2 = W - margin;
+  const col2 = W - margin - 90;
+  const rowH = 18;
+
+  const drawRow = (label, value, bold) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(9.5);
+    doc.text(label, tableX1, y);
+    doc.text(value, tableX2, y, { align: 'right' });
+    y += rowH;
+  };
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+
+  // Materials total
+  const matTotal = est.matRows.reduce((s, r) => s + r.total, 0);
+  if (matTotal > 0) drawRow('Materials', '$' + matTotal.toFixed(2));
+
+  // Labor (hours only, no $)
+  const l1hrs = est.laborRows[0]?.qty || 0;
+  const l2hrs = est.laborRows[1]?.qty || 0;
+  const totalHrs = l1hrs + l2hrs;
+  if (totalHrs > 0) drawRow('Labor', totalHrs.toFixed(1) + ' hrs');
+
+  // Sub-contractor total (if any)
+  const subTotal = est.subRows.reduce((s, r) => s + r.total, 0);
+  if (subTotal > 0) drawRow('Subcontractor', '$' + subTotal.toFixed(2));
+
+  // Trip charge
+  if (est.tripCharge && est.tripTotal > 0) drawRow('Trip Charge', '$' + est.tripTotal.toFixed(2));
+
+  // Misc
+  if (est.misc?.total > 0) {
+    const miscLabel = 'Misc' + (est.misc.desc ? ': ' + est.misc.desc : '');
+    drawRow(miscLabel, '$' + est.misc.total.toFixed(2));
+  }
+
+  // Divider
+  y -= 4;
+  doc.setDrawColor(26, 26, 46);
+  doc.setLineWidth(0.8);
+  doc.line(tableX1, y, tableX2, y);
+  y += 14;
+
+  // Grand Total
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('TOTAL ESTIMATE', tableX1, y);
+  doc.text('$' + est.total.toFixed(2), tableX2, y, { align: 'right' });
+  y += 30;
+
+  // ── Customer Authorization ──
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.5);
+  const authBoxH = 100;
+  doc.rect(margin, y, W - margin * 2, authBoxH);
+
+  const bx = margin + 8;
+  let by = y + 16;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.text('CUSTOMER AUTHORIZATION', bx, by); by += 18;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('By signing below you authorize Fire Life Protection System, Inc. to perform the work described above.', bx, by); by += 18;
+
+  const lineEndX = W - margin - 20;
+  const halfW = (lineEndX - bx) / 2 - 10;
+  doc.setLineWidth(0.5);
+  doc.line(bx, by + 8, bx + halfW, by + 8);
+  doc.line(bx + halfW + 20, by + 8, lineEndX, by + 8);
+  doc.setFontSize(7.5);
+  doc.text('Authorized Signature', bx, by + 17);
+  doc.text('Date', bx + halfW + 20, by + 17);
+  by += 26;
+  doc.line(bx, by + 8, bx + halfW, by + 8);
+  doc.text('Printed Name', bx, by + 17);
+
+  // Sign and return footer
+  const returnY = y + authBoxH + 14;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(80, 80, 80);
+  const returnTo = authedUserEmail || 'office@firelifeprotectionsystems.com';
+  doc.text(`Please sign and return to: ${returnTo}`, margin, returnY);
+
+  return doc.output('arraybuffer');
+}
+
+// ── Main generate function ─────────────────────────────
+async function generateEstimate() {
+  const btn = document.getElementById('generate-btn');
+  const statusEl = document.getElementById('save-status');
+  const addMsg = (msg, color) => { if (statusEl) statusEl.innerHTML += `<div style="color:${color||'inherit'}">${msg}</div>`; };
+
+  if (!accessToken) {
+    const proceed = confirm('⚠ Not connected to Google Drive — PDF will download locally only.\n\nContinue?');
+    if (!proceed) return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating…';
+  if (statusEl) statusEl.innerHTML = '';
+
+  const est = collectEstimate();
+  lastEstData = est;
+
+  try {
+    let estNum = null;
+    let jsonFileId = null;
+    let pdfFileId  = null;
+
+    // ── Append to sheet ──
+    if (accessToken) {
+      try {
+        addMsg('Appending to Work Requests sheet…', 'var(--slate,#666)');
+        estNum = await appendToWorkRequests(est, '—');
+        addMsg('✓ Added to Work Requests sheet (row ' + estNum + ')', 'green');
+      } catch(e) {
+        addMsg('⚠ Sheet append failed: ' + e.message, 'orange');
+        estNum = Date.now(); // fallback
+      }
+    } else {
+      estNum = Date.now();
+    }
+
+    est.estNum = estNum;
+    document.getElementById('est-num-display').textContent = estNum;
+
+    // ── Build PDF ──
+    addMsg('Building PDF…', 'var(--slate,#666)');
+    const pdfBuf = buildEstimatePDF(est, estNum);
+    lastPdfBytes = pdfBuf;
+    const propSlug = buildEstSlug(est);
+    const dateSlug = est.estDate || todayMT();
+    const pdfName  = `FLPS_EST_${estNum}_${propSlug}_${dateSlug}.pdf`;
+    const jsonName = `FLPS_EST_${estNum}_${propSlug}_${dateSlug}.json`;
+
+    // ── Upload JSON to Drive ──
+    if (accessToken) {
+      try {
+        addMsg('Saving estimate data to Drive…', 'var(--slate,#666)');
+        const jsonContent = JSON.stringify(est, null, 2);
+        const jsonRes = await driveUploadFile(jsonName, 'application/json', jsonContent, EST_FOLDER_ID, currentEstFileId || null);
+        jsonFileId = jsonRes.id;
+        if (!currentEstFileId) currentEstFileId = jsonFileId;
+        addMsg('✓ Estimate JSON saved to Drive', 'green');
+      } catch(e) {
+        addMsg('⚠ JSON save failed: ' + e.message, 'orange');
+      }
+
+      // ── Upload PDF to Drive ──
+      try {
+        addMsg('Saving PDF to Drive…', 'var(--slate,#666)');
+        const binary  = Array.from(new Uint8Array(pdfBuf)).map(b => String.fromCharCode(b)).join('');
+        const pdfB64  = btoa(binary);
+        const pdfRes  = await driveUploadFile(pdfName, 'application/pdf', pdfB64, EST_FOLDER_ID, null, true);
+        pdfFileId = pdfRes.id;
+        addMsg('✓ PDF saved to Drive', 'green');
+      } catch(e) {
+        addMsg('⚠ PDF Drive save failed: ' + e.message, 'orange');
+      }
+
+      // ── Patch sheet row with file IDs ──
+      try {
+        if (estNum && (pdfFileId || jsonFileId)) await patchSheetRow(estNum, pdfFileId, jsonFileId);
+      } catch(_) {}
+    }
+
+    // ── Download PDF locally ──
+    const blob = new Blob([pdfBuf], { type: 'application/pdf' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = pdfName; a.click();
+    URL.revokeObjectURL(url);
+    addMsg(`✓ Downloaded: ${pdfName}`, 'green');
+
+    // ── Show post-save actions ──
+    document.getElementById('post-save-actions').style.display = 'block';
+    toast('✓ Estimate generated!');
+
+  } catch(e) {
+    addMsg('✗ Error: ' + e.message, 'red');
+    toast('✗ Generate failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📄 Generate Estimate PDF';
+  }
+}
+
+// ── Create Gmail draft ─────────────────────────────────
+async function createEmailDraft() {
+  if (!accessToken || !lastEstData) { toast('⚠ Generate an estimate first'); return; }
+  const to   = lastEstData.contactEmail || '';
+  const cc   = 'alan.antonio@firelifeprotectionsystems.com,amy.lineberry@firelifeprotectionsystems.com';
+  const subj = `Estimate #${lastEstData.estNum} – ${lastEstData.propertyName} – Please Sign and Return`;
+  const returnTo = authedUserEmail || 'office@firelifeprotectionsystems.com';
+  const body = `Dear ${lastEstData.propertyContact || 'Valued Customer'},\n\nPlease review the attached estimate and sign and return at your earliest convenience.\n\nYou may return the signed estimate to: ${returnTo}\n\nThank you for your business. Please don't hesitate to reach out with any questions.\n\nFire Life Protection System, Inc.\nOffice: (720) 974-1570`;
+
+  // Build RFC 2822 MIME with PDF attachment
+  const propSlug = buildEstSlug(lastEstData);
+  const pdfName  = `FLPS_EST_${lastEstData.estNum}_${propSlug}_${lastEstData.estDate}.pdf`;
+  let pdfB64 = '';
+  if (lastPdfBytes) {
+    const binary = Array.from(new Uint8Array(lastPdfBytes)).map(b => String.fromCharCode(b)).join('');
+    pdfB64 = btoa(binary);
+  }
+
+  const boundary = 'flips_mime_boundary_' + Date.now();
+  const mimeLines = [
+    `To: ${to}`,
+    `Cc: ${cc}`,
+    `Subject: ${subj}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    body,
+    '',
+  ];
+
+  if (pdfB64) {
+    mimeLines.push(`--${boundary}`);
+    mimeLines.push(`Content-Type: application/pdf; name="${pdfName}"`);
+    mimeLines.push(`Content-Transfer-Encoding: base64`);
+    mimeLines.push(`Content-Disposition: attachment; filename="${pdfName}"`);
+    mimeLines.push('');
+    // Chunk base64 at 76 chars per line (RFC 2822)
+    for (let i = 0; i < pdfB64.length; i += 76) mimeLines.push(pdfB64.slice(i, i + 76));
+    mimeLines.push('');
+  }
+
+  mimeLines.push(`--${boundary}--`);
+  const rawMime = mimeLines.join('\r\n');
+  const encoded = btoa(unescape(encodeURIComponent(rawMime))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  try {
+    const res = await googleFetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', 'POST', { message: { raw: encoded } });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Gmail API: ' + txt.substring(0, 200));
+    }
+    toast('✓ Email draft created — check Gmail');
+    window.open('https://mail.google.com/#drafts', '_blank');
+  } catch(e) {
+    toast('✗ Draft failed: ' + e.message);
+    console.error('createEmailDraft error:', e);
+  }
+}
+
+// ── On load ────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const k = localStorage.getItem('flips_api_key');
+  const c = localStorage.getItem('flips_client_id');
+  if (k) { document.getElementById('api-key').value = k; API_KEY_VAL = k; }
+  if (c) document.getElementById('client-id').value = c;
+
+  document.getElementById('est-date').value = todayMT();
+  calcTotal();
+
+  if (k && c) {
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: c, scope: SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { setStatus('conn-status', '✗ ' + resp.error, 'err'); return; }
+          accessToken = resp.access_token;
+          localStorage.setItem('flips_access_token', accessToken);
+          localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+          setStatus('conn-status', '✓ Connected', 'ok');
+          document.getElementById('refresh-props-btn').style.display = 'inline-block';
+          await loadSheet();
+          if (typeof onAfterAuth === 'function') onAfterAuth();
+        },
+        error_callback: (err) => setStatus('conn-status', '✗ ' + (err.message || err.type), 'err')
+      });
+    } catch(e) { console.warn('[Auth] GSI init failed:', e.message); }
+
+    const cachedToken = localStorage.getItem('flips_access_token');
+    const tokenExpiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+    if (cachedToken && Date.now() < tokenExpiry) {
+      accessToken = cachedToken;
+      setStatus('conn-status', '✓ Connected', 'ok');
+      document.getElementById('refresh-props-btn').style.display = 'inline-block';
+      loadSheet().then(() => { if (typeof onAfterAuth === 'function') onAfterAuth(); });
+    } else if (tokenClient) {
+      setStatus('conn-status', '⏳ Reconnecting…', '');
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+  }
+
+  // Load cached property list for dropdown even if token not yet valid
+  try {
+    const cached = JSON.parse(sessionStorage.getItem('flips_client_cache') || 'null');
+    if (cached?.data) { clientData = cached.data; buildDropdown(); }
+  } catch(_) {}
+});
+
+// Trip charge on by default
+onTripChange();
+</script>
+</body>
+</html>
