@@ -502,16 +502,8 @@ async function loadSchedule(forceRefresh = false) {
       const key = (acct ? 'acct:' + acct : 'name:' + property) + '\x00' + type;
       const cur = bestMap.get(key);
 
-      // Manual entries (from the pencil edit) take priority over automatic ones
-      // regardless of date — this lets users correct a wrong date even to an older one.
-      // Among entries of the same source type, the most recent date wins.
-      const curIsManual = cur?.source === 'Manual';
-      const newIsManual = source === 'Manual';
-      const newerDate   = dateObj && (!cur?.dateObj || dateObj > cur.dateObj);
-      const shouldReplace = !cur
-        || (!curIsManual && newIsManual)
-        || (curIsManual  && newIsManual && newerDate)
-        || (!curIsManual && !newIsManual && newerDate);
+      const newerDate    = dateObj && (!cur?.dateObj || dateObj > cur.dateObj);
+      const shouldReplace = !cur || newerDate;
 
       if (shouldReplace) {
         bestMap.set(key, {
