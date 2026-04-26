@@ -311,7 +311,9 @@ let lastPdfBytes = null;
 // ── Page hooks called by flips-shared ──────────────────
 async function onAfterAuth() {
   try {
-    const res = await googleFetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json');
+    const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
+      headers: { 'Authorization': 'Bearer ' + accessToken }
+    });
     if (res.ok) {
       const info = await res.json();
       authedUserEmail = info.email || '';

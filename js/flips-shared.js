@@ -317,7 +317,7 @@ function onPropertySelect() {
       .replace(/\s*\([^)]*\)\s*/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-    if (!resolvedName) resolvedName = nameSource.replace(/[\r\n]+/g, ' ').trim();
+    if (!resolvedName) resolvedName = rawNameOnly ? rawNameOnly.trim() : nameSource.replace(/[\r\n]+/g, ' ').trim();
   }
 
   const pcEl = document.getElementById('property-contact');
@@ -649,18 +649,29 @@ async function googleFetch(url, method = 'GET', body = null) {
   if (res.status === 401) {
     console.warn('[Google] 401 — requesting fresh token…');
     toast('⏳ Google session expired — reconnecting…');
-    await new Promise((resolve, reject) => {
-      if (!tokenClient) { reject(new Error('Not initialized')); return; }
-      tokenClient.callback = async (resp) => {
-        if (resp.error) { reject(new Error(resp.error)); return; }
-        accessToken = resp.access_token;
-        localStorage.setItem('flips_access_token', accessToken);
-        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
-        resolve();
-      };
-      tokenClient.requestAccessToken({ prompt: '' });
-    });
-    res = await fetch(url, makeOpts());
+    try {
+      await new Promise((resolve, reject) => {
+        if (!tokenClient) { reject(new Error('Not initialized')); return; }
+        tokenClient.callback = async (resp) => {
+          if (resp.error) { reject(new Error(resp.error)); return; }
+          accessToken = resp.access_token;
+          localStorage.setItem('flips_access_token', accessToken);
+          localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+          resolve();
+        };
+        tokenClient.error_callback = (err) => {
+          accessToken = null;
+          localStorage.removeItem('flips_access_token');
+          localStorage.removeItem('flips_token_expiry');
+          setStatus('conn-status', '✗ Session expired — click Connect Google', 'err');
+          reject(new Error(err.message || err.type || 'token_refresh_failed'));
+        };
+        tokenClient.requestAccessToken({ prompt: '' });
+      });
+      res = await fetch(url, makeOpts());
+    } catch(e) {
+      throw e;
+    }
   }
   return res;
 }
