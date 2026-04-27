@@ -228,12 +228,23 @@ function clearPropertySearch() {
   input.focus();
 }
 
+function _updatePropertyBadge(propName) {
+  const badge = document.getElementById('prop-selected-badge');
+  if (!badge) return;
+  if (propName) {
+    badge.textContent = '✓ ' + propName;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 // ─────────────────────────────────────────────────────────
 // AUTO-POPULATE ON PROPERTY SELECT
 // ─────────────────────────────────────────────────────────
 function onPropertySelect() {
   const propName = document.getElementById('property-select').value;
-  if (!propName || !clientData[propName]) return;
+  if (!propName || !clientData[propName]) { _updatePropertyBadge(''); return; }
   const d = clientData[propName];
 
   function fill(id, ...keys) {
@@ -351,6 +362,7 @@ function onPropertySelect() {
   }
   billToHidden.value = billToVal;
 
+  _updatePropertyBadge(propName);
   if (typeof onPropertySelectExtras === 'function') onPropertySelectExtras(d);
 }
 

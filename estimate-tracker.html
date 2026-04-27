@@ -53,6 +53,16 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
 #refresh-btn { background: #2e6da4; color: white; border: none; padding: 8px 14px; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
 #refresh-btn:hover { background: #4a86e8; }
 
+/* ── Property picker in toolbar ── */
+#prop-picker-wrap { display: flex; flex-direction: column; gap: 3px; }
+.prop-search-row { position: relative; display: flex; align-items: center; }
+#prop-search { padding: 7px 22px 7px 9px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; font-size: 0.85rem; width: 210px; outline: none; }
+#prop-search:focus { border-color: #2e6da4; }
+#prop-search-clear { display: none; position: absolute; right: 7px; cursor: pointer; color: #999; font-size: 11px; line-height: 1; }
+#prop-search-clear:hover { color: #333; }
+#property-select { width: 220px; }
+#prop-selected-badge { display: none; font-size: 0.78rem; font-weight: 600; color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 4px; padding: 2px 9px; white-space: nowrap; }
+
 /* ── Table ── */
 .tracker-table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
 .tracker-table th { background: #1a1a2e; color: white; font-size: 0.8rem; font-weight: 600; padding: 9px 10px; text-align: left; white-space: nowrap; }
@@ -124,7 +134,17 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
 <div id="tracker-wrap">
   <div id="toolbar">
     <button id="new-est-btn" onclick="location.href='estimate.html'">+ New Estimate</button>
-    <input type="text" id="search-input" placeholder="Search property or description…" oninput="filterTable()">
+    <input type="text" id="search-input" placeholder="Search description…" oninput="filterTable()">
+    <div id="prop-picker-wrap">
+      <div class="prop-search-row">
+        <input type="text" id="prop-search" placeholder="🔍 Search properties…" oninput="filterTrackerPropDropdown(this.value)" autocomplete="off">
+        <span id="prop-search-clear" onclick="clearTrackerPropSearch()" title="Clear">✕</span>
+      </div>
+      <select id="property-select" onchange="onTrackerPropChange()">
+        <option value="">— All properties —</option>
+      </select>
+      <div id="prop-selected-badge"></div>
+    </div>
     <select id="status-filter" onchange="filterTable()">
       <option value="">All Statuses</option>
       <option value="Pending">Pending</option>
@@ -179,6 +199,7 @@ let allEstimates = [];  // { fileId, est }
 
 // ── After auth hook ────────────────────────────────────
 async function onAfterAuth() {
+  await loadSheet();
   loadEstimates();
 }
 
@@ -271,14 +292,52 @@ function renderTable(items) {
   }).join('');
 }
 
+// ── Property picker for tracker ────────────────────────
+function onTrackerPropChange() {
+  const prop = document.getElementById('property-select').value;
+  _updatePropertyBadge(prop);
+  filterTable();
+}
+
+function filterTrackerPropDropdown(query) {
+  const sel   = document.getElementById('property-select');
+  const clear = document.getElementById('prop-search-clear');
+  const q = query.trim().toLowerCase();
+  clear.style.display = q ? 'inline' : 'none';
+  const prevVal = sel.value;
+  const names = Object.keys(clientData).sort();
+  sel.innerHTML = '';
+  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
+  const ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = q ? `— ${matches.length} match${matches.length !== 1 ? 'es' : ''} —` : '— All properties —';
+  sel.appendChild(ph);
+  matches.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if (name === prevVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (sel.value !== prevVal) onTrackerPropChange();
+}
+
+function clearTrackerPropSearch() {
+  document.getElementById('prop-search').value = '';
+  document.getElementById('prop-search-clear').style.display = 'none';
+  filterTrackerPropDropdown('');
+}
+
 // ── Filter ─────────────────────────────────────────────
 function filterTable() {
   const q      = document.getElementById('search-input').value.trim().toLowerCase();
   const status = document.getElementById('status-filter').value;
+  const prop   = document.getElementById('property-select').value;
   const filtered = allEstimates.filter(({ fileId, est }) => {
-    const matchSearch = !q || (est.propertyName + ' ' + (est.description || '')).toLowerCase().includes(q);
+    const matchSearch = !q || (est.description || '').toLowerCase().includes(q);
     const matchStatus = !status || (est.status || 'Pending') === status;
-    return matchSearch && matchStatus;
+    const matchProp   = !prop || est.propertyName === prop;
+    return matchSearch && matchStatus && matchProp;
   });
   renderTable(filtered);
 }

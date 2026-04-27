@@ -2476,7 +2476,7 @@ function initGoogle() {
 // Fills hospital-specific field IDs (primary-name, primary-email, etc.)
 function onPropertySelect() {
   const propName = document.getElementById('property-select').value;
-  if (!propName || !clientData[propName]) return;
+  if (!propName || !clientData[propName]) { _updatePropertyBadge(''); return; }
   const d = clientData[propName];
   const fill = (id, ...keys) => {
     const el = document.getElementById(id);
@@ -2558,6 +2558,8 @@ function onPropertySelect() {
       return profile;
     }).catch(e => { console.warn('[hospital loadPropertyProfile]', e.message); return null; });
   }
+
+  _updatePropertyBadge(propName);
 
   // Check for a saved draft for this specific property now that we know who it is
   checkForDraft();
