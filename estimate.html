@@ -467,22 +467,19 @@ async function appendToWorkRequests(est, estNum) {
   const tabName = meta.sheets[0].properties.title;
 
   const row = [
-    estNum,
-    est.estDate,
-    est.propertyName,
-    est.propertyContact,
-    est.contactEmail,
-    est.contactPhone,
-    est.serviceAddress + (est.cityStateZip ? ', ' + est.cityStateZip : ''),
-    est.description,
-    est.total.toFixed(2),
-    'Pending',
-    '', // PDF Drive ID (filled in after upload)
-    '', // JSON Drive ID (filled in after upload)
+    est.estDate,        // A: Date Request Made
+    est.requestedBy,    // B: Request Made By
+    est.propertyName,   // C: Property
+    est.description,    // D: Work Requested
+    '',                 // E: Report sent for compliance?
+    '',                 // F: Notes
+    '',                 // G: Date Work Completed
+    '',                 // H: Invoiced
+    '',                 // I: Paid
   ];
 
   const appendRes = await googleFetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(tabName + '!A:L')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(tabName + '!A:I')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     'POST',
     { values: [row] }
   );
@@ -502,7 +499,7 @@ async function patchSheetRow(rowNum, pdfId, jsonId) {
   if (!metaRes.ok) return;
   const meta = await metaRes.json();
   const tabName = meta.sheets[0].properties.title;
-  const range = `${tabName}!K${rowNum}:L${rowNum}`;
+  const range = `${tabName}!J${rowNum}:K${rowNum}`;
   await googleFetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
     'PUT',
@@ -558,7 +555,9 @@ function buildEstimatePDF(est, estNum) {
   y += 12;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text(est.propertyName || '', margin, y); y += 14;
+  const propNameLines = doc.splitTextToSize(est.propertyName || '', W / 2 - margin);
+  doc.text(propNameLines, margin, y);
+  y += propNameLines.length * 14;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   if (est.serviceAddress) { doc.text(est.serviceAddress, margin, y); y += 12; }
@@ -620,10 +619,6 @@ function buildEstimatePDF(est, estNum) {
   const totalHrs = l1hrs + l2hrs;
   if (totalHrs > 0) drawRow('Labor', totalHrs.toFixed(1) + ' hrs');
 
-  // Sub-contractor total (if any)
-  const subTotal = est.subRows.reduce((s, r) => s + r.total, 0);
-  if (subTotal > 0) drawRow('Subcontractor', '$' + subTotal.toFixed(2));
-
   // Trip charge
   if (est.tripCharge && est.tripTotal > 0) drawRow('Trip Charge', '$' + est.tripTotal.toFixed(2));
 
@@ -679,8 +674,7 @@ function buildEstimatePDF(est, estNum) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(80, 80, 80);
-  const returnTo = authedUserEmail || 'office@firelifeprotectionsystems.com';
-  doc.text(`Please sign and return to: ${returnTo}`, margin, returnY);
+  doc.text('Please sign and return to Fire Life Protection Systems', margin, returnY);
 
   return doc.output('arraybuffer');
 }
