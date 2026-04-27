@@ -7,7 +7,7 @@ Plain HTML/JS field service management app for a commercial fire inspection comp
 ```bash
 npx wrangler deploy
 ```
-Deploys the entire directory as static assets plus the `_worker.js` API routes. Files listed in `.assetsignore` are excluded from the public deploy (e.g. `_worker.js`, `AppsScript.gs`, `CLAUDE.md`, `README.md`, abandoned test files). Cloudflare caches aggressively — users may need to hard-refresh (Cmd+Shift+R) after a deploy if they have the page open.
+Deploys the entire directory as static assets plus the `_worker.js` API routes. Files listed in `.assetsignore` are excluded from the public deploy (e.g. `_worker.js`, `CLAUDE.md`, `README.md`, abandoned test files). Cloudflare caches aggressively — users may need to hard-refresh (Cmd+Shift+R) after a deploy if they have the page open.
 
 ---
 
