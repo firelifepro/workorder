@@ -575,6 +575,7 @@ function exitSprinklerInspection(target) {
 }
 
 function clearSPInspectionState() {
+  clearStep4State();
   SP_STEP_ORDER.forEach(k => {
     const el = document.getElementById('step-sp-' + k);
     if (!el) return;
@@ -702,7 +703,19 @@ function setSPReportType(val, btn) {
   if (btn) btn.classList.add('selected');
 }
 
+function clearStep4State() {
+  inspectionPhotos.length = 0;
+  renderPhotoGrid();
+  if (typeof clearSig === 'function') clearSig();
+  if (typeof clearCustSig === 'function') clearCustSig();
+  ['sig-name', 'sig-date', 'cust-sig-name', 'cust-sig-title', 'cust-sig-date', 'general-notes', 'overall-status-val'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
 function clearFAInspectionState() {
+  clearStep4State();
   // Clear all PF button selections in FA steps
   FA_STEP_ORDER.forEach(k => {
     const el = document.getElementById('step-fa-' + k);

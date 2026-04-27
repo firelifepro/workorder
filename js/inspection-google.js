@@ -622,6 +622,7 @@ function confirmHoodIdentifier() {
 }
 
 function _buildFreshGenericInspection() {
+  if (typeof clearStep4State === 'function') clearStep4State();
   overallStatus = '';
   overallStatusUserSet = false;
   document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
