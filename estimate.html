@@ -878,7 +878,7 @@ async function createEmailDraft() {
   if (!accessToken || !lastEstData) { toast('⚠ Generate an estimate first'); return; }
   const to   = lastEstData.contactEmail || '';
   const cc   = 'alan.antonio@firelifeprotectionsystems.com,amy.lineberry@firelifeprotectionsystems.com';
-  const subj = `Estimate #${lastEstData.estNum} – ${lastEstData.propertyName} – Please Sign and Return`;
+  const subj = `Estimate #${lastEstData.estNum} - ${lastEstData.serviceAddress || lastEstData.propertyName} - Please Sign and Return`;
   const returnTo = authedUserEmail || 'office@firelifeprotectionsystems.com';
   const body = `Dear ${lastEstData.propertyContact || 'Valued Customer'},\n\nPlease review the attached estimate and sign and return at your earliest convenience.\n\nYou may return the signed estimate to: ${returnTo}\n\nThank you for your business. Please don't hesitate to reach out with any questions.\n\nFire Life Protection System, Inc.\nOffice: (720) 974-1570`;
 
