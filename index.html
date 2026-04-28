@@ -1793,6 +1793,15 @@ function loadFromEstimate() {
     }
 
     calcTotal();
+
+    // Line # from Work Requests sheet row
+    const woNumEl = document.getElementById('wo-number');
+    if (woNumEl && est.estNum) woNumEl.value = est.estNum;
+
+    // Default Date Completed to today
+    const dcEl = document.getElementById('date-requested');
+    if (dcEl && !dcEl.value) dcEl.value = todayMT();
+
     dismissEstimateBanner();
     toast('✓ Estimate loaded — review and save as work order');
   } catch(e) {
