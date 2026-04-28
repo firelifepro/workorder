@@ -315,6 +315,8 @@ let authedUserEmail = '';
 let currentEstFileId = null;  // set when editing an existing estimate
 let lastEstData = null;       // stored after save for email draft
 let lastPdfBytes = null;
+let _logoPngDataUrl = null;
+let _estJsonFolderId = null;
 
 // ── Page hooks called by flips-shared ──────────────────
 async function onAfterAuth() {
@@ -464,6 +466,44 @@ function buildEstSlug(est) {
   return (est.propertyName || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').substring(0, 30);
 }
 
+// ── Logo / JSON-folder / date helpers ─────────────────
+async function _loadLogoPng() {
+  if (_logoPngDataUrl) return _logoPngDataUrl;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 200; canvas.height = 300;
+        canvas.getContext('2d').drawImage(img, 0, 0, 200, 300);
+        _logoPngDataUrl = canvas.toDataURL('image/png');
+      } catch(e) {}
+      resolve(_logoPngDataUrl);
+    };
+    img.onerror = () => resolve(null);
+    img.src = 'logo.svg';
+  });
+}
+
+async function _getEstJsonFolderId() {
+  if (_estJsonFolderId) return _estJsonFolderId;
+  try {
+    const q = "name='FLPS Estimates' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    const res = await googleFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=5`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.files?.length > 0) { _estJsonFolderId = data.files[0].id; return _estJsonFolderId; }
+    }
+  } catch(_) {}
+  return null;
+}
+
+function _fmtDateMMDDYYYY(isoDate) {
+  if (!isoDate) return isoDate;
+  const [y, m, d] = isoDate.split('-');
+  return m && d ? `${m}-${d}-${y}` : isoDate;
+}
+
 // ── Append row to Work Requests sheet ────────────────
 async function appendToWorkRequests(est) {
   const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
@@ -472,15 +512,15 @@ async function appendToWorkRequests(est) {
   const tabName = meta.sheets[0].properties.title;
 
   const row = [
-    est.estDate,        // A: Date Request Made
-    est.requestedBy,    // B: Request Made By
-    est.propertyName,   // C: Property
-    est.description,    // D: Work Requested
-    '',                 // E: Report sent for compliance?
-    '',                 // F: Notes
-    '',                 // G: Date Work Completed
-    '',                 // H: Invoiced
-    '',                 // I: Paid
+    _fmtDateMMDDYYYY(est.estDate), // A: Date Request Made
+    est.requestedBy,                // B: Request Made By
+    est.propertyName,               // C: Property
+    est.description,                // D: Work Requested
+    '',                             // E: Report sent for compliance?
+    'Generated from Estimate',      // F: Notes
+    '',                             // G: Date Work Completed
+    '',                             // H: Invoiced
+    '',                             // I: Paid
   ];
 
   const appendRes = await googleFetch(
@@ -513,39 +553,49 @@ async function patchSheetRow(rowNum, pdfId, jsonId) {
 }
 
 // ── Build PDF bytes ────────────────────────────────────
-function buildEstimatePDF(est, estNum) {
+async function buildEstimatePDF(est, estNum) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
   const margin = 40;
   let y = margin;
 
+  const checkPage = (needed = 30) => {
+    if (y + needed > H - 50) { doc.addPage(); y = margin; }
+  };
+
+  const logoPng = await _loadLogoPng();
+
   // ── Header ──
+  if (logoPng) {
+    doc.addImage(logoPng, 'PNG', margin, margin, 48, 72);
+  }
+  const textX = logoPng ? margin + 56 : margin;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('Fire Life Protection System, Inc.', margin, y);
+  doc.text('Fire Life Protection System, Inc.', textX, y);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   y += 15;
-  doc.text('8201 Shaffer Parkway Suite B', margin, y); y += 12;
-  doc.text('Littleton, CO 80127', margin, y); y += 12;
-  doc.text('Office: (720) 974-1570', margin, y);
+  doc.text('8201 Shaffer Parkway Suite B', textX, y); y += 12;
+  doc.text('Littleton, CO 80127', textX, y); y += 12;
+  doc.text('Office: (720) 974-1570', textX, y);
 
   // Estimate # + date on right
-  const estLabel = `ESTIMATE`;
   const estNumStr = `#${String(estNum).padStart(4,'0')}`;
   const dateStr = fmtDate(est.estDate) || est.estDate;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  doc.text(estLabel, W - margin, margin, { align: 'right' });
+  doc.text('ESTIMATE', W - margin, margin, { align: 'right' });
   doc.setFontSize(11);
   doc.text(estNumStr, W - margin, margin + 26, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.text(dateStr, W - margin, margin + 40, { align: 'right' });
 
-  // Navy divider
-  y = margin + 60;
+  // Navy divider — at least below the logo if present
+  y = logoPng ? margin + 80 : margin + 60;
   doc.setDrawColor(26, 26, 46);
   doc.setLineWidth(1.5);
   doc.line(margin, y, W - margin, y);
@@ -567,12 +617,11 @@ function buildEstimatePDF(est, estNum) {
   doc.setFontSize(9);
   if (est.serviceAddress) { doc.text(est.serviceAddress, margin, y); y += 12; }
   if (est.cityStateZip)   { doc.text(est.cityStateZip,   margin, y); y += 12; }
-  if (est.propertyContact) {
-    doc.text('Attn: ' + est.propertyContact, margin, y); y += 12;
-  }
+  if (est.propertyContact) { doc.text('Attn: ' + est.propertyContact, margin, y); y += 12; }
   y += 6;
 
   // ── Description of Work ──
+  checkPage(80);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(100, 100, 100);
@@ -582,8 +631,9 @@ function buildEstimatePDF(est, estNum) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   const descLines = doc.splitTextToSize(est.description || 'See scope of work.', W - margin * 2);
-  // Draw box around description
   const descHeight = descLines.length * 12 + 14;
+  // If description box would overflow the page, start a new page
+  if (y + descHeight > H - 50) { doc.addPage(); y = margin; }
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.5);
   doc.rect(margin, y, W - margin * 2, descHeight);
@@ -591,6 +641,7 @@ function buildEstimatePDF(est, estNum) {
   y += descHeight + 14;
 
   // ── Pricing Summary ──
+  checkPage(60);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(100, 100, 100);
@@ -600,10 +651,10 @@ function buildEstimatePDF(est, estNum) {
 
   const tableX1 = margin;
   const tableX2 = W - margin;
-  const col2 = W - margin - 90;
   const rowH = 18;
 
   const drawRow = (label, value, bold) => {
+    checkPage(rowH + 10);
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     doc.setFontSize(9.5);
     doc.text(label, tableX1, y);
@@ -614,9 +665,10 @@ function buildEstimatePDF(est, estNum) {
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.3);
 
-  // Materials total
-  const matTotal = est.matRows.reduce((s, r) => s + r.total, 0);
-  if (matTotal > 0) drawRow('Materials', '$' + matTotal.toFixed(2));
+  // Materials — one row per line item with description
+  est.matRows.filter(r => r.total > 0).forEach(r => {
+    drawRow(r.desc ? 'Materials: ' + r.desc : 'Materials', '$' + r.total.toFixed(2));
+  });
 
   // Labor (hours only, no $)
   const l1hrs = est.laborRows[0]?.qty || 0;
@@ -629,18 +681,16 @@ function buildEstimatePDF(est, estNum) {
 
   // Misc
   if (est.misc?.total > 0) {
-    const miscLabel = 'Misc' + (est.misc.desc ? ': ' + est.misc.desc : '');
-    drawRow(miscLabel, '$' + est.misc.total.toFixed(2));
+    drawRow('Misc' + (est.misc.desc ? ': ' + est.misc.desc : ''), '$' + est.misc.total.toFixed(2));
   }
 
-  // Divider
+  // Divider + Grand Total
+  checkPage(50);
   y -= 4;
   doc.setDrawColor(26, 26, 46);
   doc.setLineWidth(0.8);
   doc.line(tableX1, y, tableX2, y);
   y += 14;
-
-  // Grand Total
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text('TOTAL ESTIMATE', tableX1, y);
@@ -648,9 +698,10 @@ function buildEstimatePDF(est, estNum) {
   y += 30;
 
   // ── Customer Authorization ──
+  const authBoxH = 100;
+  checkPage(authBoxH + 30);
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.5);
-  const authBoxH = 100;
   doc.rect(margin, y, W - margin * 2, authBoxH);
 
   const bx = margin + 8;
@@ -675,11 +726,10 @@ function buildEstimatePDF(est, estNum) {
   doc.text('Printed Name', bx, by + 17);
 
   // Sign and return footer
-  const returnY = y + authBoxH + 14;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(80, 80, 80);
-  doc.text('Please sign and return to Fire Life Protection Systems', margin, returnY);
+  doc.text('Please sign and return to Fire Life Protection Systems', margin, y + authBoxH + 14);
 
   return doc.output('arraybuffer');
 }
@@ -717,9 +767,9 @@ async function _stepLog(est, addMsg) {
   }
 }
 
-function _stepBuildDownload(est, addMsg) {
+async function _stepBuildDownload(est, addMsg) {
   addMsg('Building PDF…', '#888');
-  const pdfBuf  = buildEstimatePDF(est, est.estNum);
+  const pdfBuf  = await buildEstimatePDF(est, est.estNum);
   lastPdfBytes  = pdfBuf;
   const propSlug = buildEstSlug(est);
   const dateSlug = est.estDate || todayMT();
@@ -737,7 +787,8 @@ async function _stepDrive(est, pdfBuf, addMsg) {
   let pdfFileId = null, jsonFileId = null;
   try {
     addMsg('Saving estimate JSON to Drive…', '#888');
-    const jsonRes = await driveUploadFile(jsonName, 'application/json', JSON.stringify(est, null, 2), EST_FOLDER_ID, currentEstFileId || null);
+    const jsonFolderId = await _getEstJsonFolderId() || EST_FOLDER_ID;
+    const jsonRes = await driveUploadFile(jsonName, 'application/json', JSON.stringify(est, null, 2), jsonFolderId, currentEstFileId || null);
     jsonFileId = jsonRes.id;
     if (!currentEstFileId) currentEstFileId = jsonFileId;
     addMsg('✓ JSON saved to Drive', 'green');
@@ -773,7 +824,7 @@ async function btnDownload() {
     const est = collectEstimate();
     est.estNum = lastEstData?.estNum || Date.now();
     lastEstData = est;
-    _stepBuildDownload(est, addMsg);
+    await _stepBuildDownload(est, addMsg);
   });
 }
 
@@ -818,7 +869,7 @@ async function generateEstimate() {
       est.estNum = Date.now();
     }
 
-    const { pdfBuf } = _stepBuildDownload(est, addMsg);
+    const { pdfBuf } = await _stepBuildDownload(est, addMsg);
 
     if (accessToken) {
       await _stepDrive(est, pdfBuf, addMsg);
@@ -889,6 +940,18 @@ async function createEmailDraft() {
     const res = await googleFetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', 'POST', { message: { raw: encoded } });
     if (!res.ok) {
       const txt = await res.text();
+      let errObj = null;
+      try { errObj = JSON.parse(txt); } catch(_) {}
+      if (errObj?.error?.code === 403) {
+        const statusEl = document.getElementById('save-status');
+        if (statusEl) statusEl.innerHTML += `<div style="color:#c0392b;margin-top:8px;padding:10px 14px;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;font-size:0.82rem;line-height:1.8;">
+          <strong>Gmail API not enabled for this Google Cloud project.</strong><br>
+          To fix: open <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" style="color:#1d4ed8;">Google Cloud Console → Gmail API</a>, click <strong>Enable</strong>, then reconnect Google on this page.<br>
+          Your estimate PDF can still be downloaded and saved to Drive above.
+        </div>`;
+        toast('✗ Gmail API not enabled — see instructions below');
+        return;
+      }
       throw new Error('Gmail API: ' + txt.substring(0, 200));
     }
     toast('✓ Email draft created — check Gmail');
