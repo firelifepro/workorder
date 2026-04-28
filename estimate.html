@@ -525,20 +525,6 @@ async function appendToWorkRequests(est) {
   return rangeMatch ? parseInt(rangeMatch[1]) : null;
 }
 
-async function patchSheetRow(rowNum, pdfId, jsonId) {
-  if (!rowNum) return;
-  const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
-  if (!metaRes.ok) return;
-  const meta = await metaRes.json();
-  const tabName = meta.sheets[0].properties.title;
-  const range = `${tabName}!J${rowNum}:K${rowNum}`;
-  await googleFetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
-    'PUT',
-    { values: [[pdfId || '', jsonId || '']] }
-  );
-}
-
 // ── Build PDF bytes ────────────────────────────────────
 async function buildEstimatePDF(est, estNum) {
   const { jsPDF } = window.jspdf;
@@ -786,9 +772,6 @@ async function _stepDrive(est, pdfBuf, addMsg) {
     pdfFileId = pdfRes.id;
     addMsg('✓ PDF saved to Drive', 'green');
   } catch(e) { addMsg('⚠ PDF save failed: ' + e.message, 'orange'); }
-  try {
-    if (est.estNum && (pdfFileId || jsonFileId)) await patchSheetRow(est.estNum, pdfFileId, jsonFileId);
-  } catch(_) {}
 }
 
 // ── Individual button handlers ─────────────────────────

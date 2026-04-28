@@ -194,7 +194,7 @@ document.addEventListener('click', e => {
 
 // ── Config ──────────────────────────────────────────────
 const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
-const EST_FOLDER_ID = '1Ma-hUFL3t4l6NsWdmPRB45JJMaaK1Oc1';
+const EST_JSON_FOLDER_ID = '1pCvXgW6XvQub-TYHpzyNvkoWdnqPjB1q';
 
 let allEstimates = [];  // { fileId, est }
 
@@ -211,7 +211,7 @@ async function loadEstimates() {
   document.getElementById('count-label').textContent = '';
 
   try {
-    const q = encodeURIComponent(`'${EST_FOLDER_ID}' in parents and name contains 'FLPS_EST_' and name contains '.json' and trashed=false`);
+    const q = encodeURIComponent(`'${EST_JSON_FOLDER_ID}' in parents and name contains 'FLPS_EST_' and name contains '.json' and trashed=false`);
     const listRes = await googleFetch(
       `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,createdTime)&orderBy=createdTime desc&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true`
     );
@@ -352,7 +352,7 @@ async function updateEstStatus(fileId, newStatus) {
 
   try {
     const content = JSON.stringify(entry.est, null, 2);
-    await driveUploadFile(null, 'application/json', content, EST_FOLDER_ID, fileId);
+    await driveUploadFile(null, 'application/json', content, EST_JSON_FOLDER_ID, fileId);
     toast(`✓ Status updated to ${newStatus}`);
     filterTable();
   } catch(e) {
