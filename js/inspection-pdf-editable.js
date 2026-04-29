@@ -2829,13 +2829,14 @@ async function buildHoodPDFBytes() {
   jFields.forEach(([lbl, val]) => {
     jY -= 6;
     page.drawText(lbl, { x: divX+2, y: jY, size: 5.5, font: hFont, color: navy });
+    jY -= 1;
     jY -= 12;
     page.drawRectangle({ x: divX, y: jY, width: rcW, height: 12, color: gold, borderColor: sky, borderWidth: 0.3 });
     const jf = form.createTextField(fid());
     jf.setText(val);
     jf.addToPage(page, { x: divX+1, y: jY+1, width: rcW-2, height: 10, font: rFont });
     jf.setFontSize(7);
-    jY -= 2;
+    jY -= 1;
   });
   curY += iH + 4;
 
