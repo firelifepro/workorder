@@ -182,7 +182,7 @@ function collectAllData() {
       weather:      v('weather')
     },
     inspectionSystem: activeInspectionSystem,
-    hoodIdentifier: activeHoodIdentifier || '',
+    hoodIdentifiers: activeHoodList ? activeHoodList.map(h => h.identifier) : [],
     systems:      activeInspectionSystem ? [activeInspectionSystem] : [...activeSystems],
     overallStatus,
     generalNotes: v('general-notes'),

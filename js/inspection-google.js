@@ -156,7 +156,7 @@ function buildDropdown() {
 
 function _clearPropertyFields() {
   ['property-name','service-address','city-state-zip','client-company',
-   'property-contact-name','property-contact-email','primary-name'].forEach(id => {
+   'property-contact-name','property-contact-phone','property-contact-email','primary-name'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -241,6 +241,22 @@ function onPropertySelect() {
   }
   fill('property-contact-name', 'property manager','contact name');
   fill('property-contact-email', 'contact email','email','e-mail');
+
+  // Phone: try dedicated phone column first, then parse from combined contact info cell
+  const rePhone2 = /\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/;
+  const reEmail2 = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
+  const keys2 = Object.keys(d);
+  const phoneKey2 = keys2.find(h =>
+    ['contact phone','phone number','mobile','cell','phone'].some(k => h.includes(k))
+    && !h.includes('billing') && !h.includes('sub') && !h.includes('info')
+  );
+  const contactInfoKey2 = keys2.find(h => h.includes('contact info') || h.includes('contact information'));
+  const rawPhone2 = phoneKey2 ? d[phoneKey2] : '';
+  const rawCombined2 = contactInfoKey2 ? d[contactInfoKey2] : '';
+  const phoneFromCell2 = rawCombined2 ? (rawCombined2.match(rePhone2) || [])[0] || '' : '';
+  const resolvedPhone2 = rawPhone2 || phoneFromCell2;
+  const phEl2 = document.getElementById('property-contact-phone');
+  if (phEl2) phEl2.value = resolvedPhone2;
   _updatePropertyBadge(propName);
 
   // Extract FLPS account number for stable Drive profile lookup
@@ -427,10 +443,8 @@ function startInspectionForSystem(sysKey) {
     return;
   }
 
-  // Hood has multiple hoods per property — prev data is loaded after the
-  // identifier is chosen in the picker, so skip loading here.
+  // Hood uses multi-hood panel — prev data is loaded per-card in initHoodPanel()
   if (sysKey === 'hood') {
-    activeHoodIdentifier = '';
     window._prevInspectionData = null;
     buildInspectionForms();
     return;
@@ -476,12 +490,6 @@ function toggleSys(el) {
 function buildInspectionForms() {
   if (!activeInspectionSystem) { toast('⚠ Select a system to inspect from the Start an Inspection section'); return; }
   saveBuildingConfig();
-
-  // Hood uses a dedicated identifier picker before the inspection panel
-  if (activeInspectionSystem === 'hood') {
-    showHoodIdentifierPicker();
-    return;
-  }
 
   // Fire alarm and sprinkler use static multi-step navigation
   if (activeInspectionSystem === 'fire-alarm') {
@@ -532,93 +540,55 @@ function _resumeGenericFromDraft(draft) {
     banner.style.display = 'flex';
   }
   restoreDraft(draft);
+  if (sysKey === 'hood' && draft.hoodList === undefined && !draft.activeHoodList) {
+    _rebuildHoodListFromDOM();
+  }
   buildItemPanelMap();
   updateDeficiencySummary();
   goStep(3);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KITCHEN HOOD IDENTIFIER PICKER
+// KITCHEN HOOD PANEL INIT
 // ─────────────────────────────────────────────────────────────────────────────
-function showHoodIdentifierPicker() {
-  const identifiers = (_propertyProfile && _propertyProfile.hoodIdentifiers) || [];
-  const datalist = document.getElementById('hood-ident-list');
-  if (datalist) {
-    datalist.innerHTML = '';
-    identifiers.forEach(id => {
-      const opt = document.createElement('option');
-      opt.value = id;
-      datalist.appendChild(opt);
+function initHoodPanel() {
+  activeHoodList = [];
+  _hoodCardCount = 0;
+  _hoodApplianceCounts = {};
+
+  const savedHoods = (_propertyProfile && _propertyProfile.hoodIdentifiers) || [];
+  if (savedHoods.length === 0) {
+    addHoodCard('', null, false);
+  } else {
+    savedHoods.forEach(identifier => {
+      const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
+      const prev = lastByHood[identifier] || null;
+      addHoodCard(identifier, prev, false);
     });
   }
-  const input = document.getElementById('hood-ident-input');
-  if (input) input.value = activeHoodIdentifier || '';
-  document.getElementById('step-2').style.display = 'none';
-  document.getElementById('step-hood-ident').style.display = 'block';
-  updateHoodIdentPrevInfo();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function updateHoodIdentPrevInfo() {
-  const val = (document.getElementById('hood-ident-input')?.value || '').trim();
-  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
-  const prev = lastByHood[val];
-  const prevEl = document.getElementById('hood-ident-prev-info');
-  const summEl = document.getElementById('hood-ident-prev-summary');
-  const newEl  = document.getElementById('hood-ident-new-notice');
-  if (!val) {
-    if (prevEl) prevEl.style.display = 'none';
-    if (newEl)  newEl.style.display  = 'none';
-    return;
-  }
-  if (prev) {
-    if (summEl) summEl.textContent = ` ${prev.date || '?'} — ${prev.inspector || '?'} — ${prev.status || '?'}`;
-    if (prevEl) prevEl.style.display = 'block';
-    if (newEl)  newEl.style.display  = 'none';
-  } else {
-    if (prevEl) prevEl.style.display = 'none';
-    if (newEl)  newEl.style.display  = 'block';
-  }
+function getActiveHoods() {
+  return activeHoodList.filter(h => !h.excluded);
 }
 
-function exitHoodIdentPicker() {
-  document.getElementById('step-hood-ident').style.display = 'none';
-  document.getElementById('step-2').style.display = 'block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function confirmHoodIdentifier() {
-  const val = (document.getElementById('hood-ident-input')?.value || '').trim();
-  if (!val) { toast('Enter a kitchen hood identifier before continuing.'); return; }
-  activeHoodIdentifier = val;
-
-  // Load previous data for this specific hood from profile
-  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
-  const last = lastByHood[val];
-  window._prevInspectionData = last ? {
-    inspection: { date: last.date, inspectorName: last.inspector, reportType: last.reportType },
-    overallStatus: last.status,
-    systems: ['hood'],
-    fieldData:    last.fieldData    || {},
-    pfStates:     last.pfStates     || {},
-    deficiencies: last.deficiencies || [],
-    extinguishers: [],
-    devices: null
-  } : null;
-
-  document.getElementById('step-hood-ident').style.display = 'none';
-
-  // Check for an existing draft for this system
-  const existingDraft = loadDraft();
-  if (existingDraft && existingDraft.sysKey === 'hood' && existingDraft.sysFormsHTML) {
-    showDraftModal(existingDraft, false,
-      () => { _resumeGenericFromDraft(existingDraft); },
-      () => { clearDraft(); _buildFreshGenericInspection(); },
-      () => { clearDraft(); _buildFreshGenericInspection(); }
-    );
-    return;
-  }
-  _buildFreshGenericInspection();
+// Rebuilds activeHoodList from DOM after innerHTML restore (draft resume)
+function _rebuildHoodListFromDOM() {
+  activeHoodList = [];
+  _hoodCardCount = 0;
+  _hoodApplianceCounts = {};
+  document.querySelectorAll('.hood-card[data-hood-id]').forEach(card => {
+    const id = parseInt(card.dataset.hoodId);
+    if (id > _hoodCardCount) _hoodCardCount = id;
+    const identifier = document.getElementById('hood-ident-' + id)?.value || '';
+    const excluded = document.getElementById('hood-exclude-' + id)?.checked || false;
+    activeHoodList.push({ id, identifier, excluded });
+    _hoodApplianceCounts[id] = 0;
+    document.querySelectorAll(`[data-hood-app-id][data-hood-id="${id}"]`).forEach(row => {
+      const appId = parseInt(row.dataset.hoodAppId || 0);
+      if (appId > (_hoodApplianceCounts[id] || 0)) _hoodApplianceCounts[id] = appId;
+    });
+  });
 }
 
 function _buildFreshGenericInspection() {
@@ -650,6 +620,7 @@ function _buildFreshGenericInspection() {
 
   // System-specific panel initialization (dynamic tables, checklists)
   if (activeInspectionSystem === 'fire-alarm') initFireAlarmPanel();
+  if (activeInspectionSystem === 'hood') initHoodPanel();
 
   // Show active system banner in step 3
   const meta = SYS_META[activeInspectionSystem] || { label: activeInspectionSystem, icon: '⚙️' };

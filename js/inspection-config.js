@@ -29,7 +29,9 @@ let overallStatusUserSet = false;
 let sigDrawing = false;
 let sigCtx = null;
 let sigHasData = false;
-let activeHoodIdentifier = '';
+let activeHoodList = [];   // [{id, identifier, excluded}]
+let _hoodCardCount = 0;
+let _hoodApplianceCounts = {}; // {hoodId: highestApplianceId}
 
 const SYS_META = {
   'fire-alarm':          { label: 'Fire Alarm',              icon: '🔔' },

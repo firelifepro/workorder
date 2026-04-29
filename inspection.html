@@ -181,6 +181,10 @@
             <input type="text" id="property-contact-name">
           </div>
           <div class="field-group">
+            <label>Property Contact Phone</label>
+            <input type="text" id="property-contact-phone">
+          </div>
+          <div class="field-group">
             <label>Property Contact Email</label>
             <input type="text" id="property-contact-email">
           </div>
@@ -1273,39 +1277,6 @@
     </div>
   </div>
 
-  <!-- ══ KITCHEN HOOD: IDENTIFIER PICKER ══ -->
-  <div id="step-hood-ident" style="display:none;">
-    <div class="card" style="border-color:#d97706;">
-      <div class="card-header" style="background:#d97706;">
-        <span class="icon">🍳</span><span>Kitchen Hood Identifier</span>
-      </div>
-      <div class="card-body">
-        <p style="font-size:0.82rem;color:var(--slate);margin-bottom:14px;">
-          Each kitchen hood is tracked and inspected separately. Enter a name for this hood (e.g. "Southwest Hood", "Line 1", "Main Kitchen") or select a previous one recorded at this property.
-        </p>
-        <div class="field-group">
-          <label>Kitchen Hood Identifier</label>
-          <input type="text" id="hood-ident-input" list="hood-ident-list"
-            placeholder="e.g. Southwest Hood, Line 1, Main Kitchen"
-            autocomplete="off"
-            oninput="updateHoodIdentPrevInfo()"
-            style="border:1.5px solid var(--border);border-radius:7px;padding:9px 11px;font-size:0.88rem;font-family:inherit;color:var(--navy);outline:none;width:100%;background:white;margin-top:5px;">
-          <datalist id="hood-ident-list"></datalist>
-        </div>
-        <div id="hood-ident-prev-info" style="display:none;margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid var(--blue);border-radius:6px;padding:8px 12px;font-size:0.78rem;color:#1e40af;">
-          <span style="font-weight:700;">Previous inspection on file for this hood:</span>
-          <span id="hood-ident-prev-summary"></span>
-        </div>
-        <div id="hood-ident-new-notice" style="display:none;margin-top:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-left:3px solid var(--green);border-radius:6px;padding:8px 12px;font-size:0.78rem;color:#166534;">
-          New hood — a fresh inspection will be started and this identifier will be saved to the property profile.
-        </div>
-      </div>
-    </div>
-    <div class="btn-row">
-      <button class="btn-secondary" onclick="exitHoodIdentPicker()">← Back to Systems</button>
-      <button class="btn-primary" id="hood-ident-continue-btn" onclick="confirmHoodIdentifier()" style="background:#d97706;border-color:#d97706;">Continue to Inspection →</button>
-    </div>
-  </div>
 
 </div><!-- /app -->
 

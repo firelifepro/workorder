@@ -103,10 +103,7 @@ async function saveAndDownload() {
     const propSlug = buildFileSlug(data);
     const dateSlug = data.inspection.date || todayMT();
     const sysSlug  = activeInspectionSystem ? activeInspectionSystem.replace(/-/g, '_') : 'inspection';
-    const hoodSlug = (activeInspectionSystem === 'hood' && activeHoodIdentifier)
-      ? '_' + activeHoodIdentifier.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
-      : '';
-    filename = `FLPS_${sysSlug}${hoodSlug}_${propSlug}_${dateSlug}.pdf`;
+    filename = `FLPS_${sysSlug}_${propSlug}_${dateSlug}.pdf`;
 
     // ── 4. Save JSON inspection data to Drive ──────────────────────────────────
     if (accessToken) {

@@ -2664,6 +2664,7 @@ async function buildHoodPDFBytes() {
 
   const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 36;
   let page, curY, _fid = 0;
+  let _pageCount = 0;
   const fid = () => 'hood_' + (++_fid);
 
   const FIRE_RED = rgb(0.72, 0.08, 0.08);
@@ -2672,13 +2673,29 @@ async function buildHoodPDFBytes() {
   const sky    = rgb(0.71, 0.80, 0.93);
   const gold   = rgb(1.0,  1.0,  0.75);
   const lgray  = rgb(0.94, 0.94, 0.94);
+  const cream  = rgb(0.99, 0.98, 0.92);
   const white  = rgb(1, 1, 1);
   const blk    = rgb(0, 0, 0);
   const green  = rgb(0.06, 0.50, 0.22);
   const red    = rgb(0.76, 0.10, 0.10);
   const slate  = rgb(0.39, 0.45, 0.55);
 
-  const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
+  const propName = data.property?.name || '';
+  const inspDate = data.inspection?.date || '';
+
+  const drawPageHeader = () => {
+    page.drawRectangle({ x: 0, y: PH - 20, width: W, height: 20, color: navy });
+    page.drawText(propName, { x: ML, y: PH - 14, size: 8, font: hFont, color: white });
+    const dtW = hFont.widthOfTextAtSize(inspDate, 8);
+    page.drawText(inspDate, { x: W - ML - dtW, y: PH - 14, size: 8, font: hFont, color: white });
+  };
+
+  const addPage = () => {
+    page = pdfDoc.addPage([W, PH]);
+    _pageCount++;
+    curY = MT;
+    if (_pageCount > 1) { drawPageHeader(); curY = 28; }
+  };
   const ry = (h) => PH - curY - h;
   const ty = (h, a = 3) => PH - curY - h + a;
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
@@ -2728,10 +2745,10 @@ async function buildHoodPDFBytes() {
     curY += lh + fh + gp;
   };
 
-  const dv = (id) => document.getElementById(id)?.value?.trim() || '';
-  const fd = data.fieldData || {};
+  const dv   = (id) => document.getElementById(id)?.value?.trim() || '';
+  const ddat = (id) => document.getElementById(id)?.dataset?.val?.trim() || '';
 
-  // ── PAGE 1: HEADER ─────────────────────────────────────────────────────────
+  // ── PAGE 1 ─────────────────────────────────────────────────────────────────
   addPage();
 
   // Red title banner
@@ -2806,7 +2823,7 @@ async function buildHoodPDFBytes() {
     ['DATE PERFORMED', data.inspection?.date || ''],
     ['INSPECTOR',      data.inspection?.inspectorName || ''],
     ['LICENSE / CERT', data.inspection?.inspectorCert || ''],
-    ['NFPA REFERENCE', 'NFPA 17A'],
+    ['NFPA REFERENCE', 'NFPA 96'],
   ];
   let jY = ry(iH) + iH - rtBoxH - 3;
   jFields.forEach(([lbl, val]) => {
@@ -2821,15 +2838,6 @@ async function buildHoodPDFBytes() {
     jY -= 2;
   });
   curY += iH + 4;
-
-  // Hood identifier bar
-  const hoodId = data.hoodIdentifier || activeHoodIdentifier || '';
-  checkPage(22);
-  page.drawRectangle({ x: ML, y: ry(18), width: PW, height: 18, color: amber });
-  page.drawText('HOOD IDENTIFIER:', { x: ML+8, y: ty(18,6), size: 7, font: hFont, color: white });
-  page.drawText(hoodId || '(not specified)', { x: ML+100, y: ty(18,6), size: 9, font: hFont, color: white });
-  curY += 18;
-  gap(2);
 
   // Overall status bar
   const stVal = (data.overallStatus || '').toUpperCase();
@@ -2847,21 +2855,23 @@ async function buildHoodPDFBytes() {
     { label: 'SERVICE ADDRESS',    val: data.property?.address || '',      w: PW * 0.6 },
     { label: 'CITY / STATE / ZIP', val: data.property?.cityStateZip || '', w: PW * 0.4 },
   ]);
+  const phoneVal = dv('property-contact-phone');
   dataRow([
-    { label: 'PROPERTY CONTACT', val: data.property?.contact || '',      w: PW / 2 },
-    { label: 'COMPANY',          val: data.property?.company || '',       w: PW / 2 },
+    { label: 'PROPERTY CONTACT', val: data.property?.contact || '', w: PW / 3 },
+    { label: 'CONTACT PHONE',    val: phoneVal,                     w: PW / 3 },
+    { label: 'COMPANY',          val: data.property?.company || '', w: PW / 3 },
   ]);
   gap(6);
 
   // Deficiencies
-  if (data.deficiencies.length > 0) {
+  if (data.deficiencies && data.deficiencies.length > 0) {
     secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
     data.deficiencies.forEach(d => {
       const text = d.item + (d.description ? ': ' + d.description : '');
       const defRowH = 18;
       checkPage(defRowH + 2);
       page.drawRectangle({ x: ML, y: ry(defRowH), width: PW, height: defRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
-      page.drawText('\u2022', { x: ML+4, y: ry(defRowH) + defRowH/2 + 2, size: 8, font: hFont, color: red });
+      page.drawText('•', { x: ML+4, y: ry(defRowH) + defRowH/2 + 2, size: 8, font: hFont, color: red });
       const df = form.createTextField(fid());
       df.setText(text);
       df.addToPage(page, { x: ML+14, y: ry(defRowH)+2, width: PW-16, height: defRowH-4, font: rFont });
@@ -2871,110 +2881,341 @@ async function buildHoodPDFBytes() {
     gap(4);
   }
 
-  // System Information
-  secHdr('SYSTEM INFORMATION');
-  gap(4);
-  dataRow([
-    { label: 'MANUFACTURER',      val: fd['hood-mfr']   || '', w: 180 },
-    { label: 'MODEL / CYLINDER #', val: fd['hood-model'] || '', w: 180 },
-    { label: 'YEAR INSTALLED',    val: fd['hood-install']|| '', w: 180 },
-  ]);
-  dataRow([
-    { label: 'SUPPRESSION AGENT TYPE', val: fd['hood-agent']        || '', w: 180 },
-    { label: '# OF NOZZLES',           val: fd['hood-nozzle-count'] || '', w: 180 },
-    { label: 'LAST SERVICE DATE',      val: fd['hood-last-service'] || '', w: 180 },
-  ]);
-  dataRow([
-    { label: 'KITCHEN EQUIPMENT PROTECTED', val: fd['hood-area']      || '', w: 270 },
-    { label: 'APPLIANCE MANUFACTURER',      val: fd['hood-appliance'] || '', w: 270 },
-  ]);
-  dataRow([
-    { label: 'ACTUAL CYLINDER WEIGHT (LBS)', val: fd['hood-cyl-wt-actual'] || '', w: 180 },
-    { label: 'MIN ACCEPTABLE WEIGHT (LBS)',  val: fd['hood-cyl-wt-min']    || '', w: 180 },
-    { label: 'NEXT SERVICE DUE',             val: fd['hood-next-service']  || '', w: 180 },
-  ]);
-  dataRow([
-    { label: 'TAG COLOR / ID', val: fd['hood-tag-color'] || '', w: 270 },
-  ]);
-  gap(4);
-
-  // ── Inspection Results ────────────────────────────────────────────────────
-  const HOOD_ITEMS = [
-    { id: 'hood-cylinder-wt',    section: 'AGENT CYLINDERS & ACTUATION',  label: 'Cylinder Weight / Pressure Check',        note: 'Within manufacturer spec; not expired' },
-    { id: 'hood-pull-station',   section: null,                            label: 'Manual Pull Station',                     note: 'Accessible; pin and seal intact' },
-    { id: 'hood-auto-detect',    section: null,                            label: 'Fusible Links / Detectors',               note: 'Replaced as required; properly positioned' },
-    { id: 'hood-micro-switch',   section: null,                            label: 'Micro-Switch Actuation',                  note: 'Gas shut-off activates on system discharge' },
-    { id: 'hood-nozzle-cond',    section: 'NOZZLES & DISTRIBUTION',       label: 'Nozzle Condition',                        note: 'No blockage; proper orientation and caps' },
-    { id: 'hood-nozzle-coverage',section: null,                            label: 'Nozzle Coverage',                         note: 'All appliances and plenum protected per design' },
-    { id: 'hood-duct-protected', section: null,                            label: 'Duct & Plenum Protection',                note: 'Entire duct and plenum covered' },
-    { id: 'hood-gas-shutoff',    section: 'INTERLOCK & SUPPRESSION TEST', label: 'Gas Shutoff Interlock',                   note: 'Gas valve closes on system activation' },
-    { id: 'hood-power-shutoff',  section: null,                            label: 'Electrical Interlock',                    note: 'Power to cooking equipment cut on alarm' },
-    { id: 'hood-fa-integration', section: null,                            label: 'Fire Alarm Integration',                  note: 'Alarm transmitted to fire alarm panel' },
-    { id: 'hood-ansul-reset',    section: null,                            label: 'System Reset Procedure Verified',         note: 'Staff aware of reset; recharge service tag' },
-    { id: 'hood-grease-buildup', section: 'HOOD & GREASE MANAGEMENT',     label: 'Grease Buildup — Hood & Filters',         note: 'Excessive grease noted (document)' },
-    { id: 'hood-filter-cond',    section: null,                            label: 'Filter Condition & Clearance',            note: 'Filters in place; properly seated' },
-    { id: 'hood-service-tag',    section: null,                            label: 'Current Inspection Tag Affixed',          note: 'Tag shows contractor, date, and next due' },
+  // NFPA References and Procedure
+  const NFPA_LINES = [
+    'YOUR KITCHEN HOOD EXTINGUISHING SYSTEM(S) ARE REQUIRED TO BE THOROUGHLY INSPECTED, TESTED AND MAINTAINED EVERY 6',
+    'MONTHS BY AN APPROVED SERVICING COMPANY IN ACCORDANCE WITH THE FOLLOWING NFPA CHAPTER REFERENCES:',
+    'NFPA 96 2017 EDITION',
+    'TESTING MUST INCLUDE CONTROL EQUIPMENT, INITIATING DEVICES, HVAC/ ELECTRICAL/GAS SHUTDOWN, LINKAGE REPLACEMENT',
+    '(ANNUALLY) AND ALARM NOTIFICATION APPLIANCES. SEE THE BELOW LIST OF VARIOUS TESTING DEVICES:',
+    'VISUAL AND FUNCTIONAL TESTING OF THE INITIATING COMPONENTS.',
+    'VISUAL INSPECTION TO VERIFY PROPER SUPPRESSION APPLICATION.',
+    'VISUAL INSPECTION & VERIFICATION OF CYLINDER SERVICE DATES.',
+    'REPLACEMENT OF COMPONENTS PER CODE REQUIREMENTS (SEMI-ANNUALLY).',
+    'VISUAL AND FUNCTIONAL TESTING OF ALL SHUNT OPERATIONS AND SHUTDOWN.',
+    'ALARM SIGNAL TRANSMISSION TO CENTRAL STATION VERIFICATION (IF APPLICABLE)',
+    'VISUAL AND FUNCTIONAL VERIFICATION OF ALARM SIGNALS SENT TO THE FIRE ALARM PANEL.',
+    'VISUAL INSPECTION OF PORTABLE EXTINGUISHER UNITS AND VERIFICATION OF PROPER CLASS RATING FOR APPLICATION',
   ];
-
-  secHdr('INSPECTION RESULTS');
-  let lastSection = null;
-  HOOD_ITEMS.forEach(item => {
-    if (item.section && item.section !== lastSection) {
-      subHdr(item.section);
-      lastSection = item.section;
-    }
-    const row = document.getElementById('row-' + item.id);
-    const result = (row?.dataset.val || '').toUpperCase();
-    const deficTxt = document.getElementById('defic-txt-' + item.id)?.value?.trim() || '';
-    // rowH=20 so two lines of text (label + note) fit without overflowing into adjacent elements
-    const rowH = 20;
-    checkPage(rowH + (result === 'FAIL' && deficTxt ? 16 : 0));
-    const bg = result === 'PASS' ? rgb(0.94, 0.99, 0.95) : result === 'FAIL' ? rgb(0.99, 0.93, 0.93) : lgray;
-    page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
-    // Label — positioned so cap-height stays inside the row rectangle
-    page.drawText(item.label, { x: ML+4, y: ty(rowH, rowH-8), size: 7.5, font: rFont, color: navy });
-    // Note — smaller text below label
-    if (item.note) {
-      page.drawText(item.note, { x: ML+4, y: ty(rowH, 5), size: 6, font: rFont, color: slate });
-    }
-    // Result badge — editable field so inspector can update in reader
-    const bW = 36;
-    page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+3, width: bW, height: rowH-6, color: result === 'PASS' ? green : result === 'FAIL' ? red : rgb(0.7,0.7,0.7) });
-    const badgeField = form.createTextField(fid());
-    badgeField.setText(result || 'N/A');
-    badgeField.addToPage(page, { x: ML+PW-bW-1, y: ry(rowH)+4, width: bW-2, height: rowH-8, font: hFont });
-    badgeField.setFontSize(7);
-    curY += rowH + 1;
-    if (result === 'FAIL' && deficTxt) {
-      // Editable deficiency note row
-      const dRowH = 14;
-      checkPage(dRowH + 2);
-      page.drawRectangle({ x: ML+4, y: ry(dRowH), width: PW-4, height: dRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
-      const dnf = form.createTextField(fid());
-      dnf.setText('Deficiency: ' + deficTxt);
-      dnf.addToPage(page, { x: ML+6, y: ry(dRowH)+2, width: PW-8, height: dRowH-4, font: rFont });
-      dnf.setFontSize(7);
-      curY += dRowH + 2;
-    }
+  const nfpaLineH = 9;
+  const nfpaBoxH = NFPA_LINES.length * nfpaLineH + 14;
+  checkPage(18 + nfpaBoxH + 4);
+  secHdr('NFPA REFERENCES AND PROCEDURE');
+  page.drawRectangle({ x: ML, y: ry(nfpaBoxH), width: PW, height: nfpaBoxH, color: cream, borderColor: sky, borderWidth: 0.5 });
+  let ntY = ry(nfpaBoxH) + nfpaBoxH - nfpaLineH - 2;
+  NFPA_LINES.forEach(line => {
+    page.drawText(line, { x: ML+6, y: ntY, size: 7, font: rFont, color: navy });
+    ntY -= nfpaLineH;
   });
-  gap(6);
+  curY += nfpaBoxH + 6;
 
-  // Notes — always render as an editable multiline field
-  secHdr('NOTES');
-  const notesVal = fd['hood-notes'] || dv('hood-notes') || '';
-  const notesLineCount = notesVal ? Math.max(3, wrap(notesVal, 8, PW - 8).length) : 3;
-  const notesH = Math.min(120, notesLineCount * 12 + 8);
-  checkPage(notesH + 4);
-  mkField(notesVal, ML, ry(notesH), PW, notesH, true);
-  curY += notesH + 6;
+  // ── PAGE 2+: PER-HOOD CONTENT ───────────────────────────────────────────────
+  addPage();
 
-  // ── Signatures (same style as fire alarm) ─────────────────────────────────
-  checkPage(60);
+  const activeHoods = typeof getActiveHoods === 'function'
+    ? getActiveHoods()
+    : (activeHoodList || []).filter(h => !h.excluded);
+
+  const CHECKLIST_KEYS = [
+    'no-fire-signs','no-design-change','fusible-link-test','pull-station-op','conduit-secured',
+    'blown-down','hazard-covered','nozzle-caps','pressure-gauge','chem-weight',
+    'actuation-hose','exhaust-fan','makeup-air-pb','elec-shutdown1','makeup-air',
+    'elec-shutdown2','gas-valve','fan-warning-sign','filters-replaced','service-tag',
+    'compliant','reset-normal','no-deficiencies','portable-ext','class-k',
+  ];
+  const CHECKLIST_LABELS = {
+    'no-fire-signs':    'SYSTEM SHOWS NO VISIBLE SIGNS THAT IT HAS FIRED OR BEEN TAMPERED WITH',
+    'no-design-change': 'SYSTEM DESIGN HAS NOT BEEN CHANGED',
+    'fusible-link-test':'FUSIBLE LINK TESTED & SYSTEM ACTIVATED UPON TEST',
+    'pull-station-op':  'MANUAL PULL STATION OPERATION & SUCCESSFULLY ACTIVATED SYSTEMS',
+    'conduit-secured':  'CONFIRMED ALL CONDUIT & PIPING IS SECURED',
+    'blown-down':       'PROPER BLOWN DOWN PERFORMED',
+    'hazard-covered':   'EACH HAZARD PROPERLY COVERED WITH CORRECT NOZZLES',
+    'nozzle-caps':      'ALL NOZZLE CAPS/SEALS ARE REPLACED & CLEAR OF BLOCKAGE',
+    'pressure-gauge':   'CHECKED PRESSURE GAUGE INDICATOR FOR OPERABLE RANGE',
+    'chem-weight':      'INTERNAL INSPECTION & CHEMICAL WEIGHT VERIFIED (ANSUL)',
+    'actuation-hose':   'ACTUATION HOSE INSPECTED FOR DAMAGE',
+    'exhaust-fan':      'VERIFIED EXHAUST FAN IS OPERATIONAL',
+    'makeup-air-pb':    'VERIFIED MAKE-UP AIR IS OPERATIONAL (PAINT BOOTH)',
+    'elec-shutdown1':   'ELECTRIC SHUT DOWN OPERATIONAL',
+    'makeup-air':       'VERIFIED MAKE-UP AIR IS OPERATIONAL',
+    'elec-shutdown2':   'ELECTRIC SHUTDOWN OPERATIONAL',
+    'gas-valve':        'PROPER OPERATION OF WORKING GAS VALVE(S)',
+    'fan-warning-sign': 'FAN WARNING SIGN ON HOOD',
+    'filters-replaced': 'ALL FILTERS ARE REPLACED',
+    'service-tag':      'INSPECTION & SERVICE TAG ON SYSTEM CYLINDER/MANUAL PULL',
+    'compliant':        'SYSTEM IS COMPLIANT',
+    'reset-normal':     'SYSTEM RESET TO NORMAL OPERATION',
+    'no-deficiencies':  'NO DEFICIENCIES WITH OPERATION OR COVERAGE',
+    'portable-ext':     'PROPER HAND HELD PORTABLE EXTINGUISHER(S)',
+    'class-k':          'PROPERLY SERVICED (CLASS K IN KITCHEN)',
+  };
+
+  for (let hi = 0; hi < activeHoods.length; hi++) {
+    const hood = activeHoods[hi];
+    const hid = hood.id;
+    if (hi > 0) addPage();
+
+    // Amber identifier bar
+    checkPage(22);
+    page.drawRectangle({ x: ML, y: ry(20), width: PW, height: 20, color: amber });
+    page.drawText('HOOD:', { x: ML+8, y: ty(20,6), size: 7, font: hFont, color: white });
+    page.drawText(hood.identifier || '(not specified)', { x: ML+44, y: ty(20,7), size: 10, font: hFont, color: white });
+    curY += 20;
+    gap(4);
+
+    // 4×4 System Info table
+    secHdr('SYSTEM INFORMATION');
+    gap(2);
+    const sysFields = [
+      ['SYSTEM TYPE',           dv(`h${hid}-sys-type`)],
+      ['MANUFACTURER',          dv(`h${hid}-mfr`)],
+      ['MODEL',                 dv(`h${hid}-model`)],
+      ['TEST DATE / LAST HYDRO',dv(`h${hid}-test-date`)],
+      ['CARTRIDGE DATE',        dv(`h${hid}-cart-date`)],
+      ['CARTRIDGE WEIGHT',      dv(`h${hid}-cart-weight`)],
+      ['6 YR / HYDRO DUE DATE', dv(`h${hid}-hydro-due`)],
+      ['U.L 300 COMPLIANT',     dv(`h${hid}-ul300`)],
+    ];
+    const cellW = PW / 4;
+    const cellH = 24;
+    for (let row = 0; row < 2; row++) {
+      checkPage(cellH + 4);
+      let cx = ML;
+      for (let col = 0; col < 4; col++) {
+        const fi = row * 4 + col;
+        const [lbl, val] = sysFields[fi];
+        page.drawRectangle({ x: cx, y: ry(cellH), width: cellW, height: cellH, color: lgray, borderColor: sky, borderWidth: 0.4 });
+        page.drawText(lbl, { x: cx+3, y: ry(cellH)+cellH-8, size: 5.5, font: hFont, color: navy });
+        page.drawRectangle({ x: cx+1, y: ry(cellH)+1, width: cellW-2, height: 12, color: gold, borderColor: sky, borderWidth: 0.3 });
+        const vf = form.createTextField(fid());
+        vf.setText(val);
+        vf.addToPage(page, { x: cx+2, y: ry(cellH)+2, width: cellW-4, height: 10, font: rFont });
+        vf.setFontSize(7);
+        cx += cellW;
+      }
+      curY += cellH + 2;
+    }
+    gap(4);
+
+    // Inspection Results — 25-item Y/N/N/A checklist
+    secHdr('INSPECTION RESULTS');
+    CHECKLIST_KEYS.forEach(key => {
+      const rowId = `h${hid}-${key}`;
+      const result = ddat(`row-${rowId}`).toUpperCase();
+      const noteVal = dv(`note-${rowId}`);
+      const rowH = 14;
+      const hasNote = !!noteVal;
+      checkPage(rowH + (hasNote ? 12 : 0) + 1);
+      const bg = result === 'Y' ? rgb(0.94, 0.99, 0.95) : result === 'N' ? rgb(0.99, 0.93, 0.93) : lgray;
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
+      const lbl = CHECKLIST_LABELS[key] || key;
+      let dispLbl = lbl;
+      while (dispLbl.length > 4 && rFont.widthOfTextAtSize(dispLbl, 7) > PW - 50) {
+        dispLbl = dispLbl.slice(0, -4) + '...';
+        break;
+      }
+      page.drawText(dispLbl, { x: ML+4, y: ty(rowH, rowH-8), size: 7, font: rFont, color: navy });
+      const bW = 30;
+      const bColor = result === 'Y' ? green : result === 'N' ? red : rgb(0.6, 0.6, 0.6);
+      page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+2, width: bW, height: rowH-4, color: bColor });
+      const bTxt = result || 'N/A';
+      page.drawText(bTxt, {
+        x: ML+PW-bW-2 + (bW - hFont.widthOfTextAtSize(bTxt, 7))/2,
+        y: ry(rowH)+4, size: 7, font: hFont, color: white
+      });
+      curY += rowH + 1;
+      if (hasNote) {
+        const nH = 11;
+        checkPage(nH + 1);
+        page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
+        page.drawText('⤷ ' + noteVal, { x: ML+12, y: ry(nH)+3, size: 6.5, font: rFont, color: blk });
+        curY += nH + 1;
+      }
+    });
+    gap(4);
+
+    // Date Items
+    subHdr('DATE ITEMS');
+    const dateItems = [
+      { key: 'battery',  label: 'DATES ON MODULAR BATTERY' },
+      { key: 'actuator', label: 'LINEAR ACTUATOR MANUFACTURER DATE' },
+    ];
+    dateItems.forEach(item => {
+      const rowId = `h${hid}-${item.key}`;
+      const result = ddat(`row-${rowId}`).toUpperCase();
+      const dateVal = dv(`h${hid}-${item.key}-date`);
+      const noteVal = dv(`note-${rowId}`);
+      const rowH = 16;
+      checkPage(rowH + (noteVal ? 12 : 0) + 1);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: lgray, borderColor: sky, borderWidth: 0.3 });
+      page.drawText(item.label, { x: ML+4, y: ty(rowH, rowH-8), size: 7, font: hFont, color: navy });
+      page.drawText('DATE:', { x: ML+PW-120, y: ty(rowH, rowH-8), size: 6, font: hFont, color: navy });
+      mkField(dateVal, ML+PW-100, ry(rowH)+2, 64, rowH-4, false);
+      const bW = 28;
+      const bColor = result === 'Y' ? green : result === 'N' ? red : rgb(0.6, 0.6, 0.6);
+      page.drawRectangle({ x: ML+PW-bW-2, y: ry(rowH)+2, width: bW, height: rowH-4, color: bColor });
+      const bTxt = result || 'N/A';
+      page.drawText(bTxt, {
+        x: ML+PW-bW-2 + (bW - hFont.widthOfTextAtSize(bTxt, 7))/2,
+        y: ry(rowH)+4, size: 7, font: hFont, color: white
+      });
+      curY += rowH + 1;
+      if (noteVal) {
+        const nH = 11;
+        checkPage(nH + 1);
+        page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
+        page.drawText('⤷ ' + noteVal, { x: ML+12, y: ry(nH)+3, size: 6.5, font: rFont, color: blk });
+        curY += nH + 1;
+      }
+    });
+    gap(4);
+
+    // Operations
+    secHdr('OPERATIONS');
+
+    // Shunt location
+    checkPage(20);
+    page.drawText('ELECTRICAL SHUNT LOCATION:', { x: ML+2, y: ty(14, 9), size: 6.5, font: hFont, color: navy });
+    mkField(dv(`h${hid}-shunt-loc`), ML+142, ry(14), PW-142, 13, false);
+    curY += 14 + 3;
+
+    // Grease accumulation
+    checkPage(20);
+    page.drawText('GREASE ACCUMULATION:', { x: ML+2, y: ty(14, 9), size: 6.5, font: hFont, color: navy });
+    const greaseVal = dv(`h${hid}-grease`).toUpperCase();
+    ['LOW','MODERATE','EXCESSIVE'].forEach((g, gi) => {
+      const sel = greaseVal === g;
+      const gx = ML + 122 + gi * 68;
+      page.drawRectangle({ x: gx, y: ry(14)+1, width: 63, height: 12, color: sel ? amber : lgray, borderColor: sky, borderWidth: 0.4 });
+      page.drawText(g, { x: gx + (63 - hFont.widthOfTextAtSize(g, 6.5))/2, y: ry(14)+4, size: 6.5, font: hFont, color: sel ? white : navy });
+    });
+    curY += 14 + 2;
+    const greaseNoteVal = dv(`h${hid}-grease-note`);
+    if (greaseNoteVal) {
+      checkPage(14);
+      mkField(greaseNoteVal, ML, ry(12), PW, 12, false);
+      curY += 13;
+    }
+    gap(2);
+
+    // Verified Operations
+    checkPage(20);
+    page.drawText('VERIFIED OPERATIONS:', { x: ML+2, y: ty(14, 9), size: 6.5, font: hFont, color: navy });
+    const verifItems = [
+      { key: 'alarm', label: 'ALARM' },
+      { key: 'elec',  label: 'ELEC/LIGHTS' },
+      { key: 'appl',  label: 'APPLIANCES' },
+    ];
+    verifItems.forEach((vi, vii) => {
+      const vVal = ddat(`row-h${hid}-verif-${vi.key}`).toUpperCase();
+      const vx = ML + 122 + vii * 95;
+      page.drawText(vi.label + ':', { x: vx, y: ty(14, 9), size: 6, font: hFont, color: navy });
+      const bW = 26;
+      const bColor = vVal === 'Y' ? green : vVal === 'N' ? red : rgb(0.6, 0.6, 0.6);
+      page.drawRectangle({ x: vx+58, y: ry(14)+2, width: bW, height: 10, color: bColor });
+      const vTxt = vVal || 'N/A';
+      page.drawText(vTxt, { x: vx+58+(bW-hFont.widthOfTextAtSize(vTxt,6.5))/2, y: ry(14)+4, size: 6.5, font: hFont, color: white });
+    });
+    curY += 14 + 2;
+    const verifNoteVal = dv(`h${hid}-verif-note`);
+    if (verifNoteVal) {
+      checkPage(14);
+      mkField(verifNoteVal, ML, ry(12), PW, 12, false);
+      curY += 13;
+    }
+    gap(2);
+
+    // Replace Fusible Links
+    checkPage(20);
+    page.drawText('REPLACE FUSIBLE LINKS (SEMI-ANNUAL):', { x: ML+2, y: ty(14, 9), size: 6.5, font: hFont, color: navy });
+    const fusCols = [
+      { label:'COUNT 1', val:dv(`h${hid}-fusible-count1`), x:ML+198 },
+      { label:'COUNT 2', val:dv(`h${hid}-fusible-count2`), x:ML+248 },
+      { label:'COUNT 3', val:dv(`h${hid}-fusible-count3`), x:ML+298 },
+      { label:'TEMP 1',  val:dv(`h${hid}-fusible-temp1`),  x:ML+360 },
+      { label:'TEMP 2',  val:dv(`h${hid}-fusible-temp2`),  x:ML+410 },
+      { label:'TEMP 3',  val:dv(`h${hid}-fusible-temp3`),  x:ML+460 },
+    ];
+    fusCols.forEach(fc => {
+      page.drawText(fc.label+':', { x: fc.x, y: ty(14, 10), size: 5, font: hFont, color: navy });
+      mkField(fc.val, fc.x, ry(14)+1, 44, 12, false);
+    });
+    curY += 14 + 4;
+
+    // System Dimensions
+    secHdr('SYSTEM DIMENSIONS');
+    gap(2);
+    const dimFields = [
+      ['PLENUM SIZE',  dv(`h${hid}-plenum-size`)],
+      ['DUCT SIZE',    dv(`h${hid}-duct-size`)],
+      ['NOZZLE TYPE',  dv(`h${hid}-nozzle-type`)],
+      ['NOZZLE #',     dv(`h${hid}-nozzle-num`)],
+    ];
+    const dimCellW = PW / 4;
+    const dimCellH = 24;
+    checkPage(dimCellH + 4);
+    let dcx = ML;
+    dimFields.forEach(([lbl, val]) => {
+      page.drawRectangle({ x: dcx, y: ry(dimCellH), width: dimCellW, height: dimCellH, color: lgray, borderColor: sky, borderWidth: 0.4 });
+      page.drawText(lbl, { x: dcx+3, y: ry(dimCellH)+dimCellH-8, size: 5.5, font: hFont, color: navy });
+      page.drawRectangle({ x: dcx+1, y: ry(dimCellH)+1, width: dimCellW-2, height: 12, color: gold, borderColor: sky, borderWidth: 0.3 });
+      const vf = form.createTextField(fid());
+      vf.setText(val);
+      vf.addToPage(page, { x: dcx+2, y: ry(dimCellH)+2, width: dimCellW-4, height: 10, font: rFont });
+      vf.setFontSize(7);
+      dcx += dimCellW;
+    });
+    curY += dimCellH + 4;
+
+    // Appliances
+    const appContainer = document.getElementById(`h${hid}-appliances`);
+    const appRows = appContainer ? Array.from(appContainer.querySelectorAll('.hood-appliance-row')) : [];
+    if (appRows.length > 0) {
+      subHdr('APPLIANCES');
+      const appColW = PW / 4;
+      checkPage(14);
+      const appHdrCols = ['APPLIANCE','DIMENSIONS','NOZZLE #','NOZZLE HEIGHT'];
+      let ahx = ML;
+      appHdrCols.forEach(lbl => {
+        page.drawRectangle({ x: ahx, y: ry(12), width: appColW, height: 12, color: sky });
+        page.drawText(lbl, { x: ahx+2, y: ry(12)+3, size: 6, font: hFont, color: navy });
+        ahx += appColW;
+      });
+      curY += 12 + 1;
+
+      appRows.forEach((row, ri) => {
+        const appId = row.dataset.hoodAppId;
+        const appVals = [
+          dv(`h${hid}-app-name-${appId}`),
+          dv(`h${hid}-app-dims-${appId}`),
+          dv(`h${hid}-app-nozzle-${appId}`),
+          dv(`h${hid}-app-height-${appId}`),
+        ];
+        const aRowH = 14;
+        checkPage(aRowH + 1);
+        const aBg = ri % 2 === 0 ? lgray : white;
+        let arx = ML;
+        appVals.forEach(val => {
+          page.drawRectangle({ x: arx, y: ry(aRowH), width: appColW, height: aRowH, color: aBg, borderColor: sky, borderWidth: 0.3 });
+          const af = form.createTextField(fid());
+          af.setText(val);
+          af.addToPage(page, { x: arx+2, y: ry(aRowH)+2, width: appColW-4, height: aRowH-4, font: rFont });
+          af.setFontSize(7);
+          arx += appColW;
+        });
+        curY += aRowH + 1;
+      });
+    }
+    gap(6);
+  }
+
+  // ── Signatures ─────────────────────────────────────────────────────────────
+  checkPage(80);
   secHdr('CERTIFICATION & SIGNATURES');
   gap(4);
   const sigH = 35, sigW = PW / 2 - 10;
 
-  // Inspector sig box
   page.drawRectangle({ x: ML, y: ry(sigH), width: sigW, height: sigH, color: lgray, borderColor: navy, borderWidth: 0.5 });
   page.drawText('INSPECTOR SIGNATURE:', { x: ML+3, y: ry(sigH)+sigH-8, size: 7, font: hFont, color: navy });
   if (sigHasData) {
@@ -2993,7 +3234,6 @@ async function buildHoodPDFBytes() {
     sf.setFontSize(9);
   }
 
-  // Client sig box
   page.drawRectangle({ x: ML+PW/2+10, y: ry(sigH), width: sigW, height: sigH, color: lgray, borderColor: navy, borderWidth: 0.5 });
   page.drawText('CLIENT / REPRESENTATIVE SIGNATURE:', { x: ML+PW/2+13, y: ry(sigH)+sigH-8, size: 7, font: hFont, color: navy });
   if (typeof custSigHasData !== 'undefined' && custSigHasData) {
@@ -3043,10 +3283,10 @@ async function buildHoodPDFBytes() {
         const dims = img.scaleToFit(photoW, photoH);
         page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
       } catch(_) {
-        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: rgb(0.93,0.93,0.93) });
-        page.drawText('Image unavailable', { x: px+photoW/2-30, y: ry(photoH)+photoH/2, size: 8, font: rFont, color: rgb(0.5,0.5,0.5) });
+        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: rgb(0.93, 0.93, 0.93) });
+        page.drawText('Image unavailable', { x: px+photoW/2-30, y: ry(photoH)+photoH/2, size: 8, font: rFont, color: rgb(0.5, 0.5, 0.5) });
       }
-      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: 12, color: rgb(0,0,0) });
+      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: 12, color: rgb(0, 0, 0) });
       page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: 7, font: hFont, color: white });
       if (photo.note) {
         const noteLines = wrap(photo.note, 7, photoW);
@@ -3062,5 +3302,3 @@ async function buildHoodPDFBytes() {
 
   return await pdfDoc.save();
 }
-
-// ─────────────────────────────────────────────────────────────────────────────

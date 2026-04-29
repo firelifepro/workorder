@@ -242,7 +242,10 @@ function saveDraft() {
     overallStatus,
     onsiteUnsat: Object.assign({}, _onsiteUnsat),
     currentFAStep,
-    currentSPStep
+    currentSPStep,
+    hoodList:            activeHoodList ? JSON.parse(JSON.stringify(activeHoodList)) : [],
+    hoodCardCount:       _hoodCardCount,
+    hoodApplianceCounts: Object.assign({}, _hoodApplianceCounts),
   };
   const key = draftKey();
   try {
@@ -283,6 +286,14 @@ function restoreDraft(draft) {
   if (draft.sysFormsHTML) {
     const sf = document.getElementById('sys-forms');
     if (sf) sf.innerHTML = draft.sysFormsHTML;
+  }
+  // Restore hood list state
+  if (draft.hoodList !== undefined) {
+    activeHoodList = draft.hoodList;
+    _hoodCardCount = draft.hoodCardCount || 0;
+    _hoodApplianceCounts = Object.assign({}, draft.hoodApplianceCounts || {});
+  } else if (activeInspectionSystem === 'hood') {
+    _rebuildHoodListFromDOM();
   }
   // Restore step-4 fields
   Object.entries(draft.step4Fields || {}).forEach(([id, val]) => {
@@ -638,14 +649,18 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
   };
   profile.lastInspBySystem[sysKey] = inspRecord;
 
-  // For hood, also save per-identifier data so multiple hoods are tracked separately
-  if (sysKey === 'hood' && activeHoodIdentifier) {
+  // For hood, save per-identifier data for each non-excluded hood
+  if (sysKey === 'hood' && activeHoodList && activeHoodList.length > 0) {
     profile.lastInspByHood = profile.lastInspByHood || {};
-    profile.lastInspByHood[activeHoodIdentifier] = inspRecord;
     profile.hoodIdentifiers = profile.hoodIdentifiers || [];
-    if (!profile.hoodIdentifiers.includes(activeHoodIdentifier)) {
-      profile.hoodIdentifiers.push(activeHoodIdentifier);
-    }
+    activeHoodList.forEach(hood => {
+      if (!hood.excluded && hood.identifier) {
+        profile.lastInspByHood[hood.identifier] = inspRecord;
+        if (!profile.hoodIdentifiers.includes(hood.identifier)) {
+          profile.hoodIdentifiers.push(hood.identifier);
+        }
+      }
+    });
   }
 
   _propertyProfile = profile;

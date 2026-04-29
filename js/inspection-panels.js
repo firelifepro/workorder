@@ -502,66 +502,360 @@ function buildStandpipePanel() {
   return makePanel('standpipe', '🚿', 'Standpipe System (NFPA 25 Ch. 6)', body);
 }
 
-function buildHoodPanel() {
-  const identDisplay = activeHoodIdentifier
-    ? `<div style="background:#d97706;color:white;border-radius:7px;padding:9px 14px;margin-bottom:14px;font-weight:700;font-size:0.88rem;display:flex;align-items:center;gap:10px;">
-        <span style="opacity:0.85;font-size:0.75rem;font-weight:600;white-space:nowrap;">KITCHEN HOOD</span>
-        <span style="flex:1;">${activeHoodIdentifier}</span>
-      </div>`
-    : '';
-  const body = `
-    ${identDisplay}
-    ${sectionDiv('System Information')}
-    ${dataRow(
-      {id:'hood-mfr',      label:'System Manufacturer'},
-      {id:'hood-model',    label:'Model / Cylinder #'},
-      {id:'hood-install',  label:'Year Installed', type:'number'}
-    )}
-    ${dataRow(
-      {id:'hood-agent',    label:'Suppression Agent Type', placeholder:'e.g. Wet Chemical'},
-      {id:'hood-nozzle-count', label:'# of Nozzles', type:'number'},
-      {id:'hood-last-service', label:'Last Service Date', type:'date'}
-    )}
-    ${dataRow(
-      {id:'hood-area',     label:'Kitchen Equipment Protected', placeholder:'Fryers, grills, etc.'},
-      {id:'hood-appliance',label:'Appliance Manufacturer'},
-    )}
+// ─────────────────────────────────────────────────────────────────────────────
+// KITCHEN HOOD — MULTI-HOOD SECTION
+// ─────────────────────────────────────────────────────────────────────────────
 
-    ${sectionDiv('Agent Cylinders & Actuation')}
-    ${makeRow('hood-cylinder-wt','Cylinder Weight / Pressure Check','Within manufacturer spec; not expired')}
-    ${dataRow(
-      {id:'hood-cyl-wt-actual',   label:'Actual Cylinder Weight (lbs)'},
-      {id:'hood-cyl-wt-min',      label:'Min Acceptable Weight (lbs)'}
-    )}
-    ${makeRow('hood-pull-station','Manual Pull Station','Accessible; pin and seal intact')}
-    ${makeRow('hood-auto-detect','Fusible Links / Detectors','Replaced as required; properly positioned')}
-    ${makeRow('hood-micro-switch','Micro-Switch Actuation','Gas shut-off activates on system discharge')}
+const HOOD_CHECKLIST_ITEMS = [
+  {key:'no-fire-signs',      label:'SYSTEM SHOWS NO VISIBLE SIGNS THAT IT HAS FIRED OR BEEN TAMPERED WITH'},
+  {key:'no-design-change',   label:'SYSTEM DESIGN HAS NOT BEEN CHANGED'},
+  {key:'fusible-link-test',  label:'FUSIBLE LINK TESTED & SYSTEM ACTIVATED UPON TEST'},
+  {key:'pull-station-op',    label:'MANUAL PULL STATION OPERATION & SUCCESSFULLY ACTIVATED SYSTEMS'},
+  {key:'conduit-secured',    label:'CONFIRMED ALL CONDUIT & PIPING IS SECURED'},
+  {key:'blown-down',         label:'PROPER BLOWN DOWN PERFORMED'},
+  {key:'hazard-covered',     label:'EACH HAZARD PROPERLY COVERED WITH CORRECT NOZZLES'},
+  {key:'nozzle-caps',        label:'ALL NOZZLE CAPS/SEALS ARE REPLACED & CLEAR OF BLOCKAGE'},
+  {key:'pressure-gauge',     label:'CHECKED PRESSURE GAUGE INDICATOR FOR OPERABLE RANGE'},
+  {key:'chem-weight',        label:'INTERNAL INSPECTION & CHEMICAL WEIGHT VERIFIED (ANSUL)'},
+  {key:'actuation-hose',     label:'ACTUATION HOSE INSPECTED FOR DAMAGE'},
+  {key:'exhaust-fan',        label:'VERIFIED EXHAUST FAN IS OPERATIONAL'},
+  {key:'makeup-air-pb',      label:'VERIFIED MAKE-UP AIR IS OPERATIONAL (PAINT BOOTH)'},
+  {key:'elec-shutdown1',     label:'ELECTRIC SHUT DOWN OPERATIONAL'},
+  {key:'makeup-air',         label:'VERIFIED MAKE-UP AIR IS OPERATIONAL'},
+  {key:'elec-shutdown2',     label:'ELECTRIC SHUTDOWN OPERATIONAL'},
+  {key:'gas-valve',          label:'PROPER OPERATION OF WORKING GAS VALVE(S)'},
+  {key:'fan-warning-sign',   label:'FAN WARNING SIGN ON HOOD'},
+  {key:'filters-replaced',   label:'ALL FILTERS ARE REPLACED'},
+  {key:'service-tag',        label:'INSPECTION & SERVICE TAG ON SYSTEM CYLINDER/MANUAL PULL'},
+  {key:'compliant',          label:'SYSTEM IS COMPLIANT'},
+  {key:'reset-normal',       label:'SYSTEM RESET TO NORMAL OPERATION'},
+  {key:'no-deficiencies',    label:'NO DEFICIENCIES WITH OPERATION OR COVERAGE'},
+  {key:'portable-ext',       label:'PROPER HAND HELD PORTABLE EXTINGUISHER(S)'},
+  {key:'class-k',            label:'PROPERLY SERVICED (CLASS K IN KITCHEN)'},
+];
 
-    ${sectionDiv('Nozzles & Distribution')}
-    ${makeRow('hood-nozzle-cond','Nozzle Condition','No blockage; proper orientation and caps')}
-    ${makeRow('hood-nozzle-coverage','Nozzle Coverage','All appliances and plenum protected per design')}
-    ${makeRow('hood-duct-protected','Duct & Plenum Protection','Entire duct and plenum covered')}
-
-    ${sectionDiv('Interlock & Suppression Test')}
-    ${makeRow('hood-gas-shutoff','Gas Shutoff Interlock','Gas valve closes on system activation')}
-    ${makeRow('hood-power-shutoff','Electrical Interlock','Power to cooking equipment cut on alarm')}
-    ${makeRow('hood-fa-integration','Fire Alarm Integration','Alarm transmitted to fire alarm panel')}
-    ${makeRow('hood-ansul-reset','System Reset Procedure Verified','Staff aware of reset; recharge service tag')}
-
-    ${sectionDiv('Hood & Grease Management')}
-    ${makeRow('hood-grease-buildup','Grease Buildup — Hood & Filters','Excessive grease noted (document)')}
-    ${makeRow('hood-filter-cond','Filter Condition & Clearance','Filters in place; properly seated')}
-    ${makeRow('hood-service-tag','Current Inspection Tag Affixed','Tag shows contractor, date, and next due')}
-    ${dataRow(
-      {id:'hood-next-service', label:'Next Semi-Annual Service Due', type:'date'},
-      {id:'hood-tag-color',    label:'Tag Color / ID'}
-    )}
-
-    <div class="field-group" style="margin-top:8px;">
-      <label>Kitchen Hood Suppression Notes</label>
-      <textarea id="hood-notes" rows="3"></textarea>
+function _hoodRow(h, key, label) {
+  const rowId = `h${h}-${key}`;
+  return `
+    <div class="inspect-row hood-inspect-row" id="row-${rowId}">
+      <div class="inspect-row-top">
+        <div class="inspect-label">${label}</div>
+        <div class="pf-group">
+          <button class="pf-btn pass" onclick="setHoodYNN(this,'${rowId}','Y')">Y</button>
+          <button class="pf-btn fail" onclick="setHoodYNN(this,'${rowId}','N')">N</button>
+          <button class="pf-btn na"   onclick="setHoodYNN(this,'${rowId}','N/A')">N/A</button>
+          <button class="hood-note-btn" onclick="toggleHoodNote('${rowId}')" title="Add note">📝</button>
+        </div>
+      </div>
+      <div class="hood-note-row" id="note-row-${rowId}">
+        <input type="text" id="note-${rowId}" placeholder="Note…" class="hood-note-input">
+      </div>
     </div>`;
-  return makePanel('hood', '🍳', 'Kitchen Hood Suppression (NFPA 17A)', body);
+}
+
+function _hoodDateRow(h, key, label) {
+  const rowId = `h${h}-${key}`;
+  return `
+    <div class="inspect-row hood-inspect-row" id="row-${rowId}">
+      <div class="inspect-row-top">
+        <div class="inspect-label">${label}</div>
+        <div class="pf-group" style="gap:4px;flex-wrap:wrap;">
+          <span class="hood-date-label">Date:</span>
+          <input type="text" id="h${h}-${key}-date" class="hood-date-input" placeholder="MM/DD/YYYY">
+          <button class="pf-btn pass" onclick="setHoodYNN(this,'${rowId}','Y')">Y</button>
+          <button class="pf-btn fail" onclick="setHoodYNN(this,'${rowId}','N')">N</button>
+          <button class="pf-btn na"   onclick="setHoodYNN(this,'${rowId}','N/A')">N/A</button>
+          <button class="hood-note-btn" onclick="toggleHoodNote('${rowId}')" title="Add note">📝</button>
+        </div>
+      </div>
+      <div class="hood-note-row" id="note-row-${rowId}">
+        <input type="text" id="note-${rowId}" placeholder="Note…" class="hood-note-input">
+      </div>
+    </div>`;
+}
+
+function _hoodCardBodyHTML(h) {
+  return `
+    <div class="hood-sys-section">SYSTEM INFORMATION</div>
+    <div class="hood-sys-grid">
+      <div class="hood-sys-cell"><label>SYSTEM TYPE</label><input type="text" id="h${h}-sys-type"></div>
+      <div class="hood-sys-cell"><label>MANUFACTURER</label><input type="text" id="h${h}-mfr"></div>
+      <div class="hood-sys-cell"><label>MODEL</label><input type="text" id="h${h}-model"></div>
+      <div class="hood-sys-cell"><label>TEST DATE / LAST HYDRO</label><input type="text" id="h${h}-test-date"></div>
+      <div class="hood-sys-cell"><label>CARTRIDGE DATE</label><input type="text" id="h${h}-cart-date"></div>
+      <div class="hood-sys-cell"><label>CARTRIDGE WEIGHT</label><input type="text" id="h${h}-cart-weight"></div>
+      <div class="hood-sys-cell"><label>6 YR / HYDRO DUE DATE</label><input type="text" id="h${h}-hydro-due"></div>
+      <div class="hood-sys-cell">
+        <label>U.L 300 COMPLIANT</label>
+        <div class="hood-yn-toggle">
+          <button class="hood-yn-btn" id="h${h}-ul300-yes" onclick="setUL300(this,${h},'YES')">YES</button>
+          <button class="hood-yn-btn" id="h${h}-ul300-no"  onclick="setUL300(this,${h},'NO')">NO</button>
+        </div>
+        <input type="hidden" id="h${h}-ul300" value="">
+      </div>
+    </div>
+
+    <div class="hood-sys-section">INSPECTION RESULTS</div>
+    ${HOOD_CHECKLIST_ITEMS.map(item => _hoodRow(h, item.key, item.label)).join('')}
+
+    <div class="hood-sys-section" style="margin-top:8px;">DATE ITEMS</div>
+    ${_hoodDateRow(h, 'battery',  'DATES ON MODULAR BATTERY')}
+    ${_hoodDateRow(h, 'actuator', 'LINEAR ACTUATOR MANUFACTURER DATE')}
+
+    <div class="hood-sys-section" style="margin-top:8px;">OPERATIONS</div>
+    <div class="hood-ops-row">
+      <span class="hood-ops-label">ELECTRICAL SHUNT LOCATION</span>
+      <input type="text" id="h${h}-shunt-loc" class="hood-ops-input" placeholder="Location">
+    </div>
+    <div class="hood-ops-row" style="align-items:flex-start;">
+      <span class="hood-ops-label">GREASE ACCUMULATION</span>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <div class="hood-yn-toggle">
+          <button class="hood-grease-btn" id="h${h}-grease-low"      onclick="setGrease(this,${h},'LOW')">LOW</button>
+          <button class="hood-grease-btn" id="h${h}-grease-moderate" onclick="setGrease(this,${h},'MODERATE')">MODERATE</button>
+          <button class="hood-grease-btn" id="h${h}-grease-excessive" onclick="setGrease(this,${h},'EXCESSIVE')">EXCESSIVE</button>
+        </div>
+        <input type="hidden" id="h${h}-grease" value="">
+        <input type="text" id="h${h}-grease-note" class="hood-ops-input" placeholder="Notes">
+      </div>
+    </div>
+    <div class="hood-ops-row" style="align-items:flex-start;">
+      <span class="hood-ops-label">VERIFIED OPERATIONS</span>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="hood-verif-group">
+            <span class="hood-verif-label">ALARM</span>
+            <div class="pf-group" style="gap:2px;">
+              <button class="pf-btn pass" onclick="setHoodYNN(this,'h${h}-verif-alarm','Y')">Y</button>
+              <button class="pf-btn fail" onclick="setHoodYNN(this,'h${h}-verif-alarm','N')">N</button>
+              <button class="pf-btn na"   onclick="setHoodYNN(this,'h${h}-verif-alarm','N/A')">N/A</button>
+            </div>
+            <input type="hidden" id="row-h${h}-verif-alarm" data-val="">
+          </div>
+          <div class="hood-verif-group">
+            <span class="hood-verif-label">ELEC/LIGHTS</span>
+            <div class="pf-group" style="gap:2px;">
+              <button class="pf-btn pass" onclick="setHoodYNN(this,'h${h}-verif-elec','Y')">Y</button>
+              <button class="pf-btn fail" onclick="setHoodYNN(this,'h${h}-verif-elec','N')">N</button>
+              <button class="pf-btn na"   onclick="setHoodYNN(this,'h${h}-verif-elec','N/A')">N/A</button>
+            </div>
+            <input type="hidden" id="row-h${h}-verif-elec" data-val="">
+          </div>
+          <div class="hood-verif-group">
+            <span class="hood-verif-label">APPLIANCES</span>
+            <div class="pf-group" style="gap:2px;">
+              <button class="pf-btn pass" onclick="setHoodYNN(this,'h${h}-verif-appl','Y')">Y</button>
+              <button class="pf-btn fail" onclick="setHoodYNN(this,'h${h}-verif-appl','N')">N</button>
+              <button class="pf-btn na"   onclick="setHoodYNN(this,'h${h}-verif-appl','N/A')">N/A</button>
+            </div>
+            <input type="hidden" id="row-h${h}-verif-appl" data-val="">
+          </div>
+        </div>
+        <input type="text" id="h${h}-verif-note" class="hood-ops-input" placeholder="Notes">
+      </div>
+    </div>
+    <div class="hood-ops-row" style="align-items:flex-start;">
+      <span class="hood-ops-label">REPLACE FUSIBLE LINKS<br><small>(SEMI-ANNUAL)</small></span>
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:0.7rem;font-weight:600;color:var(--slate);white-space:nowrap;">COUNT:</span>
+          <input type="text" id="h${h}-fusible-count1" class="hood-small-input" placeholder="#">
+          <input type="text" id="h${h}-fusible-count2" class="hood-small-input" placeholder="#">
+          <input type="text" id="h${h}-fusible-count3" class="hood-small-input" placeholder="#">
+          <span style="font-size:0.7rem;font-weight:600;color:var(--slate);white-space:nowrap;margin-left:4px;">TEMP:</span>
+          <input type="text" id="h${h}-fusible-temp1" class="hood-small-input" placeholder="°F">
+          <input type="text" id="h${h}-fusible-temp2" class="hood-small-input" placeholder="°F">
+          <input type="text" id="h${h}-fusible-temp3" class="hood-small-input" placeholder="°F">
+        </div>
+      </div>
+    </div>
+
+    <div class="hood-sys-section" style="margin-top:8px;">SYSTEM DIMENSIONS</div>
+    <div class="hood-sys-grid">
+      <div class="hood-sys-cell"><label>PLENUM SIZE</label><input type="text" id="h${h}-plenum-size"></div>
+      <div class="hood-sys-cell"><label>DUCT SIZE</label><input type="text" id="h${h}-duct-size"></div>
+      <div class="hood-sys-cell"><label>NOZZLE TYPE</label><input type="text" id="h${h}-nozzle-type"></div>
+      <div class="hood-sys-cell"><label>NOZZLE #</label><input type="text" id="h${h}-nozzle-num"></div>
+    </div>
+    <div style="margin-top:8px;">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--slate);text-transform:uppercase;margin-bottom:6px;">Appliances</div>
+      <div id="h${h}-appliances"></div>
+      <button class="add-row-btn" onclick="addHoodAppliance(${h})" style="margin-top:6px;">+ Add Appliance</button>
+    </div>`;
+}
+
+function buildHoodPanel() {
+  const div = document.createElement('div');
+  div.id = 'hood-section';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--navy);">🍳 Kitchen Hoods — add all hoods at this property</div>
+      <button class="add-row-btn" onclick="addHoodCard('',null,false)" style="white-space:nowrap;">+ Add Hood</button>
+    </div>
+    <div id="hood-cards-container"></div>`;
+  return div;
+}
+
+function addHoodCard(identifier, prefill, excluded) {
+  _hoodCardCount++;
+  const id = _hoodCardCount;
+  activeHoodList.push({ id, identifier: identifier || '', excluded: !!excluded });
+  _hoodApplianceCounts[id] = 0;
+
+  const container = document.getElementById('hood-cards-container');
+  if (!container) return;
+
+  const card = document.createElement('div');
+  card.className = 'hood-card' + (excluded ? ' excluded' : '');
+  card.id = `hood-card-${id}`;
+  card.dataset.hoodId = id;
+
+  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
+  const prev = prefill || (identifier ? lastByHood[identifier] : null);
+  const prevInfo = prev
+    ? `<span class="hood-prev-badge">Last: ${prev.date || '—'} · ${prev.inspector || '—'}</span>`
+    : '';
+
+  card.innerHTML = `
+    <div class="hood-card-header">
+      <span style="font-size:0.7rem;font-weight:700;color:white;opacity:0.7;white-space:nowrap;margin-right:6px;">HOOD ID</span>
+      <input type="text" id="hood-ident-${id}" class="hood-ident-input"
+        value="${(identifier||'').replace(/"/g,'&quot;')}"
+        placeholder="e.g. Main Hood, Line 1, Southwest Hood"
+        oninput="updateHoodListEntry(${id})">
+      ${prevInfo}
+      <label class="hood-exclude-label">
+        <input type="checkbox" id="hood-exclude-${id}" onchange="toggleHoodExclusion(${id})" ${excluded ? 'checked' : ''}>
+        Exclude
+      </label>
+      <button class="hood-delete-btn" onclick="removeHoodCard(${id})" title="Delete this hood">✕</button>
+      <button class="hood-collapse-btn" onclick="toggleHoodCardBody(${id})">▼</button>
+    </div>
+    <div class="hood-card-body" id="hood-card-body-${id}">
+      ${_hoodCardBodyHTML(id)}
+    </div>`;
+
+  container.appendChild(card);
+
+  // Pre-fill fields from previous inspection data
+  if (prev && prev.fieldData) {
+    _prefillHoodCard(id, prev.fieldData);
+  }
+}
+
+function removeHoodCard(id) {
+  document.getElementById(`hood-card-${id}`)?.remove();
+  const idx = activeHoodList.findIndex(h => h.id === id);
+  if (idx !== -1) activeHoodList.splice(idx, 1);
+  delete _hoodApplianceCounts[id];
+}
+
+function updateHoodListEntry(id) {
+  const entry = activeHoodList.find(h => h.id === id);
+  if (entry) entry.identifier = document.getElementById(`hood-ident-${id}`)?.value || '';
+}
+
+function toggleHoodExclusion(id) {
+  const card = document.getElementById(`hood-card-${id}`);
+  const checked = document.getElementById(`hood-exclude-${id}`)?.checked;
+  if (card) card.classList.toggle('excluded', !!checked);
+  const entry = activeHoodList.find(h => h.id === id);
+  if (entry) entry.excluded = !!checked;
+}
+
+function toggleHoodCardBody(id) {
+  const body = document.getElementById(`hood-card-body-${id}`);
+  const btn  = document.querySelector(`#hood-card-${id} .hood-collapse-btn`);
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? '' : 'none';
+  if (btn) btn.textContent = isHidden ? '▼' : '▶';
+}
+
+function setHoodYNN(btn, rowId, val) {
+  // For verif-alarm/elec/appl rows the input element IS the row (hidden input)
+  const row = document.getElementById('row-' + rowId);
+  if (row) {
+    row.dataset.val = val;
+    const group = btn.closest('.pf-group');
+    if (group) group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  } else {
+    // May be a verif sub-row hidden input pattern
+    const hiddenRow = document.getElementById('row-' + rowId);
+    if (hiddenRow) hiddenRow.dataset.val = val;
+    const group = btn.closest('.pf-group');
+    if (group) group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+}
+
+function toggleHoodNote(rowId) {
+  const noteRow = document.getElementById('note-row-' + rowId);
+  if (!noteRow) return;
+  const visible = noteRow.classList.toggle('show');
+  if (visible) noteRow.querySelector('input')?.focus();
+}
+
+function setUL300(btn, hoodId, val) {
+  document.getElementById(`h${hoodId}-ul300`).value = val;
+  [`h${hoodId}-ul300-yes`, `h${hoodId}-ul300-no`].forEach(id => {
+    document.getElementById(id)?.classList.remove('selected');
+  });
+  btn.classList.add('selected');
+}
+
+function setGrease(btn, hoodId, val) {
+  document.getElementById(`h${hoodId}-grease`).value = val;
+  [`h${hoodId}-grease-low`, `h${hoodId}-grease-moderate`, `h${hoodId}-grease-excessive`].forEach(id => {
+    document.getElementById(id)?.classList.remove('selected');
+  });
+  btn.classList.add('selected');
+}
+
+function addHoodAppliance(hoodId) {
+  _hoodApplianceCounts[hoodId] = (_hoodApplianceCounts[hoodId] || 0) + 1;
+  const appId = _hoodApplianceCounts[hoodId];
+  const container = document.getElementById(`h${hoodId}-appliances`);
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'hood-appliance-row';
+  row.id = `h${hoodId}-app-row-${appId}`;
+  row.dataset.hoodId = hoodId;
+  row.dataset.hoodAppId = appId;
+  row.innerHTML = `
+    <input type="text" id="h${hoodId}-app-name-${appId}"   placeholder="Appliance" class="hood-app-input">
+    <input type="text" id="h${hoodId}-app-dims-${appId}"   placeholder='Dims e.g. 60"x36"' class="hood-app-input">
+    <input type="text" id="h${hoodId}-app-nozzle-${appId}" placeholder="Nozzle # e.g. Ansul 102-290" class="hood-app-input">
+    <input type="text" id="h${hoodId}-app-height-${appId}" placeholder='Height e.g. 28.0"' class="hood-app-input">
+    <button class="hood-delete-btn" onclick="removeHoodAppliance(${hoodId},${appId})" title="Remove">✕</button>`;
+  container.appendChild(row);
+}
+
+function removeHoodAppliance(hoodId, appId) {
+  document.getElementById(`h${hoodId}-app-row-${appId}`)?.remove();
+}
+
+function _prefillHoodCard(hoodId, fieldData) {
+  const h = hoodId;
+  const mapOld = {
+    [`h${h}-sys-type`]:   fieldData[`h${h}-sys-type`]   || fieldData['hood-mfr']     || '',
+    [`h${h}-mfr`]:        fieldData[`h${h}-mfr`]        || fieldData['hood-mfr']     || '',
+    [`h${h}-model`]:      fieldData[`h${h}-model`]      || fieldData['hood-model']   || '',
+    [`h${h}-test-date`]:  fieldData[`h${h}-test-date`]  || fieldData['hood-last-service'] || '',
+    [`h${h}-cart-date`]:  fieldData[`h${h}-cart-date`]  || '',
+    [`h${h}-cart-weight`]:fieldData[`h${h}-cart-weight`]|| fieldData['hood-cyl-wt-actual'] || '',
+    [`h${h}-hydro-due`]:  fieldData[`h${h}-hydro-due`]  || fieldData['hood-next-service'] || '',
+    [`h${h}-plenum-size`]:fieldData[`h${h}-plenum-size`]|| '',
+    [`h${h}-duct-size`]:  fieldData[`h${h}-duct-size`]  || '',
+    [`h${h}-nozzle-type`]:fieldData[`h${h}-nozzle-type`]|| '',
+    [`h${h}-nozzle-num`]: fieldData[`h${h}-nozzle-num`] || fieldData['hood-nozzle-count'] || '',
+    [`h${h}-shunt-loc`]:  fieldData[`h${h}-shunt-loc`]  || '',
+  };
+  Object.entries(mapOld).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val) el.value = val;
+  });
 }
 
 const EXT_TYPES = ['ABC','CO2','K Class','Water Cannon','Water Mist','Halon','Halotron','FE36','Foam','BC','Class D','Other'];
