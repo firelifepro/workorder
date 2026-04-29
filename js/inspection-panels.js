@@ -744,6 +744,9 @@ function addHoodCard(identifier, prefill, excluded) {
   if (prev && prev.fieldData) {
     _prefillHoodCard(id, prev.fieldData);
   }
+  if (prev && prev.appliances && prev.appliances.length > 0) {
+    _prefillHoodAppliances(id, prev.appliances);
+  }
 }
 
 function removeHoodCard(id) {
@@ -849,23 +852,38 @@ function removeHoodAppliance(hoodId, appId) {
 
 function _prefillHoodCard(hoodId, fieldData) {
   const h = hoodId;
-  const mapOld = {
-    [`h${h}-sys-type`]:   fieldData[`h${h}-sys-type`]   || fieldData['hood-mfr']     || '',
-    [`h${h}-mfr`]:        fieldData[`h${h}-mfr`]        || fieldData['hood-mfr']     || '',
-    [`h${h}-model`]:      fieldData[`h${h}-model`]      || fieldData['hood-model']   || '',
-    [`h${h}-test-date`]:  fieldData[`h${h}-test-date`]  || fieldData['hood-last-service'] || '',
-    [`h${h}-cart-date`]:  fieldData[`h${h}-cart-date`]  || '',
-    [`h${h}-cart-weight`]:fieldData[`h${h}-cart-weight`]|| fieldData['hood-cyl-wt-actual'] || '',
-    [`h${h}-hydro-due`]:  fieldData[`h${h}-hydro-due`]  || fieldData['hood-next-service'] || '',
-    [`h${h}-plenum-size`]:fieldData[`h${h}-plenum-size`]|| '',
-    [`h${h}-duct-size`]:  fieldData[`h${h}-duct-size`]  || '',
-    [`h${h}-nozzle-type`]:fieldData[`h${h}-nozzle-type`]|| '',
-    [`h${h}-nozzle-num`]: fieldData[`h${h}-nozzle-num`] || fieldData['hood-nozzle-count'] || '',
-    [`h${h}-shunt-loc`]:  fieldData[`h${h}-shunt-loc`]  || '',
+  // fieldData may have bare keys ('sys-type') from new saves or h${h}-* keys from legacy saves
+  const get = (key) => fieldData[key] || fieldData[`h${h}-${key}`] || '';
+  const fields = {
+    [`h${h}-sys-type`]:    get('sys-type')    || get('hood-mfr')          || '',
+    [`h${h}-mfr`]:         get('mfr')         || get('hood-mfr')          || '',
+    [`h${h}-model`]:       get('model')       || get('hood-model')        || '',
+    [`h${h}-test-date`]:   get('test-date')   || get('hood-last-service') || '',
+    [`h${h}-cart-date`]:   get('cart-date')   || '',
+    [`h${h}-cart-weight`]: get('cart-weight') || get('hood-cyl-wt-actual')|| '',
+    [`h${h}-hydro-due`]:   get('hydro-due')   || get('hood-next-service') || '',
+    [`h${h}-plenum-size`]: get('plenum-size') || '',
+    [`h${h}-duct-size`]:   get('duct-size')   || '',
+    [`h${h}-nozzle-type`]: get('nozzle-type') || '',
+    [`h${h}-nozzle-num`]:  get('nozzle-num')  || get('hood-nozzle-count') || '',
+    [`h${h}-shunt-loc`]:   get('shunt-loc')   || '',
   };
-  Object.entries(mapOld).forEach(([id, val]) => {
+  Object.entries(fields).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (el && val) el.value = val;
+  });
+}
+
+function _prefillHoodAppliances(hoodId, appliances) {
+  if (!appliances || !appliances.length) return;
+  appliances.forEach(app => {
+    addHoodAppliance(hoodId);
+    const appId = _hoodApplianceCounts[hoodId];
+    const set = (id, val) => { if (val) { const el = document.getElementById(id); if (el) el.value = val; } };
+    set(`h${hoodId}-app-name-${appId}`,   app.name);
+    set(`h${hoodId}-app-dims-${appId}`,   app.dims);
+    set(`h${hoodId}-app-nozzle-${appId}`, app.nozzle);
+    set(`h${hoodId}-app-height-${appId}`, app.height);
   });
 }
 

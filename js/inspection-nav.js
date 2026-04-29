@@ -487,8 +487,10 @@ function goGenericDeficStep() {
   if (!activeInspectionSystem || ['fire-alarm','sprinkler'].includes(activeInspectionSystem)) return;
   saveDraft();
 
-  if (activeInspectionSystem !== 'extinguisher') {
-    // For non-extinguisher generic: rebuild from FAIL inspect-rows
+  // For systems using PASS/FAIL (not hood Y/N/N/A, not extinguisher): rebuild from FAIL rows.
+  // Hood uses Y/N/N/A with manual deficiency entry — never rebuild, preserve existing rows.
+  const usesPF = activeInspectionSystem !== 'extinguisher' && activeInspectionSystem !== 'hood';
+  if (usesPF) {
     genericDeficCount = 0;
     const tbody = document.getElementById('generic-defic-tbody');
     if (tbody) {
@@ -511,7 +513,7 @@ function goGenericDeficStep() {
       });
     }
   }
-  // For extinguisher: deficiencies already managed via FAIL buttons — don't rebuild
+  // For extinguisher / hood: deficiencies managed separately — don't rebuild
 
   // Show/hide
   document.getElementById('step-3').style.display = 'none';

@@ -3029,7 +3029,7 @@ async function buildHoodPDFBytes() {
         const nH = 11;
         checkPage(nH + 1);
         page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
-        page.drawText('⤷ ' + noteVal, { x: ML+12, y: ry(nH)+3, size: 6.5, font: rFont, color: blk });
+        page.drawText('-> ' + noteVal, { x: ML+12, y: ry(nH)+3, size: 6.5, font: rFont, color: blk });
         curY += nH + 1;
       }
     });
@@ -3065,7 +3065,7 @@ async function buildHoodPDFBytes() {
         const nH = 11;
         checkPage(nH + 1);
         page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
-        page.drawText('⤷ ' + noteVal, { x: ML+12, y: ry(nH)+3, size: 6.5, font: rFont, color: blk });
+        page.drawText('-> ' + noteVal, { x: ML+12, y: ry(nH)+3, size: 6.5, font: rFont, color: blk });
         curY += nH + 1;
       }
     });

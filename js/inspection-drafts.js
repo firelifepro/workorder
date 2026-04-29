@@ -653,11 +653,38 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
   if (sysKey === 'hood' && activeHoodList && activeHoodList.length > 0) {
     profile.lastInspByHood = profile.lastInspByHood || {};
     profile.hoodIdentifiers = profile.hoodIdentifiers || [];
+    const allFieldData = data.fieldData || {};
     activeHoodList.forEach(hood => {
-      if (!hood.excluded && hood.identifier) {
-        profile.lastInspByHood[hood.identifier] = inspRecord;
-        if (!profile.hoodIdentifiers.includes(hood.identifier)) {
-          profile.hoodIdentifiers.push(hood.identifier);
+      const identifier = hood.identifier || ('Hood ' + hood.id);
+      if (!hood.excluded) {
+        // Normalize: strip the h${id}- prefix so keys are stable across sessions
+        const hoodFieldData = {};
+        const prefix = `h${hood.id}-`;
+        Object.entries(allFieldData).forEach(([k, v]) => {
+          if (k.startsWith(prefix)) hoodFieldData[k.slice(prefix.length)] = v;
+        });
+        // Collect appliance rows for this hood
+        const appContainer = document.getElementById(`h${hood.id}-appliances`);
+        const appRows = appContainer ? Array.from(appContainer.querySelectorAll('.hood-appliance-row')) : [];
+        const appliances = appRows.map(row => {
+          const appId = row.dataset.hoodAppId;
+          return {
+            name:   document.getElementById(`h${hood.id}-app-name-${appId}`)?.value?.trim() || '',
+            dims:   document.getElementById(`h${hood.id}-app-dims-${appId}`)?.value?.trim() || '',
+            nozzle: document.getElementById(`h${hood.id}-app-nozzle-${appId}`)?.value?.trim() || '',
+            height: document.getElementById(`h${hood.id}-app-height-${appId}`)?.value?.trim() || '',
+          };
+        });
+        const hoodRecord = {
+          date:      inspRecord.date,
+          inspector: inspRecord.inspector,
+          status:    inspRecord.status,
+          fieldData: hoodFieldData,
+          appliances,
+        };
+        profile.lastInspByHood[identifier] = hoodRecord;
+        if (!profile.hoodIdentifiers.includes(identifier)) {
+          profile.hoodIdentifiers.push(identifier);
         }
       }
     });
