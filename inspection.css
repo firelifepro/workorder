@@ -472,6 +472,11 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   text-transform: uppercase; letter-spacing: 0.04em;
   border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px;
 }
+.hood-sec-hdr {
+  background: var(--navy); color: white;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 5px 10px; border-radius: 4px; margin-bottom: 8px;
+}
 .hood-sys-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;
 }
@@ -496,8 +501,8 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   font-size: 0.75rem; font-weight: 600; cursor: pointer; background: var(--light);
   color: var(--navy); transition: all 0.12s;
 }
-.hood-yn-btn.active-yes { background: var(--green); color: white; border-color: var(--green); }
-.hood-yn-btn.active-no  { background: var(--red);   color: white; border-color: var(--red); }
+.hood-yn-btn.selected-yes { background: var(--green); color: white; border-color: var(--green); }
+.hood-yn-btn.selected-no  { background: var(--red);   color: white; border-color: var(--red); }
 .hood-inspect-row {
   margin-bottom: 4px;
 }
@@ -528,6 +533,14 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   display: none; margin: 3px 0 4px 8px;
 }
 .hood-note-row.visible { display: block; }
+.hood-appliance-hdr {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: 6px; margin-bottom: 4px;
+}
+.hood-appliance-hdr span {
+  font-size: 0.62rem; font-weight: 700; color: var(--slate); text-transform: uppercase;
+  padding-left: 2px;
+}
 .hood-note-input {
   width: 100%; padding: 4px 8px; border: 1px dashed var(--border); border-radius: 4px;
   font-size: 0.78rem; background: #fffde7;
@@ -548,7 +561,9 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   font-size: 0.72rem; font-weight: 700; cursor: pointer; background: var(--light);
   color: var(--navy); transition: all 0.12s;
 }
-.hood-grease-btn.active { background: var(--amber); color: white; border-color: var(--amber); }
+.hood-grease-btn.selected-low       { background: var(--green); color: white; border-color: var(--green); }
+.hood-grease-btn.selected-moderate  { background: var(--amber); color: white; border-color: var(--amber); }
+.hood-grease-btn.selected-excessive { background: var(--red);   color: white; border-color: var(--red); }
 .hood-verif-group {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
 }
@@ -567,7 +582,8 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   font-size: 0.78rem;
 }
 .hood-appliance-row {
-  display: flex; gap: 6px; align-items: center; margin-bottom: 5px; flex-wrap: wrap;
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: 6px; align-items: center; margin-bottom: 5px;
 }
 .hood-app-input {
   flex: 1; min-width: 70px; padding: 4px 6px; border: 1px solid var(--border);

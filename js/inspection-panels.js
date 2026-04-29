@@ -561,7 +561,7 @@ function _hoodDateRow(h, key, label) {
         <div class="inspect-label">${label}</div>
         <div class="pf-group" style="gap:4px;flex-wrap:wrap;">
           <span class="hood-date-label">Date:</span>
-          <input type="text" id="h${h}-${key}-date" class="hood-date-input" placeholder="MM/DD/YYYY">
+          <input type="date" id="h${h}-${key}-date" class="hood-date-input">
           <button class="pf-btn pass" onclick="setHoodYNN(this,'${rowId}','Y')">Y</button>
           <button class="pf-btn fail" onclick="setHoodYNN(this,'${rowId}','N')">N</button>
           <button class="pf-btn na"   onclick="setHoodYNN(this,'${rowId}','N/A')">N/A</button>
@@ -595,14 +595,14 @@ function _hoodCardBodyHTML(h) {
       </div>
     </div>
 
-    <div class="hood-sys-section">INSPECTION RESULTS</div>
+    <div class="hood-sec-hdr">INSPECTION RESULTS</div>
     ${HOOD_CHECKLIST_ITEMS.map(item => _hoodRow(h, item.key, item.label)).join('')}
 
-    <div class="hood-sys-section" style="margin-top:8px;">DATE ITEMS</div>
+    <div class="hood-sec-hdr" style="margin-top:10px;">DATE ITEMS</div>
     ${_hoodDateRow(h, 'battery',  'DATES ON MODULAR BATTERY')}
     ${_hoodDateRow(h, 'actuator', 'LINEAR ACTUATOR MANUFACTURER DATE')}
 
-    <div class="hood-sys-section" style="margin-top:8px;">OPERATIONS</div>
+    <div class="hood-sec-hdr" style="margin-top:10px;">OPERATIONS</div>
     <div class="hood-ops-row">
       <span class="hood-ops-label">ELECTRICAL SHUNT LOCATION</span>
       <input type="text" id="h${h}-shunt-loc" class="hood-ops-input" placeholder="Location">
@@ -670,7 +670,7 @@ function _hoodCardBodyHTML(h) {
       </div>
     </div>
 
-    <div class="hood-sys-section" style="margin-top:8px;">SYSTEM DIMENSIONS</div>
+    <div class="hood-sec-hdr" style="margin-top:10px;">SYSTEM DIMENSIONS</div>
     <div class="hood-sys-grid">
       <div class="hood-sys-cell"><label>PLENUM SIZE</label><input type="text" id="h${h}-plenum-size"></div>
       <div class="hood-sys-cell"><label>DUCT SIZE</label><input type="text" id="h${h}-duct-size"></div>
@@ -678,7 +678,10 @@ function _hoodCardBodyHTML(h) {
       <div class="hood-sys-cell"><label>NOZZLE #</label><input type="text" id="h${h}-nozzle-num"></div>
     </div>
     <div style="margin-top:8px;">
-      <div style="font-size:0.72rem;font-weight:700;color:var(--slate);text-transform:uppercase;margin-bottom:6px;">Appliances</div>
+      <div class="hood-sec-hdr" style="margin-bottom:6px;">APPLIANCES</div>
+      <div class="hood-appliance-hdr">
+        <span>APPLIANCE TYPE</span><span>DIMENSIONS</span><span>NOZZLE #</span><span>NOZZLE HEIGHT</span><span></span>
+      </div>
       <div id="h${h}-appliances"></div>
       <button class="add-row-btn" onclick="addHoodAppliance(${h})" style="margin-top:6px;">+ Add Appliance</button>
     </div>`;
@@ -793,24 +796,32 @@ function setHoodYNN(btn, rowId, val) {
 function toggleHoodNote(rowId) {
   const noteRow = document.getElementById('note-row-' + rowId);
   if (!noteRow) return;
-  const visible = noteRow.classList.toggle('show');
-  if (visible) noteRow.querySelector('input')?.focus();
+  const isVisible = noteRow.classList.toggle('visible');
+  if (isVisible) noteRow.querySelector('input')?.focus();
 }
 
 function setUL300(btn, hoodId, val) {
-  document.getElementById(`h${hoodId}-ul300`).value = val;
+  const hidden = document.getElementById(`h${hoodId}-ul300`);
+  const cls = 'selected-' + val.toLowerCase();
+  const isSame = btn.classList.contains(cls);
   [`h${hoodId}-ul300-yes`, `h${hoodId}-ul300-no`].forEach(id => {
-    document.getElementById(id)?.classList.remove('selected');
+    const el = document.getElementById(id);
+    if (el) el.className = el.className.replace(/\bselected-\S+/g, '').trim();
   });
-  btn.classList.add('selected');
+  if (!isSame) { btn.classList.add(cls); if (hidden) hidden.value = val; }
+  else { if (hidden) hidden.value = ''; }
 }
 
 function setGrease(btn, hoodId, val) {
-  document.getElementById(`h${hoodId}-grease`).value = val;
+  const hidden = document.getElementById(`h${hoodId}-grease`);
+  const cls = 'selected-' + val.toLowerCase();
+  const isSame = btn.classList.contains(cls);
   [`h${hoodId}-grease-low`, `h${hoodId}-grease-moderate`, `h${hoodId}-grease-excessive`].forEach(id => {
-    document.getElementById(id)?.classList.remove('selected');
+    const el = document.getElementById(id);
+    if (el) el.className = el.className.replace(/\bselected-\S+/g, '').trim();
   });
-  btn.classList.add('selected');
+  if (!isSame) { btn.classList.add(cls); if (hidden) hidden.value = val; }
+  else { if (hidden) hidden.value = ''; }
 }
 
 function addHoodAppliance(hoodId) {

@@ -1176,13 +1176,15 @@ function autoSign() {
   if (!canvas || !sigCtx) return;
   sigCtx.clearRect(0, 0, canvas.width, canvas.height);
 
+  const rawName = (document.getElementById('sig-name') || {}).value || 'Alan Antonio';
+  const sigName = rawName.split(',')[0].trim();
   const drawSig = () => {
     sigCtx.save();
     sigCtx.translate(18, 72);
     sigCtx.rotate(-0.05);
     sigCtx.font = '700 52px "Dancing Script"';
     sigCtx.fillStyle = '#0d1b2a';
-    sigCtx.fillText('Alan Antonio', 0, 0);
+    sigCtx.fillText(sigName, 0, 0);
     sigCtx.restore();
     sigHasData = true;
   };

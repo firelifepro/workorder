@@ -3084,10 +3084,12 @@ async function buildHoodPDFBytes() {
     checkPage(20);
     page.drawText('GREASE ACCUMULATION:', { x: ML+2, y: ty(14, 9), size: 6.5, font: hFont, color: navy });
     const greaseVal = dv(`h${hid}-grease`).toUpperCase();
+    const greaseColors = { LOW: green, MODERATE: amber, EXCESSIVE: red };
     ['LOW','MODERATE','EXCESSIVE'].forEach((g, gi) => {
       const sel = greaseVal === g;
       const gx = ML + 122 + gi * 68;
-      page.drawRectangle({ x: gx, y: ry(14)+1, width: 63, height: 12, color: sel ? amber : lgray, borderColor: sky, borderWidth: 0.4 });
+      const gColor = sel ? greaseColors[g] : lgray;
+      page.drawRectangle({ x: gx, y: ry(14)+1, width: 63, height: 12, color: gColor, borderColor: sky, borderWidth: 0.4 });
       page.drawText(g, { x: gx + (63 - hFont.widthOfTextAtSize(g, 6.5))/2, y: ry(14)+4, size: 6.5, font: hFont, color: sel ? white : navy });
     });
     curY += 14 + 2;
@@ -3126,22 +3128,32 @@ async function buildHoodPDFBytes() {
     }
     gap(2);
 
-    // Replace Fusible Links
-    checkPage(20);
-    page.drawText('REPLACE FUSIBLE LINKS (SEMI-ANNUAL):', { x: ML+2, y: ty(14, 9), size: 6.5, font: hFont, color: navy });
-    const fusCols = [
-      { label:'COUNT 1', val:dv(`h${hid}-fusible-count1`), x:ML+198 },
-      { label:'COUNT 2', val:dv(`h${hid}-fusible-count2`), x:ML+248 },
-      { label:'COUNT 3', val:dv(`h${hid}-fusible-count3`), x:ML+298 },
-      { label:'TEMP 1',  val:dv(`h${hid}-fusible-temp1`),  x:ML+360 },
-      { label:'TEMP 2',  val:dv(`h${hid}-fusible-temp2`),  x:ML+410 },
-      { label:'TEMP 3',  val:dv(`h${hid}-fusible-temp3`),  x:ML+460 },
+    // Replace Fusible Links — title bar, then label row, then field row
+    checkPage(42);
+    subHdr('REPLACE FUSIBLE LINKS (SEMI-ANNUAL)');
+    const fusGroups = [
+      { label:'COUNT 1', val:dv(`h${hid}-fusible-count1`) },
+      { label:'COUNT 2', val:dv(`h${hid}-fusible-count2`) },
+      { label:'COUNT 3', val:dv(`h${hid}-fusible-count3`) },
+      { label:'TEMP 1 (°F)', val:dv(`h${hid}-fusible-temp1`) },
+      { label:'TEMP 2 (°F)', val:dv(`h${hid}-fusible-temp2`) },
+      { label:'TEMP 3 (°F)', val:dv(`h${hid}-fusible-temp3`) },
     ];
-    fusCols.forEach(fc => {
-      page.drawText(fc.label+':', { x: fc.x, y: ty(14, 10), size: 5, font: hFont, color: navy });
-      mkField(fc.val, fc.x, ry(14)+1, 44, 12, false);
+    const fusColW = PW / 6;
+    const fusLblH = 10, fusFldH = 13;
+    checkPage(fusLblH + fusFldH + 4);
+    let flx = ML;
+    fusGroups.forEach(fg => {
+      page.drawText(fg.label, { x: flx+2, y: ty(fusLblH, fusLblH-3), size: 6.5, font: hFont, color: navy });
+      flx += fusColW;
     });
-    curY += 14 + 4;
+    curY += fusLblH;
+    flx = ML;
+    fusGroups.forEach(fg => {
+      mkField(fg.val, flx, ry(fusFldH), fusColW-2, fusFldH, false);
+      flx += fusColW;
+    });
+    curY += fusFldH + 4;
 
     // System Dimensions
     secHdr('SYSTEM DIMENSIONS');
