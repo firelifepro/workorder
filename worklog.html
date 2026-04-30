@@ -15,14 +15,16 @@
       display: flex; align-items: center; gap: 12px; padding: 10px 16px;
       position: sticky; top: 0; z-index: 200; flex-wrap: wrap;
     }
-    #top-bar h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; }
-    #nav-links { display: flex; gap: 4px; flex: 1; }
-    #nav-links a {
-      color: rgba(255,255,255,0.6); font-size: 0.75rem; text-decoration: none;
-      padding: 4px 9px; border-radius: 3px;
-    }
-    #nav-links a:hover { color: white; background: rgba(255,255,255,0.1); }
-    #nav-links a.active { color: white; font-weight: 600; }
+    #top-bar h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; flex: 1; }
+    .nav-hamburger { position: relative; }
+    .hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+    .hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+    .nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+    .nav-menu.open { display: block; }
+    .nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; }
+    .nav-menu a:last-child { border-bottom: none; }
+    .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+    .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
     .conn-status-pill {
       font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 10px;
       background: rgba(249,168,37,0.2); color: #ffe082; white-space: nowrap;
@@ -221,12 +223,21 @@
 
 <!-- ── Top Bar ── -->
 <div id="top-bar">
-  <h1>📋 FLIPS Work Log</h1>
-  <div id="nav-links">
-    <a href="index.html">Work Order</a>
-    <a href="create-invoices.html">Invoices</a>
-    <a href="worklog.html" class="active">Work Log</a>
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
+      <a href="estimate.html">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
+      <a href="worklog.html" class="active">🗒 Work Log</a>
+    </div>
   </div>
+  <h1>🗒 FLIPS Work Log</h1>
   <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
   <button class="top-btn" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Settings</button>
 </div>
@@ -937,6 +948,11 @@ function toast(msg) {
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
 }
+
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open');
+});
 
 // ─────────────────────────────────────────────────────
 // INIT
