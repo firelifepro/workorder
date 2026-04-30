@@ -181,6 +181,46 @@ async function saveAndDownload() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PDF PREVIEW — local download only, no save/Drive/profile changes
+// ─────────────────────────────────────────────────────────────────────────────
+async function previewPDF() {
+  const btn = document.getElementById('preview-pdf-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
+  try {
+    let pdfBytes;
+    if (activeInspectionSystem === 'sprinkler') {
+      pdfBytes = await buildSprinklerPDFBytes();
+    } else if (activeInspectionSystem === 'fire-alarm') {
+      pdfBytes = await buildEditablePDFBytes();
+    } else if (activeInspectionSystem === 'hood') {
+      pdfBytes = await buildHoodPDFBytes();
+    } else if (activeInspectionSystem === 'extinguisher') {
+      pdfBytes = await buildExtinguisherPDFBytes();
+    } else if (activeInspectionSystem === 'exit-sign-lighting') {
+      pdfBytes = await buildExitSignLightingPDFBytes();
+    } else {
+      pdfBytes = await buildGenericSystemPDFBytes();
+    }
+    const data     = collectAllData();
+    const propSlug = buildFileSlug(data);
+    const dateSlug = (data.inspection.date || todayMT()).replace(/-/g, '');
+    const sysSlug  = activeInspectionSystem ? activeInspectionSystem.replace(/-/g, '_') : 'inspection';
+    const filename = `FLPS_${sysSlug}_PREVIEW_${propSlug}_${dateSlug}.pdf`;
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    toast('📄 Preview downloaded — no data saved');
+  } catch(e) {
+    toast('✗ Preview failed: ' + e.message);
+    alert('PDF preview failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '👁 Preview PDF'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 function setStatus(msg, cls) {
