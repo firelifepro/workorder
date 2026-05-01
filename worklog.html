@@ -155,6 +155,18 @@
     .prop-badge-clear { background: none; border: none; color: #6b7280; cursor: pointer; font-size: 0.75rem; padding: 0 2px; }
     .prop-badge-clear:hover { color: #111; }
 
+    /* ── Fixed bottom scrollbar ── */
+    #fixed-hscroll {
+      position: fixed; bottom: 0; overflow-x: auto; overflow-y: hidden;
+      height: 14px; z-index: 150; background: #d0d0d0;
+      border-top: 1px solid #bbb;
+    }
+    #fixed-hscroll-inner { height: 1px; }
+    #fixed-hscroll::-webkit-scrollbar        { height: 10px; }
+    #fixed-hscroll::-webkit-scrollbar-track  { background: #d8d8d8; }
+    #fixed-hscroll::-webkit-scrollbar-thumb  { background: #999; border-radius: 4px; }
+    #fixed-hscroll::-webkit-scrollbar-thumb:hover { background: #666; }
+
     /* ── Toast ── */
     #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 9px 22px; border-radius: 20px; font-size: 0.82rem; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 9999; white-space: nowrap; }
     #toast.show { opacity: 1; }
@@ -376,6 +388,11 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- Fixed horizontal scrollbar — always visible at viewport bottom -->
+<div id="fixed-hscroll">
+  <div id="fixed-hscroll-inner"></div>
+</div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="js/flips-google-fetch.js"></script>
@@ -746,6 +763,7 @@ function renderTable() {
     return;
   }
 
+  setTimeout(_refreshScrollbars, 50);
   tbody.innerHTML = filtered.map(r => `
     <tr class="${STATUS_ROW[r._status] || 'row-open'}" onclick="openModal(${r._rowNum})" title="Click to edit">
       <td class="td-rownum">${r._rowNum}</td>
@@ -768,6 +786,9 @@ function renderTable() {
 }
 
 function applyFilters() { renderTable(); }
+function _refreshScrollbars() {
+  if (typeof positionFixedScroll === 'function') positionFixedScroll();
+}
 
 // ─────────────────────────────────────────────────────
 // MODAL
@@ -1006,26 +1027,38 @@ window.addEventListener('load', () => {
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  // Sync the top mirror scrollbar with the table
-  const scrollTop  = document.getElementById('scroll-top');
-  const tableWrap  = document.getElementById('table-wrap');
-  const scrollInner = document.getElementById('scroll-top-inner');
-  let syncingTop = false, syncingTable = false;
-  scrollTop.addEventListener('scroll', () => {
-    if (syncingTop) return;
-    syncingTable = true;
-    tableWrap.scrollLeft = scrollTop.scrollLeft;
-    syncingTable = false;
+  // ── Scrollbar sync: top mirror + fixed bottom ──────────
+  const scrollTop   = document.getElementById('scroll-top');
+  const tableWrap   = document.getElementById('table-wrap');
+  const fixedScroll = document.getElementById('fixed-hscroll');
+  const scrollers   = [scrollTop, tableWrap, fixedScroll];
+
+  let _scrollLock = false;
+  scrollers.forEach(el => {
+    el.addEventListener('scroll', () => {
+      if (_scrollLock) return;
+      _scrollLock = true;
+      const v = el.scrollLeft;
+      scrollers.forEach(other => { if (other !== el) other.scrollLeft = v; });
+      _scrollLock = false;
+    });
   });
-  tableWrap.addEventListener('scroll', () => {
-    if (syncingTable) return;
-    syncingTop = true;
-    scrollTop.scrollLeft = tableWrap.scrollLeft;
-    syncingTop = false;
-    scrollInner.style.width = tableWrap.scrollWidth + 'px';
-  });
-  // Set initial width after first render
-  setTimeout(() => { scrollInner.style.width = tableWrap.scrollWidth + 'px'; }, 300);
+
+  function updateScrollWidths() {
+    const w = tableWrap.scrollWidth + 'px';
+    document.getElementById('scroll-top-inner').style.width  = w;
+    document.getElementById('fixed-hscroll-inner').style.width = w;
+  }
+
+  function positionFixedScroll() {
+    const rect = tableWrap.getBoundingClientRect();
+    fixedScroll.style.left  = rect.left + 'px';
+    fixedScroll.style.width = rect.width + 'px';
+    updateScrollWidths();
+  }
+
+  window.addEventListener('resize', positionFixedScroll);
+  setTimeout(positionFixedScroll, 300);
 });
 </script>
 </body>
