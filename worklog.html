@@ -763,7 +763,6 @@ function renderTable() {
     return;
   }
 
-  setTimeout(_refreshScrollbars, 50);
   tbody.innerHTML = filtered.map(r => `
     <tr class="${STATUS_ROW[r._status] || 'row-open'}" onclick="openModal(${r._rowNum})" title="Click to edit">
       <td class="td-rownum">${r._rowNum}</td>
@@ -783,12 +782,10 @@ function renderTable() {
         <button class="act-btn del" onclick="event.stopPropagation();deleteEntry(${r._rowNum})" title="Delete">✕</button>
       </td>
     </tr>`).join('');
+  requestAnimationFrame(positionFixedScroll);
 }
 
 function applyFilters() { renderTable(); }
-function _refreshScrollbars() {
-  if (typeof positionFixedScroll === 'function') positionFixedScroll();
-}
 
 // ─────────────────────────────────────────────────────
 // MODAL
@@ -977,6 +974,41 @@ document.addEventListener('click', e => {
 // ─────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+// SCROLLBAR SYNC (top mirror + fixed bottom)
+// Defined at top level so renderTable() can call positionFixedScroll()
+// ─────────────────────────────────────────────────────
+const _scrollTop   = document.getElementById('scroll-top');
+const _tableWrap   = document.getElementById('table-wrap');
+const _fixedScroll = document.getElementById('fixed-hscroll');
+
+function positionFixedScroll() {
+  const rect = _tableWrap.getBoundingClientRect();
+  _fixedScroll.style.left  = rect.left  + 'px';
+  _fixedScroll.style.width = rect.width + 'px';
+  const w = _tableWrap.scrollWidth + 'px';
+  document.getElementById('scroll-top-inner').style.width    = w;
+  document.getElementById('fixed-hscroll-inner').style.width = w;
+}
+
+(function initScrollSync() {
+  let _lock = false;
+  [_scrollTop, _tableWrap, _fixedScroll].forEach(el => {
+    el.addEventListener('scroll', () => {
+      if (_lock) return;
+      _lock = true;
+      const v = el.scrollLeft;
+      [_scrollTop, _tableWrap, _fixedScroll].forEach(o => { if (o !== el) o.scrollLeft = v; });
+      _lock = false;
+    });
+  });
+  window.addEventListener('resize', positionFixedScroll);
+  // Run once now (layout already done since script is at end of body),
+  // then again after fonts/images settle
+  positionFixedScroll();
+  setTimeout(positionFixedScroll, 500);
+})();
+
 window.addEventListener('load', () => {
   const k = localStorage.getItem('flips_api_key');
   const c = localStorage.getItem('flips_client_id');
@@ -1026,39 +1058,6 @@ window.addEventListener('load', () => {
   }
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  // ── Scrollbar sync: top mirror + fixed bottom ──────────
-  const scrollTop   = document.getElementById('scroll-top');
-  const tableWrap   = document.getElementById('table-wrap');
-  const fixedScroll = document.getElementById('fixed-hscroll');
-  const scrollers   = [scrollTop, tableWrap, fixedScroll];
-
-  let _scrollLock = false;
-  scrollers.forEach(el => {
-    el.addEventListener('scroll', () => {
-      if (_scrollLock) return;
-      _scrollLock = true;
-      const v = el.scrollLeft;
-      scrollers.forEach(other => { if (other !== el) other.scrollLeft = v; });
-      _scrollLock = false;
-    });
-  });
-
-  function updateScrollWidths() {
-    const w = tableWrap.scrollWidth + 'px';
-    document.getElementById('scroll-top-inner').style.width  = w;
-    document.getElementById('fixed-hscroll-inner').style.width = w;
-  }
-
-  function positionFixedScroll() {
-    const rect = tableWrap.getBoundingClientRect();
-    fixedScroll.style.left  = rect.left + 'px';
-    fixedScroll.style.width = rect.width + 'px';
-    updateScrollWidths();
-  }
-
-  window.addEventListener('resize', positionFixedScroll);
-  setTimeout(positionFixedScroll, 300);
 });
 </script>
 </body>
