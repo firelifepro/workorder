@@ -51,11 +51,6 @@
       color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; width: 240px;
     }
     .conn-field input::placeholder { color: rgba(255,255,255,0.4); }
-    .conn-section-label {
-      width: 100%; font-size: 0.68rem; color: rgba(255,255,255,0.4);
-      text-transform: uppercase; letter-spacing: .05em; padding-top: 6px;
-      border-top: 1px solid rgba(255,255,255,0.1); margin-top: 2px;
-    }
     #conn-status { font-size: 0.8rem; align-self: flex-end; padding-bottom: 4px; }
     #conn-status.ok  { color: #7fffb8; }
     #conn-status.err { color: #ff8888; }
@@ -103,7 +98,7 @@
     .stat-num { font-size: 1.4rem; font-weight: 700; line-height: 1.1; }
     .stat-lbl { font-size: 0.62rem; color: #999; text-transform: uppercase; font-weight: 600; margin-top: 1px; }
     .stat-chip.s-open  .stat-num { color: #2563eb; }
-    .stat-chip.s-done  .stat-num { color: #d97706; }
+    .stat-chip.s-flag  .stat-num { color: #dc2626; }
     .stat-chip.s-inv   .stat-num { color: #7c3aed; }
     .stat-chip.s-paid  .stat-num { color: #16a34a; }
 
@@ -119,9 +114,8 @@
     }
     thead th.th-c { text-align: center; }
     tbody tr { border-bottom: 1px solid #eee; transition: background 0.1s; }
-    tbody tr:hover { background: #f5f9ff; }
+    tbody tr:hover { filter: brightness(0.96); }
     tbody td { padding: 6px 10px; vertical-align: top; }
-    .td-wl   { text-align: center; font-weight: 700; color: #2e6da4; white-space: nowrap; width: 52px; }
     .td-date { white-space: nowrap; width: 88px; }
     .td-by   { min-width: 100px; }
     .td-prop { min-width: 150px; font-weight: 600; }
@@ -131,12 +125,18 @@
     .td-inv  { min-width: 120px; }
     .td-acts { white-space: nowrap; text-align: right; width: 70px; }
 
+    /* Row status tints */
+    tr.row-paid    { background: #d4edda; }
+    tr.row-invoice { background: #e8d5f7; }
+    tr.row-flagged { background: #fdd; }
+    tr.row-open    { background: white; }
+
     /* Status badges */
     .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.66rem; font-weight: 700; white-space: nowrap; }
-    .b-open { background: #dbeafe; color: #1d4ed8; }
-    .b-done { background: #fef3c7; color: #92400e; }
-    .b-inv  { background: #ede9fe; color: #5b21b6; }
-    .b-paid { background: #dcfce7; color: #15803d; }
+    .b-open    { background: #dbeafe; color: #1d4ed8; }
+    .b-flagged { background: #fee2e2; color: #b91c1c; }
+    .b-invoice { background: #ede9fe; color: #5b21b6; }
+    .b-paid    { background: #dcfce7; color: #15803d; }
 
     .comp-yes { color: #16a34a; font-weight: 700; }
     .comp-no  { color: #dc2626; font-weight: 700; }
@@ -177,7 +177,7 @@
     #modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
     .form-row { display: grid; gap: 14px; }
     .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
-    .form-row.cols-3 { grid-template-columns: auto 1fr 1fr; }
+    .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
     .form-row.cols-1 { grid-template-columns: 1fr; }
     .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-group label { font-size: 0.72rem; font-weight: 700; color: #555; text-transform: uppercase; }
@@ -188,7 +188,6 @@
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
       border-color: #2e6da4; background: #f0f7ff;
     }
-    .form-group input[readonly] { background: #f5f5f5; color: #888; cursor: default; }
     .form-group textarea { min-height: 72px; }
     #modal-footer {
       padding: 12px 18px; border-top: 1px solid #eee;
@@ -237,7 +236,7 @@
       <a href="worklog.html" class="active">🗒 Work Log</a>
     </div>
   </div>
-  <h1>🗒 FLIPS Work Log</h1>
+  <h1>🗒 FLIPS Work Requests</h1>
   <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
   <button class="top-btn" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Settings</button>
 </div>
@@ -245,7 +244,6 @@
 <!-- ── Connect Drawer ── -->
 <div id="conn-drawer">
   <div id="conn-inner">
-    <div class="conn-section-label" style="border-top:none;margin-top:0;">Google Auth</div>
     <div class="conn-field">
       <label>API Key</label>
       <input type="password" id="api-key" placeholder="AIzaSy…">
@@ -253,15 +251,6 @@
     <div class="conn-field">
       <label>OAuth Client ID</label>
       <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com" style="width:300px;">
-    </div>
-    <div class="conn-section-label">Work Log Storage</div>
-    <div class="conn-field">
-      <label>Work Log Sheet ID</label>
-      <input type="text" id="worklog-sheet-id" placeholder="Google Sheet ID where work log rows are stored" style="width:340px;">
-    </div>
-    <div class="conn-field">
-      <label>Tab Name</label>
-      <input type="text" id="worklog-tab" placeholder="Work Log" style="width:130px;">
     </div>
     <div style="display:flex;flex-direction:column;gap:6px;align-self:flex-end;">
       <button class="top-btn" onclick="initGoogle()">🔗 Connect</button>
@@ -290,12 +279,12 @@
     </div>
     <div class="ctrl-group">
       <label>Status</label>
-      <select id="status-filter" onchange="applyFilters()" style="width:140px;">
+      <select id="status-filter" onchange="applyFilters()" style="width:160px;">
         <option value="all">All</option>
         <option value="open">Open</option>
-        <option value="done">Completed</option>
-        <option value="invoiced">Invoiced</option>
-        <option value="paid">Paid</option>
+        <option value="flagged">Needs Attention</option>
+        <option value="invoice">Ready to Invoice</option>
+        <option value="paid">Paid &amp; Done</option>
       </select>
     </div>
     <div class="ctrl-group">
@@ -310,8 +299,8 @@
   <div id="stats-bar">
     <div class="stat-chip"><span class="stat-num" id="stat-total">—</span><span class="stat-lbl">Total</span></div>
     <div class="stat-chip s-open"><span class="stat-num" id="stat-open">—</span><span class="stat-lbl">Open</span></div>
-    <div class="stat-chip s-done"><span class="stat-num" id="stat-done">—</span><span class="stat-lbl">Completed</span></div>
-    <div class="stat-chip s-inv"><span class="stat-num"  id="stat-inv">—</span><span class="stat-lbl">Invoiced</span></div>
+    <div class="stat-chip s-flag"><span class="stat-num" id="stat-flag">—</span><span class="stat-lbl">Attention</span></div>
+    <div class="stat-chip s-inv"><span class="stat-num"  id="stat-inv">—</span><span class="stat-lbl">To Invoice</span></div>
     <div class="stat-chip s-paid"><span class="stat-num" id="stat-paid">—</span><span class="stat-lbl">Paid</span></div>
   </div>
 
@@ -320,7 +309,6 @@
     <table>
       <thead>
         <tr>
-          <th class="th-c">WL #</th>
           <th>Date Requested</th>
           <th>Requested By</th>
           <th>Property</th>
@@ -335,7 +323,7 @@
         </tr>
       </thead>
       <tbody id="log-tbody">
-        <tr id="empty-row"><td colspan="12">Connect to Google to load work log entries.</td></tr>
+        <tr id="empty-row"><td colspan="11">Connect to Google to load work requests.</td></tr>
       </tbody>
     </table>
   </div>
@@ -352,16 +340,21 @@
 
       <div class="form-row cols-3">
         <div class="form-group">
-          <label>WL #</label>
-          <input type="text" id="f-wl-num" readonly placeholder="Auto">
-        </div>
-        <div class="form-group">
-          <label>Date Request Made</label>
+          <label>Date Requested</label>
           <input type="text" id="f-date-req" placeholder="e.g. 5/7/25">
         </div>
         <div class="form-group">
-          <label>Request Made By</label>
-          <input type="text" id="f-req-by" placeholder="Name">
+          <label>Requested By</label>
+          <input type="text" id="f-req-by" placeholder="Name or company">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="open">Open</option>
+            <option value="flagged">Needs Attention</option>
+            <option value="invoice">Ready to Invoice</option>
+            <option value="paid">Paid &amp; Done</option>
+          </select>
         </div>
       </div>
 
@@ -432,28 +425,59 @@
 <script src="js/flips-google-fetch.js"></script>
 <script>
 // ─────────────────────────────────────────────────────
-// CONFIG — property DB (same sheet as work order app)
+// CONFIG
 // ─────────────────────────────────────────────────────
 const PROP_SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 const PROP_SHEET_GID = '1899870347';
+const WR_SHEET_ID    = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
 const SCOPES         = 'https://www.googleapis.com/auth/spreadsheets';
-const LOG_HEADERS    = [
-  'WL #', 'Date Request Made', 'Request Made By', 'Property',
-  'Work Requested', 'Report sent for compliance?', 'Notes',
-  'Date Work Completed', 'Invoiced', 'Paid'
-];
+
+// Status → background color written to the sheet
+const STATUS_BG = {
+  open:    { red: 1,     green: 1,     blue: 1     },
+  flagged: { red: 0.918, green: 0.302, blue: 0.302 },
+  invoice: { red: 0.702, green: 0.451, blue: 0.859 },
+  paid:    { red: 0.420, green: 0.776, blue: 0.420 },
+};
 
 // ─────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────
 let accessToken = null;
 let tokenClient = null;
-let clientData  = {};   // { "Property Name": {...} }
-let logRows     = [];   // [{ _rowNum, wlNum, dateReq, reqBy, property, workReq, compliance, notes, dateComp, invoiced, paid }]
-let editingRow  = null; // row obj being edited, or null for new
+let clientData  = {};
+let logRows     = [];   // [{ _rowNum, _status, dateReq, reqBy, property, workReq, compliance, notes, dateComp, invoiced, paid }]
+let editingRow  = null;
+let wrTabName   = '';
+let wrGid       = null;
 
-function getLogSheetId() { return document.getElementById('worklog-sheet-id').value.trim(); }
-function getLogTab()     { return document.getElementById('worklog-tab').value.trim() || 'Work Log'; }
+// ─────────────────────────────────────────────────────
+// STATUS / COLOR HELPERS
+// ─────────────────────────────────────────────────────
+function classifyColor(bg) {
+  if (!bg) return 'open';
+  const r = bg.red ?? 1, g = bg.green ?? 1, b = bg.blue ?? 1;
+  if (r > 0.9 && g > 0.9 && b > 0.9) return 'open';
+  if (g > r && g > b) return 'paid';
+  if (r > 0.4 && b > 0.4 && r > (g + 0.1) && b > (g + 0.1)) return 'invoice';
+  if (r > 0.6 && g < 0.5 && b < 0.5) return 'flagged';
+  return 'open';
+}
+
+const STATUS_LABEL = { open: 'Open', flagged: 'Attention', invoice: 'To Invoice', paid: 'Paid' };
+const STATUS_BADGE = { open: 'b-open', flagged: 'b-flagged', invoice: 'b-invoice', paid: 'b-paid' };
+const STATUS_ROW   = { open: 'row-open', flagged: 'row-flagged', invoice: 'row-invoice', paid: 'row-paid' };
+
+// ─────────────────────────────────────────────────────
+// TOKEN REFRESH
+// ─────────────────────────────────────────────────────
+let _refreshTimer = null;
+function _scheduleTokenRefresh() {
+  clearTimeout(_refreshTimer);
+  const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+  const delay  = expiry - Date.now() - 5 * 60 * 1000;
+  if (delay > 0) _refreshTimer = setTimeout(() => tokenClient.requestAccessToken({ prompt: '' }), delay);
+}
 
 // ─────────────────────────────────────────────────────
 // GOOGLE AUTH
@@ -463,12 +487,8 @@ async function initGoogle() {
   const clientId = document.getElementById('client-id').value.trim();
   if (!apiKey || !clientId) { toast('⚠ Enter API Key and Client ID'); return; }
 
-  const ls = document.getElementById('worklog-sheet-id').value.trim();
-  const lt = document.getElementById('worklog-tab').value.trim();
   localStorage.setItem('flips_api_key',   apiKey);
   localStorage.setItem('flips_client_id', clientId);
-  if (ls) localStorage.setItem('flips_worklog_sheet_id', ls);
-  if (lt) localStorage.setItem('flips_worklog_tab',      lt);
 
   setConnStatus('Connecting…', '');
   try {
@@ -492,12 +512,7 @@ async function initGoogle() {
 }
 
 // ─────────────────────────────────────────────────────
-// API FETCH (with 401 token refresh)
-// ─────────────────────────────────────────────────────
-// apiFetch / refreshAccessToken live in js/flips-google-fetch.js
-
-// ─────────────────────────────────────────────────────
-// LOAD PROPERTY LIST (for dropdowns)
+// LOAD PROPERTY LIST
 // ─────────────────────────────────────────────────────
 async function loadClientSheet() {
   try {
@@ -573,7 +588,6 @@ function filterModalProps(q) {
   matches.sort().forEach(name => {
     const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o);
   });
-  // Auto-select if exact match
   if (matches.length === 1) sel.value = matches[0];
 }
 
@@ -583,32 +597,38 @@ function onModalPropPick() {
 }
 
 // ─────────────────────────────────────────────────────
-// LOAD WORK LOG
+// LOAD WORK REQUESTS
 // ─────────────────────────────────────────────────────
-async function loadWorkLog(force = false) {
-  const sheetId = getLogSheetId();
-  if (!sheetId) {
-    setEmptyMsg('Enter a Work Log Sheet ID in ⚙ Settings to get started.');
-    return;
-  }
+async function loadWorkLog() {
   if (!accessToken) return;
-
   try {
-    const res = await apiFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(getLogTab())}`
+    // Fetch sheet metadata to get tab name and gid
+    const metaRes = await apiFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`
     );
-    if (!res.ok) {
-      if (res.status === 400 || res.status === 404) {
-        // Tab likely doesn't exist yet
-        logRows = [];
-        renderTable();
-        return;
-      }
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.error?.message || 'HTTP ' + res.status);
+    if (!metaRes.ok) throw new Error('Cannot read sheet metadata');
+    const meta = await metaRes.json();
+    wrTabName = meta.sheets[0].properties.title;
+    wrGid     = meta.sheets[0].properties.sheetId;
+
+    // Fetch values and row colors in parallel
+    const [valRes, fmtRes] = await Promise.all([
+      apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(wrTabName)}`),
+      apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?includeGridData=true&ranges=${encodeURIComponent(wrTabName + '!A:A')}&fields=sheets.data.rowData.values.userEnteredFormat.backgroundColor`)
+    ]);
+
+    if (!valRes.ok) throw new Error('HTTP ' + valRes.status);
+    const { values = [] } = await valRes.json();
+
+    let rowColors = [];
+    if (fmtRes.ok) {
+      const fmtData = await fmtRes.json();
+      rowColors = (fmtData.sheets?.[0]?.data?.[0]?.rowData || []).map(
+        rd => rd.values?.[0]?.userEnteredFormat?.backgroundColor || null
+      );
     }
-    const { values = [] } = await res.json();
-    logRows = parseLogRows(values);
+
+    logRows = parseLogRows(values, rowColors);
     renderTable();
     toast('✓ Loaded ' + logRows.length + ' entries');
   } catch(e) {
@@ -617,49 +637,37 @@ async function loadWorkLog(force = false) {
   }
 }
 
-function parseLogRows(rows) {
+function parseLogRows(rows, rowColors) {
   if (!rows.length) return [];
-  // Detect if row 0 is a header (contains "WL" or "Date Request" or similar)
-  const isHeader = rows[0].some(c => /wl\s*#|date request|work requested|property/i.test(c || ''));
+  const isHeader = rows[0].some(c => /date request|work requested|property|requested by/i.test(c || ''));
   const dataRows = isHeader ? rows.slice(1) : rows;
-  const offset   = isHeader ? 2 : 1; // 1-indexed sheet row of first data row
+  const offset   = isHeader ? 2 : 1;
+  const colorOffset = isHeader ? 1 : 0; // header row consumes one color entry
+
   return dataRows.map((row, i) => ({
     _rowNum:    offset + i,
-    wlNum:      row[0] || '',
-    dateReq:    row[1] || '',
-    reqBy:      row[2] || '',
-    property:   row[3] || '',
-    workReq:    row[4] || '',
-    compliance: row[5] || '',
-    notes:      row[6] || '',
-    dateComp:   row[7] || '',
-    invoiced:   row[8] || '',
-    paid:       row[9] || '',
+    _status:    classifyColor(rowColors[colorOffset + i] || null),
+    dateReq:    row[0] || '',
+    reqBy:      row[1] || '',
+    property:   row[2] || '',
+    workReq:    row[3] || '',
+    compliance: row[4] || '',
+    notes:      row[5] || '',
+    dateComp:   row[6] || '',
+    invoiced:   row[7] || '',
+    paid:       row[8] || '',
   }));
 }
 
 // ─────────────────────────────────────────────────────
 // RENDER TABLE
 // ─────────────────────────────────────────────────────
-function getStatus(r) {
-  if (r.paid)     return 'paid';
-  if (r.invoiced) return 'invoiced';
-  if (r.dateComp) return 'done';
-  return 'open';
-}
-
-function statusBadge(r) {
-  const map = { open:['b-open','Open'], done:['b-done','Completed'], invoiced:['b-inv','Invoiced'], paid:['b-paid','Paid'] };
-  const [cls, label] = map[getStatus(r)];
-  return `<span class="badge ${cls}">${label}</span>`;
-}
-
 function compDisplay(val) {
   if (!val) return '<span style="color:#ccc">—</span>';
-  if (/^y/i.test(val))                    return '<span class="comp-yes">✓ Yes</span>';
-  if (/^no?$/i.test(val))                 return '<span class="comp-no">✗ No</span>';
-  if (/^n\/?a$/i.test(val)||/^na$/i.test(val)) return '<span class="comp-na">N/A</span>';
-  if (/^pend/i.test(val))                 return '<span class="comp-pend">Pending</span>';
+  if (/^y/i.test(val))                               return '<span class="comp-yes">✓ Yes</span>';
+  if (/^no?$/i.test(val))                            return '<span class="comp-no">✗ No</span>';
+  if (/^n\/?a$/i.test(val) || /^na$/i.test(val))    return '<span class="comp-na">N/A</span>';
+  if (/^pend/i.test(val))                            return '<span class="comp-pend">Pending</span>';
   return `<span style="color:#888">${esc(val)}</span>`;
 }
 
@@ -674,34 +682,31 @@ function renderTable() {
 
   const filtered = logRows.filter(r => {
     if (propFilter && r.property !== propFilter) return false;
-    if (statFilter !== 'all' && getStatus(r) !== statFilter) return false;
+    if (statFilter !== 'all' && r._status !== statFilter) return false;
     if (textQ) {
-      const hay = [r.wlNum, r.dateReq, r.reqBy, r.property, r.workReq, r.notes, r.invoiced].join(' ').toLowerCase();
+      const hay = [r.dateReq, r.reqBy, r.property, r.workReq, r.notes, r.invoiced, r.paid].join(' ').toLowerCase();
       if (!hay.includes(textQ)) return false;
     }
     return true;
   });
 
-  // Stats over all rows
   document.getElementById('stat-total').textContent = logRows.length;
-  document.getElementById('stat-open').textContent  = logRows.filter(r => getStatus(r) === 'open').length;
-  document.getElementById('stat-done').textContent  = logRows.filter(r => getStatus(r) === 'done').length;
-  document.getElementById('stat-inv').textContent   = logRows.filter(r => getStatus(r) === 'invoiced').length;
-  document.getElementById('stat-paid').textContent  = logRows.filter(r => getStatus(r) === 'paid').length;
+  document.getElementById('stat-open').textContent  = logRows.filter(r => r._status === 'open').length;
+  document.getElementById('stat-flag').textContent  = logRows.filter(r => r._status === 'flagged').length;
+  document.getElementById('stat-inv').textContent   = logRows.filter(r => r._status === 'invoice').length;
+  document.getElementById('stat-paid').textContent  = logRows.filter(r => r._status === 'paid').length;
 
   const tbody = document.getElementById('log-tbody');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr id="empty-row"><td colspan="12">${
-      !logRows.length
-        ? (getLogSheetId() ? 'No entries yet — click <strong>+ New Entry</strong> to add one.' : 'Enter a Work Log Sheet ID in ⚙ Settings.')
-        : 'No entries match the current filters.'
+    tbody.innerHTML = `<tr id="empty-row"><td colspan="11">${
+      !logRows.length ? 'No entries yet — click <strong>+ New Entry</strong> to add one.'
+                      : 'No entries match the current filters.'
     }</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered.map(r => `
-    <tr>
-      <td class="td-wl">${esc(r.wlNum)}</td>
+    <tr class="${STATUS_ROW[r._status] || 'row-open'}">
       <td class="td-date">${esc(r.dateReq)}</td>
       <td class="td-by">${esc(r.reqBy)}</td>
       <td class="td-prop">${esc(r.property)}</td>
@@ -711,7 +716,9 @@ function renderTable() {
       <td class="td-date">${esc(r.dateComp)}</td>
       <td class="td-inv">${esc(r.invoiced)}</td>
       <td class="td-date">${esc(r.paid)}</td>
-      <td style="text-align:center;white-space:nowrap;">${statusBadge(r)}</td>
+      <td style="text-align:center;white-space:nowrap;">
+        <span class="badge ${STATUS_BADGE[r._status]}">${STATUS_LABEL[r._status]}</span>
+      </td>
       <td class="td-acts">
         <button class="act-btn" onclick="openModal(${r._rowNum})" title="Edit">✎</button>
         <button class="act-btn del" onclick="deleteEntry(${r._rowNum})" title="Delete">✕</button>
@@ -720,9 +727,6 @@ function renderTable() {
 }
 
 function applyFilters() { renderTable(); }
-function setEmptyMsg(msg) {
-  document.getElementById('log-tbody').innerHTML = `<tr id="empty-row"><td colspan="12">${msg}</td></tr>`;
-}
 
 // ─────────────────────────────────────────────────────
 // MODAL
@@ -731,43 +735,32 @@ function openModal(rowNum) {
   editingRow = rowNum ? (logRows.find(r => r._rowNum === rowNum) || null) : null;
   document.getElementById('modal-title').textContent = editingRow ? 'Edit Entry' : 'New Entry';
 
-  // Reset
-  ['f-wl-num','f-date-req','f-req-by','f-work-req','f-date-comp','f-notes','f-invoiced','f-paid','f-prop-search'].forEach(id => {
+  ['f-date-req','f-req-by','f-work-req','f-date-comp','f-notes','f-invoiced','f-paid','f-prop-search'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-compliance').value = '';
   document.getElementById('f-prop-select').value = '';
+  document.getElementById('f-status').value = 'open';
 
   if (editingRow) {
-    document.getElementById('f-wl-num').value    = editingRow.wlNum;
-    document.getElementById('f-date-req').value  = editingRow.dateReq;
-    document.getElementById('f-req-by').value    = editingRow.reqBy;
+    document.getElementById('f-date-req').value    = editingRow.dateReq;
+    document.getElementById('f-req-by').value      = editingRow.reqBy;
     document.getElementById('f-prop-search').value = editingRow.property;
-    document.getElementById('f-work-req').value  = editingRow.workReq;
-    document.getElementById('f-compliance').value = editingRow.compliance;
-    document.getElementById('f-notes').value     = editingRow.notes;
-    document.getElementById('f-date-comp').value = editingRow.dateComp;
-    document.getElementById('f-invoiced').value  = editingRow.invoiced;
-    document.getElementById('f-paid').value      = editingRow.paid;
+    document.getElementById('f-work-req').value    = editingRow.workReq;
+    document.getElementById('f-compliance').value  = editingRow.compliance;
+    document.getElementById('f-notes').value       = editingRow.notes;
+    document.getElementById('f-date-comp').value   = editingRow.dateComp;
+    document.getElementById('f-invoiced').value    = editingRow.invoiced;
+    document.getElementById('f-paid').value        = editingRow.paid;
+    document.getElementById('f-status').value      = editingRow._status || 'open';
   } else {
-    // Auto-assign next WL #
-    const maxWl = logRows.reduce((max, r) => {
-      const n = parseInt(r.wlNum, 10);
-      return isNaN(n) ? max : Math.max(max, n);
-    }, 0);
-    document.getElementById('f-wl-num').value = String(maxWl + 1);
-
-    // Default date to today M/D/YY
     const t = new Date();
     document.getElementById('f-date-req').value =
       `${t.getMonth()+1}/${t.getDate()}/${String(t.getFullYear()).slice(-2)}`;
   }
 
-  // Rebuild property dropdown and pre-select if editing
   buildPropDropdown('f-prop-select', '— Select property —');
-  if (editingRow?.property) {
-    document.getElementById('f-prop-select').value = editingRow.property;
-  }
+  if (editingRow?.property) document.getElementById('f-prop-select').value = editingRow.property;
 
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(() => document.getElementById('f-date-req').focus(), 60);
@@ -786,18 +779,15 @@ function onOverlayClick(e) {
 // SAVE
 // ─────────────────────────────────────────────────────
 async function saveEntry() {
-  const sheetId = getLogSheetId();
-  if (!sheetId) { toast('⚠ Enter Work Log Sheet ID in ⚙ Settings'); return; }
   if (!accessToken) { toast('⚠ Not connected'); return; }
+  if (!wrTabName)   { toast('⚠ Sheet not loaded — try refreshing'); return; }
 
-  // Property: prefer dropdown selection, fall back to search text
   const propPicked = document.getElementById('f-prop-select').value;
   const propTyped  = document.getElementById('f-prop-search').value.trim();
   const property   = propPicked || propTyped;
+  const status     = document.getElementById('f-status').value;
 
-  const wlNum    = document.getElementById('f-wl-num').value.trim();
-  const values   = [
-    wlNum,
+  const values = [
     document.getElementById('f-date-req').value.trim(),
     document.getElementById('f-req-by').value.trim(),
     property,
@@ -810,78 +800,67 @@ async function saveEntry() {
   ];
 
   try {
-    const tab = getLogTab();
+    let targetRowNum;
+
     if (editingRow) {
-      // Update existing row in sheet
-      const range = `${tab}!A${editingRow._rowNum}:J${editingRow._rowNum}`;
+      const range = `${wrTabName}!A${editingRow._rowNum}:I${editingRow._rowNum}`;
       const res = await apiFetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
         'PUT',
         { range, majorDimension: 'ROWS', values: [values] }
       );
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      // Update in-memory
+      targetRowNum = editingRow._rowNum;
       Object.assign(editingRow, {
-        wlNum, dateReq: values[1], reqBy: values[2], property: values[3],
-        workReq: values[4], compliance: values[5], notes: values[6],
-        dateComp: values[7], invoiced: values[8], paid: values[9]
+        _status: status, dateReq: values[0], reqBy: values[1], property: values[2],
+        workReq: values[3], compliance: values[4], notes: values[5],
+        dateComp: values[6], invoiced: values[7], paid: values[8]
       });
-      toast('✓ Entry updated');
-      renderTable();
     } else {
-      // New row: ensure sheet + headers exist, then append
-      await ensureSheetAndHeaders(sheetId, tab);
       const res = await apiFetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(wrTabName + '!A:I')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
         'POST',
         { majorDimension: 'ROWS', values: [values] }
       );
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      toast('✓ Entry saved (WL #' + wlNum + ')');
-      await loadWorkLog(true);
+      const j = await res.json();
+      const m = (j.updates?.updatedRange || '').match(/(\d+)$/);
+      targetRowNum = m ? parseInt(m[1]) : null;
     }
+
+    // Set row background color to reflect status
+    if (targetRowNum && wrGid !== null) {
+      await setRowColor(targetRowNum, STATUS_BG[status] || STATUS_BG.open);
+    }
+
+    toast(editingRow ? '✓ Entry updated' : '✓ Entry added');
     closeModal();
+
+    if (editingRow) {
+      renderTable();
+    } else {
+      await loadWorkLog();
+    }
   } catch(e) {
     toast('⚠ Save failed: ' + e.message);
     console.error('saveEntry:', e);
   }
 }
 
-async function ensureSheetAndHeaders(sheetId, tab) {
-  // Get sheet metadata
-  const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`);
-  if (!metaRes.ok) return;
-  const meta = await metaRes.json();
-  const exists = meta.sheets.some(s => s.properties.title.toLowerCase() === tab.toLowerCase());
-
-  if (!exists) {
-    // Create the tab
-    await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, 'POST', {
-      requests: [{ addSheet: { properties: { title: tab } } }]
-    });
-    // Write header row
-    await apiFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:J1?valueInputOption=USER_ENTERED`,
-      'PUT',
-      { range: `${tab}!A1:J1`, majorDimension: 'ROWS', values: [LOG_HEADERS] }
-    );
-    return;
-  }
-
-  // Tab exists — check if row 1 is a header
-  const r1Res = await apiFetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:J1`
-  );
-  if (!r1Res.ok) return;
-  const r1 = await r1Res.json();
-  const firstCell = ((r1.values || [[]])[0] || [])[0] || '';
-  if (!firstCell.trim()) {
-    await apiFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:J1?valueInputOption=USER_ENTERED`,
-      'PUT',
-      { range: `${tab}!A1:J1`, majorDimension: 'ROWS', values: [LOG_HEADERS] }
-    );
-  }
+async function setRowColor(rowNum, bg) {
+  await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
+    requests: [{
+      repeatCell: {
+        range: {
+          sheetId:        wrGid,
+          startRowIndex:  rowNum - 1,
+          endRowIndex:    rowNum,
+        },
+        cell: { userEnteredFormat: { backgroundColor: bg } },
+        fields: 'userEnteredFormat.backgroundColor'
+      }
+    }]
+  });
 }
 
 // ─────────────────────────────────────────────────────
@@ -890,37 +869,26 @@ async function ensureSheetAndHeaders(sheetId, tab) {
 async function deleteEntry(rowNum) {
   const row = logRows.find(r => r._rowNum === rowNum);
   if (!row) return;
-  const preview = [row.wlNum ? 'WL #' + row.wlNum : '', row.property, row.workReq].filter(Boolean).join(' — ');
+  const preview = [row.property, row.workReq].filter(Boolean).join(' — ');
   if (!confirm(`Delete this entry?\n\n${preview || 'Row ' + rowNum}`)) return;
-
-  const sheetId = getLogSheetId();
-  if (!sheetId || !accessToken) { toast('⚠ Not connected'); return; }
+  if (!accessToken) { toast('⚠ Not connected'); return; }
 
   try {
-    // Get the tab's internal sheetId (gid)
-    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`);
-    if (!metaRes.ok) throw new Error('Cannot read sheet metadata');
-    const meta = await metaRes.json();
-    const tabMeta = meta.sheets.find(s => s.properties.title.toLowerCase() === getLogTab().toLowerCase());
-    if (!tabMeta) throw new Error('Tab not found');
-
     const res = await apiFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`,
       'POST',
       { requests: [{
           deleteDimension: {
             range: {
-              sheetId: tabMeta.properties.sheetId,
-              dimension: 'ROWS',
-              startIndex: rowNum - 1,   // 0-indexed
-              endIndex:   rowNum        // exclusive
+              sheetId:    wrGid,
+              dimension:  'ROWS',
+              startIndex: rowNum - 1,
+              endIndex:   rowNum
             }
           }
         }] }
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
-
-    // Update local state
     logRows = logRows.filter(r => r._rowNum !== rowNum);
     logRows.forEach(r => { if (r._rowNum > rowNum) r._rowNum--; });
     renderTable();
@@ -958,15 +926,11 @@ document.addEventListener('click', e => {
 // INIT
 // ─────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  const k  = localStorage.getItem('flips_api_key');
-  const c  = localStorage.getItem('flips_client_id');
-  const ls = localStorage.getItem('flips_worklog_sheet_id');
-  const lt = localStorage.getItem('flips_worklog_tab');
+  const k = localStorage.getItem('flips_api_key');
+  const c = localStorage.getItem('flips_client_id');
 
-  if (k)  document.getElementById('api-key').value = k;
-  if (c)  document.getElementById('client-id').value = c;
-  if (ls) document.getElementById('worklog-sheet-id').value = ls;
-  if (lt) document.getElementById('worklog-tab').value = lt;
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
 
   if (k && c) {
     const cached = localStorage.getItem('flips_access_token');
@@ -985,7 +949,7 @@ window.addEventListener('load', () => {
           localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
           setConnStatus('✓ Connected', 'ok');
           _scheduleTokenRefresh();
-          Promise.all([loadClientSheet(), loadWorkLog()]);
+          await Promise.all([loadClientSheet(), loadWorkLog()]);
         },
         error_callback: () => {
           setConnStatus('⚠ Session expired — click Connect', '');
