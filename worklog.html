@@ -281,6 +281,21 @@
     </div>
     <div id="modal-body">
 
+      <div class="form-row cols-1">
+        <div class="form-group">
+          <label>Property</label>
+          <input type="text" id="f-prop-search" placeholder="Type to search properties…"
+            oninput="filterModalProps(this.value)" autocomplete="off">
+          <select id="f-prop-select" onchange="onModalPropPick()" style="margin-top:4px;">
+            <option value="">— Select from list or type above —</option>
+          </select>
+          <div class="prop-badge" id="f-prop-badge">
+            <span>✓ <span id="f-prop-badge-name"></span></span>
+            <button class="prop-badge-clear" onclick="clearModalProp()" title="Change property">✕ change</button>
+          </div>
+        </div>
+      </div>
+
       <div class="form-row cols-3">
         <div class="form-group">
           <label>Date Requested</label>
@@ -298,21 +313,6 @@
             <option value="waiting">Waiting on Payment</option>
             <option value="paid">Paid &amp; Done</option>
           </select>
-        </div>
-      </div>
-
-      <div class="form-row cols-1">
-        <div class="form-group">
-          <label>Property</label>
-          <input type="text" id="f-prop-search" placeholder="Type to search properties…"
-            oninput="filterModalProps(this.value)" autocomplete="off">
-          <select id="f-prop-select" onchange="onModalPropPick()" style="margin-top:4px;">
-            <option value="">— Select from list or type above —</option>
-          </select>
-          <div class="prop-badge" id="f-prop-badge">
-            <span>✓ <span id="f-prop-badge-name"></span></span>
-            <button class="prop-badge-clear" onclick="clearModalProp()" title="Change property">✕ change</button>
-          </div>
         </div>
       </div>
 
@@ -544,15 +544,36 @@ function filterModalProps(q) {
   if (matches.length === 1) {
     sel.value = matches[0];
     showPropBadge(matches[0]);
+    autoFillReqBy(matches[0]);
   }
 }
 
 function onModalPropPick() {
   const v = document.getElementById('f-prop-select').value;
-  if (v) {
-    document.getElementById('f-prop-search').value = v;
-    showPropBadge(v);
-  }
+  if (!v) return;
+  document.getElementById('f-prop-search').value = v;
+  showPropBadge(v);
+  autoFillReqBy(v);
+}
+
+function autoFillReqBy(propName) {
+  const d = clientData[propName];
+  if (!d) return;
+  const reqByEl = document.getElementById('f-req-by');
+  if (reqByEl.value.trim()) return; // don't overwrite if already filled
+
+  // Try contact name fields first, fall back to company/management name
+  const keys = Object.keys(d);
+  const contactKey = keys.find(h =>
+    ['property contact','contact name','property manager','on-site contact'].some(k => h.includes(k))
+    && !h.includes('phone') && !h.includes('email') && !h.includes('info')
+  );
+  const companyKey = keys.find(h =>
+    ['property management','management company','management','client','company'].some(k => h.includes(k))
+  );
+
+  const val = (contactKey && d[contactKey]) || (companyKey && d[companyKey]) || '';
+  if (val) reqByEl.value = val;
 }
 
 function showPropBadge(name) {
@@ -640,15 +661,15 @@ function parseLogRows(rows, rowColors) {
 // ─────────────────────────────────────────────────────
 const WORK_MAX = 110;
 
-function workCell(text, rowNum) {
+function workCell(text, id) {
   if (!text || text.length <= WORK_MAX) return esc(text);
-  return `<span id="wp-${rowNum}">${esc(text.slice(0, WORK_MAX))}<span>… <button class="show-more-btn" onclick="event.stopPropagation();toggleWork(${rowNum},1)">more</button></span></span>`
-       + `<span id="wf-${rowNum}" style="display:none">${esc(text)} <button class="show-more-btn" onclick="event.stopPropagation();toggleWork(${rowNum},0)">less</button></span>`;
+  return `<span id="wp-${id}">${esc(text.slice(0, WORK_MAX))}<span>… <button class="show-more-btn" onclick="event.stopPropagation();toggleWork('${id}',1)">more</button></span></span>`
+       + `<span id="wf-${id}" style="display:none">${esc(text)} <button class="show-more-btn" onclick="event.stopPropagation();toggleWork('${id}',0)">less</button></span>`;
 }
 
-function toggleWork(rowNum, expand) {
-  document.getElementById('wp-' + rowNum).style.display = expand ? 'none' : '';
-  document.getElementById('wf-' + rowNum).style.display = expand ? ''     : 'none';
+function toggleWork(id, expand) {
+  document.getElementById('wp-' + id).style.display = expand ? 'none' : '';
+  document.getElementById('wf-' + id).style.display = expand ? ''     : 'none';
 }
 
 function compDisplay(val) {
@@ -700,9 +721,9 @@ function renderTable() {
       <td class="td-date">${esc(r.dateReq)}</td>
       <td class="td-by">${esc(r.reqBy)}</td>
       <td class="td-prop">${esc(r.property)}</td>
-      <td class="td-work">${workCell(r.workReq, r._rowNum)}</td>
+      <td class="td-work">${workCell(r.workReq, 'w' + r._rowNum)}</td>
       <td class="td-comp">${compDisplay(r.compliance)}</td>
-      <td class="td-note">${esc(r.notes)}</td>
+      <td class="td-note">${workCell(r.notes, 'n' + r._rowNum)}</td>
       <td class="td-date">${esc(r.dateComp)}</td>
       <td class="td-inv">${esc(r.invoiced)}</td>
       <td class="td-date">${esc(r.paid)}</td>
