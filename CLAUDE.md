@@ -24,6 +24,7 @@ Deploys the entire directory as static assets plus the `_worker.js` API routes. 
 | `inspection.html` | iPad fire inspection report (4-step wizard, PDF) |
 | `hospital-inspection.html` | Variant inspection form for hospital properties |
 | `worklog.html` | Work log / time tracking |
+| `sub-invoices.html` | Subcontractor invoice inbox — pulls PDF attachments from Gmail, parses with Claude API, fuzzy-matches to work log rows, writes to Sub Invoices tab in WR sheet |
 | `js/flips-google-fetch.js` | **Canonical fetch helpers** — `apiFetch`, `googleFetch`, `refreshAccessToken`. Loaded by every page. Single source of truth for the 401-retry / token-refresh path. |
 | `js/flips-shared.js` | Shared auth (`initGoogle`), property loading (`loadSheet`), expense calcs, dynamic row helpers, Drive utilities. Used by `index.html`, `estimate.html`, `estimate-tracker.html`. |
 | `js/flips-history.js` | Inspection History writes — `appendInspectionHistory`, `deleteInspectionHistoryEntries`. Direct Sheets API calls (no Apps Script). Used by `index.html`, `schedule.html`, `inspection.html`, `hospital-inspection.html`. |
@@ -63,7 +64,7 @@ Each page must define `const SCOPES = '...'` in its own `<script>` **before** fl
 - `API_KEY_VAL` — Google API key
 
 #### Pages with their own `initGoogle` (auth done inline)
-`clients.html`, `schedule.html`, `worklog.html`, `create-invoices.html` — each declares its own `let accessToken; let tokenClient;` in an inline `<script>` and just loads:
+`clients.html`, `schedule.html`, `worklog.html`, `create-invoices.html`, `sub-invoices.html` — each declares its own `let accessToken; let tokenClient;` in an inline `<script>` and just loads:
 ```html
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="js/flips-google-fetch.js"></script>
@@ -89,6 +90,9 @@ The fetch helpers in `flips-google-fetch.js` resolve `accessToken`/`tokenClient`
 | `flips_token_expiry` | localStorage | Token expiry timestamp |
 | `flips_client_cache` | sessionStorage | Property list cache (30 min) |
 | `flips_pending_estimate` | localStorage | Estimate→WO pre-fill bridge |
+| `flips_anth_key` | localStorage | Anthropic API key (sub-invoices.html) |
+| `flips_anth_model` | localStorage | Selected Claude model (sub-invoices.html) |
+| `flips_sub_invoices_v1` | localStorage | Cached parsed sub invoice data keyed by Gmail message ID (sub-invoices.html) |
 
 ---
 
@@ -98,6 +102,7 @@ The fetch helpers in `flips-google-fetch.js` resolve `accessToken`/`tokenClient`
 - **Property list sheet**: `SHEET_ID = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI'`, `SHEET_GID = '1899870347'` — defined in `flips-shared.js`
 - **Work Requests / WO log sheet**: `WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik'` — in `estimate.html` and `index.html` (collectForm → createDoc)
 - **Inspection History tab**: Same `SHEET_ID` as the property list, tab name `'Inspection History'`. Columns A–H: Property Name, FLPS Acct #, Service Address, Inspection Type, Date Completed, Frequency, Source, Notes. Append-only — schedule.html groups rows and keeps the most recent per (property+type). Read by `schedule.html`, written by `js/flips-history.js`.
+- **Sub Invoices tab**: Inside `WR_SHEET_ID`, tab name `'Sub Invoices'` — auto-created on first sync by `sub-invoices.html`. Columns A–O: Email Date, Email From, Gmail Message ID (dedup key), Filename, Vendor, Invoice #, Invoice Date, Amount, Description, Matched WorkLog Row, Matched Property, Matched Work, Status, Notes, Last Updated.
 
 ### Google Drive
 - **Estimate folder**: `EST_FOLDER_ID = '1Ma-hUFL3t4l6NsWdmPRB45JJMaaK1Oc1'` — estimates saved as `FLPS_EST_*.json` and `FLPS_EST_*.pdf`
@@ -155,3 +160,11 @@ Defaults: `method='GET'`, `body=null`. `Content-Type: application/json` is only 
 
 ### QuickBooks
 API calls proxied through `_worker.js` at `/api/qb-api` to keep client secrets off the client. See `clients.html` and `create-invoices.html` for QB customer matching and invoice creation logic.
+
+### Sub Invoice Inbox (`sub-invoices.html`)
+- **Auth scopes**: needs both `https://www.googleapis.com/auth/spreadsheets` AND `https://www.googleapis.com/auth/gmail.readonly`. Existing tokens won't have Gmail scope — first connect prompts the consent dialog with `prompt: 'consent'`.
+- **Anthropic API**: called directly from the browser via `https://api.anthropic.com/v1/messages` with the `anthropic-dangerous-direct-browser-access: true` header. API key stored in `localStorage.flips_anth_key`. Default model `claude-sonnet-4-6`. PDF passed as a `document` content block (base64). System prompt asks for strict JSON output (no code fences) with vendor / invoiceNumber / invoiceDate / amount / description / properties / lineItems.
+- **Gmail attachments are base64URL-encoded** (uses `-` and `_` instead of `+` and `/`); `b64UrlToB64()` converts before sending to Claude.
+- **Caching**: parsed invoices stored in `localStorage.flips_sub_invoices_v1` keyed by Gmail message ID. Re-running the search skips already-parsed messages so you never pay Claude twice for the same PDF.
+- **Fuzzy matching**: `scoreMatch(inv, row)` weights property name overlap (token-based), description vs. work-requested overlap, and date proximity. Score ≥ 0.85 auto-matches; lower scores show as suggestions for manual confirm.
+- **Sync to Sheets**: `syncToSheets()` ensures the `Sub Invoices` tab exists (auto-creates with formatted header row), reads existing rows to dedup by Gmail Message ID (column C), then appends new rows and updates existing ones via `values:batchUpdate`.

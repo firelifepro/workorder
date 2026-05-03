@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FLPS Sub Invoices</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
+
+    /* Top Bar */
+    #top-bar { background: #1a1a2e; color: white; display: flex; align-items: center; gap: 12px; padding: 10px 16px; position: sticky; top: 0; z-index: 200; flex-wrap: wrap; }
+    #top-bar h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; flex: 1; }
+    .nav-hamburger { position: relative; }
+    .hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+    .hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+    .nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+    .nav-menu.open { display: block; }
+    .nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .nav-menu a:last-child { border-bottom: none; }
+    .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+    .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+    .conn-status-pill { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 10px; background: rgba(249,168,37,0.2); color: #ffe082; white-space: nowrap; }
+    .conn-status-pill.ok  { background: rgba(31,178,114,0.2); color: #7fffb8; }
+    .conn-status-pill.err { background: rgba(220,53,69,0.2);  color: #ff8888; }
+    .top-btn { background: #2e6da4; color: white; border: none; padding: 6px 13px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; font-weight: 600; white-space: nowrap; }
+    .top-btn:hover { background: #4a86e8; }
+
+    /* Connect Drawer */
+    #conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+    #conn-drawer.open { max-height: 320px; }
+    #conn-inner { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .conn-field { display: flex; flex-direction: column; gap: 4px; }
+    .conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; }
+    .conn-field input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; width: 240px; }
+    .conn-field input::placeholder { color: rgba(255,255,255,0.4); }
+    .conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; }
+
+    /* Page */
+    #page { max-width: 1700px; margin: 0 auto; padding: 14px; }
+
+    /* Card */
+    .card { background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 10px; overflow: hidden; }
+    .card-head { background: #2e6da4; color: white; padding: 9px 14px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .card-body { padding: 12px 14px; }
+
+    /* Controls */
+    #controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+    .ctrl-group label { font-size: 0.7rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .ctrl-group input, .ctrl-group select { border: 1px solid #ccc; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; font-family: inherit; outline: none; background: white; }
+    .ctrl-group input:focus, .ctrl-group select:focus { border-color: #2e6da4; background: #f0f7ff; }
+    #search-btn { background: #2e6da4; color: white; border: none; padding: 8px 18px; border-radius: 4px; font-size: 0.85rem; font-weight: 700; cursor: pointer; align-self: flex-end; }
+    #search-btn:hover { background: #4a86e8; }
+    #search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .icon-btn { background: #f5f5f5; border: 1px solid #ccc; padding: 7px 12px; border-radius: 4px; font-size: 0.82rem; cursor: pointer; align-self: flex-end; }
+    .icon-btn:hover { background: #e8e8e8; }
+
+    /* Stats */
+    #stats-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .stat-chip { background: white; border-radius: 6px; padding: 8px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; min-width: 86px; }
+    .stat-num { font-size: 1.4rem; font-weight: 700; line-height: 1.1; }
+    .stat-lbl { font-size: 0.62rem; color: #999; text-transform: uppercase; font-weight: 600; margin-top: 1px; }
+    .stat-chip.s-found  .stat-num { color: #2563eb; }
+    .stat-chip.s-unmatched .stat-num { color: #b45309; }
+    .stat-chip.s-matched   .stat-num { color: #16a34a; }
+    .stat-chip.s-ignored   .stat-num { color: #6b7280; }
+    .stat-chip.s-amount    .stat-num { color: #be185d; }
+
+    /* Progress */
+    #progress { display: none; padding: 8px 14px; background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px; font-size: 0.82rem; margin-bottom: 10px; }
+    #progress.show { display: block; }
+
+    /* Table */
+    #table-wrap { background: white; border-radius: 6px; overflow: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    table { width: 100%; border-collapse: collapse; font-size: 8.7pt; }
+    thead th { background: #2e6da4; color: white; font-weight: 600; padding: 8px 10px; text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+    thead th.th-c { text-align: center; }
+    tbody tr { border-bottom: 1px solid rgba(0,0,0,0.06); }
+    tbody td { padding: 6px 10px; vertical-align: top; }
+
+    tr.row-unmatched { background: #fff8e1; }
+    tr.row-matched   { background: #dcfce7; }
+    tr.row-ignored   { background: #f5f5f5; color: #777; }
+    tr.row-error     { background: #fde2e2; }
+
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 9px; font-size: 7.5pt; font-weight: 700; white-space: nowrap; }
+    .b-unmatched { background: #fde68a; color: #92400e; }
+    .b-matched   { background: #bbf7d0; color: #14532d; }
+    .b-ignored   { background: #e5e7eb; color: #4b5563; }
+    .b-error     { background: #fecaca; color: #7f1d1d; }
+    .b-pending   { background: #ddd6fe; color: #5b21b6; }
+
+    .td-date { white-space: nowrap; min-width: 80px; }
+    .td-from { min-width: 160px; max-width: 220px; word-break: break-word; }
+    .td-vendor { min-width: 140px; font-weight: 600; }
+    .td-amount { font-weight: 700; text-align: right; min-width: 90px; white-space: nowrap; }
+    .td-desc { min-width: 220px; max-width: 360px; font-size: 8.2pt; color: #555; }
+    .td-match { min-width: 220px; max-width: 320px; }
+    .td-acts { white-space: nowrap; text-align: right; min-width: 130px; }
+
+    .match-pill { display: inline-block; background: #e0f2fe; border: 1px solid #7dd3fc; color: #075985; padding: 3px 8px; border-radius: 4px; font-size: 8pt; font-weight: 600; }
+    .match-suggest { display: block; padding: 4px 8px; margin: 2px 0; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; font-size: 8pt; }
+    .match-suggest:hover { background: #e0f2fe; border-color: #7dd3fc; }
+    .match-suggest .m-prop { font-weight: 600; color: #1e40af; }
+    .match-suggest .m-meta { color: #64748b; font-size: 7.5pt; }
+
+    .act-btn { background: #f5f5f5; border: 1px solid #ccc; border-radius: 3px; padding: 3px 8px; font-size: 8pt; cursor: pointer; margin-left: 3px; }
+    .act-btn:hover { background: #e0e0e0; }
+    .act-btn.primary { background: #2e6da4; color: white; border-color: #2e6da4; }
+    .act-btn.primary:hover { background: #4a86e8; }
+    .act-btn.danger { background: #fecaca; border-color: #f87171; color: #991b1b; }
+    .act-btn.danger:hover { background: #fca5a5; }
+
+    .link-btn { background: none; border: none; color: #2563eb; cursor: pointer; text-decoration: underline; padding: 0; font-size: inherit; }
+    .link-btn:hover { color: #1e40af; }
+
+    /* Modal */
+    #modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.55); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+    #modal-overlay.open { display: flex; }
+    #modal { background: white; border-radius: 8px; max-width: 720px; width: 100%; max-height: 92vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    #modal-header { background: #1a1a2e; color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; border-radius: 8px 8px 0 0; }
+    #modal-header h2 { font-size: 1rem; font-weight: 700; }
+    #modal-close { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    #modal-body { padding: 16px 18px; }
+    #modal-body .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    #modal-body label { font-size: 0.7rem; font-weight: 700; color: #555; text-transform: uppercase; display: block; margin-bottom: 3px; }
+    #modal-body input, #modal-body select, #modal-body textarea { width: 100%; padding: 7px 9px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: 0.88rem; }
+    #modal-body textarea { resize: vertical; min-height: 60px; }
+    #modal-body .field { flex: 1; min-width: 180px; }
+    #modal-footer { padding: 12px 18px; background: #f8f8f8; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; border-radius: 0 0 8px 8px; }
+    .btn-save { background: #16a34a; color: white; border: none; padding: 8px 18px; border-radius: 4px; font-weight: 700; cursor: pointer; }
+    .btn-cancel { background: #e5e7eb; border: none; padding: 8px 18px; border-radius: 4px; font-weight: 700; cursor: pointer; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 9px 22px; border-radius: 20px; font-size: 0.82rem; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 9999; white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
+    #toast.show { opacity: 1; }
+
+    .empty-state { text-align: center; padding: 36px 18px; color: #888; font-size: 0.9rem; }
+    .empty-state .big-icon { font-size: 2.6rem; margin-bottom: 10px; opacity: 0.6; }
+    .help-text { font-size: 0.74rem; color: #777; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
+      <a href="estimate.html">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
+      <a href="worklog.html">🗒 Work Log</a>
+      <a href="sub-invoices.html" class="active">📨 Sub Invoices</a>
+    </div>
+  </div>
+  <h1>📨 FLIPS Sub Invoice Inbox</h1>
+  <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
+  <button class="top-btn" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Settings</button>
+</div>
+
+<!-- Connect Drawer -->
+<div id="conn-drawer">
+  <div id="conn-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456…apps.googleusercontent.com" style="width:300px;">
+    </div>
+    <button class="top-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <div class="conn-divider"></div>
+    <div class="conn-field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anth-key" placeholder="sk-ant-…" style="width:280px;">
+    </div>
+    <div class="conn-field">
+      <label>Claude Model</label>
+      <select id="anth-model">
+        <option value="claude-sonnet-4-6">Sonnet 4.6 (recommended)</option>
+        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheaper)</option>
+        <option value="claude-opus-4-7">Opus 4.7 (highest quality)</option>
+      </select>
+    </div>
+    <button class="top-btn" onclick="saveAnthropicSettings()">💾 Save</button>
+  </div>
+</div>
+
+<!-- Page -->
+<div id="page">
+
+  <!-- Search Card -->
+  <div class="card">
+    <div class="card-head">
+      <span>🔍 Find Sub Invoices in Gmail</span>
+    </div>
+    <div class="card-body">
+      <div id="controls">
+        <div class="ctrl-group" style="flex:1;min-width:280px;">
+          <label>Gmail Search Query</label>
+          <input type="text" id="gmail-query" value="has:attachment filename:pdf newer_than:60d" style="width:100%;">
+          <div class="help-text">e.g. <code>from:abcfirealarm.com has:attachment</code> · <code>label:sub-invoice newer_than:30d</code> · <code>has:attachment filename:pdf -from:firelifepro.com</code></div>
+        </div>
+        <div class="ctrl-group">
+          <label>Max Emails</label>
+          <input type="number" id="max-results" value="25" min="1" max="100" style="width:80px;">
+        </div>
+        <button id="search-btn" onclick="runSearch()">🔍 Search Gmail</button>
+        <button class="icon-btn" onclick="loadCachedInvoices()" title="Show cached parsed invoices without re-fetching">📂 Load Cached</button>
+        <button class="icon-btn" onclick="clearCache()" title="Clear local cache of parsed PDFs">🗑 Clear Cache</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-bar">
+    <div class="stat-chip s-found"><span class="stat-num" id="stat-found">—</span><span class="stat-lbl">Found</span></div>
+    <div class="stat-chip s-unmatched"><span class="stat-num" id="stat-unmatched">—</span><span class="stat-lbl">Unmatched</span></div>
+    <div class="stat-chip s-matched"><span class="stat-num" id="stat-matched">—</span><span class="stat-lbl">Matched</span></div>
+    <div class="stat-chip s-ignored"><span class="stat-num" id="stat-ignored">—</span><span class="stat-lbl">Ignored</span></div>
+    <div class="stat-chip s-amount"><span class="stat-num" id="stat-amount">—</span><span class="stat-lbl">Total $</span></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card">
+    <div class="card-body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="ctrl-group">
+        <label>Status</label>
+        <select id="status-filter" onchange="renderTable()">
+          <option value="all">All</option>
+          <option value="unmatched" selected>Unmatched only</option>
+          <option value="matched">Matched</option>
+          <option value="ignored">Ignored</option>
+          <option value="error">Errored</option>
+        </select>
+      </div>
+      <div class="ctrl-group" style="flex:1;min-width:200px;">
+        <label>Search</label>
+        <input type="text" id="text-filter" placeholder="Vendor, amount, property…" oninput="renderTable()" style="width:100%;">
+      </div>
+      <button class="icon-btn" onclick="syncToSheets()" title="Write all matched/confirmed invoices to the Sub Invoices sheet">☁ Sync to Sheets</button>
+    </div>
+  </div>
+
+  <div id="progress"></div>
+
+  <!-- Table -->
+  <div id="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Email Date</th>
+          <th>From</th>
+          <th>Vendor</th>
+          <th class="th-c">Inv #</th>
+          <th class="th-c">Inv Date</th>
+          <th class="th-c">Amount</th>
+          <th>Description</th>
+          <th>Match</th>
+          <th class="th-c">Status</th>
+          <th class="th-c"></th>
+        </tr>
+      </thead>
+      <tbody id="inv-tbody">
+        <tr><td colspan="10" class="empty-state">
+          <div class="big-icon">📨</div>
+          <div>Connect Google + Anthropic, then click <strong>Search Gmail</strong> to find sub invoice PDFs.</div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: pick work log row to match -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <div id="modal-header">
+      <h2 id="modal-title">Match Sub Invoice to Work Log</h2>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body">
+      <div style="background:#f8f9fa;padding:10px;border-radius:6px;margin-bottom:14px;font-size:0.85rem;">
+        <div><strong>Vendor:</strong> <span id="m-vendor"></span></div>
+        <div><strong>Amount:</strong> <span id="m-amount"></span></div>
+        <div><strong>Invoice Date:</strong> <span id="m-invdate"></span></div>
+        <div><strong>Description:</strong> <span id="m-desc"></span></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Search Work Log</label>
+          <input type="text" id="m-search" placeholder="Property name, work description…" oninput="filterMatches(this.value)">
+        </div>
+      </div>
+      <div id="m-matches" style="max-height:340px;overflow-y:auto;border:1px solid #eee;border-radius:4px;padding:8px;background:#fafafa;"></div>
+      <div class="row" style="margin-top:12px;">
+        <div class="field">
+          <label>Notes (optional)</label>
+          <textarea id="m-notes" placeholder="Any context for this match…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div id="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-cancel" onclick="markIgnored()" style="background:#e5e7eb;">Mark Ignored</button>
+      <button class="btn-save" id="m-save" onclick="confirmMatch()" disabled>Save Match</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-google-fetch.js"></script>
+<script>
+// ─────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────
+const WR_SHEET_ID  = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+const SUB_TAB_NAME = 'Sub Invoices';
+const SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/gmail.readonly'
+].join(' ');
+
+const CACHE_KEY = 'flips_sub_invoices_v1';
+const ANTH_KEY_LS = 'flips_anth_key';
+const ANTH_MODEL_LS = 'flips_anth_model';
+
+// Sub Invoices tab columns
+const SUB_HEADERS = [
+  'Email Date', 'Email From', 'Gmail Message ID', 'Filename',
+  'Vendor', 'Invoice #', 'Invoice Date', 'Amount', 'Description',
+  'Matched WorkLog Row', 'Matched Property', 'Matched Work', 'Status', 'Notes', 'Last Updated'
+];
+
+// ─────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────
+let accessToken = null;
+let tokenClient = null;
+let invoices    = {};   // { [messageId]: invoiceObj }
+let workLog     = [];   // [{ rowNum, dateReq, property, workReq, ... }]
+let editingInvId = null;
+let selectedMatch = null;
+
+// ─────────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('api-key').value   = localStorage.getItem('flips_api_key')   || '';
+  document.getElementById('client-id').value = localStorage.getItem('flips_client_id') || '';
+  document.getElementById('anth-key').value  = localStorage.getItem(ANTH_KEY_LS) || '';
+  document.getElementById('anth-model').value = localStorage.getItem(ANTH_MODEL_LS) || 'claude-sonnet-4-6';
+
+  loadCachedInvoices();
+
+  // Auto-connect if tokens look valid
+  const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+  if (localStorage.getItem('flips_access_token') && expiry > Date.now() + 60_000 &&
+      localStorage.getItem('flips_api_key') && localStorage.getItem('flips_client_id')) {
+    accessToken = localStorage.getItem('flips_access_token');
+    setConnStatus('✓ Connected', 'ok');
+    initTokenClientOnly().then(() => loadWorkLog());
+  } else {
+    document.getElementById('conn-drawer').classList.add('open');
+  }
+});
+
+function saveAnthropicSettings() {
+  const k = document.getElementById('anth-key').value.trim();
+  const m = document.getElementById('anth-model').value;
+  if (k) localStorage.setItem(ANTH_KEY_LS, k);
+  localStorage.setItem(ANTH_MODEL_LS, m);
+  toast('✓ Anthropic settings saved');
+}
+
+function initTokenClientOnly() {
+  return new Promise((resolve) => {
+    const clientId = localStorage.getItem('flips_client_id');
+    if (!clientId || typeof google === 'undefined') return resolve();
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId, scope: SCOPES,
+        callback: (resp) => {
+          if (resp.access_token) {
+            accessToken = resp.access_token;
+            localStorage.setItem('flips_access_token', accessToken);
+            localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+          }
+        }
+      });
+    } catch(e) { console.warn('initTokenClientOnly:', e); }
+    resolve();
+  });
+}
+
+// ─────────────────────────────────────────────────────
+// GOOGLE AUTH
+// ─────────────────────────────────────────────────────
+async function initGoogle() {
+  const apiKey   = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter Google API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  setConnStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setConnStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setConnStatus('✓ Connected', 'ok');
+        document.getElementById('conn-drawer').classList.remove('open');
+        await loadWorkLog();
+        toast('✓ Connected — work log loaded');
+      },
+      error_callback: (err) => setConnStatus('✗ ' + (err.message || err.type), 'err')
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' }); // consent: ensures Gmail scope is granted
+  } catch(e) { setConnStatus('✗ ' + e.message, 'err'); }
+}
+
+// ─────────────────────────────────────────────────────
+// LOAD WORK LOG (for matching)
+// ─────────────────────────────────────────────────────
+async function loadWorkLog() {
+  if (!accessToken) return;
+  try {
+    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+    if (!metaRes.ok) throw new Error('Sheet meta HTTP ' + metaRes.status);
+    const meta = await metaRes.json();
+    const tabName = meta.sheets[0].properties.title;
+    const valRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(tabName)}`);
+    if (!valRes.ok) throw new Error('Sheet values HTTP ' + valRes.status);
+    const { values = [] } = await valRes.json();
+    if (!values.length) return;
+
+    const isHeader = values[0].some(c => /date request|work requested|property/i.test(c || ''));
+    const rows = isHeader ? values.slice(1) : values;
+    const offset = isHeader ? 2 : 1;
+    workLog = rows.map((r, i) => ({
+      rowNum: offset + i,
+      dateReq:  r[0] || '',
+      reqBy:    r[1] || '',
+      property: r[2] || '',
+      workReq:  r[3] || '',
+      compliance: r[4] || '',
+      notes:    r[5] || '',
+      dateComp: r[6] || '',
+      invoiced: r[7] || '',
+      paid:     r[8] || '',
+    })).filter(r => r.property || r.workReq);
+    console.log('[sub-invoices] work log loaded:', workLog.length, 'rows');
+  } catch(e) {
+    console.error('loadWorkLog:', e);
+    toast('⚠ Could not load work log: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// CACHE
+// ─────────────────────────────────────────────────────
+function saveCache() {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(invoices)); }
+  catch(e) { console.warn('cache save failed:', e); }
+}
+
+function loadCachedInvoices() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      invoices = JSON.parse(raw);
+      renderTable();
+    }
+  } catch(e) { console.warn('cache load failed:', e); }
+}
+
+function clearCache() {
+  if (!confirm('Clear local cache of all parsed sub invoices? (Sheets data is not affected.)')) return;
+  invoices = {};
+  localStorage.removeItem(CACHE_KEY);
+  renderTable();
+  toast('✓ Cache cleared');
+}
+
+// ─────────────────────────────────────────────────────
+// GMAIL: SEARCH + FETCH
+// ─────────────────────────────────────────────────────
+async function runSearch() {
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  const anthKey = localStorage.getItem(ANTH_KEY_LS);
+  if (!anthKey) { toast('⚠ Set Anthropic API key in Settings'); document.getElementById('conn-drawer').classList.add('open'); return; }
+
+  const q = document.getElementById('gmail-query').value.trim();
+  const maxResults = Math.min(100, parseInt(document.getElementById('max-results').value) || 25);
+
+  setProgress('Searching Gmail…');
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+
+  try {
+    if (!workLog.length) await loadWorkLog();
+
+    const listRes = await apiFetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(q)}&maxResults=${maxResults}`
+    );
+    if (!listRes.ok) throw new Error('Gmail list HTTP ' + listRes.status);
+    const listJson = await listRes.json();
+    const messages = listJson.messages || [];
+    if (!messages.length) {
+      setProgress('No messages found for query.', 'done');
+      btn.disabled = false;
+      return;
+    }
+    setProgress(`Found ${messages.length} messages — fetching details…`);
+
+    let parsed = 0, skipped = 0, errored = 0;
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      setProgress(`Processing ${i+1}/${messages.length} — ${parsed} parsed, ${skipped} skipped, ${errored} errors`);
+      try {
+        if (invoices[m.id] && invoices[m.id]._parsed) { skipped++; renderTable(); continue; }
+
+        const detail = await fetchMessageDetail(m.id);
+        const pdfPart = findPdfAttachment(detail.payload);
+        if (!pdfPart) {
+          // No PDF — store stub so we don't re-fetch
+          invoices[m.id] = {
+            messageId: m.id, threadId: m.threadId,
+            emailDate: detail._date, emailFrom: detail._from, emailSubject: detail._subject,
+            filename: '', vendor: '', invoiceNumber: '', invoiceDate: '', amount: 0, description: '(no PDF attachment)',
+            status: 'ignored', _parsed: true, _parsedAt: Date.now()
+          };
+          skipped++; saveCache(); renderTable(); continue;
+        }
+
+        const attRes = await apiFetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}/attachments/${pdfPart.body.attachmentId}`
+        );
+        if (!attRes.ok) throw new Error('Attachment HTTP ' + attRes.status);
+        const attJson = await attRes.json();
+        const pdfBase64 = b64UrlToB64(attJson.data);
+
+        // Parse with Claude
+        const ext = await parsePdfWithClaude(pdfBase64, anthKey, detail._subject, detail._from);
+
+        invoices[m.id] = {
+          messageId: m.id, threadId: m.threadId,
+          emailDate: detail._date, emailFrom: detail._from, emailSubject: detail._subject,
+          filename: pdfPart.filename || '',
+          vendor:        ext.vendor || extractVendorFromEmail(detail._from),
+          invoiceNumber: ext.invoiceNumber || '',
+          invoiceDate:   ext.invoiceDate || '',
+          amount:        Number(ext.amount) || 0,
+          description:   ext.description || '',
+          lineItems:     ext.lineItems || [],
+          properties:    ext.properties || [],
+          status:        'unmatched',
+          matchedRow:    null,
+          notes:         '',
+          _parsed: true, _parsedAt: Date.now(),
+          _suggestions: null
+        };
+        // Pre-compute match suggestions
+        invoices[m.id]._suggestions = suggestMatches(invoices[m.id]);
+        // Auto-match if top suggestion is very strong
+        if (invoices[m.id]._suggestions[0] && invoices[m.id]._suggestions[0].score >= 0.85) {
+          const s = invoices[m.id]._suggestions[0];
+          invoices[m.id].matchedRow = s.row.rowNum;
+          invoices[m.id].status = 'matched';
+        }
+        parsed++; saveCache(); renderTable();
+      } catch(err) {
+        console.error('process message', m.id, err);
+        invoices[m.id] = {
+          messageId: m.id, threadId: m.threadId,
+          emailDate: '', emailFrom: '', emailSubject: '',
+          status: 'error', _error: err.message, _parsed: false
+        };
+        errored++; saveCache(); renderTable();
+      }
+    }
+    setProgress(`Done. Parsed ${parsed}, skipped ${skipped}, errors ${errored}.`, 'done');
+  } catch(e) {
+    setProgress('Error: ' + e.message, 'err');
+    console.error('runSearch:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function fetchMessageDetail(id) {
+  const res = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`);
+  if (!res.ok) throw new Error('Gmail detail HTTP ' + res.status);
+  const j = await res.json();
+  const headers = j.payload?.headers || [];
+  const h = (n) => (headers.find(x => x.name.toLowerCase() === n.toLowerCase())?.value) || '';
+  j._from = h('From');
+  j._subject = h('Subject');
+  j._date = h('Date');
+  return j;
+}
+
+function findPdfAttachment(part) {
+  if (!part) return null;
+  const isPdf = (p) => p && p.filename && /\.pdf$/i.test(p.filename) && p.body?.attachmentId;
+  if (isPdf(part)) return part;
+  if (part.parts) {
+    for (const sub of part.parts) {
+      const found = findPdfAttachment(sub);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function b64UrlToB64(s) {
+  return s.replace(/-/g, '+').replace(/_/g, '/') + '=='.slice(0, (4 - s.length % 4) % 4);
+}
+
+function extractVendorFromEmail(from) {
+  if (!from) return '';
+  // "Name <addr>" → Name; otherwise domain
+  const m = from.match(/^"?([^"<]+)"?\s*</);
+  if (m) return m[1].trim();
+  const dom = from.match(/@([^>]+)/);
+  return dom ? dom[1].trim() : from;
+}
+
+// ─────────────────────────────────────────────────────
+// CLAUDE PDF PARSING
+// ─────────────────────────────────────────────────────
+async function parsePdfWithClaude(pdfBase64, anthKey, subject, from) {
+  const model = localStorage.getItem(ANTH_MODEL_LS) || 'claude-sonnet-4-6';
+
+  const systemPrompt =
+    "You extract structured data from subcontractor invoice PDFs sent to a fire-life-safety service company. " +
+    "The company hires fire alarm, sprinkler, and extinguisher subcontractors who submit invoices for work performed at " +
+    "specific commercial properties. Return ONLY a single JSON object — no prose, no markdown, no code fences.";
+
+  const userText =
+    "Extract this invoice's key fields. Return JSON with EXACTLY these keys:\n" +
+    "{\n" +
+    '  "vendor": string,                // The company that sent the invoice (the sub).\n' +
+    '  "invoiceNumber": string,         // Invoice number / ID. Empty string if absent.\n' +
+    '  "invoiceDate": string,           // Format MM/DD/YYYY. Empty string if absent.\n' +
+    '  "amount": number,                // Total amount due (number, no currency symbol).\n' +
+    '  "description": string,           // 1-2 sentence summary of the work performed.\n' +
+    '  "properties": [string],          // Property names or addresses mentioned (often building names).\n' +
+    '  "lineItems": [{"desc": string, "amount": number}]  // Up to 8 most important line items.\n' +
+    "}\n\n" +
+    `Email subject: ${subject || '(none)'}\n` +
+    `Email from: ${from || '(unknown)'}\n\n` +
+    "If the PDF is not actually an invoice (statement, advertisement, receipt for office supplies, etc.), still fill the fields as best you can and put a note in description explaining what it is.";
+
+  const body = {
+    model,
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+        { type: 'text', text: userText }
+      ]
+    }]
+  };
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': anthKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`Claude API HTTP ${res.status}: ${t.slice(0, 200)}`);
+  }
+  const j = await res.json();
+  const text = j.content?.[0]?.text || '';
+  // Claude sometimes wraps JSON in code fences; strip them
+  const cleaned = text.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch(e) {
+    // Try to find a JSON object in the text
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('Claude returned non-JSON: ' + cleaned.slice(0, 120));
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// FUZZY MATCHING (sub invoice → work log row)
+// ─────────────────────────────────────────────────────
+function suggestMatches(inv, max = 5) {
+  if (!workLog.length) return [];
+  const candidates = workLog.map(row => ({ row, score: scoreMatch(inv, row) }));
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.filter(c => c.score > 0.05).slice(0, max);
+}
+
+function scoreMatch(inv, row) {
+  let s = 0;
+
+  // Property name overlap
+  const props = (inv.properties || []).concat(inv.description ? [inv.description] : []);
+  const rowProp = (row.property || '').toLowerCase();
+  if (rowProp) {
+    for (const p of props) {
+      const ps = (p || '').toLowerCase();
+      if (!ps) continue;
+      if (ps.includes(rowProp) || rowProp.includes(ps)) { s += 0.55; break; }
+      // Token overlap
+      const aTok = new Set(rowProp.split(/[\s,.\-]+/).filter(t => t.length > 3));
+      const bTok = new Set(ps.split(/[\s,.\-]+/).filter(t => t.length > 3));
+      const inter = [...aTok].filter(t => bTok.has(t)).length;
+      if (inter > 0) { s += Math.min(0.45, inter * 0.18); break; }
+    }
+  }
+
+  // Description vs work-requested overlap
+  const desc = ((inv.description || '') + ' ' + (inv.lineItems || []).map(l => l.desc || '').join(' ')).toLowerCase();
+  const work = (row.workReq || '').toLowerCase();
+  if (desc && work) {
+    const wTok = new Set(work.split(/[\s,.\-]+/).filter(t => t.length > 4));
+    const dTok = new Set(desc.split(/[\s,.\-]+/).filter(t => t.length > 4));
+    const inter = [...wTok].filter(t => dTok.has(t)).length;
+    if (inter > 0) s += Math.min(0.25, inter * 0.06);
+  }
+
+  // Date proximity (sub invoice date vs work completed date)
+  const invD = parseDateLoose(inv.invoiceDate);
+  const compD = parseDateLoose(row.dateComp);
+  if (invD && compD) {
+    const diff = Math.abs(invD - compD) / 86400000; // days
+    if (diff <= 7) s += 0.15;
+    else if (diff <= 30) s += 0.08;
+    else if (diff <= 90) s += 0.03;
+  }
+
+  // Penalty: matched rows already paid → less likely (but still possible)
+  if (/paid/i.test(row.paid)) s -= 0.05;
+
+  return Math.max(0, Math.min(1, s));
+}
+
+function parseDateLoose(s) {
+  if (!s) return null;
+  const t = Date.parse(s);
+  if (!isNaN(t)) return t;
+  // Try M/D/YY or M/D/YYYY
+  const m = String(s).match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);
+  if (m) {
+    let y = parseInt(m[3]); if (y < 100) y += 2000;
+    const t2 = Date.parse(`${m[1]}/${m[2]}/${y}`);
+    if (!isNaN(t2)) return t2;
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────
+function renderTable() {
+  const status = document.getElementById('status-filter').value;
+  const q = (document.getElementById('text-filter').value || '').toLowerCase();
+
+  const all = Object.values(invoices).sort((a, b) => {
+    const ad = Date.parse(a.emailDate) || 0;
+    const bd = Date.parse(b.emailDate) || 0;
+    return bd - ad;
+  });
+
+  // Stats
+  document.getElementById('stat-found').textContent     = all.length;
+  document.getElementById('stat-unmatched').textContent = all.filter(i => i.status === 'unmatched').length;
+  document.getElementById('stat-matched').textContent   = all.filter(i => i.status === 'matched').length;
+  document.getElementById('stat-ignored').textContent   = all.filter(i => i.status === 'ignored').length;
+  const totalAmt = all.filter(i => i.status !== 'ignored' && i.status !== 'error')
+                      .reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  document.getElementById('stat-amount').textContent = '$' + totalAmt.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+  const filtered = all.filter(i => {
+    if (status !== 'all' && i.status !== status) return false;
+    if (q) {
+      const hay = [i.vendor, i.emailFrom, i.invoiceNumber, i.amount, i.description,
+                   matchedPropertyName(i)].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('inv-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">
+      <div class="big-icon">${all.length ? '🔎' : '📨'}</div>
+      <div>${all.length ? 'No invoices match the current filters.' : 'No invoices yet — click <strong>Search Gmail</strong> above.'}</div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(inv => {
+    const rowCls = 'row-' + inv.status;
+    const matchedRow = inv.matchedRow ? workLog.find(r => r.rowNum === inv.matchedRow) : null;
+    const matchCell = matchedRow
+      ? `<span class="match-pill">→ Row ${matchedRow.rowNum}: ${esc(matchedRow.property)}</span>`
+      : (inv._suggestions && inv._suggestions.length
+          ? inv._suggestions.slice(0, 3).map(s =>
+              `<span class="match-suggest" onclick="quickMatch('${inv.messageId}', ${s.row.rowNum})">
+                 <span class="m-prop">${esc(s.row.property)}</span>
+                 <span class="m-meta"> — Row ${s.row.rowNum} · ${pct(s.score)}</span>
+                 <div class="m-meta">${esc((s.row.workReq || '').slice(0, 70))}</div>
+               </span>`).join('')
+          : '<em style="color:#999;">No matches</em>');
+
+    return `<tr class="${rowCls}">
+      <td class="td-date">${esc(formatShortDate(inv.emailDate))}</td>
+      <td class="td-from">${esc(inv.emailFrom || '')}</td>
+      <td class="td-vendor">${esc(inv.vendor || '')}</td>
+      <td class="th-c">${esc(inv.invoiceNumber || '')}</td>
+      <td class="th-c">${esc(inv.invoiceDate || '')}</td>
+      <td class="td-amount">${inv.amount ? '$' + Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—'}</td>
+      <td class="td-desc">${esc(inv.description || '')}</td>
+      <td class="td-match">${matchCell}</td>
+      <td class="th-c"><span class="badge b-${inv.status}">${inv.status}</span></td>
+      <td class="td-acts">
+        <button class="act-btn primary" onclick="openMatchModal('${inv.messageId}')">Match…</button>
+        <button class="act-btn" onclick="openEmail('${inv.messageId}')" title="Open in Gmail">✉</button>
+        <button class="act-btn danger" onclick="removeInvoice('${inv.messageId}')" title="Remove from cache">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function matchedPropertyName(inv) {
+  if (!inv.matchedRow) return '';
+  const r = workLog.find(x => x.rowNum === inv.matchedRow);
+  return r ? r.property : '';
+}
+
+function formatShortDate(s) {
+  const t = Date.parse(s);
+  if (isNaN(t)) return s || '';
+  const d = new Date(t);
+  return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+function pct(x) { return Math.round(x * 100) + '%'; }
+
+// ─────────────────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────────────────
+function quickMatch(invId, rowNum) {
+  const inv = invoices[invId];
+  if (!inv) return;
+  inv.matchedRow = rowNum;
+  inv.status = 'matched';
+  saveCache(); renderTable();
+  toast('✓ Matched to Row ' + rowNum);
+}
+
+function openMatchModal(invId) {
+  const inv = invoices[invId];
+  if (!inv) return;
+  editingInvId = invId;
+  selectedMatch = inv.matchedRow || null;
+
+  document.getElementById('m-vendor').textContent = inv.vendor || inv.emailFrom || '(unknown)';
+  document.getElementById('m-amount').textContent = inv.amount ? '$' + Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—';
+  document.getElementById('m-invdate').textContent = inv.invoiceDate || '—';
+  document.getElementById('m-desc').textContent = inv.description || '—';
+  document.getElementById('m-search').value = '';
+  document.getElementById('m-notes').value = inv.notes || '';
+
+  filterMatches('');
+  document.getElementById('m-save').disabled = !selectedMatch;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function filterMatches(q) {
+  q = (q || '').toLowerCase().trim();
+  const inv = invoices[editingInvId];
+  if (!inv) return;
+
+  // Suggestions first, then everything else
+  const suggested = (inv._suggestions || []).map(s => s.row.rowNum);
+  const suggestedSet = new Set(suggested);
+
+  const filtered = workLog.filter(r => {
+    if (!q) return true;
+    const hay = (r.property + ' ' + r.workReq + ' ' + r.notes + ' ' + r.dateReq + ' ' + r.dateComp).toLowerCase();
+    return hay.includes(q);
+  });
+
+  filtered.sort((a, b) => {
+    const aS = suggestedSet.has(a.rowNum) ? -1 : 0;
+    const bS = suggestedSet.has(b.rowNum) ? -1 : 0;
+    if (aS !== bS) return aS - bS;
+    return b.rowNum - a.rowNum;
+  });
+
+  document.getElementById('m-matches').innerHTML = filtered.slice(0, 80).map(r => {
+    const sel = (selectedMatch === r.rowNum) ? 'background:#bfdbfe;border-color:#2563eb;' : '';
+    const sug = suggestedSet.has(r.rowNum) ? '⭐ ' : '';
+    return `<div class="match-suggest" style="${sel}" onclick="pickMatch(${r.rowNum})">
+      <span class="m-prop">${sug}${esc(r.property || '(no property)')}</span>
+      <span class="m-meta"> — Row ${r.rowNum} · ${esc(r.dateReq || '')} · ${esc(r.dateComp || '')}</span>
+      <div class="m-meta">${esc((r.workReq || '').slice(0, 110))}</div>
+    </div>`;
+  }).join('') || '<em style="color:#999;">No work log entries match.</em>';
+}
+
+function pickMatch(rowNum) {
+  selectedMatch = rowNum;
+  filterMatches(document.getElementById('m-search').value);
+  document.getElementById('m-save').disabled = false;
+}
+
+function confirmMatch() {
+  const inv = invoices[editingInvId];
+  if (!inv || !selectedMatch) return;
+  inv.matchedRow = selectedMatch;
+  inv.status = 'matched';
+  inv.notes = document.getElementById('m-notes').value.trim();
+  saveCache(); renderTable(); closeModal();
+  toast('✓ Matched to Row ' + selectedMatch);
+}
+
+function markIgnored() {
+  const inv = invoices[editingInvId];
+  if (!inv) return;
+  inv.status = 'ignored';
+  inv.matchedRow = null;
+  saveCache(); renderTable(); closeModal();
+  toast('✓ Marked ignored');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingInvId = null; selectedMatch = null;
+}
+
+function openEmail(invId) {
+  const inv = invoices[invId];
+  if (!inv) return;
+  // Gmail web URL using the message id
+  window.open(`https://mail.google.com/mail/u/0/#inbox/${inv.threadId || inv.messageId}`, '_blank');
+}
+
+function removeInvoice(invId) {
+  if (!confirm('Remove this invoice from the local cache? (Sheets data is not affected.)')) return;
+  delete invoices[invId];
+  saveCache(); renderTable();
+}
+
+// ─────────────────────────────────────────────────────
+// SHEETS WRITE-BACK
+// ─────────────────────────────────────────────────────
+async function ensureSubInvoicesTab() {
+  const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+  if (!metaRes.ok) throw new Error('Sheet meta HTTP ' + metaRes.status);
+  const meta = await metaRes.json();
+  const existing = meta.sheets.find(s => s.properties.title === SUB_TAB_NAME);
+  if (existing) return existing.properties.sheetId;
+
+  const addRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
+    requests: [{ addSheet: { properties: { title: SUB_TAB_NAME } } }]
+  });
+  if (!addRes.ok) throw new Error('Add sheet HTTP ' + addRes.status);
+  const addJson = await addRes.json();
+  const newId = addJson.replies[0].addSheet.properties.sheetId;
+
+  // Write headers
+  await apiFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(SUB_TAB_NAME + '!A1')}?valueInputOption=RAW`,
+    'PUT', { values: [SUB_HEADERS] }
+  );
+  // Format header row
+  await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
+    requests: [{
+      repeatCell: {
+        range: { sheetId: newId, startRowIndex: 0, endRowIndex: 1 },
+        cell: { userEnteredFormat: { backgroundColor: { red: 0.18, green: 0.43, blue: 0.64 }, textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true } } },
+        fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat'
+      }
+    }, {
+      updateSheetProperties: { properties: { sheetId: newId, gridProperties: { frozenRowCount: 1 } }, fields: 'gridProperties.frozenRowCount' }
+    }]
+  });
+  return newId;
+}
+
+async function syncToSheets() {
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  const all = Object.values(invoices).filter(i => i.status === 'matched' || i.status === 'unmatched');
+  if (!all.length) { toast('Nothing to sync'); return; }
+
+  setProgress('Reading Sub Invoices tab…');
+  try {
+    await ensureSubInvoicesTab();
+
+    // Read existing sheet to dedup by Gmail Message ID (column C)
+    const valRes = await apiFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(SUB_TAB_NAME)}`
+    );
+    if (!valRes.ok) throw new Error('Sub tab HTTP ' + valRes.status);
+    const { values = [] } = await valRes.json();
+    const existingIds = new Map();
+    for (let i = 1; i < values.length; i++) {
+      const id = (values[i][2] || '').trim();
+      if (id) existingIds.set(id, i + 1); // 1-indexed row number
+    }
+
+    const now = new Date().toLocaleString('en-US');
+    const appendRows = [];
+    const updates = []; // { range, values }
+
+    for (const inv of all) {
+      const matchedRow = inv.matchedRow ? workLog.find(r => r.rowNum === inv.matchedRow) : null;
+      const row = [
+        inv.emailDate || '',
+        inv.emailFrom || '',
+        inv.messageId || '',
+        inv.filename || '',
+        inv.vendor || '',
+        inv.invoiceNumber || '',
+        inv.invoiceDate || '',
+        inv.amount || 0,
+        inv.description || '',
+        inv.matchedRow || '',
+        matchedRow?.property || '',
+        matchedRow?.workReq || '',
+        inv.status,
+        inv.notes || '',
+        now
+      ];
+      if (existingIds.has(inv.messageId)) {
+        const r = existingIds.get(inv.messageId);
+        updates.push({ range: `${SUB_TAB_NAME}!A${r}:O${r}`, values: [row] });
+      } else {
+        appendRows.push(row);
+      }
+    }
+
+    if (appendRows.length) {
+      setProgress(`Appending ${appendRows.length} new rows…`);
+      const r = await apiFetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(SUB_TAB_NAME + '!A:O')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        'POST', { values: appendRows }
+      );
+      if (!r.ok) throw new Error('Append HTTP ' + r.status);
+    }
+    if (updates.length) {
+      setProgress(`Updating ${updates.length} existing rows…`);
+      const r = await apiFetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values:batchUpdate`,
+        'POST', { valueInputOption: 'USER_ENTERED', data: updates }
+      );
+      if (!r.ok) throw new Error('Update HTTP ' + r.status);
+    }
+
+    setProgress(`✓ Synced — ${appendRows.length} added, ${updates.length} updated.`, 'done');
+    toast('✓ Synced to Sheets');
+  } catch(e) {
+    setProgress('Error: ' + e.message, 'err');
+    console.error('syncToSheets:', e);
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────
+function setConnStatus(msg, cls) {
+  const pill = document.getElementById('conn-pill');
+  if (pill) { pill.textContent = msg; pill.className = 'conn-status-pill' + (cls ? ' ' + cls : ''); }
+}
+
+function setProgress(msg, kind) {
+  const el = document.getElementById('progress');
+  if (!msg) { el.classList.remove('show'); return; }
+  el.textContent = msg;
+  el.classList.add('show');
+  el.style.background = kind === 'err' ? '#fde2e2' : kind === 'done' ? '#dcfce7' : '#fff8e1';
+  el.style.borderColor = kind === 'err' ? '#f87171' : kind === 'done' ? '#22c55e' : '#f9a825';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open');
+});
+</script>
+
+</body>
+</html>
