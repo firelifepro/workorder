@@ -363,6 +363,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <a href="estimate-tracker.html">📊 Estimate Tracker</a>
       <a href="worklog.html">🗒 Work Log</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="payments.html">💵 Payments</a>
     </div>
   </div>
   <h1>🧾 Fire Life Protection – Create Invoices</h1>
@@ -1459,6 +1460,11 @@ window.addEventListener('load', () => {
   }
 
   if (location.search.includes('code=')) handleQBCallback();
+
+  // Auto-launch QB connect flow when another page redirects here for that purpose
+  if (location.search.includes('qb_connect=1') && !qbAccessToken) {
+    setTimeout(() => connectQuickBooks(), 200);
+  }
 
   updateSelectedCount();
 });
