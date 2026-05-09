@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FLPS Inbox Triage</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
+
+    /* Top Bar */
+    #top-bar { background: #1a1a2e; color: white; display: flex; align-items: center; gap: 12px; padding: 10px 16px; position: sticky; top: 0; z-index: 200; flex-wrap: wrap; }
+    #top-bar h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; flex: 1; }
+    .nav-hamburger { position: relative; }
+    .hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+    .hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+    .nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+    .nav-menu.open { display: block; }
+    .nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .nav-menu a:last-child { border-bottom: none; }
+    .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+    .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+    .conn-status-pill { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 10px; background: rgba(249,168,37,0.2); color: #ffe082; white-space: nowrap; }
+    .conn-status-pill.ok  { background: rgba(31,178,114,0.2); color: #7fffb8; }
+    .conn-status-pill.err { background: rgba(220,53,69,0.2);  color: #ff8888; }
+    .top-btn { background: #2e6da4; color: white; border: none; padding: 6px 13px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; font-weight: 600; white-space: nowrap; }
+    .top-btn:hover { background: #4a86e8; }
+
+    /* Connect Drawer */
+    #conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+    #conn-drawer.open { max-height: 320px; }
+    #conn-inner { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .conn-field { display: flex; flex-direction: column; gap: 4px; }
+    .conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; }
+    .conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; width: 240px; }
+    .conn-field input::placeholder { color: rgba(255,255,255,0.4); }
+    .conn-divider { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; }
+
+    /* Page */
+    #page { max-width: 1700px; margin: 0 auto; padding: 14px; }
+
+    /* Card */
+    .card { background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 10px; overflow: hidden; }
+    .card-head { background: #2e6da4; color: white; padding: 9px 14px; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .card-body { padding: 12px 14px; }
+
+    /* Controls */
+    #controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+    .ctrl-group label { font-size: 0.7rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .ctrl-group input, .ctrl-group select { border: 1px solid #ccc; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; font-family: inherit; outline: none; background: white; }
+    .ctrl-group input:focus, .ctrl-group select:focus { border-color: #2e6da4; background: #f0f7ff; }
+    #search-btn { background: #2e6da4; color: white; border: none; padding: 8px 18px; border-radius: 4px; font-size: 0.85rem; font-weight: 700; cursor: pointer; align-self: flex-end; }
+    #search-btn:hover { background: #4a86e8; }
+    #search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .icon-btn { background: #f5f5f5; border: 1px solid #ccc; padding: 7px 12px; border-radius: 4px; font-size: 0.82rem; cursor: pointer; align-self: flex-end; }
+    .icon-btn:hover { background: #e8e8e8; }
+    .help-text { font-size: 0.74rem; color: #777; margin-top: 4px; }
+
+    /* Stats */
+    #stats-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .stat-chip { background: white; border-radius: 6px; padding: 8px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; min-width: 78px; cursor: pointer; user-select: none; transition: transform 0.08s; }
+    .stat-chip:hover { transform: translateY(-1px); }
+    .stat-chip.active { outline: 2px solid #2e6da4; }
+    .stat-num { font-size: 1.3rem; font-weight: 700; line-height: 1.1; }
+    .stat-lbl { font-size: 0.6rem; color: #777; text-transform: uppercase; font-weight: 600; margin-top: 1px; letter-spacing: 0.3px; }
+
+    .stat-chip.s-all      .stat-num { color: #1f2937; }
+    .stat-chip.s-estimate .stat-num { color: #16a34a; }
+    .stat-chip.s-schedule .stat-num { color: #2563eb; }
+    .stat-chip.s-complaint .stat-num { color: #dc2626; }
+    .stat-chip.s-ahj      .stat-num { color: #7c2d12; }
+    .stat-chip.s-payment  .stat-num { color: #be185d; }
+    .stat-chip.s-sub      .stat-num { color: #6b21a8; }
+    .stat-chip.s-vendor   .stat-num { color: #92400e; }
+    .stat-chip.s-newsletter .stat-num { color: #6b7280; }
+    .stat-chip.s-other    .stat-num { color: #4b5563; }
+
+    /* Progress */
+    #progress { display: none; padding: 8px 14px; background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px; font-size: 0.82rem; margin-bottom: 10px; }
+    #progress.show { display: block; }
+    #progress.done { background: #e8f5e9; border-color: #66bb6a; color: #1b5e20; }
+    #progress.err  { background: #ffebee; border-color: #ef5350; color: #b71c1c; }
+
+    /* Email list */
+    .group-head { background: white; padding: 10px 14px; border-radius: 6px 6px 0 0; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-top: 10px; font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #e5e7eb; }
+    .group-list { background: white; border-radius: 0 0 6px 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+    .email-row { padding: 10px 14px; border-bottom: 1px solid #eee; display: grid; grid-template-columns: 90px 200px 1fr auto; gap: 12px; align-items: start; }
+    .email-row:last-child { border-bottom: none; }
+    .email-row:hover { background: #f8fafc; }
+    .email-row.handled { opacity: 0.55; }
+    .email-row.dismissed { display: none; }
+
+    .e-date { font-size: 8.2pt; color: #6b7280; white-space: nowrap; }
+    .e-from { font-size: 8.5pt; color: #374151; word-break: break-word; }
+    .e-from .e-name { font-weight: 600; color: #1f2937; display: block; }
+    .e-from .e-addr { font-size: 7.8pt; color: #6b7280; }
+    .e-body { min-width: 0; }
+    .e-subject { font-weight: 600; font-size: 9.2pt; color: #111827; margin-bottom: 3px; word-wrap: break-word; }
+    .e-summary { font-size: 8.6pt; color: #4b5563; line-height: 1.4; }
+    .e-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; align-items: center; }
+    .e-acts { display: flex; flex-direction: column; gap: 4px; min-width: 110px; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 9px; font-size: 7.5pt; font-weight: 700; white-space: nowrap; }
+    .b-estimate   { background: #dcfce7; color: #14532d; }
+    .b-schedule   { background: #dbeafe; color: #1e3a8a; }
+    .b-complaint  { background: #fee2e2; color: #7f1d1d; }
+    .b-ahj        { background: #fef3c7; color: #78350f; border: 1px solid #d97706; }
+    .b-payment    { background: #fce7f3; color: #831843; }
+    .b-sub        { background: #ede9fe; color: #5b21b6; }
+    .b-vendor     { background: #fef3c7; color: #92400e; }
+    .b-newsletter { background: #f3f4f6; color: #4b5563; }
+    .b-other      { background: #f3f4f6; color: #4b5563; }
+    .b-prio-high   { background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; }
+    .b-prio-medium { background: #fef9c3; color: #854d0e; }
+    .b-prio-low    { background: #f0fdf4; color: #166534; }
+    .b-prop { background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; font-weight: 600; }
+    .b-prop.unmatched { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
+
+    .act-btn { background: #f5f5f5; border: 1px solid #ccc; border-radius: 3px; padding: 4px 9px; font-size: 8.2pt; cursor: pointer; text-align: center; font-family: inherit; color: #1f2937; text-decoration: none; display: inline-block; }
+    .act-btn:hover { background: #e0e0e0; }
+    .act-btn.primary { background: #2e6da4; color: white; border-color: #2e6da4; }
+    .act-btn.primary:hover { background: #4a86e8; }
+    .act-btn.success { background: #16a34a; color: white; border-color: #16a34a; }
+    .act-btn.success:hover { background: #15803d; }
+    .act-btn.muted { background: white; color: #6b7280; }
+    .act-btn.muted:hover { background: #f3f4f6; color: #374151; }
+
+    .empty-state { text-align: center; padding: 36px 18px; color: #888; font-size: 0.9rem; }
+    .empty-state .big-icon { font-size: 2.6rem; margin-bottom: 10px; opacity: 0.6; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 10px 18px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; z-index: 1000; max-width: 90vw; }
+    #toast.show { display: block; }
+
+    @media (max-width: 760px) {
+      .email-row { grid-template-columns: 1fr; }
+      .e-acts { flex-direction: row; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
+      <a href="estimate.html">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
+      <a href="worklog.html">🗒 Work Log</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="payments.html">💵 Payments</a>
+      <a href="triage.html" class="active">📬 Inbox Triage</a>
+    </div>
+  </div>
+  <h1>📬 FLIPS Inbox Triage</h1>
+  <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
+  <button class="top-btn" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Settings</button>
+</div>
+
+<!-- Connect Drawer -->
+<div id="conn-drawer">
+  <div id="conn-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456…apps.googleusercontent.com" style="width:300px;">
+    </div>
+    <button class="top-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <div class="conn-divider"></div>
+    <div class="conn-field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anth-key" placeholder="sk-ant-…" style="width:280px;">
+    </div>
+    <div class="conn-field">
+      <label>Claude Model</label>
+      <select id="anth-model">
+        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (recommended — fast/cheap)</option>
+        <option value="claude-sonnet-4-6">Sonnet 4.6 (better at nuance)</option>
+        <option value="claude-opus-4-7">Opus 4.7 (highest quality)</option>
+      </select>
+    </div>
+    <button class="top-btn" onclick="saveAnthropicSettings()">💾 Save</button>
+  </div>
+</div>
+
+<!-- Page -->
+<div id="page">
+
+  <!-- Search Card -->
+  <div class="card">
+    <div class="card-head"><span>🔍 Triage Inbox</span></div>
+    <div class="card-body">
+      <div id="controls">
+        <div class="ctrl-group" style="flex:1;min-width:280px;">
+          <label>Gmail Search Query</label>
+          <input type="text" id="gmail-query" value="in:inbox newer_than:7d -from:me -category:promotions -category:social -category:forums" style="width:100%;">
+          <div class="help-text">Defaults to last 7 days of inbox excluding promotions/social. Tweak as needed — e.g. <code>newer_than:14d</code>, <code>label:starred</code>.</div>
+        </div>
+        <div class="ctrl-group">
+          <label>Max Emails</label>
+          <input type="number" id="max-results" value="50" min="1" max="200" style="width:80px;">
+        </div>
+        <button id="search-btn" onclick="runTriage()">📬 Triage Now</button>
+        <button class="icon-btn" onclick="loadCachedEmails()" title="Show cached classified emails without re-fetching">📂 Load Cached</button>
+        <button class="icon-btn" onclick="clearCache()" title="Clear local cache of classified emails">🗑 Clear Cache</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-bar">
+    <div class="stat-chip s-all       active" onclick="setFilter('all')"><span class="stat-num" id="stat-all">—</span><span class="stat-lbl">All</span></div>
+    <div class="stat-chip s-estimate"  onclick="setFilter('estimate_request')"><span class="stat-num" id="stat-estimate">—</span><span class="stat-lbl">Estimate</span></div>
+    <div class="stat-chip s-schedule"  onclick="setFilter('scheduling')"><span class="stat-num" id="stat-schedule">—</span><span class="stat-lbl">Schedule</span></div>
+    <div class="stat-chip s-complaint" onclick="setFilter('complaint')"><span class="stat-num" id="stat-complaint">—</span><span class="stat-lbl">Complaint</span></div>
+    <div class="stat-chip s-ahj"       onclick="setFilter('ahj_violation')"><span class="stat-num" id="stat-ahj">—</span><span class="stat-lbl">AHJ / NOV</span></div>
+    <div class="stat-chip s-payment"   onclick="setFilter('payment_followup')"><span class="stat-num" id="stat-payment">—</span><span class="stat-lbl">Payment</span></div>
+    <div class="stat-chip s-sub"       onclick="setFilter('sub_invoice')"><span class="stat-num" id="stat-sub">—</span><span class="stat-lbl">Sub Inv</span></div>
+    <div class="stat-chip s-vendor"    onclick="setFilter('vendor_other')"><span class="stat-num" id="stat-vendor">—</span><span class="stat-lbl">Vendor</span></div>
+    <div class="stat-chip s-newsletter" onclick="setFilter('newsletter')"><span class="stat-num" id="stat-newsletter">—</span><span class="stat-lbl">Newsletter</span></div>
+    <div class="stat-chip s-other"     onclick="setFilter('other')"><span class="stat-num" id="stat-other">—</span><span class="stat-lbl">Other</span></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card">
+    <div class="card-body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="ctrl-group">
+        <label>Priority</label>
+        <select id="prio-filter" onchange="render()">
+          <option value="all">All</option>
+          <option value="high">High only</option>
+          <option value="medium">Medium+</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <label>Status</label>
+        <select id="status-filter" onchange="render()">
+          <option value="open" selected>Open (hide handled)</option>
+          <option value="all">All (incl. handled/dismissed)</option>
+          <option value="handled">Handled</option>
+          <option value="dismissed">Dismissed</option>
+        </select>
+      </div>
+      <div class="ctrl-group" style="flex:1;min-width:200px;">
+        <label>Search</label>
+        <input type="text" id="text-filter" placeholder="Subject, sender, summary…" oninput="render()" style="width:100%;">
+      </div>
+    </div>
+  </div>
+
+  <div id="progress"></div>
+
+  <div id="results"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-google-fetch.js"></script>
+<script>
+// ─────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────
+const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const SHEET_GID = '1899870347';
+const SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets.readonly',
+  'https://www.googleapis.com/auth/gmail.readonly'
+].join(' ');
+
+const CACHE_KEY     = 'flips_triage_v1';
+const ANTH_KEY_LS   = 'flips_anth_key';
+const ANTH_MODEL_LS = 'flips_anth_model';
+
+const CATEGORIES = [
+  { key: 'estimate_request',  label: 'Estimate Request',  emoji: '🟢', cls: 'b-estimate'   },
+  { key: 'scheduling',        label: 'Scheduling',         emoji: '🔵', cls: 'b-schedule'   },
+  { key: 'complaint',         label: 'Complaint / Issue',  emoji: '🔴', cls: 'b-complaint'  },
+  { key: 'ahj_violation',     label: 'AHJ / Violation',    emoji: '🚨', cls: 'b-ahj'        },
+  { key: 'payment_followup',  label: 'Payment / Billing',  emoji: '💰', cls: 'b-payment'    },
+  { key: 'sub_invoice',       label: 'Sub Invoice',        emoji: '📄', cls: 'b-sub'        },
+  { key: 'vendor_other',      label: 'Vendor / Other',     emoji: '🟡', cls: 'b-vendor'     },
+  { key: 'newsletter',        label: 'Newsletter / Auto',  emoji: '📰', cls: 'b-newsletter' },
+  { key: 'other',             label: 'Other',              emoji: '⚪', cls: 'b-other'      }
+];
+const CATEGORY_ORDER = CATEGORIES.map(c => c.key);
+const CATEGORY_META  = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
+
+// ─────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────
+let accessToken = null;
+let tokenClient = null;
+let emails      = {};   // { [messageId]: emailObj }
+let properties  = [];   // [{ name, address }] from property sheet (for fuzzy match)
+let activeFilter = 'all';
+
+// ─────────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('api-key').value    = localStorage.getItem('flips_api_key')   || '';
+  document.getElementById('client-id').value  = localStorage.getItem('flips_client_id') || '';
+  document.getElementById('anth-key').value   = localStorage.getItem(ANTH_KEY_LS)       || '';
+  document.getElementById('anth-model').value = localStorage.getItem(ANTH_MODEL_LS)     || 'claude-haiku-4-5-20251001';
+
+  loadCachedEmails();
+
+  const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+  if (localStorage.getItem('flips_access_token') && expiry > Date.now() + 60_000 &&
+      localStorage.getItem('flips_api_key') && localStorage.getItem('flips_client_id')) {
+    accessToken = localStorage.getItem('flips_access_token');
+    setConnStatus('✓ Connected', 'ok');
+    initTokenClientOnly().then(() => loadProperties());
+  } else {
+    document.getElementById('conn-drawer').classList.add('open');
+  }
+
+  // close nav menu on outside click
+  document.addEventListener('click', e => {
+    const nav = document.getElementById('nav-menu');
+    if (!nav.classList.contains('open')) return;
+    if (!e.target.closest('.nav-hamburger')) nav.classList.remove('open');
+  });
+});
+
+function toggleNav() {
+  document.getElementById('nav-menu').classList.toggle('open');
+}
+
+function saveAnthropicSettings() {
+  const k = document.getElementById('anth-key').value.trim();
+  const m = document.getElementById('anth-model').value;
+  if (k) localStorage.setItem(ANTH_KEY_LS, k);
+  localStorage.setItem(ANTH_MODEL_LS, m);
+  toast('✓ Anthropic settings saved');
+}
+
+function initTokenClientOnly() {
+  return new Promise((resolve) => {
+    const clientId = localStorage.getItem('flips_client_id');
+    if (!clientId || typeof google === 'undefined') return resolve();
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId, scope: SCOPES,
+        callback: (resp) => {
+          if (resp.access_token) {
+            accessToken = resp.access_token;
+            localStorage.setItem('flips_access_token', accessToken);
+            localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+          }
+        }
+      });
+    } catch(e) { console.warn('initTokenClientOnly:', e); }
+    resolve();
+  });
+}
+
+// ─────────────────────────────────────────────────────
+// GOOGLE AUTH
+// ─────────────────────────────────────────────────────
+async function initGoogle() {
+  const apiKey   = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter Google API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  setConnStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setConnStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setConnStatus('✓ Connected', 'ok');
+        document.getElementById('conn-drawer').classList.remove('open');
+        await loadProperties();
+        toast('✓ Connected — properties loaded');
+      },
+      error_callback: (err) => setConnStatus('✗ ' + (err.message || err.type), 'err')
+    });
+    // consent prompt ensures Gmail scope is granted on top of any existing Sheets-only token
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e) { setConnStatus('✗ ' + e.message, 'err'); }
+}
+
+// ─────────────────────────────────────────────────────
+// LOAD PROPERTY LIST (for fuzzy match)
+// ─────────────────────────────────────────────────────
+async function loadProperties() {
+  if (!accessToken) return;
+  try {
+    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`);
+    if (!metaRes.ok) throw new Error('Sheet meta HTTP ' + metaRes.status);
+    const meta = await metaRes.json();
+    let tabName = meta.sheets[0].properties.title;
+    for (const s of meta.sheets) {
+      if (String(s.properties.sheetId) === String(SHEET_GID)) { tabName = s.properties.title; break; }
+    }
+    const valRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`);
+    if (!valRes.ok) throw new Error('Sheet values HTTP ' + valRes.status);
+    const { values = [] } = await valRes.json();
+    if (values.length < 2) return;
+    const headers = values[0].map(h => (h||'').trim().toLowerCase());
+    const nameIdx = headers.findIndex(h => ['property name','property','name'].some(k => h.includes(k)));
+    const addrIdx = headers.findIndex(h => h.includes('service address') || h.includes('address'));
+    properties = [];
+    for (let i = 1; i < values.length; i++) {
+      const r = values[i];
+      const name = ((nameIdx >= 0 ? r[nameIdx] : r[0]) || '').trim();
+      const addr = ((addrIdx >= 0 ? r[addrIdx] : '') || '').trim();
+      if (name) properties.push({ name, address: addr });
+    }
+    console.log('[triage] loaded', properties.length, 'properties');
+  } catch(e) {
+    console.error('loadProperties:', e);
+    toast('⚠ Could not load property list: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// CACHE
+// ─────────────────────────────────────────────────────
+function saveCache() {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(emails)); }
+  catch(e) { console.warn('cache save failed:', e); }
+}
+function loadCachedEmails() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) { emails = JSON.parse(raw); render(); }
+  } catch(e) { console.warn('cache load failed:', e); }
+}
+function clearCache() {
+  if (!confirm('Clear local cache of all triaged emails? (Gmail itself is not affected.)')) return;
+  emails = {};
+  localStorage.removeItem(CACHE_KEY);
+  render();
+  toast('✓ Cache cleared');
+}
+
+// ─────────────────────────────────────────────────────
+// GMAIL SEARCH + TRIAGE
+// ─────────────────────────────────────────────────────
+let _triageInProgress = false;
+async function runTriage() {
+  if (_triageInProgress) { toast('⏳ Triage already in progress…'); return; }
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  const anthKey = localStorage.getItem(ANTH_KEY_LS);
+  if (!anthKey) { toast('⚠ Set Anthropic API key in Settings'); document.getElementById('conn-drawer').classList.add('open'); return; }
+
+  const q = document.getElementById('gmail-query').value.trim();
+  const maxResults = Math.min(200, parseInt(document.getElementById('max-results').value) || 50);
+
+  _triageInProgress = true;
+  setProgress('Searching Gmail…');
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+
+  try {
+    if (!properties.length) await loadProperties();
+
+    const listRes = await apiFetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(q)}&maxResults=${maxResults}`
+    );
+    if (!listRes.ok) throw new Error('Gmail list HTTP ' + listRes.status);
+    const listJson = await listRes.json();
+    const messages = listJson.messages || [];
+    if (!messages.length) {
+      setProgress('No messages found for query.', 'done');
+      return;
+    }
+    setProgress(`Found ${messages.length} messages — classifying…`);
+
+    let classified = 0, skipped = 0, errored = 0;
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      setProgress(`Processing ${i+1}/${messages.length} — ${classified} new, ${skipped} cached, ${errored} errors`);
+      try {
+        if (emails[m.id] && emails[m.id]._classified) { skipped++; render(); continue; }
+
+        const detail = await fetchMessageDetail(m.id);
+        const meta = extractEmailFields(detail);
+        if (!meta.body && !meta.subject) {
+          // empty — skip but record so we don't retry
+          emails[m.id] = { messageId: m.id, threadId: detail.threadId, ...meta, category: 'other', priority: 'low', summary: '(empty body)', actionable: false, _classified: true, propertyMatch: null };
+          saveCache(); errored++; continue;
+        }
+
+        const classification = await classifyEmail(meta, anthKey);
+        const propertyMatch = matchProperty(classification.property, meta.subject + ' ' + meta.body, properties);
+
+        emails[m.id] = {
+          messageId: m.id,
+          threadId: detail.threadId,
+          ...meta,
+          ...classification,
+          propertyMatch,
+          handled: false,
+          dismissed: false,
+          _classified: true,
+          _classifiedAt: Date.now()
+        };
+        saveCache();
+        classified++;
+        render();
+      } catch(e) {
+        console.error('triage row', m.id, e);
+        errored++;
+        emails[m.id] = { messageId: m.id, _classified: false, _error: e.message };
+      }
+    }
+    setProgress(`✓ Done — ${classified} classified, ${skipped} cached, ${errored} errors`, 'done');
+    setTimeout(() => setProgress(''), 4000);
+  } catch(e) {
+    setProgress('Error: ' + e.message, 'err');
+    console.error('runTriage:', e);
+  } finally {
+    _triageInProgress = false;
+    btn.disabled = false;
+    render();
+  }
+}
+
+async function fetchMessageDetail(messageId) {
+  const res = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`);
+  if (!res.ok) throw new Error('Gmail detail HTTP ' + res.status);
+  return res.json();
+}
+
+// Pull subject, from, date, and a plain-text body sample (limited to ~2000 chars for token cost).
+function extractEmailFields(detail) {
+  const headers = detail.payload?.headers || [];
+  const h = (n) => (headers.find(x => x.name.toLowerCase() === n.toLowerCase())?.value || '');
+  const subject = h('subject');
+  const from = h('from');
+  const date = h('date');
+  let body = '';
+  // Walk the MIME tree for the first text/plain or fall back to text/html stripped.
+  const collect = (part) => {
+    if (!part) return;
+    if (part.body && part.body.data && part.mimeType?.startsWith('text/')) {
+      try {
+        const txt = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        if (part.mimeType === 'text/plain') body = body || txt;
+        else if (part.mimeType === 'text/html' && !body) body = stripHtml(txt);
+      } catch(_) {}
+    }
+    (part.parts || []).forEach(collect);
+  };
+  collect(detail.payload);
+  if (!body && detail.snippet) body = detail.snippet;
+  body = (body || '').replace(/ /g, ' ').replace(/[\r\t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  // Cap to keep Claude calls cheap — 2000 chars is plenty for triage classification.
+  if (body.length > 2000) body = body.slice(0, 2000) + '…';
+  return { subject, from, date, body, snippet: detail.snippet || '' };
+}
+
+function stripHtml(html) {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ');
+}
+
+// ─────────────────────────────────────────────────────
+// CLAUDE CLASSIFICATION
+// ─────────────────────────────────────────────────────
+async function classifyEmail(meta, anthKey) {
+  const model = localStorage.getItem(ANTH_MODEL_LS) || 'claude-haiku-4-5-20251001';
+
+  const systemPrompt =
+    "You triage incoming emails for a commercial fire-life-safety service company called Fire Life Protection Systems (FLPS). " +
+    "FLPS performs fire alarm, sprinkler, extinguisher, kitchen-hood, and other code-required inspections at commercial buildings, " +
+    "and bills clients for service work. Classify each email into ONE category and extract a few key fields. " +
+    "Return ONLY a single JSON object — no prose, no markdown, no code fences.";
+
+  const userText =
+    "Classify this email and return JSON with EXACTLY these keys:\n" +
+    "{\n" +
+    '  "category": "estimate_request" | "scheduling" | "complaint" | "ahj_violation" | "payment_followup" | "sub_invoice" | "vendor_other" | "newsletter" | "other",\n' +
+    '  "priority": "high" | "medium" | "low",\n' +
+    '  "property": string,\n' +
+    '  "summary": string,\n' +
+    '  "actionable": boolean\n' +
+    "}\n\n" +
+    "Category definitions:\n" +
+    "- estimate_request: a customer or potential customer asking for a quote on inspection, repair, install, or compliance work\n" +
+    "- scheduling: customer wants to schedule, reschedule, confirm, or ask about timing of a service visit\n" +
+    "- complaint: customer is unhappy, raising a concern about service quality, or escalating an issue\n" +
+    "- ahj_violation: a fire marshal, building dept, or AHJ has issued a notice of violation, NOI, deficiency tag, or compliance demand\n" +
+    "- payment_followup: customer question about a bill, AR/AP communication, payment confirmation, dispute, ACH/check notice\n" +
+    "- sub_invoice: an invoice from a SUBCONTRACTOR billing FLPS for work performed (this is handled by another tool — flag it so the user can route)\n" +
+    "- vendor_other: vendor/supplier/partner email that doesn't fit a specific bucket above\n" +
+    "- newsletter: marketing, automated notification, software update, or anything that doesn't require a human reply\n" +
+    "- other: doesn't fit any above\n\n" +
+    "Priority guidance:\n" +
+    "- high: AHJ violations with deadlines, complaints, urgent estimate requests, payment disputes — needs reply same day\n" +
+    "- medium: regular estimate requests, scheduling, billing questions — needs reply this week\n" +
+    "- low: routine vendor / informational / newsletter\n\n" +
+    "property: best-guess building name or address mentioned in the email (or empty string if none).\n" +
+    "summary: ONE sentence (max 140 chars) capturing the ask or content. Plain English, no fluff.\n" +
+    "actionable: true if a human at FLPS needs to take an action (reply, schedule, file, dispatch). false for FYI / newsletter / auto-reply.\n\n" +
+    "EMAIL:\n" +
+    `Subject: ${meta.subject}\n` +
+    `From: ${meta.from}\n` +
+    `Date: ${meta.date}\n` +
+    `Body:\n${meta.body || meta.snippet || '(empty)'}`;
+
+  const body = {
+    model,
+    max_tokens: 400,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userText }]
+  };
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': anthKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`Claude HTTP ${res.status}: ${t.slice(0, 200)}`);
+  }
+  const j = await res.json();
+  const text = j.content?.[0]?.text || '';
+  const cleaned = text.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+  let parsed;
+  try { parsed = JSON.parse(cleaned); }
+  catch(_) {
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('Claude returned non-JSON: ' + cleaned.slice(0, 120));
+    parsed = JSON.parse(m[0]);
+  }
+  // Defensive defaults
+  if (!CATEGORY_ORDER.includes(parsed.category)) parsed.category = 'other';
+  if (!['high','medium','low'].includes(parsed.priority)) parsed.priority = 'medium';
+  parsed.property = parsed.property || '';
+  parsed.summary  = (parsed.summary || '').slice(0, 200);
+  parsed.actionable = !!parsed.actionable;
+  return parsed;
+}
+
+// ─────────────────────────────────────────────────────
+// PROPERTY FUZZY MATCH
+// ─────────────────────────────────────────────────────
+function tokens(s) {
+  return new Set((s || '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 2));
+}
+function jaccard(a, b) {
+  if (!a.size || !b.size) return 0;
+  const inter = [...a].filter(x => b.has(x)).length;
+  const union = new Set([...a, ...b]).size;
+  return inter / union;
+}
+
+// Match Claude's extracted property string (and email body) against the property sheet.
+// Returns the best property if score is reasonable, else null.
+function matchProperty(claudeProp, fullText, list) {
+  if (!list.length) return null;
+  const probe = ((claudeProp || '') + ' ' + (fullText || '')).toLowerCase();
+  let best = { p: null, score: 0 };
+  for (const p of list) {
+    const nameLc = p.name.toLowerCase();
+    const addrLc = p.address.toLowerCase();
+
+    let score = 0;
+    // Strong signal: exact substring of property name in probe
+    if (nameLc.length > 4 && probe.includes(nameLc)) score = Math.max(score, 0.95);
+    // Or address substring (street name unique)
+    if (addrLc.length > 8 && probe.includes(addrLc.split(/\r?\n/)[0])) score = Math.max(score, 0.85);
+    // Token jaccard fallback
+    const j = jaccard(tokens(p.name + ' ' + p.address), tokens(claudeProp));
+    score = Math.max(score, j);
+
+    if (score > best.score) best = { p, score };
+  }
+  return best.score >= 0.45 ? { ...best.p, score: best.score } : null;
+}
+
+// ─────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────
+function setFilter(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('#stats-bar .stat-chip').forEach(el => el.classList.remove('active'));
+  const map = { all: 's-all', estimate_request: 's-estimate', scheduling: 's-schedule', complaint: 's-complaint',
+                ahj_violation: 's-ahj', payment_followup: 's-payment', sub_invoice: 's-sub',
+                vendor_other: 's-vendor', newsletter: 's-newsletter', other: 's-other' };
+  const el = document.querySelector('#stats-bar .' + map[cat]);
+  if (el) el.classList.add('active');
+  render();
+}
+
+function render() {
+  const all = Object.values(emails).filter(e => e._classified);
+
+  // Stats reflect ALL classified (regardless of filter — so the counts are stable)
+  const counts = { all: all.length };
+  for (const c of CATEGORY_ORDER) counts[c] = 0;
+  for (const e of all) counts[e.category] = (counts[e.category] || 0) + 1;
+  document.getElementById('stat-all').textContent        = counts.all;
+  document.getElementById('stat-estimate').textContent   = counts.estimate_request;
+  document.getElementById('stat-schedule').textContent   = counts.scheduling;
+  document.getElementById('stat-complaint').textContent  = counts.complaint;
+  document.getElementById('stat-ahj').textContent        = counts.ahj_violation;
+  document.getElementById('stat-payment').textContent    = counts.payment_followup;
+  document.getElementById('stat-sub').textContent        = counts.sub_invoice;
+  document.getElementById('stat-vendor').textContent     = counts.vendor_other;
+  document.getElementById('stat-newsletter').textContent = counts.newsletter;
+  document.getElementById('stat-other').textContent      = counts.other;
+
+  // Filter
+  const prioFilter   = document.getElementById('prio-filter').value;
+  const statusFilter = document.getElementById('status-filter').value;
+  const txt          = (document.getElementById('text-filter').value || '').trim().toLowerCase();
+
+  let filtered = all.filter(e => {
+    if (activeFilter !== 'all' && e.category !== activeFilter) return false;
+    if (prioFilter === 'high' && e.priority !== 'high') return false;
+    if (prioFilter === 'medium' && e.priority === 'low') return false;
+    if (statusFilter === 'open' && (e.handled || e.dismissed)) return false;
+    if (statusFilter === 'handled' && !e.handled) return false;
+    if (statusFilter === 'dismissed' && !e.dismissed) return false;
+    if (txt) {
+      const hay = [e.subject, e.from, e.summary, e.propertyMatch?.name, e.property].join(' ').toLowerCase();
+      if (!hay.includes(txt)) return false;
+    }
+    return true;
+  });
+
+  // Sort: priority desc, then date desc
+  const prioRank = { high: 0, medium: 1, low: 2 };
+  filtered.sort((a, b) => {
+    const p = (prioRank[a.priority] ?? 3) - (prioRank[b.priority] ?? 3);
+    if (p !== 0) return p;
+    return parseDate(b.date) - parseDate(a.date);
+  });
+
+  // Group by category, in CATEGORY_ORDER
+  const groups = {};
+  for (const e of filtered) (groups[e.category] = groups[e.category] || []).push(e);
+
+  const root = document.getElementById('results');
+  if (!filtered.length) {
+    root.innerHTML = `<div class="card"><div class="empty-state">
+      <div class="big-icon">📬</div>
+      <div>${all.length ? 'No emails match the current filters.' : 'Click <strong>Triage Now</strong> to classify your inbox.'}</div>
+    </div></div>`;
+    return;
+  }
+
+  root.innerHTML = CATEGORY_ORDER
+    .filter(c => groups[c]?.length)
+    .map(c => renderGroup(c, groups[c]))
+    .join('');
+}
+
+function renderGroup(catKey, list) {
+  const meta = CATEGORY_META[catKey];
+  return `
+    <div class="group-head">
+      <span style="font-size:1.2rem;">${meta.emoji}</span>
+      <span>${esc(meta.label)}</span>
+      <span style="color:#9ca3af;font-weight:500;font-size:0.82rem;">(${list.length})</span>
+    </div>
+    <div class="group-list">
+      ${list.map(renderRow).join('')}
+    </div>`;
+}
+
+function renderRow(e) {
+  const cat = CATEGORY_META[e.category] || CATEGORY_META.other;
+  const dateLabel = formatShortDate(e.date);
+  const fromName  = extractFromName(e.from);
+  const fromAddr  = extractFromAddr(e.from);
+  const propBadge = e.propertyMatch
+    ? `<span class="badge b-prop" title="Matched ${(e.propertyMatch.score * 100).toFixed(0)}%">🏢 ${esc(e.propertyMatch.name)}</span>`
+    : (e.property
+        ? `<span class="badge b-prop unmatched" title="Mentioned in email but not in property list">🏢 ${esc(e.property)} (no match)</span>`
+        : '');
+  const prioBadge = e.priority === 'high'
+    ? `<span class="badge b-prio-high">🔥 HIGH</span>`
+    : e.priority === 'medium'
+      ? `<span class="badge b-prio-medium">MED</span>`
+      : `<span class="badge b-prio-low">LOW</span>`;
+
+  const gmailUrl = `https://mail.google.com/mail/u/0/#inbox/${e.threadId || e.messageId}`;
+  const replyUrl = `mailto:${encodeURIComponent(fromAddr || '')}?subject=${encodeURIComponent('Re: ' + (e.subject || ''))}`;
+
+  return `
+    <div class="email-row ${e.handled ? 'handled' : ''} ${e.dismissed ? 'dismissed' : ''}" data-id="${esc(e.messageId)}">
+      <div class="e-date">${esc(dateLabel)}</div>
+      <div class="e-from">
+        <span class="e-name">${esc(fromName || fromAddr || '(unknown)')}</span>
+        ${fromName && fromAddr ? `<span class="e-addr">${esc(fromAddr)}</span>` : ''}
+      </div>
+      <div class="e-body">
+        <div class="e-subject">${esc(e.subject || '(no subject)')}</div>
+        <div class="e-summary">${esc(e.summary || e.snippet || '')}</div>
+        <div class="e-meta">
+          <span class="badge ${cat.cls}">${cat.emoji} ${esc(cat.label)}</span>
+          ${prioBadge}
+          ${propBadge}
+          ${e.actionable ? '<span class="badge b-prio-medium">↩ Reply needed</span>' : ''}
+        </div>
+      </div>
+      <div class="e-acts">
+        <a class="act-btn primary" href="${esc(gmailUrl)}" target="_blank" rel="noopener">✉ Open Gmail</a>
+        ${fromAddr ? `<a class="act-btn" href="${esc(replyUrl)}">↩ Reply</a>` : ''}
+        ${e.category === 'estimate_request' ? `<a class="act-btn" href="estimate.html" target="_blank">📝 Estimate</a>` : ''}
+        ${e.category === 'scheduling' ? `<a class="act-btn" href="schedule.html" target="_blank">📅 Schedule</a>` : ''}
+        ${e.category === 'complaint' || e.category === 'ahj_violation' ? `<a class="act-btn" href="index.html" target="_blank">📋 New WO</a>` : ''}
+        ${e.category === 'sub_invoice' ? `<a class="act-btn" href="sub-invoices.html" target="_blank">📨 Sub Tool</a>` : ''}
+        ${e.category === 'payment_followup' ? `<a class="act-btn" href="payments.html" target="_blank">💵 Payments</a>` : ''}
+        <button class="act-btn ${e.handled ? 'success' : 'muted'}" onclick="toggleHandled('${esc(e.messageId)}')">${e.handled ? '✓ Handled' : 'Mark handled'}</button>
+        <button class="act-btn muted" onclick="dismissEmail('${esc(e.messageId)}')">✕ Dismiss</button>
+      </div>
+    </div>`;
+}
+
+function toggleHandled(id) {
+  if (!emails[id]) return;
+  emails[id].handled = !emails[id].handled;
+  if (emails[id].handled) emails[id].dismissed = false;
+  saveCache();
+  render();
+}
+function dismissEmail(id) {
+  if (!emails[id]) return;
+  emails[id].dismissed = true;
+  saveCache();
+  render();
+}
+
+// ─────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function extractFromName(from) {
+  if (!from) return '';
+  const m = from.match(/^"?([^"<]+?)"?\s*</);
+  return m ? m[1].trim() : '';
+}
+function extractFromAddr(from) {
+  if (!from) return '';
+  const m = from.match(/<([^>]+)>/);
+  return m ? m[1].trim() : (from.includes('@') ? from.trim() : '');
+}
+function parseDate(s) {
+  if (!s) return 0;
+  const t = Date.parse(s);
+  return isNaN(t) ? 0 : t;
+}
+function formatShortDate(s) {
+  const t = parseDate(s);
+  if (!t) return '';
+  const d = new Date(t);
+  const now = new Date();
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: '2-digit' }) });
+}
+function setProgress(msg, kind) {
+  const el = document.getElementById('progress');
+  if (!msg) { el.classList.remove('show', 'done', 'err'); el.textContent = ''; return; }
+  el.textContent = msg;
+  el.classList.add('show');
+  el.classList.toggle('done', kind === 'done');
+  el.classList.toggle('err',  kind === 'err');
+}
+function setConnStatus(msg, cls) {
+  const pill = document.getElementById('conn-pill');
+  if (!pill) return;
+  pill.textContent = msg;
+  pill.className = 'conn-status-pill' + (cls ? ' ' + cls : '');
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>

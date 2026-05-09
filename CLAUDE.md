@@ -26,6 +26,7 @@ Deploys the entire directory as static assets plus the `_worker.js` API routes. 
 | `worklog.html` | Work log / time tracking |
 | `sub-invoices.html` | Subcontractor invoice inbox — pulls PDF attachments from Gmail, parses with Claude API, fuzzy-matches to work log rows, writes to Sub Invoices tab in WR sheet |
 | `payments.html` | Open invoices dashboard — lists all unpaid QB invoices with aging, records payments (creates QB Payment txn), optionally marks matching Work Log row paid |
+| `triage.html` | Inbox triage — pulls recent emails from Gmail, classifies each via Claude (estimate request / scheduling / complaint / AHJ violation / payment / sub invoice / vendor / newsletter / other), fuzzy-matches mentioned property to the property list, groups by category for quick action. Read-only on Gmail; cache lives in `localStorage.flips_triage_v1` keyed by Gmail message ID. |
 | `js/flips-google-fetch.js` | **Canonical fetch helpers** — `apiFetch`, `googleFetch`, `refreshAccessToken`. Loaded by every page. Single source of truth for the 401-retry / token-refresh path. |
 | `js/flips-shared.js` | Shared auth (`initGoogle`), property loading (`loadSheet`), expense calcs, dynamic row helpers, Drive utilities. Used by `index.html`, `estimate.html`, `estimate-tracker.html`. |
 | `js/flips-history.js` | Inspection History writes — `appendInspectionHistory`, `deleteInspectionHistoryEntries`. Direct Sheets API calls (no Apps Script). Used by `index.html`, `schedule.html`, `inspection.html`, `hospital-inspection.html`. |
@@ -65,7 +66,7 @@ Each page must define `const SCOPES = '...'` in its own `<script>` **before** fl
 - `API_KEY_VAL` — Google API key
 
 #### Pages with their own `initGoogle` (auth done inline)
-`clients.html`, `schedule.html`, `worklog.html`, `create-invoices.html`, `sub-invoices.html`, `payments.html` — each declares its own `let accessToken; let tokenClient;` in an inline `<script>` and just loads:
+`clients.html`, `schedule.html`, `worklog.html`, `create-invoices.html`, `sub-invoices.html`, `payments.html`, `triage.html` — each declares its own `let accessToken; let tokenClient;` in an inline `<script>` and just loads:
 ```html
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="js/flips-google-fetch.js"></script>
@@ -94,6 +95,7 @@ The fetch helpers in `flips-google-fetch.js` resolve `accessToken`/`tokenClient`
 | `flips_anth_key` | localStorage | Anthropic API key (sub-invoices.html) |
 | `flips_anth_model` | localStorage | Selected Claude model (sub-invoices.html) |
 | `flips_sub_invoices_v1` | localStorage | Cached parsed sub invoice data keyed by Gmail message ID (sub-invoices.html) |
+| `flips_triage_v1` | localStorage | Cached classified emails keyed by Gmail message ID (triage.html) — includes per-email `handled` / `dismissed` flags |
 
 ---
 
@@ -175,3 +177,12 @@ API calls proxied through `_worker.js` at `/api/qb-api` to keep client secrets o
 - **Caching**: parsed invoices stored in `localStorage.flips_sub_invoices_v1` keyed by Gmail message ID. Re-running the search skips already-parsed messages so you never pay Claude twice for the same PDF.
 - **Fuzzy matching**: `scoreMatch(inv, row)` weights property name overlap (token-based), description vs. work-requested overlap, and date proximity. Score ≥ 0.85 auto-matches; lower scores show as suggestions for manual confirm.
 - **Sync to Sheets**: `syncToSheets()` ensures the `Sub Invoices` tab exists (auto-creates with formatted header row), reads existing rows to dedup by Gmail Message ID (column C), then appends new rows and updates existing ones via `values:batchUpdate`.
+
+### Inbox Triage (`triage.html`)
+- **Auth scopes**: `spreadsheets.readonly` (for fuzzy-matching mentioned property names against the property list sheet) + `gmail.readonly`. Like sub-invoices.html, an existing token without Gmail scope will trigger the consent dialog (`prompt: 'consent'`) on first connect.
+- **Read-only on Gmail**: only `users/me/messages` list + get. Does NOT modify labels, mark read, or send. Safe to run repeatedly.
+- **Anthropic API**: text-only classification (no PDF), default model `claude-haiku-4-5-20251001` for cost — Sonnet/Opus also selectable. Body capped at 2000 chars before sending. System prompt returns strict JSON with `category` / `priority` / `property` / `summary` / `actionable`.
+- **Categories**: `estimate_request`, `scheduling`, `complaint`, `ahj_violation`, `payment_followup`, `sub_invoice`, `vendor_other`, `newsletter`, `other`. Defaults to `other` if Claude returns an unknown value.
+- **Property fuzzy match**: `matchProperty()` scores Claude's extracted property string + full email text against each row in the property list. Strong substring of property name → 0.95; substring of address → 0.85; otherwise token Jaccard. Threshold 0.45 to display a match; below that the email shows the Claude-extracted name with an "(no match)" badge.
+- **Caching**: classified emails in `localStorage.flips_triage_v1` keyed by Gmail message ID. Per-email `handled` / `dismissed` flags persist across reloads. Re-running triage skips already-classified messages.
+- **Per-row actions**: Open in Gmail, Reply (mailto), category-specific deep links to the relevant page (estimate.html / schedule.html / index.html / sub-invoices.html / payments.html — open in new tab, no auto-prefill), Mark handled, Dismiss.
