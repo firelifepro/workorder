@@ -1009,11 +1009,14 @@ async function ensureSubInvoicesTab() {
   return newId;
 }
 
+let _syncInProgress = false;
 async function syncToSheets() {
+  if (_syncInProgress) { toast('⏳ Sync already in progress…'); return; }
   if (!accessToken) { toast('⚠ Connect Google first'); return; }
   const all = Object.values(invoices).filter(i => i.status === 'matched' || i.status === 'unmatched');
   if (!all.length) { toast('Nothing to sync'); return; }
 
+  _syncInProgress = true;
   setProgress('Reading Sub Invoices tab…');
   try {
     await ensureSubInvoicesTab();
@@ -1083,6 +1086,8 @@ async function syncToSheets() {
   } catch(e) {
     setProgress('Error: ' + e.message, 'err');
     console.error('syncToSheets:', e);
+  } finally {
+    _syncInProgress = false;
   }
 }
 

@@ -26,12 +26,22 @@
       <a href="estimate.html">📝 Estimate</a>
       <a href="estimate-tracker.html">📊 Estimate Tracker</a>
       <a href="worklog.html">🗒 Work Log</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="payments.html">💵 Payments</a>
     </div>
   </div>
   <h1>🔥 Fire Inspection Report</h1>
   <span id="conn-status" class="conn-status-pill warn">Not connected</span>
   <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connect</button>
 </div>
+<div id="conn-overlay">
+  <div id="conn-overlay-msg">
+    <div style="font-size:2.2rem;margin-bottom:10px;">🔒</div>
+    <div style="font-size:1.05rem;font-weight:700;margin-bottom:6px;">Google Connection Required</div>
+    <div style="font-size:0.82rem;opacity:0.75;line-height:1.5;">Enter your API Key and Client ID in the panel above, then tap <strong>Connect</strong>.</div>
+  </div>
+</div>
+
 <div id="conn-drawer">
   <div class="conn-drawer-inner">
     <div class="conn-field">

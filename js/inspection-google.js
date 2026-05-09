@@ -60,14 +60,24 @@ let _tokenRefreshPromise = null;
 function _refreshAccessTokenInspection() {
   if (_tokenRefreshPromise) return _tokenRefreshPromise;
   _tokenRefreshPromise = new Promise((resolve, reject) => {
+    if (!tokenClient) { reject(new Error('Not initialized')); return; }
     tokenClient.callback = (resp) => {
       if (resp.error) { reject(new Error(resp.error)); return; }
       accessToken = resp.access_token;
-      localStorage.setItem('flips_access_token', accessToken);
-      localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+      try { localStorage.setItem('flips_access_token', accessToken); } catch(_) {}
+      try { localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000); } catch(_) {}
       _updateConnStatus('ok', '✓ Connected');
       _scheduleTokenRefresh();
       resolve();
+    };
+    // Without error_callback the promise hangs forever if the user denies consent
+    // or GIS errors out — leaving the page stuck behind a silent retry.
+    tokenClient.error_callback = (err) => {
+      accessToken = null;
+      try { localStorage.removeItem('flips_access_token'); } catch(_) {}
+      try { localStorage.removeItem('flips_token_expiry'); } catch(_) {}
+      _updateConnStatus('err', '⚠ Session expired — reconnect');
+      reject(new Error(err.message || err.type || 'token_refresh_failed'));
     };
     tokenClient.requestAccessToken({ prompt: '' });
   }).finally(() => { _tokenRefreshPromise = null; });

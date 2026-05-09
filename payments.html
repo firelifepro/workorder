@@ -522,6 +522,7 @@ async function loadInvoices() {
     let all = [];
     let start = 1;
     const MAX = 1000;
+    const HARD_LIMIT = 50000;
     while (true) {
       const q = `SELECT * FROM Invoice WHERE Balance > '0' STARTPOSITION ${start} MAXRESULTS ${MAX}`;
       const data = await qbProxy('GET', `/query?query=${encodeURIComponent(q)}&minorversion=70`);
@@ -529,7 +530,11 @@ async function loadInvoices() {
       all = all.concat(batch);
       if (batch.length < MAX) break;
       start += MAX;
-      if (start > 5000) break; // safety
+      if (start > HARD_LIMIT) {
+        console.warn(`payments: hit ${HARD_LIMIT}-invoice safety cap; results truncated`);
+        toast(`⚠ Loaded first ${HARD_LIMIT} invoices — additional pages truncated`);
+        break;
+      }
     }
     invoices = all;
     setProgress(`✓ Loaded ${invoices.length} open invoices`, 'done');
@@ -594,9 +599,14 @@ function renderTable() {
   const sortBy = document.getElementById('sort-by').value;
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Compute aging on each
+  // Compute aging on each. If DueDate is missing, fall back to TxnDate + 30 days
+  // (typical net-30 default) so unpaid invoices don't silently get classified as "current".
   const enriched = invoices.map(inv => {
-    const due = inv.DueDate ? new Date(inv.DueDate + 'T00:00:00') : null;
+    let due = inv.DueDate ? new Date(inv.DueDate + 'T00:00:00') : null;
+    if (!due && inv.TxnDate) {
+      const txn = new Date(inv.TxnDate + 'T00:00:00');
+      if (!isNaN(txn)) { due = new Date(txn); due.setDate(due.getDate() + 30); }
+    }
     const daysOver = due ? Math.floor((today - due) / 86400000) : null;
     let bucket = 'current';
     if (daysOver != null) {
@@ -742,6 +752,10 @@ async function recordPayment() {
 
   if (!amount || amount <= 0) { toast('⚠ Enter a payment amount'); return; }
   if (!payDate) { toast('⚠ Enter a payment date'); return; }
+  const balance = Number(inv.Balance) || 0;
+  if (amount > balance + 0.01) {
+    if (!confirm(`Payment $${amount.toFixed(2)} exceeds open balance $${balance.toFixed(2)}. Continue anyway? QuickBooks will treat the excess as an overpayment / credit.`)) return;
+  }
 
   const btn = document.getElementById('m-save');
   btn.disabled = true;
@@ -801,8 +815,11 @@ async function recordPayment() {
 function findWorkLogRowByInvoice(invoiceNum) {
   if (!invoiceNum || !workLog.length) return null;
   const num = String(invoiceNum).trim();
-  // Match: invoiceNum appears in the "invoiced" column as substring (handles "Inv. 1234", "1234", etc.)
-  return workLog.find(r => r.invoiced && String(r.invoiced).includes(num));
+  if (!num) return null;
+  // Word-boundary match so invoice "123" doesn't match "1234" or "123 Main St".
+  // Handles: "1234", "Inv. 1234", "#1234", "1234 paid" — but NOT "12345" or "1234 W Main".
+  const re = new RegExp('(?:^|[^0-9A-Za-z])' + num.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^0-9A-Za-z]|$)');
+  return workLog.find(r => r.invoiced && re.test(String(r.invoiced)));
 }
 
 async function markWorkLogPaid(rowNum, payDate, ref) {

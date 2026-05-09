@@ -228,7 +228,11 @@ function setStatus(msg, cls) {
   const el = document.getElementById('conn-status');
   el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
   el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn');
-  if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+  if (cls === 'ok') {
+    document.getElementById('conn-drawer').classList.remove('open');
+    const overlay = document.getElementById('conn-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
 }
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -287,6 +291,12 @@ window.addEventListener('load', () => {
   } catch(_) {}
 
   syncMainNavDisabled();
+
+  // Block the app with an overlay until Google is connected
+  if (!accessToken) {
+    document.getElementById('conn-overlay').style.display = 'flex';
+    document.getElementById('conn-drawer').classList.add('open');
+  }
 
   // Init sig pad when step 4 is visited
   const observer = new MutationObserver(() => {
