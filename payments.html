@@ -226,6 +226,7 @@
         <tr>
           <th>Inv #</th>
           <th>Customer</th>
+          <th>Prop Manager</th>
           <th>Inv Date</th>
           <th>Due Date</th>
           <th class="th-c">Aging</th>
@@ -236,7 +237,7 @@
         </tr>
       </thead>
       <tbody id="inv-tbody">
-        <tr><td colspan="9" class="empty-state">
+        <tr><td colspan="10" class="empty-state">
           <div class="big-icon">💵</div>
           <div>Connect Google + QuickBooks, then click <strong>↺ Refresh</strong> to load open invoices.</div>
         </td></tr>
@@ -309,7 +310,9 @@
 // ─────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────
-const WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+const WR_SHEET_ID   = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+const PROP_SHEET_ID = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const PROP_SHEET_GID = '1899870347';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
 // ─────────────────────────────────────────────────────
@@ -326,6 +329,7 @@ let workLog = [];          // for marking paid rows
 let workLogTab = '';
 let workLogGid = null;
 let editingInvoice = null;
+let propData = {};         // { [lowercasePropName]: { contact, company } }
 
 // Status background colors used by worklog.html (kept in sync)
 const PAID_BG = { red: 0.2, green: 0.78, blue: 0.2 };
@@ -353,7 +357,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // If both connected, load straight away
   if (accessToken && qbAccessToken) {
-    loadWorkLog().then(() => loadInvoices());
+    Promise.all([loadWorkLog(), loadPropSheet()]).then(() => loadInvoices());
   } else {
     if (!accessToken) document.getElementById('conn-drawer').classList.add('open');
     updateQBBanner();
@@ -405,7 +409,7 @@ async function initGoogle() {
         localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
         setConnStatus('✓ Connected', 'ok');
         document.getElementById('conn-drawer').classList.remove('open');
-        await loadWorkLog();
+        await Promise.all([loadWorkLog(), loadPropSheet()]);
         if (qbAccessToken) await loadInvoices();
       },
       error_callback: (err) => setConnStatus('✗ ' + (err.message || err.type), 'err')
@@ -592,6 +596,58 @@ async function loadWorkLog() {
 }
 
 // ─────────────────────────────────────────────────────
+// PROPERTY SHEET (for property manager lookup)
+// ─────────────────────────────────────────────────────
+async function loadPropSheet() {
+  if (!accessToken) return;
+  try {
+    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${PROP_SHEET_ID}?fields=sheets.properties`);
+    if (!metaRes.ok) return;
+    const meta = await metaRes.json();
+    let tabName = meta.sheets[0].properties.title;
+    for (const s of meta.sheets) {
+      if (String(s.properties.sheetId) === String(PROP_SHEET_GID)) { tabName = s.properties.title; break; }
+    }
+    const valRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${PROP_SHEET_ID}/values/${encodeURIComponent(tabName)}`);
+    if (!valRes.ok) return;
+    const { values = [] } = await valRes.json();
+    if (values.length < 2) return;
+    const headers = values[0].map(h => (h || '').trim().toLowerCase());
+    const nameIdx = headers.findIndex(h => h.includes('property') || h.includes('name'));
+
+    const contactKey = (h) => ['property contact','contact name','property manager','on-site contact'].some(k => h.includes(k)) && !h.includes('phone') && !h.includes('email');
+    const companyKey = (h) => ['property management','management company','management','client','company'].some(k => h.includes(k));
+    const contactIdx = headers.findIndex(contactKey);
+    const companyIdx = headers.findIndex(companyKey);
+
+    propData = {};
+    for (let i = 1; i < values.length; i++) {
+      const label = (values[i][nameIdx >= 0 ? nameIdx : 0] || '').trim();
+      if (!label) continue;
+      propData[label.toLowerCase()] = {
+        name:    label,
+        contact: contactIdx >= 0 ? (values[i][contactIdx] || '').trim() : '',
+        company: companyIdx >= 0 ? (values[i][companyIdx] || '').trim() : '',
+      };
+    }
+  } catch(e) {
+    console.warn('loadPropSheet:', e);
+  }
+}
+
+function lookupPropMgr(customerName) {
+  if (!customerName || !Object.keys(propData).length) return '';
+  const q = customerName.toLowerCase();
+  // Exact match first
+  if (propData[q]) return propData[q].contact || propData[q].company;
+  // Substring match: property name inside customer name, or vice versa
+  for (const [key, p] of Object.entries(propData)) {
+    if (q.includes(key) || key.includes(q)) return p.contact || p.company;
+  }
+  return '';
+}
+
+// ─────────────────────────────────────────────────────
 // RENDER
 // ─────────────────────────────────────────────────────
 function renderTable() {
@@ -631,7 +687,7 @@ function renderTable() {
   // Filter
   const filtered = enriched.filter(inv => {
     if (q) {
-      const hay = [inv.DocNumber, inv.CustomerRef?.name, inv.Balance, inv.TotalAmt, inv.PrivateNote, (inv.Line?.[0]?.Description || '')].join(' ').toLowerCase();
+      const hay = [inv.DocNumber, inv.CustomerRef?.name, lookupPropMgr(inv.CustomerRef?.name || ''), inv.Balance, inv.TotalAmt, inv.PrivateNote, (inv.Line?.[0]?.Description || '')].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     if (ageFilter === 'current'  && inv._bucket !== 'current') return false;
@@ -655,7 +711,7 @@ function renderTable() {
 
   const tbody = document.getElementById('inv-tbody');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">
       <div class="big-icon">${invoices.length ? '🔎' : '💵'}</div>
       <div>${invoices.length ? 'No invoices match the current filters.' : 'No open invoices found in QuickBooks.'}</div>
     </td></tr>`;
@@ -670,9 +726,11 @@ function renderTable() {
       inv._bucket === 'b60'     ? `<span class="badge b-60">${inv._daysOver}d</span>` :
                                   `<span class="badge b-90">${inv._daysOver}d</span>`;
     const memo = (inv.Line?.[0]?.Description || '').slice(0, 80);
+    const propMgr = lookupPropMgr(inv.CustomerRef?.name || '');
     return `<tr class="${cls}">
       <td class="td-num">${esc(inv.DocNumber || inv.Id || '')}</td>
       <td class="td-cust">${esc(inv.CustomerRef?.name || '')}</td>
+      <td style="font-size:8.2pt;color:#555;min-width:130px;">${esc(propMgr)}</td>
       <td class="td-date">${esc(formatShortDate(inv.TxnDate))}</td>
       <td class="td-date">${esc(formatShortDate(inv.DueDate))}</td>
       <td class="td-aging">${badge}</td>
