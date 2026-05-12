@@ -163,10 +163,18 @@
     <button class="top-btn" onclick="initGoogle()">🔗 Connect Google</button>
     <div class="conn-divider"></div>
     <div class="conn-field">
+      <label>QB Client ID (Sandbox)</label>
+      <input type="text" id="qb-client-id-sandbox" placeholder="AB…sandbox client ID" style="width:210px;" oninput="saveQBClientIds()">
+    </div>
+    <div class="conn-field">
+      <label>QB Client ID (Production)</label>
+      <input type="text" id="qb-client-id-prod" placeholder="AB…production client ID" style="width:210px;" oninput="saveQBClientIds()">
+    </div>
+    <div class="conn-field">
       <label>QB Environment</label>
       <select id="qb-env"><option value="sandbox">Sandbox</option><option value="production">Production</option></select>
     </div>
-    <button class="top-btn" onclick="goConnectQB()">🔗 Connect QuickBooks</button>
+    <button class="top-btn" onclick="connectQuickBooks()">🔗 Connect QuickBooks</button>
     <button class="top-btn" onclick="clearQBTokens()" style="background:#666;">🗑 Clear QB</button>
   </div>
 </div>
@@ -344,6 +352,10 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('client-id').value = localStorage.getItem('flips_client_id') || '';
   qbEnv = localStorage.getItem('qb_env') || 'sandbox';
   document.getElementById('qb-env').value = qbEnv;
+  restoreQBClientIds();
+
+  // Handle QB OAuth callback if this page loaded with ?code= in the URL
+  if (location.search.includes('code=')) { handleQBCallback(); return; }
 
   // Auto-restore Google
   const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
@@ -455,21 +467,100 @@ function updateQBBanner() {
     el.classList.add('hidden');
   } else {
     el.classList.remove('hidden');
-    el.innerHTML = `⚠ QuickBooks is not connected. <a href="javascript:void(0)" onclick="goConnectQB()">Click here to connect</a> — you'll be bounced to the Create Invoices page (which holds the QB OAuth callback) and returned here automatically.`;
+    el.innerHTML = `⚠ QuickBooks is not connected. <a href="javascript:void(0)" onclick="connectQuickBooks()">Click here to connect</a>.`;
   }
 }
 
-function goConnectQB() {
-  // Use create-invoices.html's OAuth flow (its redirect URI is registered with QB).
-  // It will return us here via qb_return_to.
-  sessionStorage.setItem('qb_return_to', location.pathname);
-  const env = document.getElementById('qb-env').value || 'sandbox';
+function saveQBClientIds() {
+  const sb   = document.getElementById('qb-client-id-sandbox');
+  const prod = document.getElementById('qb-client-id-prod');
+  if (sb?.value.trim())   localStorage.setItem('qb_client_id_sandbox',    sb.value.trim());
+  if (prod?.value.trim()) localStorage.setItem('qb_client_id_production', prod.value.trim());
+}
+
+function restoreQBClientIds() {
+  const sb   = document.getElementById('qb-client-id-sandbox');
+  const prod = document.getElementById('qb-client-id-prod');
+  if (sb)   sb.value   = localStorage.getItem('qb_client_id_sandbox')    || localStorage.getItem('qb_client_id') || '';
+  if (prod) prod.value = localStorage.getItem('qb_client_id_production') || '';
+}
+
+function getQBClientId() {
+  const env = document.getElementById('qb-env').value;
+  return localStorage.getItem('qb_client_id_' + env) ||
+    (env === 'production'
+      ? document.getElementById('qb-client-id-prod')?.value.trim()
+      : document.getElementById('qb-client-id-sandbox')?.value.trim()) || '';
+}
+
+function connectQuickBooks() {
+  const clientId = getQBClientId();
+  if (!clientId) { toast('⚠ Enter your QuickBooks Client ID in Settings'); document.getElementById('conn-drawer').classList.add('open'); return; }
+  const env = document.getElementById('qb-env').value;
+  const redirectUri = encodeURIComponent('https://workorder.firelifepro.workers.dev/payments.html');
+  const scope = encodeURIComponent('com.intuit.quickbooks.accounting');
+  const state = Math.random().toString(36).slice(2);
+  sessionStorage.setItem('qb_state',     state);
+  sessionStorage.setItem('qb_client_id', clientId);
+  sessionStorage.setItem('qb_env',       env);
+  saveQBClientIds();
   localStorage.setItem('qb_env', env);
-  window.location.href = '/create-invoices.html?qb_connect=1';
+  window.location.href =
+    `https://appcenter.intuit.com/connect/oauth2?` +
+    `client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code` +
+    `&scope=${scope}&state=${state}`;
+}
+
+async function handleQBCallback() {
+  const params   = new URLSearchParams(location.search);
+  const code     = params.get('code');
+  const state    = params.get('state');
+  const realmId  = params.get('realmId');
+  if (!code || state !== sessionStorage.getItem('qb_state')) return;
+
+  const clientId   = sessionStorage.getItem('qb_client_id');
+  const env        = sessionStorage.getItem('qb_env') || localStorage.getItem('qb_env') || 'sandbox';
+  const redirectUri = 'https://workorder.firelifepro.workers.dev/payments.html';
+
+  setQBPill('⏳ Connecting QB…', '');
+  try {
+    const resp = await fetch('/api/qb-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: redirectUri, env })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    qbAccessToken = data.access_token;
+    qbRealmId     = realmId;
+    const expiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+    localStorage.setItem('qb_access_token_' + env, qbAccessToken);
+    localStorage.setItem('qb_expires_at_'   + env, String(expiresAt));
+    localStorage.setItem('qb_realm_id_'     + env, realmId);
+    localStorage.setItem('qb_env',                  env);
+    if (data.refresh_token) localStorage.setItem('qb_refresh_token_' + env, data.refresh_token);
+    setQBPill(`✓ QB (~${Math.round((expiresAt - Date.now()) / 60000)}m)`, 'ok');
+    history.replaceState({}, '', location.pathname);
+    toast('✅ QuickBooks connected!');
+    updateQBBanner();
+    // Now restore Google and load data
+    const gExpiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+    if (localStorage.getItem('flips_access_token') && gExpiry > Date.now() + 60_000) {
+      accessToken = localStorage.getItem('flips_access_token');
+      setConnStatus('✓ Connected', 'ok');
+      initTokenClientOnly();
+      await Promise.all([loadWorkLog(), loadPropSheet()]);
+      await loadInvoices();
+    }
+  } catch(e) {
+    setQBPill('✗ QB connect failed', 'err');
+    toast('✗ QB connect failed: ' + e.message);
+    history.replaceState({}, '', location.pathname);
+  }
 }
 
 function clearQBTokens() {
-  if (!confirm('Clear QuickBooks tokens? You will need to reconnect from the Create Invoices page.')) return;
+  if (!confirm('Clear QuickBooks tokens?')) return;
   ['sandbox','production'].forEach(env => {
     ['qb_access_token_','qb_expires_at_','qb_realm_id_','qb_refresh_token_'].forEach(k => localStorage.removeItem(k + env));
   });
