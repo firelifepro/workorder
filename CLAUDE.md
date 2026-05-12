@@ -25,7 +25,7 @@ Deploys the entire directory as static assets plus the `_worker.js` API routes. 
 | `hospital-inspection.html` | Variant inspection form for hospital properties |
 | `worklog.html` | Work log / time tracking |
 | `sub-invoices.html` | Subcontractor invoice inbox — pulls PDF attachments from Gmail, parses with Claude API, fuzzy-matches to work log rows, writes to Sub Invoices tab in WR sheet |
-| `payments.html` | Open invoices dashboard — lists all unpaid QB invoices with aging, records payments (creates QB Payment txn), optionally marks matching Work Log row paid |
+| `open-invoices.html` | Open invoices dashboard — lists all unpaid QB invoices with aging, records payments (creates QB Payment txn), optionally marks matching Work Log row paid |
 | `triage.html` | Inbox triage — pulls recent emails from Gmail, classifies each via Claude (estimate request / scheduling / complaint / AHJ violation / payment / sub invoice / vendor / newsletter / other), fuzzy-matches mentioned property to the property list, groups by category for quick action. Read-only on Gmail; cache lives in `localStorage.flips_triage_v1` keyed by Gmail message ID. |
 | `js/flips-google-fetch.js` | **Canonical fetch helpers** — `apiFetch`, `googleFetch`, `refreshAccessToken`. Loaded by every page. Single source of truth for the 401-retry / token-refresh path. |
 | `js/flips-shared.js` | Shared auth (`initGoogle`), property loading (`loadSheet`), expense calcs, dynamic row helpers, Drive utilities. Used by `index.html`, `estimate.html`, `estimate-tracker.html`. |
@@ -66,7 +66,7 @@ Each page must define `const SCOPES = '...'` in its own `<script>` **before** fl
 - `API_KEY_VAL` — Google API key
 
 #### Pages with their own `initGoogle` (auth done inline)
-`clients.html`, `schedule.html`, `worklog.html`, `create-invoices.html`, `sub-invoices.html`, `payments.html`, `triage.html` — each declares its own `let accessToken; let tokenClient;` in an inline `<script>` and just loads:
+`clients.html`, `schedule.html`, `worklog.html`, `create-invoices.html`, `sub-invoices.html`, `open-invoices.html`, `triage.html` — each declares its own `let accessToken; let tokenClient;` in an inline `<script>` and just loads:
 ```html
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="js/flips-google-fetch.js"></script>
@@ -170,8 +170,8 @@ Defaults: `method='GET'`, `body=null`. `Content-Type: application/json` is only 
 ### QuickBooks
 API calls proxied through `_worker.js` at `/api/qb-api` to keep client secrets off the client. See `clients.html` and `create-invoices.html` for QB customer matching and invoice creation logic.
 
-### Payments Dashboard (`payments.html`)
-- **QB tokens shared with `create-invoices.html`** via `localStorage.qb_access_token_<env>` etc. — `payments.html` does NOT register its own QB OAuth redirect URI. If tokens are missing, the "Connect QuickBooks" button sets `sessionStorage.qb_return_to` and redirects to `/create-invoices.html?qb_connect=1`; the create-invoices callback handler then bounces the browser back here. (See create-invoices.html `handleQBCallback` for the return-to mechanism.)
+### Payments Dashboard (`open-invoices.html`)
+- **QB tokens shared with `create-invoices.html`** via `localStorage.qb_access_token_<env>` etc. — `open-invoices.html` does NOT register its own QB OAuth redirect URI. If tokens are missing, the "Connect QuickBooks" button sets `sessionStorage.qb_return_to` and redirects to `/create-invoices.html?qb_connect=1`; the create-invoices callback handler then bounces the browser back here. (See create-invoices.html `handleQBCallback` for the return-to mechanism.)
 - **Loads all invoices with `Balance > '0'`** via paginated `SELECT * FROM Invoice WHERE Balance > '0'` queries (1000-row pages). Aging is computed client-side from `DueDate`.
 - **Recording a payment** POSTs to `/payment?minorversion=70` with a `Line[].LinkedTxn` referencing the invoice. PaymentMethodRef is set when the user picks one (Check is auto-selected if it exists in the QB PaymentMethod list).
 - **Work Log sync** (optional, default ON): after a successful QB payment, looks up the matching work log row by checking if the QB invoice number appears as a substring in column H (`invoiced`), then writes the payment date (and check #) to column I (`paid`) and sets the row background to green (matches `STATUS_BG.paid` in `worklog.html`).
@@ -191,4 +191,4 @@ API calls proxied through `_worker.js` at `/api/qb-api` to keep client secrets o
 - **Categories**: `estimate_request`, `scheduling`, `complaint`, `ahj_violation`, `payment_followup`, `sub_invoice`, `vendor_other`, `newsletter`, `other`. Defaults to `other` if Claude returns an unknown value.
 - **Property fuzzy match**: `matchProperty()` scores Claude's extracted property string + full email text against each row in the property list. Strong substring of property name → 0.95; substring of address → 0.85; otherwise token Jaccard. Threshold 0.45 to display a match; below that the email shows the Claude-extracted name with an "(no match)" badge.
 - **Caching**: classified emails in `localStorage.flips_triage_v1` keyed by Gmail message ID. Per-email `handled` / `dismissed` flags persist across reloads. Re-running triage skips already-classified messages.
-- **Per-row actions**: Open in Gmail, Reply (mailto), category-specific deep links to the relevant page (estimate.html / schedule.html / index.html / sub-invoices.html / payments.html — open in new tab, no auto-prefill), Mark handled, Dismiss.
+- **Per-row actions**: Open in Gmail, Reply (mailto), category-specific deep links to the relevant page (estimate.html / schedule.html / index.html / sub-invoices.html / open-invoices.html — open in new tab, no auto-prefill), Mark handled, Dismiss.

@@ -157,7 +157,7 @@
       <a href="estimate-tracker.html">📊 Estimate Tracker</a>
       <a href="worklog.html">🗒 Work Log</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
-      <a href="payments.html">💵 Payments</a>
+      <a href="open-invoices.html">💵 Open Invoices</a>
       <a href="triage.html" class="active">📬 Inbox Triage</a>
     </div>
   </div>
@@ -839,7 +839,7 @@ function renderRow(e) {
         ${e.category === 'scheduling' ? `<a class="act-btn" href="schedule.html" target="_blank">📅 Schedule</a>` : ''}
         ${e.category === 'complaint' || e.category === 'ahj_violation' ? `<a class="act-btn" href="index.html" target="_blank">📋 New WO</a>` : ''}
         ${e.category === 'sub_invoice' ? `<a class="act-btn" href="sub-invoices.html" target="_blank">📨 Sub Tool</a>` : ''}
-        ${e.category === 'payment_followup' ? `<a class="act-btn" href="payments.html" target="_blank">💵 Payments</a>` : ''}
+        ${e.category === 'payment_followup' ? `<a class="act-btn" href="open-invoices.html" target="_blank">💵 Open Invoices</a>` : ''}
         <button class="act-btn ${e.handled ? 'success' : 'muted'}" onclick="toggleHandled('${esc(e.messageId)}')">${e.handled ? '✓ Handled' : 'Mark handled'}</button>
         <button class="act-btn muted" onclick="dismissEmail('${esc(e.messageId)}')">✕ Dismiss</button>
       </div>

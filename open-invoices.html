@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FLPS Payments</title>
+  <title>FLPS Open Invoices</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -140,11 +140,11 @@
       <a href="estimate-tracker.html">📊 Estimate Tracker</a>
       <a href="worklog.html">🗒 Work Log</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
-      <a href="payments.html" class="active">💵 Payments</a>
+      <a href="open-invoices.html" class="active">💵 Open Invoices</a>
       <a href="triage.html">📬 Inbox Triage</a>
     </div>
   </div>
-  <h1>💵 FLIPS Payments — Open Invoices</h1>
+  <h1>💵 FLIPS Open Invoices</h1>
   <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
   <span class="conn-status-pill" id="qb-pill">QB Not connected</span>
   <button class="top-btn" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Settings</button>
@@ -497,7 +497,7 @@ function connectQuickBooks() {
   const clientId = getQBClientId();
   if (!clientId) { toast('⚠ Enter your QuickBooks Client ID in Settings'); document.getElementById('conn-drawer').classList.add('open'); return; }
   const env = document.getElementById('qb-env').value;
-  const redirectUri = encodeURIComponent('https://workorder.firelifepro.workers.dev/payments.html');
+  const redirectUri = encodeURIComponent('https://workorder.firelifepro.workers.dev/open-invoices.html');
   const scope = encodeURIComponent('com.intuit.quickbooks.accounting');
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('qb_state',     state);
@@ -520,7 +520,7 @@ async function handleQBCallback() {
 
   const clientId   = sessionStorage.getItem('qb_client_id');
   const env        = sessionStorage.getItem('qb_env') || localStorage.getItem('qb_env') || 'sandbox';
-  const redirectUri = 'https://workorder.firelifepro.workers.dev/payments.html';
+  const redirectUri = 'https://workorder.firelifepro.workers.dev/open-invoices.html';
 
   setQBPill('⏳ Connecting QB…', '');
   try {
