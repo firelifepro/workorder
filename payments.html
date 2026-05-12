@@ -329,7 +329,9 @@ let workLog = [];          // for marking paid rows
 let workLogTab = '';
 let workLogGid = null;
 let editingInvoice = null;
-let propData = {};         // { [lowercasePropName]: { contact, company } }
+let propByName = {};       // { [lowercasePropName]: { contact, company } }
+let propByAcct = {};       // { [flpsAcctNum]: { contact, company } }
+let qbCustAcct = {};       // { [qbCustomerId]: flpsAcctNum } — loaded from QB AlternatePhone
 
 // Status background colors used by worklog.html (kept in sync)
 const PAID_BG = { red: 0.2, green: 0.78, blue: 0.2 };
@@ -544,8 +546,9 @@ async function loadInvoices() {
     invoices = all;
     setProgress(`✓ Loaded ${invoices.length} open invoices`, 'done');
 
-    // Load payment methods in parallel
+    // Load payment methods and QB customers (for acct# → prop manager lookup) in parallel
     loadPaymentMethods().catch(e => console.warn('payment methods:', e));
+    loadQBCustomers().catch(e => console.warn('QB customers:', e)).then(() => renderTable());
 
     renderTable();
     setTimeout(() => setProgress(''), 2400);
@@ -620,28 +623,58 @@ async function loadPropSheet() {
     const contactIdx = headers.findIndex(contactKey);
     const companyIdx = headers.findIndex(companyKey);
 
-    propData = {};
+    // Also find the FLPS acct # column (same header patterns as flips-shared.js fill())
+    const acctIdx = headers.findIndex(h =>
+      ['flps internal account number','internal account number','account number','account no','acct #','acct'].some(k => h === k || h.startsWith(k))
+    );
+
+    propByName = {};
+    propByAcct = {};
     for (let i = 1; i < values.length; i++) {
       const label = (values[i][nameIdx >= 0 ? nameIdx : 0] || '').trim();
       if (!label) continue;
-      propData[label.toLowerCase()] = {
+      const record = {
         name:    label,
         contact: contactIdx >= 0 ? (values[i][contactIdx] || '').trim() : '',
         company: companyIdx >= 0 ? (values[i][companyIdx] || '').trim() : '',
       };
+      propByName[label.toLowerCase()] = record;
+      const acct = acctIdx >= 0 ? (values[i][acctIdx] || '').trim() : '';
+      if (acct) propByAcct[acct] = record;
     }
   } catch(e) {
     console.warn('loadPropSheet:', e);
   }
 }
 
-function lookupPropMgr(customerName) {
-  if (!customerName || !Object.keys(propData).length) return '';
+async function loadQBCustomers() {
+  if (!qbAccessToken) return;
+  try {
+    // Fetch all customers — AlternatePhone.FreeFormNumber is the FLPS acct # ("Other contact" in QB UI)
+    const data = await qbProxy('GET', `/query?query=${encodeURIComponent('SELECT * FROM Customer MAXRESULTS 1000')}&minorversion=70`);
+    qbCustAcct = {};
+    for (const c of (data?.QueryResponse?.Customer || [])) {
+      const acct = (c.AcctNum || c.AlternatePhone?.FreeFormNumber || '').trim();
+      if (acct) qbCustAcct[c.Id] = acct;
+    }
+  } catch(e) {
+    console.warn('loadQBCustomers:', e);
+  }
+}
+
+function lookupPropMgr(inv) {
+  // 1. Best: QB customer id → FLPS acct # → property sheet row
+  const custId = inv?.CustomerRef?.value;
+  if (custId && qbCustAcct[custId]) {
+    const rec = propByAcct[qbCustAcct[custId]];
+    if (rec) return rec.contact || rec.company;
+  }
+  // 2. Fallback: customer name → property name (exact then substring)
+  const customerName = inv?.CustomerRef?.name || '';
+  if (!customerName) return '';
   const q = customerName.toLowerCase();
-  // Exact match first
-  if (propData[q]) return propData[q].contact || propData[q].company;
-  // Substring match: property name inside customer name, or vice versa
-  for (const [key, p] of Object.entries(propData)) {
+  if (propByName[q]) return propByName[q].contact || propByName[q].company;
+  for (const [key, p] of Object.entries(propByName)) {
     if (q.includes(key) || key.includes(q)) return p.contact || p.company;
   }
   return '';
@@ -687,7 +720,7 @@ function renderTable() {
   // Filter
   const filtered = enriched.filter(inv => {
     if (q) {
-      const hay = [inv.DocNumber, inv.CustomerRef?.name, lookupPropMgr(inv.CustomerRef?.name || ''), inv.Balance, inv.TotalAmt, inv.PrivateNote, (inv.Line?.[0]?.Description || '')].join(' ').toLowerCase();
+      const hay = [inv.DocNumber, inv.CustomerRef?.name, lookupPropMgr(inv), inv.Balance, inv.TotalAmt, inv.PrivateNote, (inv.Line?.[0]?.Description || '')].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     if (ageFilter === 'current'  && inv._bucket !== 'current') return false;
@@ -726,7 +759,7 @@ function renderTable() {
       inv._bucket === 'b60'     ? `<span class="badge b-60">${inv._daysOver}d</span>` :
                                   `<span class="badge b-90">${inv._daysOver}d</span>`;
     const memo = (inv.Line?.[0]?.Description || '').slice(0, 80);
-    const propMgr = lookupPropMgr(inv.CustomerRef?.name || '');
+    const propMgr = lookupPropMgr(inv);
     return `<tr class="${cls}">
       <td class="td-num">${esc(inv.DocNumber || inv.Id || '')}</td>
       <td class="td-cust">${esc(inv.CustomerRef?.name || '')}</td>

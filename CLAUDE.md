@@ -107,6 +107,12 @@ The fetch helpers in `flips-google-fetch.js` resolve `accessToken`/`tokenClient`
 - **Inspection History tab**: Same `SHEET_ID` as the property list, tab name `'Inspection History'`. Columns A–H: Property Name, FLPS Acct #, Service Address, Inspection Type, Date Completed, Frequency, Source, Notes. Append-only — schedule.html groups rows and keeps the most recent per (property+type). Read by `schedule.html`, written by `js/flips-history.js`.
 - **Sub Invoices tab**: Inside `WR_SHEET_ID`, tab name `'Sub Invoices'` — auto-created on first sync by `sub-invoices.html`. Columns A–O: Email Date, Email From, Gmail Message ID (dedup key), Filename, Vendor, Invoice #, Invoice Date, Amount, Description, Matched WorkLog Row, Matched Property, Matched Work, Status, Notes, Last Updated.
 
+### FLPS Account Number — cross-system key
+The FLPS internal account number links the property list sheet to QuickBooks customers:
+- **Property list sheet**: stored in a column whose header matches `'flps internal account number'`, `'internal account number'`, `'account number'`, `'account no'`, or `'acct'` (lowercased). The `fill('flps-acct-num', ...)` call in `flips-shared.js` uses this same pattern.
+- **QuickBooks customer**: stored in `AlternatePhone.FreeFormNumber` (shown as "Other contact" in the QB Online customer form) **and/or** `AcctNum` (shown as "Account no." on the Additional info tab). `create-invoices.html`'s `findOrCreateCustomer()` checks both fields.
+- **Use for matching**: to resolve invoice → property manager, look up the QB customer by `CustomerRef.value`, read their `AlternatePhone.FreeFormNumber` (FLPS acct #), then find the matching row in the property list sheet by that acct #. Name-based fuzzy matching is a weaker fallback — acct # is the reliable join key.
+
 ### Google Drive
 - **Estimate folder**: `EST_FOLDER_ID = '1Ma-hUFL3t4l6NsWdmPRB45JJMaaK1Oc1'` — estimates saved as `FLPS_EST_*.json` and `FLPS_EST_*.pdf`
 - **WO folders**: Named folders ("2 - Ready to Invoice", "3 - Invoice Sent") — `create-invoices.html` finds them by name via Drive API
