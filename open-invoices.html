@@ -714,10 +714,12 @@ async function loadPropSheet() {
     const contactIdx = headers.findIndex(contactKey);
     const companyIdx = headers.findIndex(companyKey);
 
-    // Also find the FLPS acct # column (same header patterns as flips-shared.js fill())
+    // Find the FLPS acct # column — header is "FLPS Account Number" (lowercased: "flps account number")
     const acctIdx = headers.findIndex(h =>
-      ['flps internal account number','internal account number','account number','account no','acct #','acct'].some(k => h === k || h.startsWith(k))
+      ['flps account number','flps internal account number','internal account number','account number','account no','acct #','acct'].some(k => h.includes(k))
     );
+
+    console.log('[propSheet] nameIdx:', nameIdx, 'contactIdx:', contactIdx, 'companyIdx:', companyIdx, 'acctIdx:', acctIdx, '| headers:', headers);
 
     propByName = {};
     propByAcct = {};
