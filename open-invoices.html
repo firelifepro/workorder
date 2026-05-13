@@ -213,18 +213,20 @@
         </select>
       </div>
       <button class="icon-btn" onclick="loadInvoices()" title="Reload from QuickBooks">↺ Refresh</button>
+      <button class="icon-btn" onclick="printInvoices()" title="Print filtered invoices">🖨 Print</button>
       <button class="icon-btn" onclick="sendRemindersInfo()" title="How to enable QB payment reminders">💡 Auto Reminders</button>
     </div>
   </div>
 
   <div id="stats-bar">
-    <div class="stat-chip s-total"><span class="stat-num" id="stat-total">—</span><span class="stat-lbl">Total Open</span></div>
+    <div class="stat-chip s-total"><span class="stat-num" id="stat-total">—</span><span class="stat-lbl">Invoices</span></div>
     <div class="stat-chip s-current"><span class="stat-num" id="stat-current">—</span><span class="stat-lbl">Not Yet Due</span></div>
     <div class="stat-chip s-30"><span class="stat-num" id="stat-30">—</span><span class="stat-lbl">1–30 Days</span></div>
     <div class="stat-chip s-60"><span class="stat-num" id="stat-60">—</span><span class="stat-lbl">31–60 Days</span></div>
     <div class="stat-chip s-90"><span class="stat-num" id="stat-90">—</span><span class="stat-lbl">61+ Days</span></div>
     <div class="stat-chip s-total"><span class="stat-num" id="stat-amount">—</span><span class="stat-lbl">Total Owed</span></div>
   </div>
+  <div id="filter-indicator" style="display:none;font-size:0.74rem;color:#888;margin-bottom:6px;padding-left:2px;"></div>
 
   <div id="progress"></div>
 
@@ -337,6 +339,7 @@ let workLog = [];          // for marking paid rows
 let workLogTab = '';
 let workLogGid = null;
 let editingInvoice = null;
+let lastFiltered  = [];    // current filtered+sorted list, used by printInvoices()
 let propByName = {};       // { [lowercasePropName]: { contact, company } }
 let propByAcct = {};       // { [flpsAcctNum]: { contact, company } }
 let qbCustAcct = {};       // { [qbCustomerId]: flpsAcctNum } — loaded from QB AlternatePhone
@@ -801,16 +804,7 @@ function renderTable() {
     return { ...inv, _due: due, _daysOver: daysOver, _bucket: bucket };
   });
 
-  // Stats
-  document.getElementById('stat-total').textContent   = enriched.length;
-  document.getElementById('stat-current').textContent = enriched.filter(i => i._bucket === 'current').length;
-  document.getElementById('stat-30').textContent      = enriched.filter(i => i._bucket === 'b30').length;
-  document.getElementById('stat-60').textContent      = enriched.filter(i => i._bucket === 'b60').length;
-  document.getElementById('stat-90').textContent      = enriched.filter(i => i._bucket === 'b90').length;
-  const totalOwed = enriched.reduce((s, i) => s + (Number(i.Balance) || 0), 0);
-  document.getElementById('stat-amount').textContent = '$' + totalOwed.toLocaleString('en-US', { maximumFractionDigits: 0 });
-
-  // Filter
+  // Filter first, then compute stats on filtered set
   const filtered = enriched.filter(inv => {
     if (q) {
       const hay = [inv.DocNumber, inv.CustomerRef?.name, lookupPropMgr(inv), inv.Balance, inv.TotalAmt, inv.PrivateNote, (inv.Line?.[0]?.Description || '')].join(' ').toLowerCase();
@@ -834,6 +828,27 @@ function renderTable() {
       default:         return (a._due || 0) - (b._due || 0);
     }
   });
+
+  // Stats always reflect filtered set
+  document.getElementById('stat-total').textContent   = filtered.length;
+  document.getElementById('stat-current').textContent = filtered.filter(i => i._bucket === 'current').length;
+  document.getElementById('stat-30').textContent      = filtered.filter(i => i._bucket === 'b30').length;
+  document.getElementById('stat-60').textContent      = filtered.filter(i => i._bucket === 'b60').length;
+  document.getElementById('stat-90').textContent      = filtered.filter(i => i._bucket === 'b90').length;
+  const totalOwed = filtered.reduce((s, i) => s + (Number(i.Balance) || 0), 0);
+  document.getElementById('stat-amount').textContent = '$' + totalOwed.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+  // Filter indicator
+  const isFiltered = q || ageFilter !== 'all';
+  const fi = document.getElementById('filter-indicator');
+  if (isFiltered && filtered.length !== enriched.length) {
+    fi.style.display = 'block';
+    fi.textContent = `Showing ${filtered.length} of ${enriched.length} total invoices`;
+  } else {
+    fi.style.display = 'none';
+  }
+
+  lastFiltered = filtered;
 
   const tbody = document.getElementById('inv-tbody');
   if (!filtered.length) {
@@ -1077,6 +1092,105 @@ function toggleNav() { document.getElementById('nav-menu').classList.toggle('ope
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open');
 });
+
+function printInvoices() {
+  if (!lastFiltered.length) { toast('Nothing to print'); return; }
+
+  const q         = document.getElementById('text-filter').value.trim();
+  const ageFilter = document.getElementById('aging-filter').value;
+  const now       = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+
+  // Build filter description for the report header
+  const parts = [];
+  if (q) parts.push(`Customer/search: "${q}"`);
+  if (ageFilter !== 'all') {
+    const labels = { current:'Not Yet Due', 30:'1–30 Days Overdue', 60:'31–60 Days Overdue', 90:'61+ Days Overdue', overdue:'All Overdue' };
+    parts.push(`Aging: ${labels[ageFilter] || ageFilter}`);
+  }
+  const filterDesc = parts.length ? parts.join(' · ') : 'All open invoices';
+
+  // Summary stats from filtered set
+  const cnt      = lastFiltered.length;
+  const current  = lastFiltered.filter(i => i._bucket === 'current').length;
+  const d30      = lastFiltered.filter(i => i._bucket === 'b30').length;
+  const d60      = lastFiltered.filter(i => i._bucket === 'b60').length;
+  const d90      = lastFiltered.filter(i => i._bucket === 'b90').length;
+  const total    = lastFiltered.reduce((s, i) => s + (Number(i.Balance) || 0), 0);
+  const fmt$     = n => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const fmtN$    = n => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits:0 });
+
+  const rows = lastFiltered.map(inv => {
+    const mgr = lookupPropMgr(inv);
+    const ageBadge = inv._bucket === 'current'
+      ? '<span style="color:#15803d;font-weight:700;">Current</span>'
+      : `<span style="color:#b91c1c;font-weight:700;">${inv._daysOver}d overdue</span>`;
+    return `<tr>
+      <td>${esc(inv.DocNumber || inv.Id || '')}</td>
+      <td>${esc(inv.CustomerRef?.name || '')}</td>
+      <td>${esc(mgr)}</td>
+      <td>${esc(formatShortDate(inv.TxnDate))}</td>
+      <td>${esc(formatShortDate(inv.DueDate))}</td>
+      <td style="text-align:center;">${ageBadge}</td>
+      <td style="text-align:right;">${fmt$(inv.TotalAmt)}</td>
+      <td style="text-align:right;font-weight:700;color:#b91c1c;">${fmt$(inv.Balance)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Open Invoices — ${now}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #000; padding: 24px; }
+  h1 { font-size: 14pt; font-weight: 700; margin-bottom: 2px; }
+  .sub { font-size: 9pt; color: #555; margin-bottom: 14px; }
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { border: 1px solid #ccc; border-radius: 6px; padding: 6px 14px; text-align: center; min-width: 80px; }
+  .chip .n { font-size: 13pt; font-weight: 700; display: block; }
+  .chip .l { font-size: 7.5pt; color: #777; text-transform: uppercase; }
+  .chip.total .n { color: #1d4ed8; }
+  .chip.ok    .n { color: #15803d; }
+  .chip.w30   .n { color: #b45309; }
+  .chip.w60   .n { color: #c2410c; }
+  .chip.w90   .n { color: #b91c1c; }
+  .chip.amt   .n { color: #1d4ed8; font-size: 11pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  th { background: #1e3a5f; color: white; padding: 5px 8px; text-align: left; font-weight: 600; }
+  th.r { text-align: right; }
+  td { padding: 4px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  tfoot td { font-weight: 700; border-top: 2px solid #1e3a5f; padding-top: 6px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<h1>Fire Life Protection Systems — Open Invoices</h1>
+<div class="sub">${filterDesc} &nbsp;·&nbsp; Generated ${now}</div>
+<div class="summary">
+  <div class="chip total"><span class="n">${cnt}</span><span class="l">Invoices</span></div>
+  <div class="chip ok"><span class="n">${current}</span><span class="l">Not Yet Due</span></div>
+  <div class="chip w30"><span class="n">${d30}</span><span class="l">1–30 Days</span></div>
+  <div class="chip w60"><span class="n">${d60}</span><span class="l">31–60 Days</span></div>
+  <div class="chip w90"><span class="n">${d90}</span><span class="l">61+ Days</span></div>
+  <div class="chip amt"><span class="n">${fmtN$(total)}</span><span class="l">Total Owed</span></div>
+</div>
+<table>
+  <thead><tr>
+    <th>Inv #</th><th>Customer</th><th>Prop Manager</th>
+    <th>Inv Date</th><th>Due Date</th><th>Aging</th>
+    <th class="r">Amount</th><th class="r">Balance</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+  <tfoot><tr>
+    <td colspan="7" style="text-align:right;">Total Balance Due</td>
+    <td style="text-align:right;color:#b91c1c;">${fmt$(total)}</td>
+  </tr></tfoot>
+</table>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
+}
 
 function sendRemindersInfo() {
   alert(
