@@ -183,6 +183,11 @@
       <input type="text" id="client-id" placeholder="123456…apps.googleusercontent.com" style="width:300px;">
     </div>
     <button class="top-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <div style="width:1px;background:rgba(255,255,255,0.15);align-self:stretch"></div>
+    <div class="conn-field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anth-key" placeholder="sk-ant-…" oninput="localStorage.setItem('flips_anth_key', this.value)">
+    </div>
   </div>
 </div>
 
@@ -419,8 +424,11 @@ async function runAI(){
   btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing…';out.style.display='none';
   const summary=liked.map(l=>`- ${l.addr} (${l.type}, ${l.mode}, ${l.price}, ${l.dist} from shop)\n  Attrs: ${(l.attrs||[]).map(a=>a.l).join(', ')}\n  Notes: ${l.notes}`).join('\n');
   const prompt=`You are a commercial and residential real estate expert helping Fire Life Protection Systems (fire alarm/life safety contractor) find their next office/shop near 8201 S Shaffer Pkwy, Littleton CO 80127.\n\nLiked listings:\n${summary}\n\nHard requirements:\n1. Within 3–5 miles of 8201 S Shaffer Pkwy (closer = better)\n2. Must fit: pickup trucks, plows, mowers, trailers — garage doors, drive-in bays, large paved lot, or residential lot to build detached garage\n3. Office space: 3+ rooms, bathroom, ~1,500+ sq ft\n4. Residential: no HOA, 0.25+ acre lot, oversized/detached garage or buildable land\n5. Budget: lease $12–18/sqft; buy residential <$900K; commercial <$1.5M\n\nProvide:\n1. 2-sentence profile of what FLPS is really looking for\n2. 6–8 specific search strategies with exact search terms and filter settings for LoopNet, Crexi, Zillow, Realtor.com\n3. 4–6 specific streets, business parks, or sub-markets near Littleton/Ken Caryl that tend to have this property type, and why\n4. 5 key questions to ask every broker or landlord (especially re: vehicle parking since it's often unlisted)\n5. 3–4 red flags to watch for\n\nBe specific to this area. No generic advice. Use numbered sections.`;
+  const anthKey = localStorage.getItem('flips_anth_key') || document.getElementById('anth-key').value.trim();
+  if (!anthKey) { out.style.display='block'; out.textContent='Enter your Anthropic API key in ⚙ Settings first.'; btn.disabled=false; btn.innerHTML='🤖 Analyze liked listings & get recommendations'; document.getElementById('conn-drawer').classList.add('open'); return; }
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:prompt}]})});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':anthKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,messages:[{role:'user',content:prompt}]})});
+    if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(`API ${resp.status}: ${t.slice(0,200)}`);}
     const data=await resp.json();
     const text=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'No response.';
     out.style.display='block';out.textContent=text;
@@ -496,7 +504,7 @@ async function gfetch(url){
 }
 
 async function findDataFile(){
-  const r=await gfetch(`https://www.googleapis.com/drive/v3/files?q=name='${DATA_FILE}' and '${FOLDER_ID}' in parents and trashed=false&fields=files(id,name)`);
+  const r=await gfetch(`https://www.googleapis.com/drive/v3/files?q=name='${DATA_FILE}' and trashed=false&fields=files(id,name)`);
   if(r.files&&r.files.length>0){dataFileId=r.files[0].id;return true;}
   return false;
 }
@@ -520,7 +528,7 @@ async function saveToCloud(){
   setSyncStatus('syncing','Saving to Google Drive…');
   const body=JSON.stringify({listings,savedAt:new Date().toISOString()});
   try{
-    if(!dataFileId){const found=await findDataFile();if(!found){const meta={name:DATA_FILE,parents:[FOLDER_ID],mimeType:'application/json'};const form=new FormData();form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.append('file',new Blob([body],{type:'application/json'}));const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+accessToken},body:form});const d=await r.json();dataFileId=d.id;}}
+    if(!dataFileId){const found=await findDataFile();if(!found){const meta={name:DATA_FILE,mimeType:'application/json'};const form=new FormData();form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.append('file',new Blob([body],{type:'application/json'}));const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+accessToken},body:form});const d=await r.json();if(!d.id)throw new Error('Drive create failed: '+JSON.stringify(d));dataFileId=d.id;}}
     if(dataFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${dataFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body});}
     isDirty=false;setSyncStatus('synced','Saved to Drive · '+new Date().toLocaleTimeString());toast('Saved to Google Drive!','ok');
   }catch(e){setSyncStatus('','Save failed');toast('Save failed: '+e.message,'error');}
@@ -536,6 +544,7 @@ window.onload = () => {
   setSyncStatus('', 'Sign in to sync — all FLPS team members share the same data');
   document.getElementById('api-key').value   = localStorage.getItem('flips_api_key')   || '';
   document.getElementById('client-id').value = localStorage.getItem('flips_client_id') || '';
+  document.getElementById('anth-key').value  = localStorage.getItem('flips_anth_key')  || '';
   const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
   if (localStorage.getItem('flips_access_token') && expiry > Date.now() + 60_000 &&
       localStorage.getItem('flips_client_id')) {
