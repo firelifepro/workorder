@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLPS — Potential Lease or Buy</title>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #253756;
+    --navy-dark: #111d33;
+    --gold: #C8952A;
+    --gold-light: #e8b84b;
+    --red: #C0392B;
+    --green: #27ae60;
+    --green-light: #2ecc71;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --border: #dde1e8;
+    --text: #1a1d23;
+    --text-muted: #6b7280;
+    --text-light: #9ca3af;
+    --radius: 10px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+    --liked-bg: #f0fdf4;
+    --liked-border: #86efac;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .header { background: var(--navy); color: #fff; padding: 0 2rem; display: flex; align-items: center; height: 58px; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .header-logo { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+  .header-title { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.9); }
+  .header-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .auth-status { font-size: 12px; color: rgba(255,255,255,0.6); }
+  .auth-status.ok { color: #86efac; }
+  #btn-signin { padding: 6px 14px; background: var(--gold); color: var(--navy-dark); border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  #btn-signin:hover { background: var(--gold-light); }
+  .main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+  .tabs { display: flex; gap: 2px; margin-bottom: 1.5rem; background: #e5e7eb; border-radius: 8px; padding: 3px; width: fit-content; }
+  .tab { padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-muted); border: none; background: transparent; transition: all 0.15s; }
+  .tab.active { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .toolbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .filter-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; color: var(--text); }
+  .search-input { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; width: 220px; }
+  .search-input:focus, .filter-select:focus { outline: none; border-color: var(--navy); }
+  .count-badge { font-size: 12px; color: var(--text-muted); }
+  .btn { padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-light); }
+  .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-outline { background: #fff; color: var(--navy); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--navy); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 5px; }
+  .btn-danger-sm { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  .btn-danger-sm:hover { background: #fecaca; }
+  .listing-grid { display: flex; flex-direction: column; gap: 12px; }
+  .listing-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; box-shadow: var(--shadow); transition: box-shadow 0.15s, border-color 0.15s; }
+  .listing-card:hover { box-shadow: var(--shadow-hover); }
+  .listing-card.liked { border-color: var(--liked-border); background: var(--liked-bg); }
+  .listing-card.ai-match { border-color: #93c5fd; background: #eff6ff; }
+  .card-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .card-rank { min-width: 32px; height: 32px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .card-rank.top { background: var(--gold); color: var(--navy-dark); }
+  .card-info { flex: 1; min-width: 0; }
+  .card-addr { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+  .card-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+  .badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; letter-spacing: 0.02em; }
+  .b-flex { background: #dbeafe; color: #1d4ed8; }
+  .b-warehouse { background: #fef3c7; color: #92400e; }
+  .b-office { background: #ede9fe; color: #5b21b6; }
+  .b-res { background: #fce7f3; color: #9d174d; }
+  .b-sale { background: #d1fae5; color: #065f46; }
+  .b-lease { background: #e0e7ff; color: #3730a3; }
+  .b-liked { background: #bbf7d0; color: #14532d; border: 1px solid #86efac; }
+  .b-ai { background: #bfdbfe; color: #1e3a8a; border: 1px solid #93c5fd; }
+  .card-meta { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 12px; color: var(--text-muted); }
+  .score-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .score-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; min-width: 70px; }
+  .score-bar { flex: 1; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; }
+  .score-num { font-size: 11px; font-weight: 600; min-width: 36px; text-align: right; }
+  .card-attrs { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+  .attr { font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid; }
+  .attr-g { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+  .attr-w { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+  .attr-r { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
+  .attr-n { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+  .card-notes { font-size: 12px; color: var(--text-muted); font-style: italic; margin: 6px 0; line-height: 1.5; padding: 6px 10px; background: rgba(0,0,0,0.02); border-radius: 5px; border-left: 3px solid var(--border); }
+  .card-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .like-btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid; transition: all 0.15s; }
+  .like-btn.liked { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+  .like-btn.neutral { background: #f9fafb; color: var(--text-muted); border-color: var(--border); }
+  .link-btn { font-size: 12px; color: #2563eb; text-decoration: none; padding: 5px 10px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; display: inline-flex; align-items: center; gap: 4px; }
+  .link-btn:hover { background: #dbeafe; }
+  .card-actions .right { margin-left: auto; display: flex; gap: 6px; }
+  .del-btn { padding: 5px 8px; background: transparent; border: none; cursor: pointer; color: var(--text-light); font-size: 13px; border-radius: 5px; }
+  .del-btn:hover { background: #fee2e2; color: #b91c1c; }
+  .add-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); }
+  .form-section { margin-bottom: 1.25rem; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; display: block; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .form-input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; color: var(--text); background: #fff; }
+  .form-input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 2px rgba(27,42,74,0.1); }
+  textarea.form-input { resize: vertical; min-height: 70px; }
+  .form-select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; color: var(--text); background: #fff; }
+  .form-select:focus { outline: none; border-color: var(--navy); }
+  .attr-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .attr-row input { flex: 1; }
+  .add-attr-btn { font-size: 12px; color: #2563eb; cursor: pointer; background: none; border: none; padding: 4px; }
+  .ai-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); }
+  .criteria-box { background: #f8faff; border: 1px solid #c7d7f5; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; font-size: 13px; line-height: 1.8; color: var(--text); }
+  .criteria-box strong { color: var(--navy); }
+  .ai-run-btn { width: 100%; padding: 12px; background: var(--navy); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .ai-run-btn:hover { background: var(--navy-light); }
+  .ai-run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  .ai-output { background: #f8faff; border: 1px solid #c7d7f5; border-radius: 8px; padding: 1.25rem; margin-top: 1.25rem; font-size: 13px; line-height: 1.8; white-space: pre-wrap; color: var(--text); }
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; z-index: 9999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: var(--red); }
+  .toast.ok { background: var(--green); }
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .sync-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); margin-bottom: 1rem; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; }
+  .sync-dot.synced { background: var(--green); }
+  .sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+  @media(max-width:640px){.form-grid,.form-grid-3{grid-template-columns:1fr}.header-title{display:none}.main{padding:1rem}}
+</style>
+</head>
+<body>
+<div class="header">
+  <span class="header-logo">FLPS</span>
+  <span class="header-sep"></span>
+  <span class="header-title">Potential Lease or Buy</span>
+  <div class="header-right">
+    <span class="auth-status" id="auth-status">Not signed in</span>
+    <button id="btn-signin" onclick="signIn()">Sign in with Google</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('listings')">📋 Listings</button>
+    <button class="tab" onclick="showTab('add')">➕ Add Listing</button>
+    <button class="tab" onclick="showTab('ai')">🤖 AI Advisor</button>
+  </div>
+
+  <div id="tab-listings">
+    <div class="sync-bar">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">Sign in to sync with Google Drive</span>
+      <span style="margin-left:auto" class="count-badge" id="count-badge"></span>
+    </div>
+    <div class="toolbar">
+      <select class="filter-select" id="filter-type" onchange="renderListings()">
+        <option value="">All types</option>
+        <option value="flex">Flex / Industrial</option>
+        <option value="warehouse">Warehouse</option>
+        <option value="office">Office / Commercial</option>
+        <option value="residential">Residential</option>
+      </select>
+      <select class="filter-select" id="filter-mode" onchange="renderListings()">
+        <option value="">Sale &amp; Lease</option>
+        <option value="sale">For Sale only</option>
+        <option value="lease">For Lease only</option>
+      </select>
+      <select class="filter-select" id="filter-status" onchange="renderListings()">
+        <option value="">All listings</option>
+        <option value="liked">Liked only</option>
+        <option value="neutral">Unrated only</option>
+      </select>
+      <input class="search-input" id="search-input" placeholder="Search address, notes…" oninput="renderListings()">
+      <div class="toolbar-right">
+        <button class="btn btn-outline btn-sm" onclick="saveToCloud()" id="btn-save">💾 Save to Drive</button>
+      </div>
+    </div>
+    <div class="listing-grid" id="listing-grid"></div>
+  </div>
+
+  <div id="tab-add" style="display:none">
+    <div class="add-card">
+      <div class="form-section">
+        <label class="form-label">Listing URL</label>
+        <input type="url" class="form-input" id="inp-url" placeholder="https://loopnet.com/… or crexi.com/… or zillow.com/…">
+      </div>
+      <div class="form-section">
+        <label class="form-label">Address</label>
+        <input type="text" class="form-input" id="inp-addr" placeholder="e.g. 8110 Shaffer Pkwy, Littleton CO 80127">
+      </div>
+      <div class="form-section">
+        <label class="form-label">Details</label>
+        <div class="form-grid-3">
+          <select class="form-select" id="inp-type">
+            <option value="flex">Flex / Industrial</option>
+            <option value="warehouse">Warehouse</option>
+            <option value="office">Office / Commercial</option>
+            <option value="residential">Residential</option>
+          </select>
+          <select class="form-select" id="inp-mode">
+            <option value="lease">For Lease</option>
+            <option value="sale">For Sale</option>
+          </select>
+          <input type="text" class="form-input" id="inp-price" placeholder="Price / Rate (e.g. $14/sqft)">
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-grid">
+          <div>
+            <label class="form-label">Square footage</label>
+            <input type="text" class="form-input" id="inp-sqft" placeholder="e.g. 4,200 sq ft">
+          </div>
+          <div>
+            <label class="form-label">Distance from shop (est.)</label>
+            <input type="text" class="form-input" id="inp-dist" placeholder="e.g. 1.2 mi">
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <label class="form-label">Key Attributes <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af">(what you noticed — green=good, yellow=uncertain, red=concern)</span></label>
+        <div id="attr-rows"></div>
+        <button class="add-attr-btn" onclick="addAttrRow()">+ Add attribute</button>
+      </div>
+      <div class="form-section">
+        <label class="form-label">Notes</label>
+        <textarea class="form-input" id="inp-notes" placeholder="What stood out? Parking situation, garage doors, lot access, office count, map observations, concerns…"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="addListing()">Add to Tracker</button>
+        <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-ai" style="display:none">
+    <div class="ai-panel">
+      <div class="criteria-box" id="ai-criteria">Loading your liked listings…</div>
+      <button class="ai-run-btn" id="ai-btn" onclick="runAI()">🤖 Analyze liked listings &amp; get recommendations</button>
+      <div class="ai-output" id="ai-output" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FOLDER_ID = '11ltzXFDZhFMpgCutxhRLKnJxmyv5Y6KV';
+const DATA_FILE  = 'flps_property_tracker_data.json';
+const SCOPES     = 'https://www.googleapis.com/auth/drive.file';
+
+let listings = [], dataFileId = null, tokenClient = null, accessToken = null, isDirty = false;
+
+const SEED = [
+  {id:'s1',addr:'8110 Shaffer Pkwy, Littleton CO 80127',type:'flex',mode:'lease',price:'TBD',sqft:'~3,200',dist:'0.1 mi',url:'https://www.loopnet.com/Listing/8110-Shaffer-Pky-Littleton-CO/39369343/',attrs:[{l:'Same street as FLPS shop',c:'g'},{l:'Office + warehouse combo',c:'g'},{l:'Drive-in garage doors',c:'g'}],notes:'Liked — literally on Shaffer Pkwy. Perfect office+warehouse configuration. Top priority to visit in person.',liked:1,addedAt:'2025-05-14'},
+  {id:'s2',addr:'11616 Shaffer Pl, Littleton CO 80127',type:'flex',mode:'lease',price:'TBD',sqft:'Flex',dist:'~0.8 mi',url:'https://www.loopnet.com/Listing/11616-Shaffer-Pl-Littleton-CO/39728735/',attrs:[{l:'Shaffer corridor',c:'g'},{l:'Flex space',c:'g'}],notes:'Liked — Shaffer Place, very close to shop.',liked:1,addedAt:'2025-05-14'},
+  {id:'s3',addr:'9945 W Remington Pl, Littleton CO 80128',type:'flex',mode:'lease',price:'TBD',sqft:'Flex',dist:'~2.1 mi',url:'https://www.loopnet.com/Listing/9945-W-Remington-Pl-Littleton-CO/11972183/',attrs:[{l:'Ken Caryl area',c:'g'},{l:'Flex / industrial',c:'g'}],notes:'Liked — Ken Caryl flex.',liked:1,addedAt:'2025-05-14'},
+  {id:'s4',addr:'10901 W Toller Dr, Littleton CO 80127',type:'flex',mode:'lease',price:'TBD',sqft:'Flex',dist:'~2.5 mi',url:'https://www.loopnet.com/Listing/10901-W-Toller-Dr-Littleton-CO/28289888/',attrs:[{l:'Ken Caryl area',c:'g'},{l:'Flex space',c:'g'}],notes:'Liked — Toller Dr, Ken Caryl.',liked:1,addedAt:'2025-05-14'},
+  {id:'s5',addr:'10499 W Bradford Rd, Littleton CO 80127',type:'flex',mode:'sale',price:'For Sale',sqft:'~4,000',dist:'~2.8 mi',url:'https://www.loopnet.com/Listing/10499-W-Bradford-Rd-Littleton-CO/26170240/',attrs:[{l:'Ken Caryl Ranch location',c:'g'},{l:'Flex building',c:'g'},{l:'Drive-in access',c:'g'},{l:'Verify vehicle parking capacity',c:'w'}],notes:'Liked — flex building for sale, Ken Caryl Ranch, office+warehouse combo. Confirm vehicle/equipment parking before serious interest.',liked:1,addedAt:'2025-05-14'},
+  {id:'s6',addr:'10394 W Chatfield Ave, Littleton CO 80127',type:'office',mode:'sale',price:'For Sale',sqft:'Office bldg',dist:'~3.0 mi',url:'https://www.loopnet.com/Listing/10394-W-Chatfield-Ave-Littleton-CO/31340387/',attrs:[{l:'Ken Caryl Business Center',c:'g'},{l:'Multi-room office',c:'g'},{l:'Vehicle parking — must verify',c:'w'}],notes:'Liked — Ken Caryl Business Center. Must confirm vehicle and equipment parking before moving forward.',liked:1,addedAt:'2025-05-14'},
+  {id:'s7',addr:'8392 S Continental Divide Rd, Littleton CO',type:'flex',mode:'lease',price:'$14/sq ft',sqft:'Flex',dist:'~1.9 mi',url:'https://www.loopnet.com/Listing/8392-S-Continental-Divide-Rd-Littleton-CO/25074320/',attrs:[{l:'$14/sqft — good rate',c:'g'},{l:'Drive-up delivery access',c:'g'},{l:'Roll-up garage doors unclear',c:'w'}],notes:'Interested at $14/sqft. Drive-up delivery noted but need to confirm actual roll-up doors vs dock-only. Call broker.',liked:0,addedAt:'2025-05-14'},
+  {id:'s8',addr:'8646 S Carr St, Littleton CO 80128',type:'residential',mode:'sale',price:'~$480K',sqft:'1,200 sq ft',dist:'~1.7 mi',url:'https://www.realtor.com/realestateandhomes-detail/8646-S-Carr-St_Littleton_CO_80128_M29216-10351',attrs:[{l:'No HOA',c:'g'},{l:'0.29 acre lot',c:'g'},{l:'Meadowbrook Heights area',c:'g'},{l:'House small at 1,200 sq ft',c:'w'}],notes:'Liked — no HOA, decent lot. Small house but may allow detached garage build. Check rear lot access on satellite.',liked:1,addedAt:'2025-05-14'},
+  {id:'s9',addr:'7740 W Meadow Dr, Littleton CO 80128',type:'residential',mode:'sale',price:'TBD',sqft:'TBD',dist:'~1.9 mi',url:'https://www.realtor.com/realestateandhomes-detail/7740-W-Meadow-Dr_Littleton_CO_80128_M20519-20531',attrs:[{l:'No HOA',c:'g'},{l:'Meadowbrook area',c:'g'},{l:'Verify lot access for vehicles',c:'w'}],notes:'Liked — no HOA. Pull satellite view to check parking and rear access before scheduling visit.',liked:1,addedAt:'2025-05-14'}
+];
+
+function scoreCard(l) {
+  let s = 0;
+  const txt = (l.addr+' '+l.notes+' '+(l.attrs||[]).map(a=>a.l).join(' ')).toLowerCase();
+  const d = parseFloat(l.dist)||10;
+  if(d<1)s+=35;else if(d<2)s+=28;else if(d<3)s+=20;else if(d<5)s+=12;else s+=3;
+  if(txt.includes('shaffer'))s+=12;
+  if(txt.includes('ken caryl'))s+=8;
+  if(l.type==='flex')s+=14;
+  if(txt.includes('office')&&txt.includes('warehouse'))s+=10;
+  if(txt.includes('drive-in')||txt.includes('garage door')||txt.includes('roll-up')||txt.includes('dock'))s+=12;
+  if(l.type==='residential'){if(txt.includes('no hoa'))s+=10;if(txt.includes('rv')||txt.includes('oversized')||txt.includes('detached'))s+=8;if(txt.includes('acre'))s+=5;}
+  return Math.min(100,s);
+}
+function scoreColor(s){return s>=70?'#16a34a':s>=50?'#d97706':'#9ca3af';}
+
+function renderListings() {
+  const grid=document.getElementById('listing-grid');
+  const fT=document.getElementById('filter-type').value;
+  const fM=document.getElementById('filter-mode').value;
+  const fS=document.getElementById('filter-status').value;
+  const q=document.getElementById('search-input').value.toLowerCase();
+  let vis=listings.filter(l=>l.liked!==-1);
+  if(fT)vis=vis.filter(l=>l.type===fT);
+  if(fM)vis=vis.filter(l=>l.mode===fM);
+  if(fS==='liked')vis=vis.filter(l=>l.liked===1);
+  if(fS==='neutral')vis=vis.filter(l=>l.liked===0);
+  if(q)vis=vis.filter(l=>(l.addr+l.notes+(l.attrs||[]).map(a=>a.l).join(' ')).toLowerCase().includes(q));
+  vis.sort((a,b)=>{if(a.liked!==b.liked)return b.liked-a.liked;return scoreCard(b)-scoreCard(a);});
+  document.getElementById('count-badge').textContent=vis.length+' of '+listings.filter(l=>l.liked!==-1).length+' listings';
+  if(!vis.length){grid.innerHTML='<div class="empty"><div>🏢</div><p>No listings match. <a href="#" onclick="showTab(\'add\');return false">Add one?</a></p></div>';return;}
+  const tB={flex:'b-flex',warehouse:'b-warehouse',office:'b-office',residential:'b-res'};
+  const tL={flex:'Flex / Industrial',warehouse:'Warehouse',office:'Office',residential:'Residential'};
+  grid.innerHTML=vis.map((l,i)=>{
+    const s=scoreCard(l);const isTop=s>=70&&l.liked===1;
+    const mB=l.mode==='sale'?'<span class="badge b-sale">For Sale</span>':'<span class="badge b-lease">For Lease</span>';
+    const tyB=`<span class="badge ${tB[l.type]||'b-flex'}">${tL[l.type]||l.type}</span>`;
+    const lB=l.liked===1?'<span class="badge b-liked">✓ Liked</span>':'';
+    const attrs=(l.attrs||[]).map(a=>{const c=a.c==='g'?'attr-g':a.c==='w'?'attr-w':a.c==='r'?'attr-r':'attr-n';return`<span class="attr ${c}">${a.l}</span>`;}).join('');
+    return`<div class="listing-card ${l.liked===1?'liked':''}">
+      <div class="card-top">
+        <div class="card-rank ${isTop?'top':''}">${i+1}</div>
+        <div class="card-info">
+          <div class="card-addr">${l.addr}</div>
+          <div class="card-badges">${mB}${tyB}${lB}</div>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span>📍 ${l.dist||'?'} from shop</span>
+        <span>📐 ${l.sqft||'TBD'}</span>
+        <span>💰 ${l.price||'TBD'}</span>
+        ${l.addedAt?`<span>🗓 ${l.addedAt}</span>`:''}
+      </div>
+      <div class="score-row">
+        <span class="score-label">Match score</span>
+        <div class="score-bar"><div class="score-fill" style="width:${s}%;background:${scoreColor(s)}"></div></div>
+        <span class="score-num" style="color:${scoreColor(s)}">${s}/100</span>
+      </div>
+      ${attrs?`<div class="card-attrs">${attrs}</div>`:''}
+      ${l.notes?`<div class="card-notes">${l.notes}</div>`:''}
+      <div class="card-actions">
+        <button class="like-btn ${l.liked===1?'liked':'neutral'}" onclick="setLike('${l.id}',1)">👍 Like</button>
+        <button class="like-btn neutral" onclick="setLike('${l.id}',-1)">👎 Hide</button>
+        ${l.url&&l.url!=='#'?`<a class="link-btn" href="${l.url}" target="_blank">🔗 View listing</a>`:''}
+        <div class="right"><button class="del-btn btn btn-sm btn-danger-sm" onclick="confirmDelete('${l.id}')">✕ Remove</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setLike(id,val){const l=listings.find(x=>x.id===id);if(l){l.liked=val;isDirty=true;renderListings();autoSave();}}
+function confirmDelete(id){const l=listings.find(x=>x.id===id);if(!l)return;if(confirm(`Remove "${l.addr}" from tracker?`)){listings=listings.filter(x=>x.id!==id);isDirty=true;renderListings();autoSave();}}
+
+let attrCount=0;
+function addAttrRow(label='',color='g'){
+  attrCount++;
+  const d=document.createElement('div');d.className='attr-row';d.id='ar'+attrCount;
+  d.innerHTML=`<input type="text" class="form-input" placeholder="e.g. Oversized garage, No HOA, Loading dock" value="${label}">
+    <select class="form-select" style="width:80px"><option value="g" ${color==='g'?'selected':''}>✅ Good</option><option value="w" ${color==='w'?'selected':''}>⚠️ Unsure</option><option value="r" ${color==='r'?'selected':''}>❌ Issue</option><option value="n" ${color==='n'?'selected':''}>— Note</option></select>
+    <button class="del-btn" onclick="document.getElementById('ar${attrCount}').remove()">✕</button>`;
+  document.getElementById('attr-rows').appendChild(d);
+}
+function clearForm(){['inp-url','inp-addr','inp-price','inp-sqft','inp-dist','inp-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('attr-rows').innerHTML='';attrCount=0;addAttrRow();addAttrRow();addAttrRow();}
+function addListing(){
+  const url=document.getElementById('inp-url').value.trim();
+  const addr=document.getElementById('inp-addr').value.trim();
+  if(!addr&&!url){toast('Enter at least an address or URL.','error');return;}
+  const attrs=[];
+  document.querySelectorAll('#attr-rows .attr-row').forEach(row=>{const t=row.querySelector('input').value.trim();const c=row.querySelector('select').value;if(t)attrs.push({l:t,c});});
+  const l={id:'u'+Date.now(),addr:addr||url,type:document.getElementById('inp-type').value,mode:document.getElementById('inp-mode').value,price:document.getElementById('inp-price').value.trim()||'TBD',sqft:document.getElementById('inp-sqft').value.trim()||'TBD',dist:document.getElementById('inp-dist').value.trim()||'?',url:url||'#',attrs,notes:document.getElementById('inp-notes').value.trim(),liked:0,addedAt:new Date().toISOString().slice(0,10)};
+  listings.unshift(l);isDirty=true;clearForm();showTab('listings');renderListings();autoSave();toast('Listing added!','ok');
+}
+
+function updateAICriteria(){
+  const liked=listings.filter(l=>l.liked===1);
+  const flex=liked.filter(l=>l.type!=='residential');const res=liked.filter(l=>l.type==='residential');
+  let txt=`<strong>Based on ${liked.length} liked listing${liked.length!==1?'s':''}:</strong><br>`;
+  if(flex.length)txt+=`• ${flex.length} flex/commercial — Shaffer Pkwy &amp; Ken Caryl corridor, office+warehouse combos, drive-in access<br>`;
+  if(res.length)txt+=`• ${res.length} residential — no HOA, Meadowbrook Heights, large lots, oversized/detached garages<br>`;
+  txt+=`• Budget signals: $13–16/sqft lease; residential &lt;~$900K<br>• Top priority: within 3 miles of 8201 S Shaffer Pkwy, vehicle parking critical`;
+  document.getElementById('ai-criteria').innerHTML=txt;
+}
+
+async function runAI(){
+  const liked=listings.filter(l=>l.liked===1);
+  if(!liked.length){toast('Like at least one listing first.','error');return;}
+  const btn=document.getElementById('ai-btn');const out=document.getElementById('ai-output');
+  btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing…';out.style.display='none';
+  const summary=liked.map(l=>`- ${l.addr} (${l.type}, ${l.mode}, ${l.price}, ${l.dist} from shop)\n  Attrs: ${(l.attrs||[]).map(a=>a.l).join(', ')}\n  Notes: ${l.notes}`).join('\n');
+  const prompt=`You are a commercial and residential real estate expert helping Fire Life Protection Systems (fire alarm/life safety contractor) find their next office/shop near 8201 S Shaffer Pkwy, Littleton CO 80127.\n\nLiked listings:\n${summary}\n\nHard requirements:\n1. Within 3–5 miles of 8201 S Shaffer Pkwy (closer = better)\n2. Must fit: pickup trucks, plows, mowers, trailers — garage doors, drive-in bays, large paved lot, or residential lot to build detached garage\n3. Office space: 3+ rooms, bathroom, ~1,500+ sq ft\n4. Residential: no HOA, 0.25+ acre lot, oversized/detached garage or buildable land\n5. Budget: lease $12–18/sqft; buy residential <$900K; commercial <$1.5M\n\nProvide:\n1. 2-sentence profile of what FLPS is really looking for\n2. 6–8 specific search strategies with exact search terms and filter settings for LoopNet, Crexi, Zillow, Realtor.com\n3. 4–6 specific streets, business parks, or sub-markets near Littleton/Ken Caryl that tend to have this property type, and why\n4. 5 key questions to ask every broker or landlord (especially re: vehicle parking since it's often unlisted)\n5. 3–4 red flags to watch for\n\nBe specific to this area. No generic advice. Use numbered sections.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:prompt}]})});
+    const data=await resp.json();
+    const text=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'No response.';
+    out.style.display='block';out.textContent=text;
+  }catch(e){out.style.display='block';out.textContent='Error: '+e.message;}
+  btn.disabled=false;btn.innerHTML='🤖 Run again';
+}
+
+function showTab(name){
+  ['listings','add','ai'].forEach((t,i)=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';document.querySelectorAll('.tab')[i].classList.toggle('active',t===name);});
+  if(name==='ai')updateAICriteria();
+  if(name==='add'&&document.getElementById('attr-rows').children.length===0){addAttrRow();addAttrRow();addAttrRow();}
+}
+
+function setSyncStatus(state,label){
+  const dot=document.getElementById('sync-dot');
+  dot.className='sync-dot'+(state==='synced'?' synced':state==='syncing'?' syncing':'');
+  document.getElementById('sync-label').textContent=label;
+}
+
+function signIn(){if(!tokenClient){toast('Google API not loaded yet.','error');return;}tokenClient.requestAccessToken();}
+
+async function gfetch(url){
+  const resp=await fetch(url,{headers:{Authorization:'Bearer '+accessToken}});
+  if(!resp.ok)throw new Error(resp.status+' '+resp.statusText);
+  return resp.json();
+}
+
+async function findDataFile(){
+  const r=await gfetch(`https://www.googleapis.com/drive/v3/files?q=name='${DATA_FILE}' and '${FOLDER_ID}' in parents and trashed=false&fields=files(id,name)`);
+  if(r.files&&r.files.length>0){dataFileId=r.files[0].id;return true;}
+  return false;
+}
+
+async function loadFromCloud(){
+  setSyncStatus('syncing','Loading from Google Drive…');
+  try{
+    const found=await findDataFile();
+    if(!found){listings=[...SEED];await saveToCloud();setSyncStatus('synced','First run — seed data saved to Drive');}
+    else{
+      const resp=await gfetch(`https://www.googleapis.com/drive/v3/files/${dataFileId}?alt=media`);
+      listings=resp.listings&&resp.listings.length?resp.listings:[...SEED];
+      setSyncStatus('synced',`Loaded from Drive · ${listings.length} listings · ${new Date().toLocaleTimeString()}`);
+    }
+    renderListings();
+  }catch(e){setSyncStatus('','Load error: '+e.message);toast('Load failed: '+e.message,'error');}
+}
+
+async function saveToCloud(){
+  if(!accessToken){toast('Sign in with Google first.','error');return;}
+  setSyncStatus('syncing','Saving to Google Drive…');
+  const body=JSON.stringify({listings,savedAt:new Date().toISOString()});
+  try{
+    if(!dataFileId){const found=await findDataFile();if(!found){const meta={name:DATA_FILE,parents:[FOLDER_ID],mimeType:'application/json'};const form=new FormData();form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.append('file',new Blob([body],{type:'application/json'}));const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+accessToken},body:form});const d=await r.json();dataFileId=d.id;}}
+    if(dataFileId){await fetch(`https://www.googleapis.com/upload/drive/v3/files/${dataFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body});}
+    isDirty=false;setSyncStatus('synced','Saved to Drive · '+new Date().toLocaleTimeString());toast('Saved to Google Drive!','ok');
+  }catch(e){setSyncStatus('','Save failed');toast('Save failed: '+e.message,'error');}
+}
+
+let autoSaveTimer=null;
+function autoSave(){if(!accessToken)return;clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(saveToCloud,2500);}
+
+function initGoogleAuth(){
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:'467787612026-6tgkb4u4gbaj3ufmna0k34r5r0ppf5n3.apps.googleusercontent.com',
+    scope:SCOPES,
+    callback:async(resp)=>{
+      if(resp.error){toast('Sign-in error: '+resp.error,'error');return;}
+      accessToken=resp.access_token;
+      document.getElementById('auth-status').textContent='Signed in ✓';
+      document.getElementById('auth-status').className='auth-status ok';
+      document.getElementById('btn-signin').textContent='↺ Reload from Drive';
+      await loadFromCloud();
+    }
+  });
+}
+
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show'+(type?' '+type:'');setTimeout(()=>el.classList.remove('show'),3000);}
+
+window.onload=()=>{
+  listings=[...SEED];renderListings();
+  setSyncStatus('','Sign in to sync — all FLPS team members share the same data');
+  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=initGoogleAuth;document.head.appendChild(s);
+};
+</script>
+</body>
+</html>
