@@ -28,15 +28,29 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-  .header { background: var(--navy); color: #fff; padding: 0 2rem; display: flex; align-items: center; height: 58px; gap: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-  .header-logo { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
-  .header-title { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.9); }
-  .header-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
-  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-  .auth-status { font-size: 12px; color: rgba(255,255,255,0.6); }
-  .auth-status.ok { color: #86efac; }
-  #btn-signin { padding: 6px 14px; background: var(--gold); color: var(--navy-dark); border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
-  #btn-signin:hover { background: var(--gold-light); }
+  #top-bar { background: #1a1a2e; color: white; display: flex; align-items: center; gap: 12px; padding: 10px 16px; position: sticky; top: 0; z-index: 200; flex-wrap: wrap; }
+  #top-bar h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; flex: 1; }
+  .nav-hamburger { position: relative; }
+  .hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+  .hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+  .nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+  .nav-menu.open { display: block; }
+  .nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .nav-menu a:last-child { border-bottom: none; }
+  .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+  .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+  .conn-status-pill { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 10px; background: rgba(249,168,37,0.2); color: #ffe082; white-space: nowrap; }
+  .conn-status-pill.ok  { background: rgba(31,178,114,0.2); color: #7fffb8; }
+  .conn-status-pill.err { background: rgba(220,53,69,0.2);  color: #ff8888; }
+  .top-btn { background: #2e6da4; color: white; border: none; padding: 6px 13px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; font-weight: 600; white-space: nowrap; }
+  .top-btn:hover { background: #4a86e8; }
+  #conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+  #conn-drawer.open { max-height: 200px; }
+  #conn-inner { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .conn-field { display: flex; flex-direction: column; gap: 4px; }
+  .conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; }
+  .conn-field input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; width: 240px; }
+  .conn-field input::placeholder { color: rgba(255,255,255,0.4); }
   .main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
   .tabs { display: flex; gap: 2px; margin-bottom: 1.5rem; background: #e5e7eb; border-radius: 8px; padding: 3px; width: fit-content; }
   .tab { padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-muted); border: none; background: transparent; transition: all 0.15s; }
@@ -134,13 +148,41 @@
 </style>
 </head>
 <body>
-<div class="header">
-  <span class="header-logo">FLPS</span>
-  <span class="header-sep"></span>
-  <span class="header-title">Potential Lease or Buy</span>
-  <div class="header-right">
-    <span class="auth-status" id="auth-status">Not signed in</span>
-    <button id="btn-signin" onclick="signIn()">Sign in with Google</button>
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="index.html">📋 Work Order</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
+      <a href="estimate.html">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
+      <a href="worklog.html">🗒 Work Log</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="open-invoices.html">💵 Open Invoices</a>
+      <a href="triage.html">📬 Inbox Triage</a>
+      <a href="real-estate-agent.html" class="active">🏢 Property Tracker</a>
+    </div>
+  </div>
+  <h1>🏢 Potential Lease or Buy</h1>
+  <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
+  <button class="top-btn" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Settings</button>
+</div>
+
+<div id="conn-drawer">
+  <div id="conn-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456…apps.googleusercontent.com" style="width:300px;">
+    </div>
+    <button class="top-btn" onclick="initGoogle()">🔗 Connect Google</button>
   </div>
 </div>
 
@@ -248,6 +290,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://accounts.google.com/gsi/client"></script>
 <script>
 const FOLDER_ID = '11ltzXFDZhFMpgCutxhRLKnJxmyv5Y6KV';
 const DATA_FILE  = 'flps_property_tracker_data.json';
@@ -397,7 +440,54 @@ function setSyncStatus(state,label){
   document.getElementById('sync-label').textContent=label;
 }
 
-function signIn(){if(!tokenClient){toast('Google API not loaded yet.','error');return;}tokenClient.requestAccessToken();}
+function setConnStatus(text, state) {
+  const pill = document.getElementById('conn-pill');
+  pill.textContent = text;
+  pill.className = 'conn-status-pill' + (state ? ' ' + state : '');
+}
+
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+
+function initTokenClientOnly() {
+  const clientId = localStorage.getItem('flips_client_id');
+  if (!clientId || typeof google === 'undefined') return;
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: (resp) => {
+        if (resp.access_token) {
+          accessToken = resp.access_token;
+          localStorage.setItem('flips_access_token', accessToken);
+          localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        }
+      }
+    });
+  } catch(e) { console.warn(e); }
+}
+
+async function initGoogle() {
+  const apiKey   = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!clientId) { toast('Enter OAuth Client ID.', 'error'); return; }
+  if (apiKey) localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  setConnStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setConnStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setConnStatus('✓ Connected', 'ok');
+        document.getElementById('conn-drawer').classList.remove('open');
+        await loadFromCloud();
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: '' });
+  } catch(e) { setConnStatus('✗ ' + e.message, 'err'); toast('Connect error: ' + e.message, 'error'); }
+}
 
 async function gfetch(url){
   const resp=await fetch(url,{headers:{Authorization:'Bearer '+accessToken}});
@@ -439,27 +529,23 @@ async function saveToCloud(){
 let autoSaveTimer=null;
 function autoSave(){if(!accessToken)return;clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(saveToCloud,2500);}
 
-function initGoogleAuth(){
-  tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:'467787612026-6tgkb4u4gbaj3ufmna0k34r5r0ppf5n3.apps.googleusercontent.com',
-    scope:SCOPES,
-    callback:async(resp)=>{
-      if(resp.error){toast('Sign-in error: '+resp.error,'error');return;}
-      accessToken=resp.access_token;
-      document.getElementById('auth-status').textContent='Signed in ✓';
-      document.getElementById('auth-status').className='auth-status ok';
-      document.getElementById('btn-signin').textContent='↺ Reload from Drive';
-      await loadFromCloud();
-    }
-  });
-}
-
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show'+(type?' '+type:'');setTimeout(()=>el.classList.remove('show'),3000);}
 
-window.onload=()=>{
-  listings=[...SEED];renderListings();
-  setSyncStatus('','Sign in to sync — all FLPS team members share the same data');
-  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=initGoogleAuth;document.head.appendChild(s);
+window.onload = () => {
+  listings = [...SEED]; renderListings();
+  setSyncStatus('', 'Sign in to sync — all FLPS team members share the same data');
+  document.getElementById('api-key').value   = localStorage.getItem('flips_api_key')   || '';
+  document.getElementById('client-id').value = localStorage.getItem('flips_client_id') || '';
+  const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+  if (localStorage.getItem('flips_access_token') && expiry > Date.now() + 60_000 &&
+      localStorage.getItem('flips_client_id')) {
+    accessToken = localStorage.getItem('flips_access_token');
+    setConnStatus('✓ Connected', 'ok');
+    initTokenClientOnly();
+    loadFromCloud();
+  } else {
+    document.getElementById('conn-drawer').classList.add('open');
+  }
 };
 </script>
 </body>
