@@ -196,6 +196,7 @@
   <div class="tabs">
     <button class="tab active" onclick="showTab('listings')">📋 Listings</button>
     <button class="tab" onclick="showTab('add')">➕ Add Listing</button>
+    <button class="tab" onclick="showTab('import')">🔍 Import from Web</button>
     <button class="tab" onclick="showTab('ai')">🤖 AI Advisor</button>
   </div>
 
@@ -281,6 +282,27 @@
       <div style="display:flex;gap:10px">
         <button class="btn btn-primary" onclick="addListing()">Add to Tracker</button>
         <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-import" style="display:none">
+    <div class="add-card">
+      <div class="form-section">
+        <label class="form-label">Listing Page URL</label>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Paste any LoopNet, Crexi, Zillow, or Realtor.com URL — a search results page imports multiple listings at once; an individual listing page imports one. Claude reads the page and extracts the properties automatically.</p>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="url" class="form-input" id="import-url" placeholder="https://www.loopnet.com/search/flex-space/littleton-co/for-lease/" style="flex:1">
+          <button class="btn btn-primary" id="import-btn" onclick="importFromURL()" style="white-space:nowrap">🔍 Fetch &amp; Import</button>
+        </div>
+      </div>
+      <div id="import-status" style="display:none;font-size:13px;padding:10px 12px;background:#f8f9fa;border-radius:6px;border-left:3px solid var(--border);margin-top:4px"></div>
+      <div style="margin-top:1.25rem;font-size:12px;color:var(--text-muted);line-height:1.7">
+        <strong>Tips</strong><br>
+        • <strong>Search results page</strong> — imports up to 20 listings at once. Best for initial discovery.<br>
+        • <strong>Individual listing page</strong> — imports one property with full detail.<br>
+        • Distance from shop is set to TBD — update it manually after importing.<br>
+        • All imported listings start unrated. Like or hide them from the Listings tab.
       </div>
     </div>
   </div>
@@ -437,8 +459,95 @@ async function runAI(){
   btn.disabled=false;btn.innerHTML='🤖 Run again';
 }
 
+function setImportStatus(msg, isError) {
+  const el = document.getElementById('import-status');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.style.borderLeftColor = isError ? 'var(--red)' : 'var(--gold)';
+  el.style.color = isError ? 'var(--red)' : 'var(--text)';
+  el.textContent = msg;
+}
+
+async function importFromURL() {
+  const url = document.getElementById('import-url').value.trim();
+  if (!url) { toast('Enter a URL.', 'error'); return; }
+  const anthKey = localStorage.getItem('flips_anth_key') || document.getElementById('anth-key').value.trim();
+  if (!anthKey) { toast('Enter Anthropic API key in ⚙ Settings.', 'error'); document.getElementById('conn-drawer').classList.add('open'); return; }
+
+  const btn = document.getElementById('import-btn');
+  btn.disabled = true;
+  setImportStatus('Fetching page…');
+
+  try {
+    // Jina Reader renders the page headlessly and returns clean markdown
+    const jinaResp = await fetch('https://r.jina.ai/' + url, { headers: { 'Accept': 'text/plain' } });
+    if (!jinaResp.ok) throw new Error('Could not fetch page (HTTP ' + jinaResp.status + '). Try an individual listing URL.');
+    let pageText = await jinaResp.text();
+    if (pageText.length > 25000) pageText = pageText.slice(0, 25000) + '\n[truncated]';
+
+    setImportStatus('Parsing listings with Claude…');
+
+    const prompt = `Extract all real estate listings from the page content below. Return ONLY a raw JSON array — no markdown, no code fences, no explanation. Each object must have exactly these fields:
+{"addr":"full street address","type":"flex|warehouse|office|residential","mode":"lease|sale","price":"e.g. $14/sqft or $450,000 or TBD","sqft":"e.g. 3,200 sq ft or TBD","url":"direct listing URL if present, otherwise empty string","attrs":[{"l":"notable feature","c":"g|w|r|n"}],"notes":"2–3 sentence summary of key features"}
+
+attr c values: g=good/positive, w=uncertain/worth checking, r=concern/issue, n=neutral.
+If this is a search results page: return all listings found (up to 20).
+If this is a single listing page: return a one-item array.
+If no listings are found: return [].
+
+Page content:
+${pageText}`;
+
+    const claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] })
+    });
+    if (!claudeResp.ok) { const t = await claudeResp.text().catch(()=>''); throw new Error('Claude API ' + claudeResp.status + ': ' + t.slice(0, 200)); }
+    const claudeData = await claudeResp.json();
+    const rawText = claudeData.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '[]';
+
+    let parsed;
+    try { parsed = JSON.parse(rawText.trim()); }
+    catch(e) { const m = rawText.match(/\[[\s\S]*\]/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Could not parse response. Raw: ' + rawText.slice(0, 300)); }
+
+    if (!Array.isArray(parsed) || !parsed.length) {
+      setImportStatus('No listings found on that page. Try an individual listing URL or a different search results page.', true);
+      btn.disabled = false; return;
+    }
+
+    const validTypes = ['flex','warehouse','office','residential'];
+    const newListings = parsed.map(l => ({
+      id: 'i' + Date.now() + Math.random().toString(36).slice(2, 7),
+      addr: l.addr || url,
+      type: validTypes.includes(l.type) ? l.type : 'flex',
+      mode: l.mode === 'sale' ? 'sale' : 'lease',
+      price: l.price || 'TBD',
+      sqft: l.sqft || 'TBD',
+      dist: 'TBD',
+      url: l.url || url,
+      attrs: Array.isArray(l.attrs) ? l.attrs : [],
+      notes: l.notes || '',
+      liked: 0,
+      addedAt: new Date().toISOString().slice(0, 10)
+    }));
+
+    listings.unshift(...newListings);
+    isDirty = true;
+    renderListings();
+    autoSave();
+    document.getElementById('import-url').value = '';
+    setImportStatus('');
+    showTab('listings');
+    toast('Added ' + newListings.length + ' listing' + (newListings.length !== 1 ? 's' : '') + '! Like or hide them from the list.', 'ok');
+  } catch(e) {
+    setImportStatus('Error: ' + e.message, true);
+  }
+  btn.disabled = false;
+}
+
 function showTab(name){
-  ['listings','add','ai'].forEach((t,i)=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';document.querySelectorAll('.tab')[i].classList.toggle('active',t===name);});
+  ['listings','add','import','ai'].forEach((t,i)=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';document.querySelectorAll('.tab')[i].classList.toggle('active',t===name);});
   if(name==='ai')updateAICriteria();
   if(name==='add'&&document.getElementById('attr-rows').children.length===0){addAttrRow();addAttrRow();addAttrRow();}
 }
