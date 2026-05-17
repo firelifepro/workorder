@@ -38,6 +38,8 @@
   .nav-menu.open { display: block; }
   .nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
   .nav-menu a:last-child { border-bottom: none; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; pointer-events: none; }
+.nav-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 4px 0; }
   .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
   .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
   .conn-status-pill { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 10px; background: rgba(249,168,37,0.2); color: #ffe082; white-space: nowrap; }
@@ -153,20 +155,22 @@
   <div class="nav-hamburger">
     <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
     <div class="nav-menu" id="nav-menu">
-      <a href="index.html">📋 Work Order</a>
+      <div class="nav-section-label">Field Technicians</div>
       <a href="schedule.html">📅 Inspection Schedule</a>
-      <a href="create-invoices.html">🧾 Create QB Invoices</a>
-      <a href="clients.html">👥 Client Management</a>
-      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
-      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
       <a href="estimate.html">📝 Estimate</a>
       <a href="estimate-tracker.html">📊 Estimate Tracker</a>
       <a href="worklog.html">🗒 Work Log</a>
-      <a href="sub-invoices.html">📨 Sub Invoices</a>
-      <a href="open-invoices.html">💵 Open Invoices</a>
-      <a href="triage.html">📬 Inbox Triage</a>
+      <a href="index.html">📋 Work Order</a>
+      <a href="inspection.html">🔥 Fire Inspection</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection</a>
       <a href="real-estate-agent.html" class="active">🏠 Real Estate Agent</a>
-    </div>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Administrators</div>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="open-invoices.html">💵 Payments</a>
+      </div>
   </div>
   <h1>🏢 Potential Lease or Buy</h1>
   <span class="conn-status-pill" id="conn-pill">⚠ Not connected</span>
@@ -291,18 +295,23 @@
       <div class="form-section">
         <label class="form-label">Listing Page URL</label>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Paste any LoopNet, Crexi, Zillow, or Realtor.com URL — a search results page imports multiple listings at once; an individual listing page imports one. Claude reads the page and extracts the properties automatically.</p>
-        <div style="display:flex;gap:10px;align-items:center">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
           <input type="url" class="form-input" id="import-url" placeholder="https://www.loopnet.com/search/flex-space/littleton-co/for-lease/" style="flex:1">
           <button class="btn btn-primary" id="import-btn" onclick="importFromURL()" style="white-space:nowrap">🔍 Fetch &amp; Import</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label class="form-label" style="margin:0;white-space:nowrap">Location filter</label>
+          <input type="text" class="form-input" id="import-location" value="Littleton CO 80127" style="max-width:280px" title="Claude will discard listings outside this area">
         </div>
       </div>
       <div id="import-status" style="display:none;font-size:13px;padding:10px 12px;background:#f8f9fa;border-radius:6px;border-left:3px solid var(--border);margin-top:4px"></div>
       <div style="margin-top:1.25rem;font-size:12px;color:var(--text-muted);line-height:1.7">
         <strong>Tips</strong><br>
-        • <strong>Search results page</strong> — imports up to 20 listings at once. Best for initial discovery.<br>
+        • <strong>Map-filtered URLs</strong> (Crexi, LoopNet map view) — coordinates are extracted from the URL and used to filter results. The page fetcher can't execute JS map filters, but Claude will discard anything outside the target area.<br>
+        • <strong>Search results page</strong> — imports up to 20 local listings at once.<br>
         • <strong>Individual listing page</strong> — imports one property with full detail.<br>
-        • Distance from shop is set to TBD — update it manually after importing.<br>
-        • All imported listings start unrated. Like or hide them from the Listings tab.
+        • Distance from shop is TBD after import — update manually.<br>
+        • All imported listings start unrated. Like or hide from the Listings tab.
       </div>
     </div>
   </div>
@@ -468,8 +477,22 @@ function setImportStatus(msg, isError) {
   el.textContent = msg;
 }
 
+function extractGeoFromURL(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    // Crexi / LoopNet: mapCenter=lat,lng
+    const mc = u.searchParams.get('mapCenter');
+    if (mc) { const [lat, lng] = mc.split(',').map(Number); if (lat && lng) return { lat, lng }; }
+    // Zillow: searchQueryState encoded JSON with mapBounds
+    const sqs = u.searchParams.get('searchQueryState');
+    if (sqs) { const q = JSON.parse(decodeURIComponent(sqs)); const b = q.mapBounds; if (b) return { lat: (b.north+b.south)/2, lng: (b.east+b.west)/2 }; }
+  } catch(e) {}
+  return null;
+}
+
 async function importFromURL() {
   const url = document.getElementById('import-url').value.trim();
+  const locationFilter = document.getElementById('import-location').value.trim();
   if (!url) { toast('Enter a URL.', 'error'); return; }
   const anthKey = localStorage.getItem('flips_anth_key') || document.getElementById('anth-key').value.trim();
   if (!anthKey) { toast('Enter Anthropic API key in ⚙ Settings.', 'error'); document.getElementById('conn-drawer').classList.add('open'); return; }
@@ -478,8 +501,16 @@ async function importFromURL() {
   btn.disabled = true;
   setImportStatus('Fetching page…');
 
+  // Build geo filter text from URL params or the location field
+  const geo = extractGeoFromURL(url);
+  let geoInstruction = '';
+  if (geo) {
+    geoInstruction = `CRITICAL: This URL has map coordinates (${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)}) — these coordinates are near ${locationFilter || 'the target area'}. The page fetcher cannot apply JS map filters, so the raw page may contain listings from anywhere. You MUST discard any listing that is not geographically near these coordinates. Only keep listings within ~10 miles. If a listing has no address or is clearly in a different city/state, skip it entirely.`;
+  } else if (locationFilter) {
+    geoInstruction = `CRITICAL: Only include listings in or near "${locationFilter}". Discard any listing in a different city, state, or region.`;
+  }
+
   try {
-    // Jina Reader renders the page headlessly and returns clean markdown
     const jinaResp = await fetch('https://r.jina.ai/' + url, { headers: { 'Accept': 'text/plain' } });
     if (!jinaResp.ok) throw new Error('Could not fetch page (HTTP ' + jinaResp.status + '). Try an individual listing URL.');
     let pageText = await jinaResp.text();
@@ -487,13 +518,12 @@ async function importFromURL() {
 
     setImportStatus('Parsing listings with Claude…');
 
-    const prompt = `Extract all real estate listings from the page content below. Return ONLY a raw JSON array — no markdown, no code fences, no explanation. Each object must have exactly these fields:
+    const prompt = `Extract real estate listings from the page content below. Return ONLY a raw JSON array — no markdown, no code fences, no explanation. Each object must have exactly these fields:
 {"addr":"full street address","type":"flex|warehouse|office|residential","mode":"lease|sale","price":"e.g. $14/sqft or $450,000 or TBD","sqft":"e.g. 3,200 sq ft or TBD","url":"direct listing URL if present, otherwise empty string","attrs":[{"l":"notable feature","c":"g|w|r|n"}],"notes":"2–3 sentence summary of key features"}
 
 attr c values: g=good/positive, w=uncertain/worth checking, r=concern/issue, n=neutral.
-If this is a search results page: return all listings found (up to 20).
-If this is a single listing page: return a one-item array.
-If no listings are found: return [].
+${geoInstruction}
+If search results page: return matching listings (up to 20). If single listing page: return one-item array. If no matching listings: return [].
 
 Page content:
 ${pageText}`;

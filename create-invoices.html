@@ -63,6 +63,8 @@ body {
 .nav-menu.open { display: block; }
 .nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; }
 .nav-menu a:last-child { border-bottom: none; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; pointer-events: none; }
+.nav-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 4px 0; }
 .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
 .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
 .top-bar-nav { display: flex; gap: 8px; align-items: center; }
@@ -353,19 +355,21 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   <div class="nav-hamburger">
     <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
     <div class="nav-menu" id="nav-menu">
-      <a href="index.html">📋 Work Order</a>
+      <div class="nav-section-label">Field Technicians</div>
       <a href="schedule.html">📅 Inspection Schedule</a>
-      <a href="create-invoices.html" class="active">🧾 Create QB Invoices</a>
-      <a href="clients.html">👥 Client Management</a>
-      <a href="inspection.html">🔥 Fire Inspection (Multi-System)</a>
-      <a href="hospital-inspection.html">🏥 Hospital Inspection TJC/CMS</a>
       <a href="estimate.html">📝 Estimate</a>
       <a href="estimate-tracker.html">📊 Estimate Tracker</a>
       <a href="worklog.html">🗒 Work Log</a>
+      <a href="index.html">📋 Work Order</a>
+      <a href="inspection.html">🔥 Fire Inspection</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection</a>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Administrators</div>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="create-invoices.html" class="active">🧾 Create QB Invoices</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
-      <a href="open-invoices.html">💵 Open Invoices</a>
-      <a href="triage.html">📬 Inbox Triage</a>
-    </div>
+      <a href="open-invoices.html">💵 Payments</a>
+      </div>
   </div>
   <h1>🧾 Fire Life Protection – Create Invoices</h1>
   <span id="conn-status" class="conn-status-pill warn">Not connected</span>
