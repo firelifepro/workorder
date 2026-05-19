@@ -841,7 +841,7 @@ async function buildPDFDoc() {
       if (faFlowCount > 0) {
         subHdr('FLOW SWITCHES — SPRINKLER SYSTEMS');
         const fw = [26, 56, 28, 28, 26, 24];
-        tblHdr(['Type','Location','Scan ID','Address','Supervisory','Seconds'], fw);
+        tblHdr(['Type','Location','Scan ID','Address','Alarm','Seconds'], fw);
         for (let n = 1; n <= faFlowCount; n++) {
           if (!document.getElementById('fa-flow-row-' + n)) continue;
           checkPage(7);
