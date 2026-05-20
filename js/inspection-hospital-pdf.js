@@ -245,9 +245,10 @@ async function buildHospPDF(opts = {}) {
   // ── Coordinate helpers ──
   // curY = distance from TOP of page (increases downward)
   // ry(h) converts to PDF coords (from bottom)
+  const TOP_PAD = 12; // white space at top of each page so header clears printer margin
   const ry = (h) => PH - curY - h;
   const ty = (h, a = 3) => PH - curY - h + a;
-  const HDR_H = 28; // two-bar per-page header height
+  const HDR_H = 28 + TOP_PAD; // two-bar per-page header height + top padding
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
   const gap = (h) => { curY += h; };
 
@@ -273,13 +274,13 @@ async function buildHospPDF(opts = {}) {
   };
 
   // ── Editable field ──
+  // setFontSize(0) = auto-shrink: text scales down to fit instead of showing "+" on overflow
   const mkField = (val, x, fieldY, w, h, fs = 8, bg = gold) => {
     page.drawRectangle({ x, y: fieldY, width: w, height: h, color: bg, borderColor: sky, borderWidth: 0.3 });
     const f = form.createTextField(fid());
     f.setText(String(val || ''));
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
-    f.setFontSize(fs);
-    f.enableMultiline();
+    f.setFontSize(0);
   };
 
   // ── Label + editable field row ──
@@ -299,17 +300,17 @@ async function buildHospPDF(opts = {}) {
   const addPage = (title) => {
     pageNum++;
     page = pdfDoc.addPage([W, PH]);
-    // Dark top bar
-    page.drawRectangle({ x: 0, y: PH - 15, width: W, height: 15, color: navy });
-    page.drawText('Fire Life Protection Systems', { x: ML, y: PH - 10, size: 8.5, font: hFont, color: white });
-    page.drawText(`Page ${pageNum}`, { x: W - 65, y: PH - 10, size: 8.5, font: rFont, color: white });
+    // Dark top bar — offset by TOP_PAD so it doesn't print at the paper edge
+    page.drawRectangle({ x: 0, y: PH - TOP_PAD - 15, width: W, height: 15, color: navy });
+    page.drawText('Fire Life Protection Systems', { x: ML, y: PH - TOP_PAD - 10, size: 8.5, font: hFont, color: white });
+    page.drawText(`Page ${pageNum}`, { x: W - 65, y: PH - TOP_PAD - 10, size: 8.5, font: rFont, color: white });
     if (pageNum > 1) {
       // Blue subheader — building + date only (skip on cover page)
-      page.drawRectangle({ x: 0, y: PH - 28, width: W, height: 13, color: midnav });
-      page.drawText(`BUILDING: ${bldName}`, { x: ML, y: PH - 24.5, size: 8, font: hFont, color: white });
-      page.drawText(`DATE: ${inspDate}`, { x: W - 155, y: PH - 24.5, size: 8, font: hFont, color: white });
+      page.drawRectangle({ x: 0, y: PH - TOP_PAD - 28, width: W, height: 13, color: midnav });
+      page.drawText(`BUILDING: ${bldName}`, { x: ML, y: PH - TOP_PAD - 24.5, size: 8, font: hFont, color: white });
+      page.drawText(`DATE: ${inspDate}`, { x: W - 155, y: PH - TOP_PAD - 24.5, size: 8, font: hFont, color: white });
     }
-    curY = pageNum > 1 ? HDR_H : 15;
+    curY = pageNum > 1 ? HDR_H : TOP_PAD + 15;
     if (title) secHdr(title);
   };
 
