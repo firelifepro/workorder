@@ -274,13 +274,12 @@ async function buildHospPDF(opts = {}) {
   };
 
   // ── Editable field ──
-  // setFontSize(0) = auto-shrink: text scales down to fit instead of showing "+" on overflow
   const mkField = (val, x, fieldY, w, h, fs = 8, bg = gold) => {
     page.drawRectangle({ x, y: fieldY, width: w, height: h, color: bg, borderColor: sky, borderWidth: 0.3 });
     const f = form.createTextField(fid());
     f.setText(String(val || ''));
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
-    f.setFontSize(0);
+    f.setFontSize(Math.min(fs, 9));
   };
 
   // ── Label + editable field row ──
