@@ -1993,6 +1993,12 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
           Saves to <strong>FLPS Inspection History</strong>, updates property profile, saves PDF to <strong>FLPS Inspection Reports</strong>, and downloads to device for upload to <strong>The Compliance Engine (Brycer)</strong>.
         </p>
         <div id="h-sig-warning" class="sig-warning"></div>
+        <div style="margin-bottom:10px;">
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:#134e4a;cursor:pointer;">
+            <input type="checkbox" id="pdf-skip-ext" style="width:15px;height:15px;cursor:pointer;">
+            Skip fire extinguisher pages (info/key, inspection results, services summary)
+          </label>
+        </div>
         <div class="btn-row">
           <button class="btn-primary" id="h-save-download-btn" onclick="hospSaveAndDownload()"title="Closes the inspection, discards the draft, updates the property profile, generate save and download the pdf">📄 Close Inspection, Save &amp; Download PDF</button>
           <button class="btn-secondary" id="h-preview-pdf-btn" onclick="hospPreviewPDF()" title="Generates and downloads a local PDF preview. Does NOT save to Drive, update the property profile, or close the inspection.">👁 Preview PDF</button>

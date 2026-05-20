@@ -19,8 +19,12 @@ function updatePdfOverlay(msg) {
 // ════════════════════════════════════════════════════════════════
 //  PDF BYTES WRAPPER
 // ════════════════════════════════════════════════════════════════
+function getPdfOpts() {
+  return { skipExt: document.getElementById('pdf-skip-ext')?.checked || false };
+}
+
 async function buildHospitalPDFBytes() {
-  return await buildHospPDF();
+  return await buildHospPDF(getPdfOpts());
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -208,7 +212,8 @@ async function hospPreviewPDF() {
 //  Theme: navy / sky-blue / gold editable fields
 //  Letter 8.5"×11" = 612×792 points
 // ════════════════════════════════════════════════════════════════
-async function buildHospPDF() {
+async function buildHospPDF(opts = {}) {
+  const skipExt = !!opts.skipExt;
   if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
   const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
   const pdfDoc = await PDFDocument.create();
@@ -219,7 +224,7 @@ async function buildHospPDF() {
   const yldMsg = async (msg) => { updatePdfOverlay(msg); await yld(); };
 
   // ── Page dimensions ──
-  const W = 612, PH = 792, ML = 36, PW = 540, MB = 36;
+  const W = 612, PH = 792, ML = 10, PW = 592, MB = 36;
   let page, curY, pageNum = 0, _fid = 0;
   const fid = () => 'h_' + (++_fid);
 
@@ -274,6 +279,7 @@ async function buildHospPDF() {
     f.setText(String(val || ''));
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
     f.setFontSize(fs);
+    f.enableMultiline();
   };
 
   // ── Label + editable field row ──
@@ -1233,8 +1239,9 @@ async function buildHospPDF() {
 
   // ════════════════════════════════════════════════════════════════
   // PAGES 32+: FIRE EXTINGUISHER RESULTS
-  await yldMsg('Building: fire extinguishers (pgs 32+)…');
   // ════════════════════════════════════════════════════════════════
+  if (!skipExt) {
+  await yldMsg('Building: fire extinguishers (pgs 32+)…');
   const _extUnits = [];
   for (let _ei = 1; _ei <= extUnitCount; _ei++) {
     if (!document.getElementById('ext-unit-row-' + _ei)) continue;
@@ -1312,6 +1319,7 @@ async function buildHospPDF() {
       }
     }
   }
+  } // end if (!skipExt)
 
   // ════════════════════════════════════════════════════════════════
   // LAST PAGE: DEFICIENCY INFORMATION
