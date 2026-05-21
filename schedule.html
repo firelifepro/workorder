@@ -154,6 +154,12 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
 .modal-field label { font-size:0.72rem; font-weight:600; color:#555; text-transform:uppercase; letter-spacing:0.04em; }
 .modal-field select, .modal-field input[type=date] { border:1px solid #ddd; border-radius:4px; padding:7px 10px; font-size:0.82rem; font-family:inherit; outline:none; }
 .modal-field select:focus, .modal-field input[type=date]:focus { border-color:#2e6da4; }
+.modal-prop-wrap { position:relative; display:flex; flex-direction:column; gap:4px; }
+.modal-prop-search-row { position:relative; display:flex; align-items:center; }
+#modal-prop-search { border:1px solid #ddd; border-radius:4px; padding:7px 26px 7px 10px; font-size:0.82rem; font-family:inherit; outline:none; width:100%; box-sizing:border-box; }
+#modal-prop-search:focus { border-color:#2e6da4; }
+#modal-prop-search-clear { display:none; position:absolute; right:8px; cursor:pointer; color:#999; font-size:11px; line-height:1; }
+#modal-prop-search-clear:hover { color:#333; }
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
 .btn-primary { background:#2e6da4; color:white; border:none; padding:7px 18px; border-radius:4px; cursor:pointer; font-size:0.82rem; font-weight:600; }
 .btn-primary:hover { background:#4a86e8; }
@@ -327,9 +333,15 @@ thead th.col-del:hover { background:#1a1a2e; }
     <h2>Add Schedule Entry</h2>
     <div class="modal-field">
       <label>Property</label>
-      <select id="modal-property">
-        <option value="">— Select property —</option>
-      </select>
+      <div class="modal-prop-wrap">
+        <div class="modal-prop-search-row">
+          <input type="text" id="modal-prop-search" placeholder="🔍 Search properties…" oninput="filterModalPropDropdown(this.value)" autocomplete="off">
+          <span id="modal-prop-search-clear" onclick="clearModalPropSearch()" title="Clear">✕</span>
+        </div>
+        <select id="modal-property">
+          <option value="">— Select property —</option>
+        </select>
+      </div>
     </div>
     <div class="modal-field">
       <label>Inspection Type</label>
@@ -928,26 +940,69 @@ async function saveLastDone(idx) {
 }
 
 // ── Add entry modal ────────────────────────────────────────
-function openAddModal() {
-  const sel = document.getElementById('modal-property');
-  const prevVal = sel.value;
-  sel.innerHTML = '<option value="">— Select property —</option>';
-  clientList.forEach(c => {
+function _buildModalPropOptions(sel, names, activeProp) {
+  sel.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = '— Select property —';
+  sel.appendChild(ph);
+  names.forEach(name => {
     const o = document.createElement('option');
-    o.value = c.name; o.textContent = c.name; o.dataset.acct = c.acct;
+    const c = clientList.find(c => c.name === name);
+    o.value = name; o.textContent = name;
+    if (c) o.dataset.acct = c.acct;
     sel.appendChild(o);
   });
-  // Pre-select the currently filtered property if one is active
+  if (activeProp && names.includes(activeProp)) sel.value = activeProp;
+}
+
+function filterModalPropDropdown(query) {
+  const sel   = document.getElementById('modal-property');
+  const clear = document.getElementById('modal-prop-search-clear');
+  const q = query.trim().toLowerCase();
+  clear.style.display = q ? 'block' : 'none';
+  const prevVal = sel.value;
+  const names = clientList.map(c => c.name);
+  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
+  // Rebuild options
+  sel.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = q ? `— ${matches.length} match${matches.length !== 1 ? 'es' : ''} —` : '— Select property —';
+  sel.appendChild(ph);
+  matches.forEach(name => {
+    const o = document.createElement('option');
+    const c = clientList.find(c => c.name === name);
+    o.value = name; o.textContent = name;
+    if (c) o.dataset.acct = c.acct;
+    sel.appendChild(o);
+  });
+  if (matches.length === 1) sel.value = matches[0];
+  else if (prevVal && matches.includes(prevVal)) sel.value = prevVal;
+}
+
+function clearModalPropSearch() {
+  document.getElementById('modal-prop-search').value = '';
+  document.getElementById('modal-prop-search-clear').style.display = 'none';
+  filterModalPropDropdown('');
+}
+
+function openAddModal() {
+  const sel = document.getElementById('modal-property');
   const activeProp = document.getElementById('property-select').value;
-  sel.value = activeProp || prevVal || '';
-  document.getElementById('modal-type').value  = '';
-  document.getElementById('modal-freq').value  = 'Annual';
-  document.getElementById('modal-date').value  = '';
+  const names = clientList.map(c => c.name);
+  _buildModalPropOptions(sel, names, activeProp);
+  document.getElementById('modal-prop-search').value = '';
+  document.getElementById('modal-prop-search-clear').style.display = 'none';
+  document.getElementById('modal-type').value = '';
+  document.getElementById('modal-freq').value = 'Annual';
+  document.getElementById('modal-date').value = '';
   document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('modal-prop-search').focus(), 50);
 }
 
 function closeAddModal() {
   document.getElementById('modal-backdrop').classList.remove('open');
+  document.getElementById('modal-prop-search').value = '';
+  document.getElementById('modal-prop-search-clear').style.display = 'none';
 }
 
 function handleBackdropClick(e) {
