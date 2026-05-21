@@ -970,16 +970,29 @@ async function saveNewEntry() {
   saveBtn.disabled = true; saveBtn.textContent = '…';
 
   try {
+    console.log('[saveNewEntry] saving:', propName, type, date);
     await appendInspectionHistory([{
       propertyName: propName, acctNum: acct, inspectionType: type,
       dateCompleted: date, frequency: freq, source: 'Manual',
     }]);
+    console.log('[saveNewEntry] appendInspectionHistory resolved');
 
     try { sessionStorage.removeItem('flips_schedule_cache'); } catch(_) {}
+    // Reset filters so the newly saved entry is always visible
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-type').value   = '';
+    document.getElementById('prop-search').value   = '';
+    filterPropDropdown('');
+    const propFilterSel = document.getElementById('property-select');
+    if ([...propFilterSel.options].some(o => o.value === propName)) {
+      propFilterSel.value = propName;
+      _updatePropertyBadge(propName);
+    }
     toast('✓ Entry added');
     closeAddModal();
     await loadSchedule(true);
   } catch(e) {
+    console.error('[saveNewEntry] failed:', e);
     toast('✗ Save failed: ' + e.message);
   } finally {
     saveBtn.disabled = false; saveBtn.textContent = 'Save';
