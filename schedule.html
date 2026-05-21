@@ -168,9 +168,9 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
 .btn-secondary:hover { background:#e5e7eb; }
 
 /* ── Delete row button ── */
-.del-row-btn { background:none; border:none; cursor:pointer; color:#ddd; padding:0 3px; line-height:1; transition:color 0.15s; vertical-align:middle; display:inline-flex; align-items:center; }
-tbody tr:hover .del-row-btn { color:#e53935; }
-.col-del { width:28px; text-align:center; }
+.del-row-btn { background:none; border:none; cursor:pointer; color:#bbb; padding:4px 6px; line-height:1; transition:color 0.15s; vertical-align:middle; display:inline-flex; align-items:center; border-radius:4px; }
+.del-row-btn:hover, .del-row-btn:active { color:#e53935; background:#fff0f0; }
+.col-del { width:36px; text-align:center; }
 thead th.col-del { cursor:default; }
 thead th.col-del:hover { background:#1a1a2e; }
 
@@ -814,7 +814,7 @@ function renderRows(rows) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#888;">No records match your filters.</td></tr>';
     return;
   }
-  const trash = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+  const trash = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
   tbody.innerHTML = s.map(r => {
     const daysPill = r.daysUntil === null ? '<span style="color:#aaa;">—</span>'
       : r.daysUntil < 0
