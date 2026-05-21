@@ -57,12 +57,13 @@ async function appendInspectionHistory(updates) {
   return { appended: values.length };
 }
 
-// Delete every Inspection History row matching property+type.
+// Delete every Inspection History row matching property+type+frequency (frequency optional).
 // Match key: acct # when both row and request have one; otherwise property name.
-async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionType) {
+async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionType, frequency) {
   const targetAcct = String(acctNum || '').trim();
   const targetProp = String(propertyName || '').trim().toLowerCase();
   const targetType = String(inspectionType || '').trim().toLowerCase();
+  const targetFreq = frequency ? String(frequency).trim().toLowerCase() : null;
   if (!targetType || (!targetAcct && !targetProp)) {
     throw new Error('deleteInspectionHistoryEntries: need (acctNum or propertyName) and inspectionType');
   }
@@ -90,6 +91,7 @@ async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionT
   const iProp = headers.findIndex(h => h.includes('property'));
   const iAcct = headers.findIndex(h => h.includes('acct'));
   const iType = headers.findIndex(h => h.includes('inspection') || h.includes('type'));
+  const iFreq = headers.findIndex(h => h.includes('freq'));
   if (iProp === -1 || iType === -1) throw new Error('Could not locate required columns in Inspection History');
 
   const matches = [];
@@ -97,7 +99,9 @@ async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionT
     const rowAcct = iAcct >= 0 ? String(rows[i][iAcct] || '').trim() : '';
     const rowProp = String(rows[i][iProp] || '').trim().toLowerCase();
     const rowType = String(rows[i][iType] || '').trim().toLowerCase();
+    const rowFreq = iFreq >= 0 ? String(rows[i][iFreq] || '').trim().toLowerCase() : '';
     if (rowType !== targetType) continue;
+    if (targetFreq !== null && rowFreq !== targetFreq) continue;
     const propMatch = (targetAcct && rowAcct) ? rowAcct === targetAcct : rowProp === targetProp;
     if (propMatch) matches.push(i); // 0-based row index in the values array
   }

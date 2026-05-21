@@ -490,8 +490,9 @@ async function loadSchedule(forceRefresh = false) {
     const iSource = col('source');
     const iNotes  = col('notes');
 
-    // For each property+type, keep only the most recent completion.
-    // Key by acct#+type when acct# is present, otherwise property name+type.
+    // For each property+type+frequency, keep only the most recent completion.
+    // Key by acct#+type+freq when acct# is present, otherwise property name+type+freq.
+    // Frequency is included so "Fire Alarm (Annual)" and "Fire Alarm (Semi Annual)" are separate rows.
     const bestMap = new Map();
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
@@ -504,7 +505,8 @@ async function loadSchedule(forceRefresh = false) {
       const dateRaw = stripTime(get(iDate));
       const dateObj = parseSheetDate(dateRaw);
       const source  = get(iSource);
-      const key = (acct ? 'acct:' + acct : 'name:' + property) + '\x00' + type;
+      const freq    = get(iFreq);
+      const key = (acct ? 'acct:' + acct : 'name:' + property) + '\x00' + type + '\x00' + freq;
       const cur = bestMap.get(key);
 
       const newerDate    = dateObj && (!cur?.dateObj || dateObj > cur.dateObj);
@@ -516,7 +518,7 @@ async function loadSchedule(forceRefresh = false) {
           acct,
           address: get(iAddr),
           type,
-          freq:    get(iFreq) || 'Annual',
+          freq:    freq || 'Annual',
           last:    dateRaw,
           dateObj,
           source,
@@ -1058,10 +1060,10 @@ async function saveNewEntry() {
 async function confirmDelete(idx) {
   const row = allRows[idx];
   if (!row) return;
-  if (!confirm(`Delete all inspection history for:\n\n"${row.property}"\n${row.type}\n\nThis removes every history row for this property + inspection type and cannot be undone. Continue?`)) return;
+  if (!confirm(`Delete all inspection history for:\n\n"${row.property}"\n${row.type} (${row.freq})\n\nThis removes every history row for this property + inspection type + frequency and cannot be undone. Continue?`)) return;
 
   try {
-    const result = await deleteInspectionHistoryEntries(row.acct, row.property, row.type);
+    const result = await deleteInspectionHistoryEntries(row.acct, row.property, row.type, row.freq);
     try { sessionStorage.removeItem('flips_schedule_cache'); } catch(_) {}
     toast(`✓ Deleted ${result.deleted} row(s)`);
     await loadSchedule(true);
