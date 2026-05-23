@@ -584,6 +584,7 @@ function clearPropSearch() {
   document.getElementById('prop-search').value = '';
   document.getElementById('prop-clear').style.display = 'none';
   buildPropDropdown('prop-select', '— All Properties —');
+  document.getElementById('prop-select').value = '';
   applyFilters();
 }
 
@@ -872,6 +873,13 @@ async function saveEntry() {
   if (!accessToken) { toast('⚠ Not connected'); return; }
   if (!wrTabName)   { toast('⚠ Sheet not loaded — refresh first'); return; }
 
+  const saveBtn = document.querySelector('.btn-save');
+  if (saveBtn && saveBtn.disabled) return;
+  if (saveBtn) saveBtn.disabled = true;
+
+  // Snapshot editingRow before any awaits — closeModal() nulls the global mid-flight
+  const row = editingRow;
+
   // Get property: badge → search text → dropdown
   let property = '';
   if (document.getElementById('f-prop-badge').classList.contains('show')) {
@@ -896,15 +904,15 @@ async function saveEntry() {
   try {
     let targetRowNum;
 
-    if (editingRow) {
-      const range = `${wrTabName}!A${editingRow._rowNum}:I${editingRow._rowNum}`;
+    if (row) {
+      const range = `${wrTabName}!A${row._rowNum}:I${row._rowNum}`;
       const res = await apiFetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
         'PUT', { range, majorDimension: 'ROWS', values: [values] }
       );
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      targetRowNum = editingRow._rowNum;
-      Object.assign(editingRow, {
+      targetRowNum = row._rowNum;
+      Object.assign(row, {
         _status: status,
         dateReq: values[0], reqBy: values[1], property: values[2],
         workReq: values[3], compliance: values[4], notes: values[5],
@@ -925,12 +933,14 @@ async function saveEntry() {
       await setRowColor(targetRowNum, STATUS_BG[status] || STATUS_BG.open);
     }
 
-    toast(editingRow ? '✓ Row ' + targetRowNum + ' updated' : '✓ Entry added');
+    toast(row ? '✓ Row ' + targetRowNum + ' updated' : '✓ Entry added');
     closeModal();
-    if (editingRow) { renderTable(); } else { await loadWorkLog(); }
+    if (row) { renderTable(); } else { await loadWorkLog(); }
   } catch(e) {
     toast('⚠ Save failed: ' + e.message);
     console.error('saveEntry:', e);
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
 
