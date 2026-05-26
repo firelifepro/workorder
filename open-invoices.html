@@ -192,8 +192,12 @@
   <div class="card">
     <div class="card-head"><span>🔎 Filter Open Invoices</span></div>
     <div class="card-body" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+      <div class="ctrl-group">
+        <label>Invoice #</label>
+        <input type="text" id="inv-filter" placeholder="e.g. 1042" oninput="renderTable()" style="width:110px;">
+      </div>
       <div class="ctrl-group" style="flex:1;min-width:220px;">
-        <label>Search</label>
+        <label>Search All Fields</label>
         <input type="text" id="text-filter" placeholder="Customer, invoice #, memo…" oninput="renderTable()" style="width:100%;">
       </div>
       <div class="ctrl-group">
@@ -786,6 +790,7 @@ function lookupPropMgr(inv) {
 // ─────────────────────────────────────────────────────
 function renderTable() {
   const q = (document.getElementById('text-filter').value || '').toLowerCase();
+  const invQ = (document.getElementById('inv-filter').value || '').trim().toLowerCase();
   const ageFilter = document.getElementById('aging-filter').value;
   const sortBy = document.getElementById('sort-by').value;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -811,6 +816,7 @@ function renderTable() {
 
   // Filter first, then compute stats on filtered set
   const filtered = enriched.filter(inv => {
+    if (invQ && !(inv.DocNumber || '').toLowerCase().includes(invQ)) return false;
     if (q) {
       const hay = [inv.DocNumber, inv.CustomerRef?.name, lookupPropMgr(inv), inv.Balance, inv.TotalAmt, inv.PrivateNote, (inv.Line?.[0]?.Description || '')].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -844,7 +850,7 @@ function renderTable() {
   document.getElementById('stat-amount').textContent = '$' + totalOwed.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
   // Filter indicator
-  const isFiltered = q || ageFilter !== 'all';
+  const isFiltered = q || invQ || ageFilter !== 'all';
   const fi = document.getElementById('filter-indicator');
   if (isFiltered && filtered.length !== enriched.length) {
     fi.style.display = 'block';
