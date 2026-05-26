@@ -103,7 +103,6 @@
     /* Sticky actions column — always visible even when scrolled right */
     .td-acts      { white-space: nowrap; text-align: right; width: 40px; position: sticky; right: 0; background: inherit; z-index: 5; box-shadow: -2px 0 5px rgba(0,0,0,0.07); }
     thead th.th-acts { position: sticky; right: 0; z-index: 11; background: #2e6da4; box-shadow: -2px 0 5px rgba(0,0,0,0.15); }
-    .td-est-prop  { min-width: 140px; font-weight: 600; color: #1d4ed8; font-style: italic; font-size: 8pt; }
 
     /* Show more */
     .show-more-btn { background: none; border: none; color: #2e6da4; font-size: 0.72rem; cursor: pointer; padding: 0 2px; text-decoration: underline; font-family: inherit; }
@@ -267,7 +266,6 @@
     </div>
     <button id="add-btn" onclick="openModal(null)">+ New Entry</button>
     <button class="icon-btn" onclick="loadWorkLog()" title="Refresh">↺ Refresh</button>
-    <button class="icon-btn" id="match-btn" onclick="runPropertyMatch()" title="Fuzzy-match property names against the client list and populate column J">🔍 Match Properties</button>
   </div>
 
   <!-- Stats -->
@@ -293,7 +291,6 @@
           <th>Date Requested</th>
           <th>Requested By</th>
           <th>Property</th>
-          <th>Est. Property</th>
           <th>Work Requested</th>
           <th class="th-c">Compliance</th>
           <th>Notes</th>
@@ -305,7 +302,7 @@
         </tr>
       </thead>
       <tbody id="log-tbody">
-        <tr id="empty-row"><td colspan="13">Connect to Google to load work requests.</td></tr>
+        <tr id="empty-row"><td colspan="12">Connect to Google to load work requests.</td></tr>
       </tbody>
     </table>
   </div>
@@ -332,15 +329,6 @@
             <span>✓ <span id="f-prop-badge-name"></span></span>
             <button class="prop-badge-clear" onclick="clearModalProp()" title="Change property">✕ change</button>
           </div>
-        </div>
-      </div>
-
-      <div class="form-row cols-1">
-        <div class="form-group">
-          <label>Matched Property <span style="font-weight:400;color:#888;text-transform:none;">(client list — set by auto-match or override here)</span></label>
-          <select id="f-est-prop">
-            <option value="">— Not matched —</option>
-          </select>
         </div>
       </div>
 
@@ -741,7 +729,6 @@ function parseLogRows(rows, rowColors) {
     dateComp:    row[6] || '',
     invoiced:    row[7] || '',
     paid:        row[8] || '',
-    estProperty: row[9] || '',
   }));
 }
 
@@ -800,7 +787,7 @@ function renderTable() {
 
   const tbody = document.getElementById('log-tbody');
   if (!filtered.length) {
-    tbody.innerHTML = `<tr id="empty-row"><td colspan="13">${
+    tbody.innerHTML = `<tr id="empty-row"><td colspan="12">${
       !logRows.length ? 'No entries yet — click <strong>+ New Entry</strong> to add one.'
                       : 'No entries match the current filters.'
     }</td></tr>`;
@@ -813,7 +800,6 @@ function renderTable() {
       <td class="td-datecomp">${workCell(r.dateReq, 'dr' + r._rowNum)}</td>
       <td class="td-datecomp">${workCell(r.reqBy, 'rb' + r._rowNum)}</td>
       <td class="td-prop">${esc(r.property)}</td>
-      <td class="td-est-prop">${esc(r.estProperty)}</td>
       <td class="td-work">${workCell(r.workReq, 'w' + r._rowNum)}</td>
       <td class="td-comp">${workCell(r.compliance, 'c' + r._rowNum)}</td>
       <td class="td-note">${workCell(r.notes, 'n' + r._rowNum)}</td>
@@ -850,13 +836,6 @@ function openModal(rowNum) {
   document.getElementById('f-prop-search').value = '';
   buildPropDropdown('f-prop-select', '— Select from list or type above —');
 
-  // Populate est-prop dropdown
-  const estSel = document.getElementById('f-est-prop');
-  estSel.innerHTML = '<option value="">— Not matched —</option>';
-  Object.keys(clientData).sort().forEach(name => {
-    const o = document.createElement('option'); o.value = name; o.textContent = name; estSel.appendChild(o);
-  });
-
   if (editingRow) {
     document.getElementById('f-date-req').value   = editingRow.dateReq;
     document.getElementById('f-req-by').value     = editingRow.reqBy;
@@ -874,7 +853,6 @@ function openModal(rowNum) {
       document.getElementById('f-prop-select').value = editingRow.property;
       showPropBadge(editingRow.property);
     }
-    if (editingRow.estProperty) document.getElementById('f-est-prop').value = editingRow.estProperty;
   } else {
     const t = new Date();
     document.getElementById('f-date-req').value =
@@ -927,14 +905,13 @@ async function saveEntry() {
     document.getElementById('f-date-comp').value.trim(),
     document.getElementById('f-invoiced').value.trim(),
     document.getElementById('f-paid').value.trim(),
-    document.getElementById('f-est-prop').value,
   ];
 
   try {
     let targetRowNum;
 
     if (row) {
-      const range = `${wrTabName}!A${row._rowNum}:J${row._rowNum}`;
+      const range = `${wrTabName}!A${row._rowNum}:I${row._rowNum}`;
       const res = await apiFetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
         'PUT', { range, majorDimension: 'ROWS', values: [values] }
@@ -945,12 +922,11 @@ async function saveEntry() {
         _status: status,
         dateReq: values[0], reqBy: values[1], property: values[2],
         workReq: values[3], compliance: values[4], notes: values[5],
-        dateComp: values[6], invoiced: values[7], paid: values[8],
-        estProperty: values[9]
+        dateComp: values[6], invoiced: values[7], paid: values[8]
       });
     } else {
       const res = await apiFetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(wrTabName + '!A:J')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(wrTabName + '!A:I')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
         'POST', { majorDimension: 'ROWS', values: [values] }
       );
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1124,116 +1100,6 @@ window.addEventListener('load', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 });
 
-// ─────────────────────────────────────────────────────
-// PROPERTY FUZZY MATCH
-// ─────────────────────────────────────────────────────
-const _STOP = new Set(['the','of','and','at','in','on','for','a','an','to','by','llc','inc','ltd','co']);
-
-function _tokenize(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(t => t.length > 1 && !_STOP.has(t));
-}
-
-function _jaccard(a, b) {
-  if (!a.length && !b.length) return 0;
-  const sa = new Set(a), sb = new Set(b);
-  let inter = 0;
-  for (const t of sa) if (sb.has(t)) inter++;
-  return inter / (sa.size + sb.size - inter);
-}
-
-function fuzzyMatchProperty(row) {
-  const propToks  = _tokenize(row.property);
-  const reqByToks = _tokenize(row.reqBy);
-  let best = '', bestScore = 0;
-
-  for (const [name, d] of Object.entries(clientData)) {
-    const nameToks = _tokenize(name);
-    let score = _jaccard(propToks, nameToks) * 0.65;
-
-    // substring containment bonus (handles abbreviations like "Riverside Apts" ↔ "Riverside Apartments")
-    const pLow = (row.property || '').toLowerCase();
-    const nLow = name.toLowerCase();
-    if (pLow.length > 2 && nLow.length > 2 && (nLow.includes(pLow) || pLow.includes(nLow))) score += 0.25;
-
-    // reqBy vs property manager / management company names
-    for (const [k, v] of Object.entries(d)) {
-      if (!v) continue;
-      if ((k.includes('manager') || (k.includes('contact') && !k.includes('phone') && !k.includes('email')))) {
-        score += _jaccard(reqByToks, _tokenize(v)) * 0.15;
-      } else if (k.includes('management') || k.includes('company')) {
-        score += _jaccard(reqByToks, _tokenize(v)) * 0.10;
-      }
-    }
-
-    if (score > bestScore) { bestScore = score; best = name; }
-  }
-  return { name: best, score: bestScore };
-}
-
-async function runPropertyMatch() {
-  if (!accessToken) { toast('⚠ Not connected'); return; }
-  if (!Object.keys(clientData).length) { toast('⚠ Client list not loaded — refresh first'); return; }
-  if (!logRows.length) { toast('⚠ Work log not loaded — refresh first'); return; }
-  if (!wrTabName || wrGid === null) { toast('⚠ Sheet metadata not loaded — refresh first'); return; }
-
-  const btn = document.getElementById('match-btn');
-  if (btn) btn.disabled = true;
-  toast('🔍 Matching properties…');
-
-  try {
-    const canonNames = Object.keys(clientData);
-
-    // Row 1 = header, rows 2..N = data
-    const headerRow  = [['Estimated Property']];
-    const dataValues = logRows.map(r => {
-      if (!r.property && !r.reqBy) return [''];
-      const m = fuzzyMatchProperty(r);
-      return [m.score >= 0.28 ? m.name : ''];
-    });
-
-    const allValues = [...headerRow, ...dataValues];
-    const range = `${wrTabName}!J1:J${allValues.length}`;
-
-    // Write header + estimated values
-    const putRes = await apiFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
-      'PUT', { range, majorDimension: 'ROWS', values: allValues }
-    );
-    if (!putRes.ok) throw new Error('Write failed: HTTP ' + putRes.status);
-
-    // Set data validation dropdown on J2:J5000
-    const dvRes = await apiFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`,
-      'POST', {
-        requests: [{
-          setDataValidation: {
-            range: { sheetId: wrGid, startRowIndex: 1, endRowIndex: 5000, startColumnIndex: 9, endColumnIndex: 10 },
-            rule: {
-              condition: {
-                type: 'ONE_OF_LIST',
-                values: canonNames.map(n => ({ userEnteredValue: n }))
-              },
-              inputMessage: 'Select a property from the client list',
-              strict: false,
-              showCustomUi: true
-            }
-          }
-        }]
-      }
-    );
-    if (!dvRes.ok) console.warn('[match] data validation request failed:', dvRes.status);
-
-    const matched = dataValues.filter(v => v[0]).length;
-    toast(`✓ Matched ${matched} of ${logRows.length} rows`);
-    await loadWorkLog();
-  } catch(e) {
-    toast('⚠ Match failed: ' + e.message);
-    console.error('runPropertyMatch:', e);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
 </script>
 <script>window.FLIPS_MODAL_CONFIG = { requiresQB: false };</script>
 <script src="js/flips-conn-modal.js"></script>
