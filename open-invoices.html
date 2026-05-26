@@ -992,6 +992,7 @@ async function recordPayment() {
     }
 
     // Optionally mark work log row as paid
+    let warnToastShown = false;
     if (updateWorkLog && accessToken) {
       try {
         const matchedRow = findWorkLogRowByInvoice(inv.DocNumber || inv.Id);
@@ -1003,6 +1004,7 @@ async function recordPayment() {
           const custName = inv.CustomerRef?.name || '';
           setMStatus('✓ Paid in QB (no matching Work Log row found)');
           toast(`⚠ Work Log row not found — Invoice #${invNum}${custName ? ' · ' + custName : ''}`, 6000);
+          warnToastShown = true;
         }
       } catch(wlErr) {
         console.warn('Work log update failed:', wlErr);
@@ -1011,7 +1013,7 @@ async function recordPayment() {
     }
 
     renderTable();
-    setTimeout(() => { closeModal(); toast('✓ Payment recorded'); }, 700);
+    setTimeout(() => { closeModal(); if (!warnToastShown) toast('✓ Payment recorded'); }, 700);
   } catch(e) {
     setMStatus('✗ ' + e.message);
     console.error('recordPayment:', e);
