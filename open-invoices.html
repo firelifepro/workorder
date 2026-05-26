@@ -999,7 +999,10 @@ async function recordPayment() {
           await markWorkLogPaid(matchedRow.rowNum, payDate, ref);
           setMStatus(`✓ Paid in QB and Work Log row ${matchedRow.rowNum}`);
         } else {
+          const invNum = inv.DocNumber || inv.Id;
+          const custName = inv.CustomerRef?.name || '';
           setMStatus('✓ Paid in QB (no matching Work Log row found)');
+          toast(`⚠ Work Log row not found — Invoice #${invNum}${custName ? ' · ' + custName : ''}`, 6000);
         }
       } catch(wlErr) {
         console.warn('Work log update failed:', wlErr);
@@ -1082,11 +1085,12 @@ function setMStatus(msg) {
   document.getElementById('m-status').textContent = msg;
 }
 
-function toast(msg) {
+function toast(msg, duration = 2400) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2400);
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(() => t.classList.remove('show'), duration);
 }
 
 function esc(s) {
