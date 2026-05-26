@@ -481,7 +481,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 // ─────────────────────────────────────────────────────────
 const FOLDER_NAME        = '2 - Ready to Invoice';
 const FOLDER_NAME_SENT   = '3 - Invoice Sent';
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents.readonly';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents.readonly https://www.googleapis.com/auth/spreadsheets';
+const WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
 
 
 // ── Hamburger nav ──────────────────────────────────────────
@@ -502,6 +503,34 @@ let allDocs = [];        // { id, name, modifiedTime, amount, client }
 let sourceFolderId = null; // Drive folder ID for '2 - Ready to Invoice'
 let qbAccessToken = null;
 let qbRealmId = null;
+
+let _workLogTab = null;
+
+async function ensureWorkLogTab() {
+  if (_workLogTab) return;
+  const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+  const meta = await metaRes.json();
+  _workLogTab = meta.sheets[0].properties.title;
+}
+
+function parseLineNum(docName) {
+  const m = String(docName || '').match(/Line\s+(\d+)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+async function updateWorkLogInvoiced(doc, invoiceNum) {
+  if (!invoiceNum) return;
+  const lineNum = parseLineNum(doc.name);
+  if (!lineNum) return;
+  await ensureWorkLogTab();
+  const today = new Date();
+  const stamp = `INV #${invoiceNum} ${today.getMonth()+1}/${today.getDate()}/${String(today.getFullYear()).slice(-2)}`;
+  const range = `${_workLogTab}!H${lineNum}`;
+  await apiFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    'PUT', { range, majorDimension: 'ROWS', values: [[stamp]] }
+  );
+}
 
 // ─────────────────────────────────────────────────────────
 // GOOGLE IDENTITY INIT
@@ -1068,6 +1097,11 @@ async function createInvoices() {
         allDocs = allDocs.filter(d => d.id !== doc.id);
       } catch(moveErr) {
         toast(`⚠ Invoice created but file not moved: ${moveErr.message}`);
+      }
+      try {
+        await updateWorkLogInvoiced(doc, invoiceResult.DocNumber);
+      } catch(wlErr) {
+        console.warn('Work log invoiced stamp failed:', wlErr);
       }
     } catch(e) {
       results.push({ doc, status: 'error', message: e.message });
