@@ -50,7 +50,7 @@
     #page { max-width: 1700px; margin: 0 auto; padding: 14px; }
 
     /* ── Controls ── */
-    #controls { background: white; border-radius: 6px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    #controls { background: white; border-radius: 6px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); position: sticky; z-index: 100; }
     .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
     .ctrl-group label { font-size: 0.7rem; font-weight: 700; color: #555; text-transform: uppercase; }
     .ctrl-group input, .ctrl-group select { border: 1px solid #ccc; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; font-family: inherit; outline: none; background: white; }
@@ -703,6 +703,7 @@ async function loadWorkLog() {
 
     logRows = parseLogRows(values, rowColors);
     renderTable();
+    updateLayout();
     toast('✓ Loaded ' + logRows.length + ' entries');
   } catch(e) {
     toast('⚠ Could not load: ' + e.message);
@@ -1031,6 +1032,16 @@ function positionFixedScroll() {
   document.getElementById('fixed-hscroll-inner').style.width = w;
 }
 
+function updateLayout() {
+  const controls = document.getElementById('controls');
+  controls.style.top = document.getElementById('top-bar').offsetHeight + 'px';
+  requestAnimationFrame(() => {
+    const top = _tableWrap.getBoundingClientRect().top + window.scrollY;
+    _tableWrap.style.height = (window.innerHeight - top - 14) + 'px';
+    positionFixedScroll();
+  });
+}
+
 (function initScrollSync() {
   let _lock = false;
   [_scrollTop, _tableWrap, _fixedScroll].forEach(el => {
@@ -1042,11 +1053,11 @@ function positionFixedScroll() {
       _lock = false;
     });
   });
-  window.addEventListener('resize', positionFixedScroll);
+  window.addEventListener('resize', updateLayout);
   // Run once now (layout already done since script is at end of body),
   // then again after fonts/images settle
-  positionFixedScroll();
-  setTimeout(positionFixedScroll, 500);
+  updateLayout();
+  setTimeout(updateLayout, 500);
 })();
 
 window.addEventListener('load', () => {
