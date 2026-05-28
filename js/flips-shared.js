@@ -466,7 +466,7 @@ function addSubRow(labelVal, expenseVal) {
     '<td class="value-cell"><input type="text" id="sub-label-' + n + '" placeholder="Sub-contractor name / description" style="width:100%;"></td>' +
     '<td class="value-cell"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-expense-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onSubExpenseChange(' + n + ')"></td>' +
+    '<input type="number" id="sub-expense-' + n + '" min="0" step="1" style="width:calc(100% - 14px);" oninput="onSubExpenseChange(' + n + ')"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
     '<input type="number" id="sub-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
@@ -537,7 +537,7 @@ function addMatRow(descVal, qtyVal, expenseVal) {
     '<td class="value-cell"><input type="text" id="mat-desc-' + n + '" style="width:100%;"></td>' +
     '<td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty-' + n + '" min="0" step="1" style="text-align:center;"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="mat-expense-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onMatExpenseChange(' + n + ')"></td>' +
+    '<input type="number" id="mat-expense-' + n + '" min="0" step="1" style="width:calc(100% - 14px);" oninput="onMatExpenseChange(' + n + ')"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
     '<input type="number" id="mat-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +

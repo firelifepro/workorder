@@ -673,7 +673,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor&nbsp;<button type="button" onclick="addSubRow()" title="Add Sub-Contractor/Vendor" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
       <td class="value-cell"><input type="text" id="sub-head-label" placeholder="Sub-contractor name / description" style="width:100%;"></td>
       <td class="value-cell"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onSubHeadExpenseChange()"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-expense" min="0" step="1" style="width:calc(100% - 14px);" oninput="onSubHeadExpenseChange()"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
@@ -682,7 +682,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-label" style="white-space:nowrap;">Materials&nbsp;<button type="button" onclick="addMatRow()" title="Add Materials Line" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
       <td class="value-cell"><input type="text" id="mat-head-desc" style="width:100%;"></td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="mat-head-qty" min="0" step="1" style="text-align:center;"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onMatHeadExpenseChange()"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-expense" min="0" step="1" style="width:calc(100% - 14px);" oninput="onMatHeadExpenseChange()"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
@@ -734,7 +734,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-label">Misc:</td>
       <td class="value-cell"><input type="text" id="misc-desc"></td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="misc-qty" min="0" step="1" style="text-align:center;"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseChange('misc')"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-expense" min="0" step="1" style="width:calc(100% - 14px);" oninput="onExpenseChange('misc')"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
     </tr>
