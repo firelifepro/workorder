@@ -5,8 +5,9 @@
  *   <script src="js/flips-conn-modal.js"></script>
  *
  * The modal appears automatically when Google (or QB on QB pages) is not connected.
- * It cannot be dismissed — the user must connect. It re-appears if the connection
- * drops mid-session (checked every 30 seconds).
+ * It can be dismissed via the X button — the health check won't re-pop it for 5 min,
+ * giving the user time to enter credentials in the page's settings drawer.
+ * It re-appears if the connection drops mid-session (checked every 30 seconds).
  *
  * Delegates to the page's own initGoogle() and connectQuickBooks() — no auth logic here.
  */
@@ -32,12 +33,31 @@
       color: #d0d0e8;
       box-shadow: 0 24px 64px rgba(0,0,0,0.7);
     }
+    #flips-conn-modal-card .flips-modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
     #flips-conn-modal-card h2 {
-      margin: 0 0 6px;
+      margin: 0;
       font-size: 1.3rem;
       color: #fff;
       font-weight: 600;
     }
+    #flips-conn-modal-dismiss {
+      background: none;
+      border: none;
+      color: #6668aa;
+      font-size: 1.3rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 12px;
+      flex-shrink: 0;
+      transition: color 0.15s;
+    }
+    #flips-conn-modal-dismiss:hover { color: #d0d0e8; }
     #flips-conn-modal-card .flips-modal-subtitle {
       margin: 0 0 24px;
       font-size: 0.88rem;
@@ -118,11 +138,12 @@
     }
   `;
 
-  let _config      = {};
-  let _observer    = null;
-  let _qbObserver  = null;
-  let _healthTimer = null;
-  let _pollTimer   = null;
+  let _config        = {};
+  let _observer      = null;
+  let _qbObserver    = null;
+  let _healthTimer   = null;
+  let _pollTimer     = null;
+  let _dismissedAt   = 0;   // timestamp of last user dismiss; health check snoozes for 5 min after
 
   // ── Pill detection ──────────────────────────────────────────────────────────
 
@@ -176,15 +197,22 @@
       <hr class="flips-modal-divider" id="flips-modal-qb-divider">
       <div id="flips-modal-qb-section">
         <div class="flips-modal-section-title">QuickBooks</div>
-        <p class="flips-modal-qb-note">Google is connected. QuickBooks is also required on this page. Click below to authenticate — you'll be redirected to Intuit and returned here.</p>
+        <p class="flips-modal-qb-note">Google is connected. QuickBooks is also required on this page. Enter your QuickBooks Client ID below, then click Connect — you'll be redirected to Intuit and returned here.</p>
+        <div class="flips-modal-field">
+          <label>QuickBooks Client ID</label>
+          <input type="password" id="flips-modal-qb-client-id" placeholder="AB…" autocomplete="off">
+        </div>
         <button class="flips-modal-btn flips-modal-btn-qb" id="flips-modal-connect-qb">🔗 Connect QuickBooks</button>
         <div class="flips-modal-status" id="flips-modal-qb-status"></div>
       </div>` : '';
 
     return `
       <div id="flips-conn-modal-card">
-        <h2>Connection Required</h2>
-        <p class="flips-modal-subtitle">This page needs a Google connection to work. Enter your credentials below and click Connect.</p>
+        <div class="flips-modal-header">
+          <h2>Connection Required</h2>
+          <button id="flips-conn-modal-dismiss" title="Dismiss — enter credentials in Settings">✕</button>
+        </div>
+        <p class="flips-modal-subtitle">This page needs a Google connection to work. Enter your credentials below and click Connect. Not set up yet? Dismiss and open ⚙ Settings.</p>
         <div id="flips-modal-google-section">
           <div class="flips-modal-section-title">Google</div>
           <div class="flips-modal-field">
@@ -217,6 +245,9 @@
     document.getElementById('flips-modal-connect-google')
       .addEventListener('click', _onClickGoogle);
 
+    document.getElementById('flips-conn-modal-dismiss')
+      .addEventListener('click', _onDismiss);
+
     if (_config.requiresQB) {
       document.getElementById('flips-modal-connect-qb')
         .addEventListener('click', _onClickQB);
@@ -230,6 +261,16 @@
     const clientEl  = document.getElementById('flips-modal-client-id');
     if (apiKeyEl) apiKeyEl.value  = localStorage.getItem('flips_api_key')   || '';
     if (clientEl) clientEl.value  = localStorage.getItem('flips_client_id') || '';
+
+    if (_config.requiresQB) {
+      const qbClientEl = document.getElementById('flips-modal-qb-client-id');
+      if (qbClientEl) {
+        const env = localStorage.getItem('qb_env') || 'sandbox';
+        qbClientEl.value = localStorage.getItem('qb_client_id_' + env)
+          || localStorage.getItem('qb_client_id_sandbox')
+          || localStorage.getItem('qb_client_id') || '';
+      }
+    }
   }
 
   function _syncToDrawerInputs() {
@@ -263,11 +304,34 @@
 
   function _onClickQB() {
     _clearModalStatus('qb');
+    // Save QB client ID entered in the modal to localStorage so connectQuickBooks() finds it
+    const qbClientEl = document.getElementById('flips-modal-qb-client-id');
+    if (qbClientEl) {
+      const val = qbClientEl.value.trim();
+      if (val) {
+        const env = localStorage.getItem('qb_env') || 'sandbox';
+        localStorage.setItem('qb_client_id_' + env, val);
+        // Also sync to drawer inputs if they exist
+        const drawerEl = document.getElementById(env === 'production' ? 'qb-client-id-prod' : 'qb-client-id-sandbox');
+        if (drawerEl) drawerEl.value = val;
+      } else {
+        _setModalStatus('qb', '⚠ Enter your QuickBooks Client ID above');
+        return;
+      }
+    }
     if (typeof window.connectQuickBooks === 'function') {
       window.connectQuickBooks();
     } else {
       _setModalStatus('qb', '⚠ connectQuickBooks() not found');
     }
+  }
+
+  function _onDismiss() {
+    _dismissedAt = Date.now();
+    _hide();
+    // Open the settings drawer so the user can see where to enter credentials
+    const drawer = document.getElementById('conn-drawer');
+    if (drawer) drawer.classList.add('open');
   }
 
   function _setModalStatus(which, msg) {
@@ -384,6 +448,8 @@
   function _startHealthCheck() {
     if (_healthTimer) return;
     _healthTimer = setInterval(() => {
+      // Skip health re-pop for 5 minutes after the user dismisses the modal
+      if (_dismissedAt && Date.now() - _dismissedAt < 5 * 60 * 1000) return;
       if (_needsModal()) {
         _show();
         _startGoogleObserver();
