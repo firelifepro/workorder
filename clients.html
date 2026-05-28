@@ -334,8 +334,12 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
       </div>
     </div>
     <div class="fm-row">
-      <label class="fm-label">Service Address <span class="req">*</span></label>
-      <input type="text" id="nf-address" placeholder="e.g. 18300 E. 71st Ave, Denver, CO 80249" oninput="onAddressInput(this.value)">
+      <label class="fm-label">Street Address <span class="req">*</span></label>
+      <input type="text" id="nf-street" placeholder="e.g. 16161 Table Mountain Pkwy" oninput="onAddressInput()">
+    </div>
+    <div class="fm-row">
+      <label class="fm-label">City, State ZIP <span class="req">*</span></label>
+      <input type="text" id="nf-city-state" placeholder="e.g. Golden, CO 80403" oninput="onAddressInput()">
       <div class="addr-dup-warn" id="nf-addr-warn"></div>
     </div>
 
@@ -1433,7 +1437,7 @@ function openAddClientModal() {
   }, 0);
   document.getElementById('nf-acct').value = maxAcct + 1;
 
-  ['nf-name','nf-address','nf-manager','nf-bill-email','nf-contact','nf-mgmt','nf-bill-to','nf-access','nf-services','nf-district','nf-notes']
+  ['nf-name','nf-street','nf-city-state','nf-manager','nf-bill-email','nf-contact','nf-mgmt','nf-bill-to','nf-access','nf-services','nf-district','nf-notes']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('nf-addr-warn').classList.remove('show');
   document.getElementById('nf-acct-conflict').classList.remove('show');
@@ -1467,14 +1471,17 @@ function addrJaccard(a, b) {
   return union > 0 ? inter / union : 0;
 }
 
-function onAddressInput(val) {
+function onAddressInput() {
   clearTimeout(addrDupTimer);
+  const street    = (document.getElementById('nf-street')?.value     || '').trim();
+  const cityState = (document.getElementById('nf-city-state')?.value || '').trim();
+  const combined  = [street, cityState].filter(Boolean).join(' ');
   const warn = document.getElementById('nf-addr-warn');
-  if (!val.trim() || val.trim().length < 5) { warn.classList.remove('show'); return; }
+  if (combined.length < 5) { warn.classList.remove('show'); return; }
   addrDupTimer = setTimeout(() => {
     const matches = sheetClients
-      .filter(c => c.address && addrJaccard(val, c.address) > 0.45)
-      .sort((a, b) => addrJaccard(val, b.address) - addrJaccard(val, a.address))
+      .filter(c => c.address && addrJaccard(combined, c.address) > 0.45)
+      .sort((a, b) => addrJaccard(combined, b.address) - addrJaccard(combined, a.address))
       .slice(0, 2);
     if (matches.length) {
       warn.innerHTML = '<strong>⚠ Similar address already on file:</strong><br>' +
@@ -1512,7 +1519,8 @@ async function saveNewClient() {
 
   const required = [
     { id: 'nf-name',       label: 'Property Name' },
-    { id: 'nf-address',    label: 'Service Address' },
+    { id: 'nf-street',     label: 'Street Address' },
+    { id: 'nf-city-state', label: 'City, State ZIP' },
     { id: 'nf-acct',       label: 'FLPS Account #' },
     { id: 'nf-manager',    label: 'Property Manager' },
     { id: 'nf-contact',    label: 'Property Manager Contact Info' },
@@ -1556,9 +1564,11 @@ async function saveNewClient() {
       return;
     }
 
+    const street    = val('nf-street');
+    const cityState = val('nf-city-state');
     const data = {
       name:      val('nf-name'),
-      address:   val('nf-address'),
+      address:   street + (cityState ? '\n' + cityState : ''),
       acct:      String(acctNum),
       manager:   val('nf-manager'),
       contact:   val('nf-contact'),
