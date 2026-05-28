@@ -166,6 +166,48 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 
 /* ── Mapping legend ── */
 .mapping-note { background: #e3f2fd; border-left: 3px solid #1565c0; padding: 8px 12px; margin: 0 18px 8px; font-size: 0.73rem; color: #1a237e; border-radius: 0 4px 4px 0; }
+
+/* ── Add Client Modal ── */
+#add-client-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; }
+#add-client-overlay.open { display:block; }
+#add-client-modal {
+  display:none; position:fixed; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:white; border-radius:10px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.3);
+  z-index:9001; width:680px; max-width:96vw; max-height:90vh;
+  flex-direction:column; overflow:hidden;
+}
+#add-client-modal.open { display:flex; }
+.modal-hdr { background:#1a1a2e; color:white; padding:14px 20px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.modal-hdr h2 { font-size:1rem; font-weight:600; flex:1; }
+.modal-close-btn { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); color:white; border-radius:4px; padding:4px 10px; cursor:pointer; font-size:0.85rem; }
+.modal-body-scroll { flex:1; overflow-y:auto; padding:18px 22px; }
+.modal-ftr { border-top:2px solid #e0e0e0; padding:12px 22px; display:flex; gap:10px; align-items:center; flex-shrink:0; background:#fafafa; flex-wrap:wrap; }
+.fm-row { margin-bottom:13px; }
+.fm-label { display:block; font-size:0.72rem; font-weight:700; color:#444; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em; }
+.fm-label .req { color:#c0392b; }
+.fm-row input, .fm-row textarea { width:100%; border:1px solid #ddd; border-radius:4px; padding:7px 10px; font-size:0.85rem; font-family:inherit; outline:none; box-sizing:border-box; }
+.fm-row input:focus, .fm-row textarea:focus { border-color:#2e6da4; box-shadow:0 0 0 2px rgba(46,109,164,0.1); }
+.fm-row textarea { resize:vertical; min-height:62px; }
+.fm-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.fm-section { font-size:0.7rem; font-weight:700; color:#2e6da4; text-transform:uppercase; letter-spacing:0.07em; border-bottom:1px solid #e0e0e0; padding-bottom:5px; margin:18px 0 12px; }
+.fm-section:first-of-type { margin-top:0; }
+.addr-dup-warn { background:#fff3cd; border:1px solid #ffc107; border-radius:4px; padding:7px 10px; font-size:0.78rem; color:#856404; margin-top:5px; display:none; }
+.addr-dup-warn.show { display:block; }
+.acct-conflict { font-size:0.72rem; color:#c0392b; margin-top:3px; display:none; }
+.acct-conflict.show { display:block; }
+.lcp-quick-btn { background:rgba(255,255,255,0.12); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:5px; padding:6px 14px; cursor:pointer; font-size:0.8rem; font-weight:600; font-family:inherit; white-space:nowrap; }
+.lcp-quick-btn:hover { background:rgba(255,255,255,0.22); }
+.modal-save-btn { background:#2e7d32; color:white; border:none; border-radius:5px; padding:8px 22px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:inherit; }
+.modal-save-btn:hover { background:#388e3c; }
+.modal-save-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.modal-cancel-btn { background:#f0f0f0; color:#333; border:1px solid #ccc; border-radius:5px; padding:8px 18px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:inherit; }
+.modal-cancel-btn:hover { background:#e0e0e0; }
+#add-client-status { font-size:0.78rem; flex:1; }
+#add-client-status.err { color:#c0392b; font-weight:600; }
+.add-client-toolbar-btn { background:#2e7d32; color:white; border:none; padding:5px 14px; border-radius:4px; cursor:pointer; font-size:0.78rem; font-weight:600; }
+.add-client-toolbar-btn:hover { background:#388e3c; }
 </style>
 </head>
 <body>
@@ -244,6 +286,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
       <option value="unmatched">Not in QB</option>
       <option value="qbonly">QB only</option>
     </select>
+    <button class="add-client-toolbar-btn" onclick="openAddClientModal()">+ Add Client</button>
     <span class="toolbar-count" id="row-count"></span>
   </div>
 
@@ -268,6 +311,86 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 </div>
 
 <div id="toast"></div>
+
+<!-- ── Add Client Modal ── -->
+<div id="add-client-overlay" onclick="closeAddClientModal()"></div>
+<div id="add-client-modal">
+  <div class="modal-hdr">
+    <h2>Add New Client</h2>
+    <button class="lcp-quick-btn" onclick="applyLCPDefaults()">⚡ LCP Quick-Fill</button>
+    <button class="modal-close-btn" onclick="closeAddClientModal()">✕ Close</button>
+  </div>
+  <div class="modal-body-scroll">
+    <div class="fm-section">Property Info</div>
+    <div class="fm-grid2">
+      <div class="fm-row">
+        <label class="fm-label">Property Name <span class="req">*</span></label>
+        <input type="text" id="nf-name" placeholder="e.g. Willow Creek Apartments">
+      </div>
+      <div class="fm-row">
+        <label class="fm-label">FLPS Account # <span class="req">*</span></label>
+        <input type="number" id="nf-acct" placeholder="Auto-incremented" min="1">
+        <div class="acct-conflict" id="nf-acct-conflict">⚠ That number was taken — updated below. Click Save again to confirm.</div>
+      </div>
+    </div>
+    <div class="fm-row">
+      <label class="fm-label">Service Address <span class="req">*</span></label>
+      <input type="text" id="nf-address" placeholder="e.g. 18300 E. 71st Ave, Denver, CO 80249" oninput="onAddressInput(this.value)">
+      <div class="addr-dup-warn" id="nf-addr-warn"></div>
+    </div>
+
+    <div class="fm-section">Contact</div>
+    <div class="fm-grid2">
+      <div class="fm-row">
+        <label class="fm-label">Property Manager <span class="req">*</span></label>
+        <input type="text" id="nf-manager" placeholder="e.g. Jessica Savacool">
+      </div>
+      <div class="fm-row">
+        <label class="fm-label">Billing Email <span class="req">*</span></label>
+        <input type="email" id="nf-bill-email" placeholder="e.g. lcpmap@avidbill.com">
+      </div>
+    </div>
+    <div class="fm-row">
+      <label class="fm-label">Property Manager Contact Info <span class="req">*</span></label>
+      <textarea id="nf-contact" placeholder="e.g. jsavacool@lcpmanagement.net&#10;720-749-2224"></textarea>
+    </div>
+
+    <div class="fm-section">Billing</div>
+    <div class="fm-row">
+      <label class="fm-label">Property Management Company Name <span class="req">*</span></label>
+      <input type="text" id="nf-mgmt" placeholder="e.g. All-In &amp; Focused Development, LLC">
+    </div>
+    <div class="fm-row">
+      <label class="fm-label">Bill To / Invoice Info <span class="req">*</span></label>
+      <textarea id="nf-bill-to" placeholder="e.g. c/o LCP Management&#10;1127 Sherman St. #150&#10;Denver, CO 80203"></textarea>
+    </div>
+
+    <div class="fm-section">Optional Details</div>
+    <div class="fm-row">
+      <label class="fm-label">Building Access Entry Info</label>
+      <textarea id="nf-access" placeholder="e.g. lockbox east side on gas meter - marked with a K, code is 1987"></textarea>
+    </div>
+    <div class="fm-grid2">
+      <div class="fm-row">
+        <label class="fm-label">Services Provided</label>
+        <input type="text" id="nf-services" placeholder="e.g. Sprinkler, Alarm, Extinguisher">
+      </div>
+      <div class="fm-row">
+        <label class="fm-label">Fire District</label>
+        <input type="text" id="nf-district" placeholder="e.g. South Metro Fire">
+      </div>
+    </div>
+    <div class="fm-row">
+      <label class="fm-label">Notes</label>
+      <textarea id="nf-notes" placeholder="Any additional notes…" style="min-height:46px;"></textarea>
+    </div>
+  </div>
+  <div class="modal-ftr">
+    <button class="modal-save-btn" id="btn-save-client" onclick="saveNewClient()">+ Add Client</button>
+    <button class="modal-cancel-btn" onclick="closeAddClientModal()">Cancel</button>
+    <span id="add-client-status"></span>
+  </div>
+</div>
 
 <!-- ── Field Comparison Drawer ── -->
 <div id="compare-overlay" onclick="closeDrawerCompare()"></div>
@@ -320,6 +443,8 @@ let sheetClients   = [];
 let qbCustomers    = [];
 let reconciled     = [];
 let drawerIdx      = null;
+let sheetHeaders   = [];
+let sheetColMap    = {};
 
 // ── Nav ────────────────────────────────────────────────────────────────────
 function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
@@ -338,7 +463,7 @@ function initGoogle() {
   try {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
       callback: async (resp) => {
         if (resp.error) { setGoogleStatus('✗ ' + resp.error, 'err'); return; }
         accessToken = resp.access_token;
@@ -514,6 +639,15 @@ async function loadSheetClients() {
   const iBillEm  = col(['billing email','bill email']);
   const iContact = col(['property manager contact','contact info']);
   const iManager = headers.findIndex(h => h === 'property manager' || h === 'property manager name');
+  const iAccess   = col(['building access','access entry','access info']);
+  const iServices = col(['services provided','services']);
+  const iDistrict = col(['fire district','district']);
+  const iNotes    = headers.findIndex(h => h === 'notes' || h === 'note');
+
+  sheetHeaders = rows[0].map(h => String(h||'').trim());
+  sheetColMap  = { name: iName, acct: iAcct, addr: iAddr, mgmt: iMgmt, billTo: iBillTo,
+                   billEmail: iBillEm, contact: iContact, manager: iManager,
+                   access: iAccess, services: iServices, district: iDistrict, notes: iNotes };
 
   sheetClients = [];
   for (let i = 1; i < rows.length; i++) {
@@ -1287,6 +1421,181 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── Add Client Modal ─────────────────────────────────────────────────────────
+let addrDupTimer = null;
+
+function openAddClientModal() {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+
+  const maxAcct = sheetClients.reduce((m, c) => {
+    const n = parseInt(String(c.acct || '').replace(/\.0$/, ''));
+    return isNaN(n) ? m : Math.max(m, n);
+  }, 0);
+  document.getElementById('nf-acct').value = maxAcct + 1;
+
+  ['nf-name','nf-address','nf-manager','nf-bill-email','nf-contact','nf-mgmt','nf-bill-to','nf-access','nf-services','nf-district','nf-notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('nf-addr-warn').classList.remove('show');
+  document.getElementById('nf-acct-conflict').classList.remove('show');
+  const status = document.getElementById('add-client-status');
+  status.textContent = ''; status.className = '';
+  const btn = document.getElementById('btn-save-client');
+  btn.disabled = false; btn.textContent = '+ Add Client';
+
+  document.getElementById('add-client-overlay').classList.add('open');
+  document.getElementById('add-client-modal').classList.add('open');
+  setTimeout(() => document.getElementById('nf-name').focus(), 80);
+}
+
+function closeAddClientModal() {
+  document.getElementById('add-client-overlay').classList.remove('open');
+  document.getElementById('add-client-modal').classList.remove('open');
+}
+
+function applyLCPDefaults() {
+  document.getElementById('nf-bill-email').value = 'lcpmap@avidbill.com';
+  document.getElementById('nf-bill-to').value    = 'c/o LCP Management\n1127 Sherman St. #150\nDenver, CO 80203';
+  toast('⚡ LCP defaults applied — fill in property manager, contact info, and company name');
+  document.getElementById('nf-manager').focus();
+}
+
+function addrJaccard(a, b) {
+  const tok = s => new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean));
+  const ta = tok(a), tb = tok(b);
+  const inter = [...ta].filter(t => tb.has(t)).length;
+  const union = new Set([...ta,...tb]).size;
+  return union > 0 ? inter / union : 0;
+}
+
+function onAddressInput(val) {
+  clearTimeout(addrDupTimer);
+  const warn = document.getElementById('nf-addr-warn');
+  if (!val.trim() || val.trim().length < 5) { warn.classList.remove('show'); return; }
+  addrDupTimer = setTimeout(() => {
+    const matches = sheetClients
+      .filter(c => c.address && addrJaccard(val, c.address) > 0.45)
+      .sort((a, b) => addrJaccard(val, b.address) - addrJaccard(val, a.address))
+      .slice(0, 2);
+    if (matches.length) {
+      warn.innerHTML = '<strong>⚠ Similar address already on file:</strong><br>' +
+        matches.map(c => `&nbsp;&bull; ${escHtml(c.address.replace(/\n/g,' '))} <span style="color:#666;">(${escHtml(c.name)})</span>`).join('<br>');
+      warn.classList.add('show');
+    } else {
+      warn.classList.remove('show');
+    }
+  }, 350);
+}
+
+function buildNewClientRow(data) {
+  const numCols = sheetHeaders.length || 12;
+  const row = new Array(numCols).fill('');
+  const set = (idx, v) => { if (idx >= 0 && idx < numCols) row[idx] = v || ''; };
+  set(sheetColMap.name,      data.name);
+  set(sheetColMap.addr,      data.address);
+  set(sheetColMap.acct,      data.acct);
+  set(sheetColMap.manager,   data.manager);
+  set(sheetColMap.contact,   data.contact);
+  set(sheetColMap.billEmail, data.billEmail);
+  set(sheetColMap.mgmt,      data.mgmt);
+  set(sheetColMap.billTo,    data.billTo);
+  set(sheetColMap.access,    data.access);
+  set(sheetColMap.services,  data.services);
+  set(sheetColMap.district,  data.district);
+  set(sheetColMap.notes,     data.notes);
+  return row;
+}
+
+async function saveNewClient() {
+  const btn    = document.getElementById('btn-save-client');
+  const status = document.getElementById('add-client-status');
+  const val    = id => (document.getElementById(id)?.value || '').trim();
+
+  const required = [
+    { id: 'nf-name',       label: 'Property Name' },
+    { id: 'nf-address',    label: 'Service Address' },
+    { id: 'nf-acct',       label: 'FLPS Account #' },
+    { id: 'nf-manager',    label: 'Property Manager' },
+    { id: 'nf-contact',    label: 'Property Manager Contact Info' },
+    { id: 'nf-bill-email', label: 'Billing Email' },
+    { id: 'nf-mgmt',       label: 'Property Management Company Name' },
+    { id: 'nf-bill-to',    label: 'Bill To / Invoice Info' },
+  ];
+  const missing = required.filter(f => !val(f.id));
+  if (missing.length) {
+    status.textContent = '⚠ Required: ' + missing.map(f => f.label).join(', ');
+    status.className = 'err';
+    return;
+  }
+
+  const proposedAcct = parseInt(val('nf-acct'));
+  if (isNaN(proposedAcct) || proposedAcct <= 0) {
+    status.textContent = '⚠ Invalid FLPS Account Number';
+    status.className = 'err';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+  status.textContent = ''; status.className = '';
+
+  try {
+    // Re-read sheet to detect collisions since the modal was opened
+    await loadSheetClients();
+
+    const takenAccts = new Set(
+      sheetClients.map(c => parseInt(String(c.acct||'').replace(/\.0$/,''))).filter(n => !isNaN(n))
+    );
+    let acctNum = proposedAcct;
+    if (takenAccts.has(acctNum)) {
+      const maxAcct = Math.max(...takenAccts);
+      acctNum = maxAcct + 1;
+      document.getElementById('nf-acct').value = acctNum;
+      document.getElementById('nf-acct-conflict').classList.add('show');
+      status.textContent = `⚠ Account #${proposedAcct} was already taken — updated to ${acctNum}. Click Save again to confirm.`;
+      status.className = 'err';
+      btn.disabled = false; btn.textContent = '+ Add Client';
+      return;
+    }
+
+    const data = {
+      name:      val('nf-name'),
+      address:   val('nf-address'),
+      acct:      String(acctNum),
+      manager:   val('nf-manager'),
+      contact:   val('nf-contact'),
+      billEmail: val('nf-bill-email'),
+      mgmt:      val('nf-mgmt'),
+      billTo:    val('nf-bill-to'),
+      access:    val('nf-access'),
+      services:  val('nf-services'),
+      district:  val('nf-district'),
+      notes:     val('nf-notes'),
+    };
+
+    const row = buildNewClientRow(data);
+    const res = await googleFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Client%20List:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      'POST',
+      { values: [row] }
+    );
+    if (!res.ok) { const err = await res.text(); throw new Error('Sheets API: ' + err); }
+
+    sheetClients.push({ ...data });
+    toast(`✓ "${data.name}" added (FLPS #${acctNum})`);
+    closeAddClientModal();
+
+    if (qbAccessToken && qbCustomers.length) {
+      await reconcile();
+    } else {
+      updateSummary();
+    }
+  } catch(e) {
+    status.textContent = '✗ ' + e.message;
+    status.className = 'err';
+    console.error(e);
+    btn.disabled = false; btn.textContent = '+ Add Client';
+  }
+}
+
 // ── On load ───────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
   const k = localStorage.getItem('flips_api_key');
@@ -1300,7 +1609,7 @@ window.addEventListener('load', async () => {
     try {
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: c,
-        scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+        scope: 'https://www.googleapis.com/auth/spreadsheets',
         callback: async (resp) => {
           if (resp.error) {
             setGoogleStatus('⚠ Session expired', 'err');
