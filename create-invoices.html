@@ -227,6 +227,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .doc-name { font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .doc-meta { font-size: 0.73rem; color: #888; margin-top: 1px; }
 .doc-amount { font-size: 0.82rem; font-weight: 700; color: #2e7d50; white-space: nowrap; margin-left: auto; }
+.doc-view-btn { font-size: 0.72rem; color: #2e6da4; text-decoration: none; padding: 3px 7px; border: 1px solid #c0d8f0; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0f6ff; transition: background 0.1s; }
+.doc-view-btn:hover { background: #d0e8ff; }
 
 /* ── Empty / loading states ── */
 #list-placeholder {
@@ -912,6 +914,9 @@ function renderDocList(docs) {
       ? `<div class="doc-amount">$${_amt.toLocaleString('en-US',{minimumFractionDigits:2})}</div>`
       : '';
     const clientStr = doc.client ? ` &middot; ${doc.client}` : '';
+    const viewUrl = doc.mimeType === 'application/vnd.google-apps.document'
+      ? `https://docs.google.com/document/d/${doc.id}/export?format=pdf`
+      : `https://drive.google.com/file/d/${doc.id}/view`;
     return `<div class="doc-row" id="row-${doc.id}" onclick="toggleRow('${doc.id}')">
       <input type="checkbox" id="chk-${doc.id}" onchange="onCheckChange()" onclick="event.stopPropagation()">
       <div class="doc-icon">${icon}</div>
@@ -920,6 +925,7 @@ function renderDocList(docs) {
         <div class="doc-meta">Modified ${date}${clientStr}</div>
       </div>
       ${amountHtml}
+      <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="View PDF">📄 View</a>
     </div>`;
   }).join('');
 
