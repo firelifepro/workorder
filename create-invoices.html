@@ -915,7 +915,7 @@ function renderDocList(docs) {
       : '';
     const clientStr = doc.client ? ` &middot; ${doc.client}` : '';
     const viewUrl = doc.mimeType === 'application/vnd.google-apps.document'
-      ? `https://docs.google.com/document/d/${doc.id}/export?format=pdf`
+      ? `https://docs.google.com/document/d/${doc.id}/edit`
       : `https://drive.google.com/file/d/${doc.id}/view`;
     return `<div class="doc-row" id="row-${doc.id}" onclick="toggleRow('${doc.id}')">
       <input type="checkbox" id="chk-${doc.id}" onchange="onCheckChange()" onclick="event.stopPropagation()">
@@ -1076,12 +1076,12 @@ async function createInvoices() {
       if (res.ok) {
         const data = await res.json();
         const text = extractText(data);
-        doc.amount    = parseAmount(text) || doc.amount;
-        doc.client    = doc.client    || parseClient(text) || doc.name;
-        doc.acctNum   = doc.acctNum   || parseAcctNum(text);
-        doc.billEmail = doc.billEmail || parseBillingEmail(text);
-        doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
-        doc.citySt    = doc.citySt    || parseCitySt(text);
+        doc.amount    = parseAmount(text)        || doc.amount;
+        doc.client    = parseClient(text)        || doc.client    || doc.name;
+        doc.acctNum   = parseAcctNum(text)       || doc.acctNum;
+        doc.billEmail = parseBillingEmail(text)  || doc.billEmail;
+        doc.svcAddr   = parseSvcAddr(text)       || doc.svcAddr;
+        doc.citySt    = parseCitySt(text)        || doc.citySt;
         doc.scope          = parseScope(text);
         doc.workDesc       = parseWorkDesc(text);
         doc.dateCompleted  = parseDateCompleted(text);
