@@ -355,7 +355,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 <!-- EDIT WORK ORDER BANNER -->
 <div id="edit-wo-banner" style="display:none;background:#fff3e0;border:2px solid #f0a030;padding:12px 16px;margin:8px;border-radius:6px;font-size:0.9rem;">
   <strong>✏️ Edit Mode</strong> — Editing <span id="edit-wo-name" style="font-weight:600;color:#7b3f00;"></span>.
-  When you click <em>Save</em>, the existing Drive file will be <strong>overwritten</strong> — no duplicate will be created.
+  Saving will <strong>overwrite</strong> the existing Drive file — no duplicate will be created.
+  <div id="edit-wo-submat" style="display:none;margin-top:8px;padding:8px 10px;background:#fff8f0;border:1px solid #f0c080;border-radius:4px;font-size:0.82rem;font-family:monospace;white-space:pre-line;color:#5a3000;"></div>
 </div>
 
 <!-- ESTIMATE PRE-FILL BANNER -->
@@ -1848,6 +1849,13 @@ function loadFromEditWO(d) {
   const nameEl = document.getElementById('edit-wo-name');
   if (banner) banner.style.display = 'block';
   if (nameEl) nameEl.textContent = d.fileName || fileId;
+  if (d.subMatNote) {
+    const noteEl = document.getElementById('edit-wo-submat');
+    if (noteEl) {
+      noteEl.textContent = '📋 Original sub/materials (re-enter manually):\n' + d.subMatNote;
+      noteEl.style.display = 'block';
+    }
+  }
 
   // Update button label
   const btn = document.getElementById('submit-btn');
