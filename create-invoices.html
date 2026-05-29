@@ -229,6 +229,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .doc-amount { font-size: 0.82rem; font-weight: 700; color: #2e7d50; white-space: nowrap; margin-left: auto; }
 .doc-view-btn { font-size: 0.72rem; color: #2e6da4; text-decoration: none; padding: 3px 7px; border: 1px solid #c0d8f0; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0f6ff; transition: background 0.1s; }
 .doc-view-btn:hover { background: #d0e8ff; }
+.doc-edit-btn { font-size: 0.72rem; color: #7b3f00; background: #fff8f0; border: 1px solid #f0c080; border-radius: 3px; padding: 3px 7px; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: background 0.1s; }
+.doc-edit-btn:hover { background: #ffe8c0; }
 
 /* ── Empty / loading states ── */
 #list-placeholder {
@@ -925,7 +927,8 @@ function renderDocList(docs) {
         <div class="doc-meta">Modified ${date}${clientStr}</div>
       </div>
       ${amountHtml}
-      <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="View PDF">📄 View</a>
+      <button class="doc-edit-btn" onclick="event.stopPropagation();openEditWorkOrder('${doc.id}','${escHtml(doc.name).replace(/'/g,"\\'")}')" title="Edit this work order and overwrite the Drive file">✏️ Edit WO</button>
+      <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="Open in Google Docs">📄 View</a>
     </div>`;
   }).join('');
 
@@ -1418,6 +1421,174 @@ async function findFolder(name) {
   const json = await res.json();
   const folder = json.files?.find(f => f.name.trim().toLowerCase() === name.trim().toLowerCase());
   return folder?.id || null;
+}
+
+// ─────────────────────────────────────────────────────────
+// EDIT WORK ORDER — parse doc, store to localStorage, open index.html
+// ─────────────────────────────────────────────────────────
+function parseWOField(text, label) {
+  const idx = text.indexOf(label);
+  if (idx < 0) return '';
+  const after = text.slice(idx + label.length).replace(/^:?\s*/, '');
+  const lines = after.split(/[\r\n]/);
+  for (let i = 0; i < Math.min(lines.length, 5); i++) {
+    const line = lines[i].trim();
+    if (line && !/^[A-Z][A-Z\s#\/&*]+:/.test(line) && !/^(WORK ORDER|CLIENT|SCOPE|FIRE SYSTEM|NOTES|FLPS EXPENSES|COMPLETION)/i.test(line)) {
+      return line;
+    }
+  }
+  return '';
+}
+
+function parseWODate(str) {
+  if (!str) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  const d = new Date(str);
+  if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  return '';
+}
+
+async function openEditWorkOrder(docId, docName) {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+  toast('⏳ Loading work order…');
+  try {
+    const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}?fields=body`);
+    if (!res.ok) throw new Error('Could not load document');
+    const data = await res.json();
+    const text = extractText(data);
+
+    const g = (label) => parseWOField(text, label);
+
+    // Services from bullet list
+    const services = [];
+    const bulletMatch = text.match(/List of Selected Work Scope Items[\s\S]*?(?=FIRE SYSTEM INFORMATION|$)/i);
+    if (bulletMatch) {
+      (bulletMatch[0].match(/•\s*([^\n\r•]+)/g) || []).forEach(b => {
+        const svc = b.replace(/^•\s*/, '').trim();
+        if (svc && svc.toLowerCase() !== 'none selected') services.push(svc);
+      });
+    }
+
+    // System types — rendered as ☑ Wet ☐ Dry …
+    const sysSection = text.match(/System Type:([\s\S]{0,300}?)Panel/i);
+    const systemTypes = [];
+    if (sysSection) {
+      ['Wet','Dry','Pre-Action','Deluge','Glycol','Nitrogen','Ansul'].forEach(t => {
+        if (sysSection[1].includes('☑ ' + t)) systemTypes.push(t);
+      });
+      if (sysSection[1].includes('☑ Fire Ext. Type K')) systemTypes.push('Fire Extinguisher Type K');
+    }
+
+    // Panel type
+    const panelSection = text.match(/Panel System Type:([\s\S]{0,150}?)(?:\n|Panel Manufacturer)/i);
+    let panelType = '';
+    if (panelSection) {
+      if (panelSection[1].includes('☑ Conventional')) panelType = 'Conventional';
+      else if (panelSection[1].includes('☑ Addressable')) panelType = 'Addressable';
+    }
+
+    // Priority
+    const prioSection = text.match(/Priority:([\s\S]{0,80}?)(?:\n[A-Z]|Requested By)/i);
+    let priority = 'Routine';
+    if (prioSection) {
+      if (prioSection[1].includes('☑ Urgent')) priority = 'Urgent';
+      else if (prioSection[1].includes('☑ Emergency')) priority = 'Emergency';
+      else if (prioSection[1].includes('☑ Routine')) priority = 'Routine';
+    }
+
+    // Labor
+    const labor1Rate = (text.match(/Labor 1[\s\S]{0,60}?\$(\d+(?:\.\d+)?)\s*\/hr/i)||[])[1] || '';
+    const labor1Hrs  = (text.match(/Labor 1[\s\S]{0,120}?(\d+(?:\.\d+)?)\s*hrs/i)||[])[1]  || '';
+    const labor2Rate = (text.match(/Labor 2[\s\S]{0,60}?\$(\d+(?:\.\d+)?)\s*\/hr/i)||[])[1] || '';
+    const labor2Hrs  = (text.match(/Labor 2[\s\S]{0,120}?(\d+(?:\.\d+)?)\s*hrs/i)||[])[1]  || '';
+
+    // Markup %
+    const markupPct = ((text.match(/Markup\s*\((\d+)%\)/i)||[])[1]) || '25';
+
+    // Trip charge
+    const tripChecked = /Trip Charge[\s\S]{0,60}?☑\s*\$90/.test(text);
+
+    // Misc
+    const miscSection = text.match(/\bMisc\b[:\s]*([\s\S]{0,150}?)(?=\n(?:Compliance|Total|★|$))/i);
+    const miscDesc = miscSection ? g('Misc') : '';
+    const miscExpense = (text.match(/\bMisc\b[\s\S]{0,200}?\$(\d[\d,]*\.\d{2})[\s\S]{0,60}?\$(\d[\d,]*\.\d{2})[\s\S]{0,60}?\$(\d[\d,]*\.\d{2})/i)||[])[1] || '';
+
+    // Compliance
+    const complianceChecked = text.includes('☑ Compliance Report');
+    const complianceDesc = complianceChecked ? g('Compliance Report') : '';
+    const complianceExpRaw = complianceChecked
+      ? (text.match(/Compliance Report[\s\S]{0,300}?\$(\d[\d,]*\.\d{2})/i)||[])[1] || ''
+      : '';
+
+    // Fixed rate
+    const flatRate = text.includes('★ FIXED RATE =') || text.includes('★ FIXED RATE =');
+    const flatRateAmount = flatRate
+      ? ((text.match(/(?:FIXED RATE|★ FIXED RATE)\s*=\s*\$(\d[\d,]*(?:\.\d{2})?)/i)||[])[1]||'').replace(/,/g,'')
+      : '';
+
+    // Work description (between "Description of Work Requested" and "List of Selected")
+    const workDescM = text.match(/Description\s+of\s+Work\s+Requested[:\s]*([\s\S]*?)(?=List of Selected Work Scope|FIRE SYSTEM|$)/i);
+    const workDesc = workDescM ? workDescM[1].replace(/^[\s\n]+|[\s\n]+$/g,'').trim() : '';
+
+    // Notes
+    const notesM = text.match(/NOTES\s*\/\s*DEFICIENCIES\s*FOUND[\s\S]{0,60}?([\s\S]*?)(?=FLPS EXPENSES|$)/i);
+    const notes = notesM ? notesM[1].replace(/^[\s\n]+|[\s\n]+$/g,'').trim() : '';
+
+    const payload = {
+      fileId: docId,
+      fileName: docName,
+      dateCompleted:   parseWODate(g('Date Completed')),
+      dateRequired:    parseWODate(g('Date Required')),
+      lineNum:         g('Line #'),
+      priority,
+      requestedBy:     g('Requested By'),
+      technician:      g('Assigned Technician'),
+      scheduledDate:   parseWODate(g('Scheduled Date')),
+      clientCompany:   parseClient(text) || g('Client / Company'),
+      propertyName:    g('Property Name'),
+      flpsAcct:        parseAcctNum(text) || g('FLPS Account #'),
+      serviceAddress:  parseSvcAddr(text) || g('Service Address'),
+      citySt:          parseCitySt(text)  || g('City / State / Zip'),
+      propertyContact: g('Property Contact'),
+      contactPhone:    g('Contact Phone'),
+      contactEmail:    g('Contact Email'),
+      billingEmail:    parseBillingEmail(text) || g('Billing Email'),
+      accessInfo:      g('Access / Entry Info'),
+      services,
+      workDesc,
+      systemTypes,
+      panelType,
+      panelMfr:        g('Panel Manufacturer'),
+      monitoringCo:    g('Monitoring Company'),
+      monitoringAcct:  g('Monitoring Account #'),
+      numSprinklers:   g('Sprinkler Heads'),
+      numExtinguishers:g('Fire Extinguishers'),
+      numHydrants:     g('Hydrants'),
+      numBackflows:    g('Backflows'),
+      lastInspection:  parseWODate(g('Last Inspection Date')),
+      complianceDue:   parseWODate(g('Compliance Due Date')),
+      notes,
+      markupPct,
+      labor1Rate, labor1Hrs,
+      labor2Rate, labor2Hrs,
+      tripChecked,
+      miscDesc, miscExpense,
+      complianceChecked,
+      complianceDesc,
+      complianceExpense: complianceExpRaw.replace(/,/g,''),
+      flatRate, flatRateAmount,
+      grandTotal: (flatRate ? flatRateAmount : null) || (parseAmount(text) || ''),
+    };
+
+    localStorage.setItem('flips_edit_workorder', JSON.stringify(payload));
+    window.open(`index.html?edit_wo=${encodeURIComponent(docId)}`, '_blank');
+    toast('✓ Work order editor opening in new tab…');
+  } catch(e) {
+    toast('✗ ' + e.message);
+    console.error('[editWO]', e);
+  }
 }
 
 // apiFetch / refreshAccessToken live in js/flips-google-fetch.js

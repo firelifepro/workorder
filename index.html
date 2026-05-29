@@ -352,6 +352,12 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   </div>
 </div>
 
+<!-- EDIT WORK ORDER BANNER -->
+<div id="edit-wo-banner" style="display:none;background:#fff3e0;border:2px solid #f0a030;padding:12px 16px;margin:8px;border-radius:6px;font-size:0.9rem;">
+  <strong>✏️ Edit Mode</strong> — Editing <span id="edit-wo-name" style="font-weight:600;color:#7b3f00;"></span>.
+  When you click <em>Save</em>, the existing Drive file will be <strong>overwritten</strong> — no duplicate will be created.
+</div>
+
 <!-- ESTIMATE PRE-FILL BANNER -->
 <div id="estimate-banner" style="display:none;background:#fffbdd;border:2px solid #f0c040;padding:12px 16px;margin:8px;border-radius:6px;font-size:0.9rem;">
   <strong>⚡ Estimate Pre-fill Available</strong> — <span id="estimate-banner-text"></span>
@@ -898,6 +904,13 @@ document.addEventListener('click', e => {
 const TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc';
 const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets.readonly';
 
+let editModeFileId = null; // set when opened via ?edit_wo=FILEID from create-invoices
+
+// Called by flips-shared.js after OAuth + loadSheet complete
+function onAfterAuth() {
+  applyEditMode();
+}
+
 // loadSheet, parseRows, parseCSV, findKey, buildDropdown, filterPropertyDropdown,
 // clearPropertySearch, onPropertySelect — moved to js/flips-shared.js
 
@@ -1212,17 +1225,19 @@ async function createDoc() {
       `--${boundary}--`
     ].join('\r\n');
 
-    const uploadRes = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,parents&supportsAllDrives=true',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': `multipart/related; boundary="${boundary}"`
-        },
-        body
-      }
-    );
+    const uploadUrl = editModeFileId
+      ? `https://www.googleapis.com/upload/drive/v3/files/${editModeFileId}?uploadType=multipart&fields=id,parents&supportsAllDrives=true`
+      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,parents&supportsAllDrives=true`;
+    const uploadMethod = editModeFileId ? 'PATCH' : 'POST';
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: uploadMethod,
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': `multipart/related; boundary="${boundary}"`
+      },
+      body
+    });
     if (!uploadRes.ok) {
       let errMsg = 'Upload failed';
       try {
@@ -1234,35 +1249,36 @@ async function createDoc() {
     }
     const { id: newId, parents } = await uploadRes.json();
 
-    // Move into "FLPS Work Flow / 2 - Ready to Invoice"
-    setStatus('submit-status', 'Moving to folder…', '');
-    const targetFolderId = await findTargetFolder('2 - Ready to Invoice');
-    if (targetFolderId) {
-      const oldParents = (parents || []).join(',');
-      await apiFetch(
-        `https://www.googleapis.com/drive/v3/files/${newId}?addParents=${targetFolderId}&supportsAllDrives=true` +
-        (oldParents ? `&removeParents=${oldParents}` : ''),
-        'PATCH', null
-      );
+    if (!editModeFileId) {
+      // New WO: move into "2 - Ready to Invoice"
+      setStatus('submit-status', 'Moving to folder…', '');
+      const targetFolderId = await findTargetFolder('2 - Ready to Invoice');
+      if (targetFolderId) {
+        const oldParents = (parents || []).join(',');
+        await apiFetch(
+          `https://www.googleapis.com/drive/v3/files/${newId}?addParents=${targetFolderId}&supportsAllDrives=true` +
+          (oldParents ? `&removeParents=${oldParents}` : ''),
+          'PATCH', null
+        );
+      }
     }
 
     // Convert Completion & Billing checkboxes to native Docs checklist items
     setStatus('submit-status', 'Applying checkboxes…', '');
     await applyCompletionChecklists(newId);
 
-
     const url = `https://docs.google.com/document/d/${newId}/edit`;
     const lnk = document.getElementById('doc-link');
     lnk.href = url; lnk.style.display = 'inline-block';
     document.getElementById('new-wo-btn').style.display = 'inline-block';
-    toast('✓ Saved: ' + docName);
+    toast(editModeFileId ? '✓ Updated: ' + docName : '✓ Saved: ' + docName);
 
     // Update inspection schedule (non-blocking — runs in background)
     updateInspectionSchedule(data).catch(e => console.warn('[Schedule] Exception:', e.message));
 
     // Write client + amount as Drive file properties so create-invoices
     // can read them instantly from the file list without opening each doc.
-    setStatus('submit-status', '✓ Work order saved!', 'ok');
+    setStatus('submit-status', editModeFileId ? '✓ Work order updated!' : '✓ Work order saved!', 'ok');
     const clientVal  = data['PROPERTY NAME'] || '';
     const amountVal  = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g,'') : '';
     if (clientVal || amountVal) {
@@ -1702,6 +1718,143 @@ window.addEventListener('load', () => {
 
   checkPendingEstimate();
 });
+
+// ─────────────────────────────────────────────────────────
+// EDIT WORK ORDER — pre-fill from localStorage + overwrite mode
+// ─────────────────────────────────────────────────────────
+function applyEditMode() {
+  const params = new URLSearchParams(location.search);
+  const fileId = params.get('edit_wo');
+  if (!fileId) return;
+  try {
+    const raw = localStorage.getItem('flips_edit_workorder');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.fileId !== fileId) return; // stale / mismatched
+    localStorage.removeItem('flips_edit_workorder');
+    editModeFileId = fileId;
+    loadFromEditWO(d);
+  } catch(e) {
+    console.warn('[editWO] applyEditMode failed:', e.message);
+  }
+}
+
+function loadFromEditWO(d) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  const check = (name, val) => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => { el.checked = (el.value === val); });
+  };
+
+  // Work Order Information
+  set('date-requested', d.dateCompleted);
+  set('date-required',  d.dateRequired);
+  set('wo-number',      d.lineNum);
+  check('priority',     d.priority || 'Routine');
+  set('requested-by',   d.requestedBy);
+  set('technician',     d.technician);
+  set('scheduled-date', d.scheduledDate);
+
+  // Client & Property
+  set('client-company',   d.clientCompany);
+  set('service-address',  d.serviceAddress);
+  set('city-state-zip',   d.citySt);
+  set('property-contact', d.propertyContact);
+  set('contact-phone',    d.contactPhone);
+  set('contact-email',    d.contactEmail);
+  set('billing-email',    d.billingEmail);
+  set('flps-acct-num',    d.flpsAcct);
+  set('access-info',      d.accessInfo);
+
+  // Property name dropdown — try to match
+  if (d.propertyName) {
+    const sel = document.getElementById('property-select');
+    if (sel) {
+      const opt = [...sel.options].find(o => o.value === d.propertyName || o.text.startsWith(d.propertyName));
+      if (opt) { sel.value = opt.value; onPropertySelect(); }
+    }
+    // Also put it in the search box as a hint
+    const search = document.getElementById('prop-search');
+    if (search && !document.getElementById('property-select').value) search.value = d.propertyName;
+  }
+
+  // Services — uncheck all first, then check matches
+  document.querySelectorAll('input[name="svc"]').forEach(cb => { cb.checked = false; });
+  if (d.services && d.services.length) {
+    d.services.forEach(svc => {
+      const cb = [...document.querySelectorAll('input[name="svc"]')].find(el => el.value === svc);
+      if (cb) cb.checked = true;
+      else if (svc.startsWith('Other:')) {
+        const ocb = document.getElementById('other-svc-cb');
+        if (ocb) { ocb.checked = true; set('other-svc-text', svc.replace(/^Other:\s*/, '')); }
+      }
+    });
+  }
+
+  // Scope / description
+  set('work-description', d.workDesc);
+
+  // Fire System
+  document.querySelectorAll('input[name="sys-type"]').forEach(cb => { cb.checked = false; });
+  (d.systemTypes || []).forEach(t => {
+    const cb = [...document.querySelectorAll('input[name="sys-type"]')].find(el => el.value === t);
+    if (cb) cb.checked = true;
+  });
+  check('panel-type', d.panelType);
+  set('panel-mfr',      d.panelMfr);
+  set('monitoring-co',  d.monitoringCo);
+  set('monitoring-acct',d.monitoringAcct);
+  set('num-sprinklers',  d.numSprinklers);
+  set('num-extinguishers',d.numExtinguishers);
+  set('num-hydrants',   d.numHydrants);
+  set('num-backflows',  d.numBackflows);
+  set('last-inspection',d.lastInspection);
+  set('compliance-due', d.complianceDue);
+
+  // Notes
+  set('notes-deficiencies', d.notes);
+
+  // Expenses
+  set('markup-pct', d.markupPct);
+
+  if (d.labor1Rate) set('labor1-rate', d.labor1Rate);
+  if (d.labor1Hrs)  { set('labor1-qty', d.labor1Hrs); calcLaborRow(1); }
+  if (d.labor2Rate) set('labor2-rate', d.labor2Rate);
+  if (d.labor2Hrs)  { set('labor2-qty', d.labor2Hrs); calcLaborRow(2); }
+
+  const tripCb = document.getElementById('trip-cb');
+  if (tripCb) { tripCb.checked = !!d.tripChecked; onTripChange(); }
+
+  if (d.miscDesc)    set('misc-desc', d.miscDesc);
+  if (d.miscExpense) { set('misc-expense', d.miscExpense); onExpenseChange('misc'); }
+
+  if (d.complianceChecked) {
+    const cb = document.getElementById('compliance-cb');
+    if (cb) { cb.checked = true; onComplianceCbChange(); }
+    if (d.complianceDesc)    set('compliance-desc',    d.complianceDesc);
+    if (d.complianceExpense) { set('compliance-expense', d.complianceExpense); onComplianceExpenseChange(); }
+  }
+
+  if (d.flatRate && d.flatRateAmount) {
+    const fcb = document.getElementById('flat-rate-cb');
+    if (fcb) { fcb.checked = true; onFlatRateChange(); set('flat-rate-amount', d.flatRateAmount); onFlatRateAmountChange(); }
+  } else if (d.grandTotal) {
+    set('grand-total', parseFloat(d.grandTotal).toFixed(2));
+  }
+
+  calcTotal();
+
+  // Show edit mode banner
+  const banner = document.getElementById('edit-wo-banner');
+  const nameEl = document.getElementById('edit-wo-name');
+  if (banner) banner.style.display = 'block';
+  if (nameEl) nameEl.textContent = d.fileName || fileId;
+
+  // Update button label
+  const btn = document.getElementById('submit-btn');
+  if (btn) btn.querySelector('span').textContent = '💾 Update Work Order';
+
+  toast('✓ Work order loaded — review and click Update to save');
+}
 
 // ─────────────────────────────────────────────────────────
 // ESTIMATE PRE-FILL
