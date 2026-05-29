@@ -1832,6 +1832,31 @@ function loadFromEditWO(d) {
   // Expenses
   set('markup-pct', d.markupPct);
 
+  // Sub-contractor rows (JSON only — structured data available)
+  if (d.subRows && d.subRows.length) {
+    const head = d.subRows[0];
+    if (head) {
+      set('sub-head-label', head.label || '');
+      if (head.expense) { set('sub-head-expense', head.expense); onSubHeadExpenseChange(); }
+    }
+    for (let i = 1; i < d.subRows.length; i++) {
+      addSubRow(d.subRows[i].label || '', d.subRows[i].expense || '');
+    }
+  }
+
+  // Materials rows (JSON only)
+  if (d.matRows && d.matRows.length) {
+    const head = d.matRows[0];
+    if (head) {
+      set('mat-head-desc', head.desc || '');
+      if (head.qty) set('mat-head-qty', head.qty);
+      if (head.expense) { set('mat-head-expense', head.expense); onMatHeadExpenseChange(); }
+    }
+    for (let i = 1; i < d.matRows.length; i++) {
+      addMatRow(d.matRows[i].desc || '', d.matRows[i].qty || '', d.matRows[i].expense || '');
+    }
+  }
+
   if (d.labor1Rate) set('labor1-rate', d.labor1Rate);
   if (d.labor1Hrs)  { set('labor1-qty', d.labor1Hrs); calcLaborRow(1); }
   if (d.labor2Rate) set('labor2-rate', d.labor2Rate);
@@ -1841,7 +1866,7 @@ function loadFromEditWO(d) {
   if (tripCb) { tripCb.checked = !!d.tripChecked; onTripChange(); }
 
   if (d.miscDesc)    set('misc-desc', d.miscDesc);
-  if (d.miscExpense) { set('misc-expense', d.miscExpense); onExpenseChange('misc'); }
+  if (d.miscExpense && parseFloat(d.miscExpense) > 0) { set('misc-expense', d.miscExpense); onExpenseChange('misc'); }
 
   if (d.complianceChecked) {
     const cb = document.getElementById('compliance-cb');
@@ -1864,7 +1889,8 @@ function loadFromEditWO(d) {
   const nameEl = document.getElementById('edit-wo-name');
   if (banner) banner.style.display = 'block';
   if (nameEl) nameEl.textContent = d.fileName || fileId;
-  if (d.subMatNote) {
+  // Sub/mat note: show for GDoc edits (can't pre-fill rows); hide for JSON (rows are fully populated)
+  if (d.subMatNote && d.fileType !== 'json') {
     const noteEl = document.getElementById('edit-wo-submat');
     if (noteEl) {
       noteEl.textContent = '📋 Original sub/materials (re-enter manually):\n' + d.subMatNote;

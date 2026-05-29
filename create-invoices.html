@@ -662,10 +662,7 @@ async function loadDocs() {
 }
 
 async function enrichDocsInBackground() {
-  const docList = allDocs.filter(d =>
-    d.mimeType === 'application/vnd.google-apps.document' &&
-    (!d.client || !d.amount)
-  );
+  const docList = allDocs.filter(d => !d.client || !d.amount);
 
   if (docList.length === 0) {
     console.log('[enrich] All docs already have metadata from Drive properties — skipping fetch');
@@ -677,20 +674,30 @@ async function enrichDocsInBackground() {
 
   for (let doc of docList) {
     try {
-      const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
-      if (!res.ok) {
-        failed++;
-        continue;
+      if (doc.mimeType === 'application/json') {
+        // JSON work order — read content directly, no parsing needed
+        const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media&supportsAllDrives=true`);
+        if (!res.ok) { failed++; continue; }
+        const woData = await res.json();
+        doc.amount    = (woData['TOTAL TO INVOICE'] || '').replace(/[^0-9.]/g, '') || null;
+        doc.client    = woData['PROPERTY NAME']    || null;
+        doc.acctNum   = woData['FLPS ACCT #']      || doc.acctNum;
+        doc.billEmail = woData['BILLING EMAIL']    || doc.billEmail;
+        doc.svcAddr   = woData['SERVICE ADDRESS']  || doc.svcAddr;
+        doc.citySt    = woData['CITY / STATE / ZIP'] || doc.citySt;
+      } else {
+        // Legacy Google Doc — parse text
+        const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
+        if (!res.ok) { failed++; continue; }
+        const data = await res.json();
+        const text = extractText(data);
+        doc.amount    = parseAmount(text);
+        doc.client    = parseClient(text);
+        doc.acctNum   = doc.acctNum   || parseAcctNum(text);
+        doc.billEmail = doc.billEmail || parseBillingEmail(text);
+        doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
+        doc.citySt    = doc.citySt    || parseCitySt(text);
       }
-      const data = await res.json();
-      const text = extractText(data);
-
-      doc.amount    = parseAmount(text);
-      doc.client    = parseClient(text);
-      doc.acctNum   = doc.acctNum   || parseAcctNum(text);
-      doc.billEmail = doc.billEmail || parseBillingEmail(text);
-      doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
-      doc.citySt    = doc.citySt    || parseCitySt(text);
 
       if (doc.amount || doc.client) {
         apiFetch(
@@ -1075,24 +1082,38 @@ async function createInvoices() {
 
   await Promise.all(docs.map(async doc => {
     try {
-      const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
-      if (res.ok) {
-        const data = await res.json();
-        const text = extractText(data);
-        doc.amount    = parseAmount(text)        || doc.amount;
-        doc.client    = parseClient(text)        || doc.client    || doc.name;
-        doc.acctNum   = parseAcctNum(text)       || doc.acctNum;
-        doc.billEmail = parseBillingEmail(text)  || doc.billEmail;
-        doc.svcAddr   = parseSvcAddr(text)       || doc.svcAddr;
-        doc.citySt    = parseCitySt(text)        || doc.citySt;
-        doc.scope          = parseScope(text);
-        doc.workDesc       = parseWorkDesc(text);
-        doc.dateCompleted  = parseDateCompleted(text);
-        const dcIdx = text.indexOf('Date Completed:');
-        if (dcIdx >= 0) console.log('[date debug] context:', JSON.stringify(text.slice(dcIdx, dcIdx + 80)));
-        else console.warn('[date debug] Date Completed: not found in doc text');
+      if (doc.mimeType === 'application/json') {
+        const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media&supportsAllDrives=true`);
+        if (res.ok) {
+          const woData = await res.json();
+          doc.amount        = (woData['TOTAL TO INVOICE'] || '').replace(/[^0-9.]/g, '') || doc.amount;
+          doc.client        = woData['PROPERTY NAME']     || doc.client || doc.name;
+          doc.acctNum       = woData['FLPS ACCT #']       || doc.acctNum;
+          doc.billEmail     = woData['BILLING EMAIL']     || doc.billEmail;
+          doc.billTo        = woData['BILL TO ADDRESS']   || doc.billTo;
+          doc.svcAddr       = woData['SERVICE ADDRESS']   || doc.svcAddr;
+          doc.citySt        = woData['CITY / STATE / ZIP'] || doc.citySt;
+          doc.scope         = servicesFromJSON(woData['SERVICES']);
+          doc.workDesc      = woData['DESCRIPTION OF WORK'] || '';
+          doc.dateCompleted = woData['DATE COMPLETED ISO'] || woData['DATE COMPLETED'] || '';
+        }
+      } else {
+        const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
+        if (res.ok) {
+          const data = await res.json();
+          const text = extractText(data);
+          doc.amount        = parseAmount(text)       || doc.amount;
+          doc.client        = parseClient(text)       || doc.client || doc.name;
+          doc.acctNum       = parseAcctNum(text)      || doc.acctNum;
+          doc.billEmail     = parseBillingEmail(text) || doc.billEmail;
+          doc.svcAddr       = parseSvcAddr(text)      || doc.svcAddr;
+          doc.citySt        = parseCitySt(text)       || doc.citySt;
+          doc.scope         = parseScope(text);
+          doc.workDesc      = parseWorkDesc(text);
+          doc.dateCompleted = parseDateCompleted(text);
+        }
       }
-    } catch(_) { /* if fetch fails, createQBInvoice will surface the missing data */ }
+    } catch(_) { /* createQBInvoice will surface missing data */ }
   }));
 
   for (const doc of docs) {
@@ -1486,6 +1507,17 @@ async function openEditWorkOrder(docId, docName) {
   const docMeta = allDocs.find(d => d.id === docId);
   const fileType = docMeta?.mimeType === 'application/json' ? 'json' : 'gdoc';
   try {
+    if (fileType === 'json') {
+      const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?alt=media&supportsAllDrives=true`);
+      if (!res.ok) throw new Error('Could not load work order file');
+      const woData = await res.json();
+      const payload = buildEditPayloadFromWOData(docId, docName, woData);
+      localStorage.setItem('flips_edit_workorder', JSON.stringify(payload));
+      window.open(`index.html?edit_wo=${encodeURIComponent(docId)}`, '_blank');
+      toast('✓ Work order editor opening in new tab…');
+      return;
+    }
+
     const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}?fields=body`);
     if (!res.ok) throw new Error('Could not load document');
     const data = await res.json();
@@ -1627,6 +1659,91 @@ async function openEditWorkOrder(docId, docName) {
     toast('✗ ' + e.message);
     console.error('[editWO]', e);
   }
+}
+
+// Map raw service strings (from JSON SERVICES field) to QB-friendly labels
+function servicesFromJSON(servicesStr) {
+  const FREQ_LABEL_MAP = {
+    'fire alarm':             'Fire Alarm Inspection',
+    'sprinkler':              'Sprinkler Inspection',
+    'extinguisher':           'Extinguisher Inspection',
+    'exit light':             'Emergency Exit Light Inspection',
+    'hood inspection':        'Hood Inspection',
+    'fire pump inspection':   'Fire Pump Inspection',
+    'jockey pump inspection': 'Jockey Pump Inspection',
+  };
+  return (servicesStr || '').split('\n').map(s => s.trim()).filter(s => s && s !== '(none selected)').map(item => {
+    const dashIdx = item.indexOf(' – ');
+    if (dashIdx >= 0) {
+      const prefix = item.slice(0, dashIdx).trim().toLowerCase();
+      const freq   = item.slice(dashIdx + 3).trim();
+      return (FREQ_LABEL_MAP[prefix] || item.slice(0, dashIdx).trim()) + ' (' + freq + ')';
+    }
+    return item;
+  });
+}
+
+// Build the edit payload object from a parsed JSON work order data object
+function buildEditPayloadFromWOData(docId, docName, d) {
+  const pd = (str) => parseWODate((str || '').trim());
+  const strip$ = (str) => (str || '').replace(/\$/, '').replace(/\/hr.*/, '').trim();
+  const stripNonNum = (str) => (str || '').replace(/[^0-9.]/g, '');
+  let subRows = [], matRows = [];
+  try { subRows = JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]'); } catch(_) {}
+  try { matRows = JSON.parse(d['MATERIALS ROWS']      || '[]'); } catch(_) {}
+  const subMatLines = [];
+  subRows.forEach(r => { if (r.label || r.expense) subMatLines.push(`Sub — ${r.label || '(unlabeled)'}: $${(r.total||0).toFixed(2)}`); });
+  matRows.forEach(r => { if (r.desc  || r.expense) subMatLines.push(`Mat — ${r.desc  || '(unlabeled)'}${r.qty?' (qty:'+r.qty+')':''}: $${(r.total||0).toFixed(2)}`); });
+  return {
+    fileId: docId, fileName: docName, fileType: 'json',
+    dateCompleted:    d['DATE COMPLETED ISO'] || pd(d['DATE COMPLETED']),
+    dateRequired:     pd(d['DATE REQUIRED']),
+    lineNum:          d['LINE #'],
+    priority:         d['PRIORITY'],
+    requestedBy:      d['REQUESTED BY'],
+    technician:       d['ASSIGNED TECHNICIAN'],
+    scheduledDate:    pd(d['SCHEDULED DATE']),
+    clientCompany:    d['CLIENT / COMPANY'],
+    propertyName:     d['PROPERTY NAME'],
+    flpsAcct:         d['FLPS ACCT #'],
+    serviceAddress:   d['SERVICE ADDRESS'],
+    citySt:           d['CITY / STATE / ZIP'],
+    propertyContact:  d['PROPERTY CONTACT'],
+    contactPhone:     d['CONTACT PHONE'],
+    contactEmail:     d['CONTACT EMAIL'],
+    billingEmail:     d['BILLING EMAIL'],
+    accessInfo:       d['ACCESS / ENTRY INFO'],
+    services:         (d['SERVICES'] || '').split('\n').map(s => s.trim()).filter(s => s && s !== '(none selected)'),
+    workDesc:         d['DESCRIPTION OF WORK'] || '',
+    systemTypes:      (d['SYSTEM TYPE'] || '').split(', ').filter(Boolean),
+    panelType:        d['PANEL SYSTEM TYPE'],
+    panelMfr:         d['PANEL MANUFACTURER'],
+    monitoringCo:     d['MONITORING COMPANY'],
+    monitoringAcct:   d['MONITORING ACCOUNT #'],
+    numSprinklers:    d['# SPRINKLER HEADS'],
+    numExtinguishers: d['# FIRE EXTINGUISHERS'],
+    numHydrants:      d['# HYDRANTS'],
+    numBackflows:     d['# BACKFLOWS'],
+    lastInspection:   pd(d['LAST INSPECTION DATE']),
+    complianceDue:    pd(d['COMPLIANCE DUE DATE']),
+    notes:            d['NOTES / DEFICIENCIES'] || '',
+    markupPct:        (d['MARKUP PCT'] || '25%').replace('%', ''),
+    labor1Rate:       strip$(d['LABOR 1 RATE']),
+    labor1Hrs:        d['LABOR 1 HOURS'] || '',
+    labor2Rate:       strip$(d['LABOR 2 RATE']),
+    labor2Hrs:        d['LABOR 2 HOURS'] || '',
+    tripChecked:      d['TRIP CHARGE'] === '$90.00',
+    miscDesc:         d['MISC DESCRIPTION'] || '',
+    miscExpense:      stripNonNum(d['MISC EXPENSE']),
+    complianceChecked: d['COMPLIANCE REPORT'] === 'Yes',
+    complianceDesc:   d['COMPLIANCE DESC'] || '',
+    complianceExpense: stripNonNum(d['COMPLIANCE EXPENSE']),
+    flatRate:         d['FLAT RATE'] === 'Yes',
+    flatRateAmount:   stripNonNum(d['FLAT RATE AMOUNT']),
+    grandTotal:       stripNonNum(d['TOTAL TO INVOICE']),
+    subRows, matRows,
+    subMatNote: subMatLines.join('\n'),
+  };
 }
 
 // apiFetch / refreshAccessToken live in js/flips-google-fetch.js
