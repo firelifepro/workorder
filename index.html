@@ -905,7 +905,8 @@ document.addEventListener('click', e => {
 const TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc';
 const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets.readonly';
 
-let editModeFileId = null; // set when opened via ?edit_wo=FILEID from create-invoices
+let editModeFileId   = null; // set when opened via ?edit_wo=FILEID from create-invoices
+let editModeFileType = null; // 'json' | 'gdoc' — controls save format on overwrite
 
 // Called by flips-shared.js after OAuth + loadSheet complete
 function onAfterAuth() {
@@ -1200,44 +1201,57 @@ async function createDoc() {
   setStatus('submit-status', 'Building document…', '');
 
   try {
-    const html = buildWorkOrderHTML(data);
-
-    setStatus('submit-status', 'Uploading to Drive…', '');
-    // Google's Drive HTML-to-Doc converter only needs the <body>.
-    // Stripping <head> removes the base64 favicon and any other metadata
-    // that can cause the converter to return a 500.
-    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    const safeHtml = bodyMatch
-      ? `<!DOCTYPE html><html><body>${bodyMatch[1]}</body></html>`
-      : html;
-
+    // New WOs and edits of JSON files → save as JSON.
+    // Edits of legacy Google Docs → keep as Google Doc (backward compat).
+    const isJsonSave = !editModeFileId || editModeFileType === 'json';
     const boundary = '-------314159265358979';
+    let uploadBody;
 
-    const metadata = JSON.stringify({ name: docName, mimeType: 'application/vnd.google-apps.document' });
-    const body = [
-      `--${boundary}`,
-      'Content-Type: application/json; charset=UTF-8',
-      '',
-      metadata,
-      `--${boundary}`,
-      'Content-Type: text/html; charset=UTF-8',
-      '',
-      safeHtml,
-      `--${boundary}--`
-    ].join('\r\n');
+    if (isJsonSave) {
+      setStatus('submit-status', 'Saving to Drive…', '');
+      const jsonPayload = JSON.stringify({
+        _meta: { created: new Date().toISOString(), version: 1, fileName: docName },
+        ...data
+      });
+      uploadBody = [
+        `--${boundary}`,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        JSON.stringify({ name: docName + '.json', mimeType: 'application/json' }),
+        `--${boundary}`,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        jsonPayload,
+        `--${boundary}--`
+      ].join('\r\n');
+    } else {
+      // Legacy path: overwrite existing Google Doc with regenerated HTML
+      setStatus('submit-status', 'Building document…', '');
+      const html = buildWorkOrderHTML(data);
+      setStatus('submit-status', 'Uploading to Drive…', '');
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      const safeHtml = bodyMatch ? `<!DOCTYPE html><html><body>${bodyMatch[1]}</body></html>` : html;
+      uploadBody = [
+        `--${boundary}`,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        JSON.stringify({ name: docName, mimeType: 'application/vnd.google-apps.document' }),
+        `--${boundary}`,
+        'Content-Type: text/html; charset=UTF-8',
+        '',
+        safeHtml,
+        `--${boundary}--`
+      ].join('\r\n');
+    }
 
     const uploadUrl = editModeFileId
       ? `https://www.googleapis.com/upload/drive/v3/files/${editModeFileId}?uploadType=multipart&fields=id,parents&supportsAllDrives=true`
       : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,parents&supportsAllDrives=true`;
-    const uploadMethod = editModeFileId ? 'PATCH' : 'POST';
 
     const uploadRes = await fetch(uploadUrl, {
-      method: uploadMethod,
-      headers: {
-        'Authorization': 'Bearer ' + accessToken,
-        'Content-Type': `multipart/related; boundary="${boundary}"`
-      },
-      body
+      method: editModeFileId ? 'PATCH' : 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': `multipart/related; boundary="${boundary}"` },
+      body: uploadBody
     });
     if (!uploadRes.ok) {
       let errMsg = 'Upload failed';
@@ -1251,7 +1265,6 @@ async function createDoc() {
     const { id: newId, parents } = await uploadRes.json();
 
     if (!editModeFileId) {
-      // New WO: move into "2 - Ready to Invoice"
       setStatus('submit-status', 'Moving to folder…', '');
       const targetFolderId = await findTargetFolder('2 - Ready to Invoice');
       if (targetFolderId) {
@@ -1264,38 +1277,39 @@ async function createDoc() {
       }
     }
 
-    // Convert Completion & Billing checkboxes to native Docs checklist items
-    setStatus('submit-status', 'Applying checkboxes…', '');
-    await applyCompletionChecklists(newId);
+    if (!isJsonSave) {
+      setStatus('submit-status', 'Applying checkboxes…', '');
+      await applyCompletionChecklists(newId);
+    }
 
-    const url = `https://docs.google.com/document/d/${newId}/edit`;
+    const viewUrl = isJsonSave
+      ? `https://drive.google.com/file/d/${newId}/view`
+      : `https://docs.google.com/document/d/${newId}/edit`;
     const lnk = document.getElementById('doc-link');
-    lnk.href = url; lnk.style.display = 'inline-block';
+    lnk.href = viewUrl; lnk.style.display = 'inline-block';
+    lnk.textContent = isJsonSave ? 'View in Drive →' : 'Open Doc →';
     document.getElementById('new-wo-btn').style.display = 'inline-block';
     toast(editModeFileId ? '✓ Updated: ' + docName : '✓ Saved: ' + docName);
 
-    // Update inspection schedule (non-blocking — runs in background)
     updateInspectionSchedule(data).catch(e => console.warn('[Schedule] Exception:', e.message));
 
-    // Write client + amount as Drive file properties so create-invoices
-    // can read them instantly from the file list without opening each doc.
     setStatus('submit-status', editModeFileId ? '✓ Work order updated!' : '✓ Work order saved!', 'ok');
-    const clientVal  = data['PROPERTY NAME'] || '';
-    const amountVal  = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g,'') : '';
+    const clientVal = data['PROPERTY NAME'] || '';
+    const amountVal = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g, '') : '';
     if (clientVal || amountVal) {
       apiFetch(
         `https://www.googleapis.com/drive/v3/files/${newId}?supportsAllDrives=true`,
         'PATCH',
         { appProperties: {
-            flips_client:    clientVal,
-            flips_amount:    amountVal,
-            flips_acct_num:  data['FLPS ACCT #']       || '',
-            flips_bill_to:   data['BILL TO ADDRESS']   || '',
-            flips_bill_email: data['BILLING EMAIL']    || '',
-            flips_svc_addr:  data['SERVICE ADDRESS']   || '',
-            flips_city_st:   data['CITY / STATE / ZIP'] || '',
-          } }
-      ).catch(() => {}); // non-blocking, best-effort
+            flips_client:     clientVal,
+            flips_amount:     amountVal,
+            flips_acct_num:   data['FLPS ACCT #']        || '',
+            flips_bill_to:    data['BILL TO ADDRESS']    || '',
+            flips_bill_email: data['BILLING EMAIL']      || '',
+            flips_svc_addr:   data['SERVICE ADDRESS']    || '',
+            flips_city_st:    data['CITY / STATE / ZIP'] || '',
+        }}
+      ).catch(() => {});
     }
 
   } catch(e) {
@@ -1733,7 +1747,8 @@ function applyEditMode() {
     const d = JSON.parse(raw);
     if (d.fileId !== fileId) return; // stale / mismatched
     localStorage.removeItem('flips_edit_workorder');
-    editModeFileId = fileId;
+    editModeFileId   = fileId;
+    editModeFileType = d.fileType || 'gdoc';
     loadFromEditWO(d);
   } catch(e) {
     console.warn('[editWO] applyEditMode failed:', e.message);

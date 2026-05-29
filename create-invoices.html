@@ -1483,6 +1483,8 @@ function parseWODate(str) {
 async function openEditWorkOrder(docId, docName) {
   if (!accessToken) { toast('⚠ Connect to Google first'); return; }
   toast('⏳ Loading work order…');
+  const docMeta = allDocs.find(d => d.id === docId);
+  const fileType = docMeta?.mimeType === 'application/json' ? 'json' : 'gdoc';
   try {
     const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${docId}?fields=body`);
     if (!res.ok) throw new Error('Could not load document');
@@ -1615,6 +1617,7 @@ async function openEditWorkOrder(docId, docName) {
       flatRate, flatRateAmount,
       grandTotal: (flatRate ? flatRateAmount : null) || (parseAmount(text) || ''),
       subMatNote: extractSubMatNote(text),
+      fileType,
     };
 
     localStorage.setItem('flips_edit_workorder', JSON.stringify(payload));
