@@ -370,6 +370,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <div class="nav-divider"></div>
       <div class="nav-section-label">Administrators</div>
       <a href="clients.html">👥 Client Management</a>
+      <a href="workorder-tracker.html">📂 Work Order Tracker</a>
       <a href="create-invoices.html" class="active">🧾 Create QB Invoices</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
       <a href="open-invoices.html">💵 Record Payments</a>
@@ -934,7 +935,7 @@ function renderDocList(docs) {
         <div class="doc-meta">Modified ${date}${clientStr}</div>
       </div>
       ${amountHtml}
-      <button class="doc-edit-btn" onclick="event.stopPropagation();openEditWorkOrder('${doc.id}','${escHtml(doc.name).replace(/'/g,"\\'")}')" title="Edit this work order and overwrite the Drive file">✏️ Edit WO</button>
+      <button class="doc-edit-btn" data-id="${doc.id}" data-name="${escHtml(doc.name)}" data-mime="${doc.mimeType}" onclick="event.stopPropagation();openEditWorkOrder(this.dataset.id,this.dataset.name,this.dataset.mime)" title="Edit this work order and overwrite the Drive file">✏️ Edit WO</button>
       <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="Open in Google Docs">📄 View</a>
     </div>`;
   }).join('');
@@ -1501,11 +1502,10 @@ function parseWODate(str) {
   return '';
 }
 
-async function openEditWorkOrder(docId, docName) {
+async function openEditWorkOrder(docId, docName, mimeType) {
   if (!accessToken) { toast('⚠ Connect to Google first'); return; }
   toast('⏳ Loading work order…');
-  const docMeta = allDocs.find(d => d.id === docId);
-  const fileType = docMeta?.mimeType === 'application/json' ? 'json' : 'gdoc';
+  const fileType = (mimeType || (allDocs.find(d => d.id === docId)?.mimeType) || '') === 'application/json' ? 'json' : 'gdoc';
   try {
     if (fileType === 'json') {
       const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?alt=media&supportsAllDrives=true`);

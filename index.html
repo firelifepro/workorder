@@ -328,6 +328,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <div class="nav-divider"></div>
       <div class="nav-section-label">Administrators</div>
       <a href="clients.html">👥 Client Management</a>
+      <a href="workorder-tracker.html">📂 Work Order Tracker</a>
       <a href="create-invoices.html">🧾 Create QB Invoices</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
       <a href="open-invoices.html">💵 Record Payments</a>
@@ -350,6 +351,13 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
     <button id="refresh-props-btn" class="conn-btn grey" onclick="loadSheet(true)" style="display:none;" title="Re-fetch client list from Google Sheet">↺ Refresh Properties</button>
   </div>
+</div>
+
+<!-- VIEW WORK ORDER BANNER -->
+<div id="view-wo-banner" style="display:none;background:#e8f4ff;border:2px solid #2e6da4;padding:12px 16px;margin:8px;border-radius:6px;font-size:0.9rem;">
+  <strong>👁 View Mode</strong> — <span id="view-wo-name" style="font-weight:600;color:#1a3a5c;"></span>. Form is read-only.
+  <button onclick="window.print()" style="margin-left:14px;background:#2e6da4;color:white;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;">🖨 Print</button>
+  <button onclick="window.close()" style="margin-left:6px;background:#888;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;">✕ Close</button>
 </div>
 
 <!-- EDIT WORK ORDER BANNER -->
@@ -907,6 +915,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com
 
 let editModeFileId   = null; // set when opened via ?edit_wo=FILEID from create-invoices
 let editModeFileType = null; // 'json' | 'gdoc' — controls save format on overwrite
+let viewModeActive   = false;
 
 // Called by flips-shared.js after OAuth + loadSheet complete
 function onAfterAuth() {
@@ -1308,6 +1317,9 @@ async function createDoc() {
             flips_bill_email: data['BILLING EMAIL']      || '',
             flips_svc_addr:   data['SERVICE ADDRESS']    || '',
             flips_city_st:    data['CITY / STATE / ZIP'] || '',
+            flips_line_num:   data['LINE #']             || '',
+            flips_date:       data['DATE COMPLETED ISO'] || '',
+            flips_services:   (data['SERVICES'] || '').split('\n')[0] || '',
         }}
       ).catch(() => {});
     }
@@ -1739,7 +1751,7 @@ window.addEventListener('load', () => {
 // ─────────────────────────────────────────────────────────
 function applyEditMode() {
   const params = new URLSearchParams(location.search);
-  const fileId = params.get('edit_wo');
+  const fileId = params.get('edit_wo') || params.get('view_wo');
   if (!fileId) return;
   try {
     const raw = localStorage.getItem('flips_edit_workorder');
@@ -1747,8 +1759,12 @@ function applyEditMode() {
     const d = JSON.parse(raw);
     if (d.fileId !== fileId) return; // stale / mismatched
     localStorage.removeItem('flips_edit_workorder');
-    editModeFileId   = fileId;
-    editModeFileType = d.fileType || 'gdoc';
+    if (d.mode === 'view') {
+      viewModeActive = true;
+    } else {
+      editModeFileId   = fileId;
+      editModeFileType = d.fileType || 'gdoc';
+    }
     loadFromEditWO(d);
   } catch(e) {
     console.warn('[editWO] applyEditMode failed:', e.message);
@@ -1898,11 +1914,24 @@ function loadFromEditWO(d) {
     }
   }
 
-  // Update button label
-  const btn = document.getElementById('submit-btn');
-  if (btn) btn.querySelector('span').textContent = '💾 Update Work Order';
-
-  toast('✓ Work order loaded — review and click Update to save');
+  if (viewModeActive) {
+    // Disable all form inputs
+    document.querySelectorAll('#doc-wrapper input, #doc-wrapper select, #doc-wrapper textarea').forEach(el => {
+      el.disabled = true;
+    });
+    document.querySelectorAll('#doc-wrapper button').forEach(el => { el.disabled = true; });
+    const submitArea = document.getElementById('submit-area');
+    if (submitArea) submitArea.style.display = 'none';
+    const vBanner = document.getElementById('view-wo-banner');
+    const vName   = document.getElementById('view-wo-name');
+    if (vBanner) vBanner.style.display = 'block';
+    if (vName)   vName.textContent = d.fileName || fileId;
+    toast('👁 Viewing work order — read only');
+  } else {
+    const btn = document.getElementById('submit-btn');
+    if (btn) btn.querySelector('span').textContent = '💾 Update Work Order';
+    toast('✓ Work order loaded — review and click Update to save');
+  }
 }
 
 // ─────────────────────────────────────────────────────────

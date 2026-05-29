@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<title>Fire Life Protection – Work Order Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; padding: 20px; }
+
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 200px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
+#top-bar { background: #1a1a2e; color: white; padding: 12px 20px; margin: -20px -20px 20px -20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+#top-bar h1 { font-size: 1rem; font-weight: 600; flex: 1; }
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; }
+.nav-menu a:last-child { border-bottom: none; }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; pointer-events: none; }
+.nav-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 4px 0; }
+
+.card { background: white; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 18px; }
+.section-header { background: #2e6da4; color: white; font-weight: 700; font-size: 10pt; padding: 8px 14px; border-radius: 5px 5px 0 0; display: flex; align-items: center; gap: 10px; }
+.section-header span { flex: 1; }
+
+.folder-tabs { display: flex; gap: 0; border-bottom: 2px solid #e0e0e0; padding: 0 16px; background: #fafafa; border-radius: 0; }
+.folder-tab { padding: 10px 18px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s; white-space: nowrap; }
+.folder-tab:hover { color: #2e6da4; background: #f0f6ff; }
+.folder-tab.active { color: #2e6da4; border-bottom-color: #2e6da4; }
+
+#filter-bar { padding: 10px 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: white; }
+#search-input { border: 1px solid #ccc; border-radius: 4px; padding: 5px 10px; font-size: 0.82rem; width: 240px; outline: none; }
+#search-input:focus { border-color: #2e6da4; background: #e8f4ff; }
+#refresh-btn { background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; font-weight: 600; }
+#refresh-btn:hover { background: #e0e8f5; border-color: #2e6da4; color: #2e6da4; }
+#wo-count { color: #777; font-size: 0.78rem; margin-left: auto; }
+
+#wo-list { min-height: 120px; overflow-x: auto; }
+
+.wo-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.wo-table th { background: #2e6da4; color: white; font-weight: 700; padding: 7px 10px; text-align: left; white-space: nowrap; }
+.wo-table td { border-bottom: 1px solid #f0f0f0; padding: 8px 10px; vertical-align: middle; }
+.wo-table tr:last-child td { border-bottom: none; }
+.wo-table tr:hover td { background: #f5f9ff; }
+
+.wo-line   { font-weight: 700; color: #2e6da4; white-space: nowrap; }
+.wo-prop   { font-weight: 600; color: #222; }
+.wo-svc    { color: #555; font-size: 0.78rem; }
+.wo-date   { white-space: nowrap; color: #555; }
+.wo-amount { font-weight: 700; color: #2e7d50; white-space: nowrap; text-align: right; }
+.wo-type-badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 0.68rem; font-weight: 700; }
+.wo-type-json { background: #e8f4e8; color: #2e7d50; border: 1px solid #b7dfb7; }
+.wo-type-gdoc { background: #e8f0ff; color: #1a3a8c; border: 1px solid #b0c8ff; }
+
+.action-btn { font-size: 0.72rem; padding: 4px 9px; border-radius: 3px; border: 1px solid; cursor: pointer; white-space: nowrap; font-weight: 600; transition: background 0.1s; margin-right: 3px; }
+.btn-edit   { background: #fff8f0; color: #7b3f00; border-color: #f0c080; }
+.btn-edit:hover { background: #ffe8c0; }
+.btn-view   { background: #f0f6ff; color: #2e6da4; border-color: #c0d8f0; }
+.btn-view:hover { background: #d0e8ff; }
+.btn-delete { background: #fff0f0; color: #c0392b; border-color: #f0c0c0; }
+.btn-delete:hover { background: #ffd0d0; }
+.btn-invoice { background: #f0fff4; color: #2e7d50; border-color: #b7dfb7; }
+.btn-invoice:hover { background: #d0f0dc; }
+
+#list-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 50px 20px; color: #999; font-size: 0.85rem; gap: 10px; }
+#list-placeholder .big-icon { font-size: 2.5rem; }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(46,109,164,0.25); border-top-color: #2e6da4; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 9998; align-items: center; justify-content: center; }
+#confirm-overlay.open { display: flex; }
+.confirm-box { background: white; border-radius: 8px; padding: 28px 32px; max-width: 380px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.25); text-align: center; }
+.confirm-box h3 { margin-bottom: 10px; font-size: 1rem; }
+.confirm-box p { font-size: 0.875rem; color: #555; margin-bottom: 20px; }
+.confirm-btns { display: flex; gap: 10px; justify-content: center; }
+.confirm-btns button { padding: 9px 24px; border-radius: 5px; border: none; cursor: pointer; font-weight: 600; font-size: 0.875rem; }
+
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 9999; white-space: nowrap; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <div class="nav-section-label">Field Technicians</div>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="estimate.html">📝 Estimate</a>
+      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
+      <a href="worklog.html">🗒 Work Log</a>
+      <a href="index.html">📋 Work Order</a>
+      <a href="inspection.html">🔥 Fire Inspection</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection</a>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Administrators</div>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="workorder-tracker.html" class="active">📂 Work Order Tracker</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="open-invoices.html">💵 Record Payments</a>
+    </div>
+  </div>
+  <h1>📂 Fire Life Protection – Work Order Tracker</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com">
+    </div>
+    <button class="conn-btn" onclick="initGoogle()">🔗 Connect Google</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-header">
+    <span id="section-title">📁 Work Orders</span>
+    <button id="refresh-btn" onclick="loadWOs()" style="font-size:0.75rem;padding:4px 10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;border-radius:4px;cursor:pointer;">⟳ Refresh</button>
+  </div>
+  <div class="folder-tabs">
+    <div class="folder-tab active" id="tab-ready" onclick="switchFolder('2 - Ready to Invoice')">📋 Ready to Invoice</div>
+    <div class="folder-tab" id="tab-sent"  onclick="switchFolder('3 - Invoice Sent')">✅ Invoice Sent</div>
+  </div>
+  <div id="filter-bar">
+    <input type="text" id="search-input" placeholder="Search by property, line #, or service…" oninput="filterWOs()">
+    <button id="refresh-btn-bar" onclick="loadWOs()">⟳ Refresh</button>
+    <span id="wo-count"></span>
+  </div>
+  <div id="wo-list">
+    <div id="list-placeholder">
+      <div class="big-icon">📄</div>
+      <div>Connect to Google to load work orders</div>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Delete work order?</h3>
+    <p id="confirm-msg"></p>
+    <div class="confirm-btns">
+      <button id="confirm-ok"  style="background:#c0392b;color:white;">Delete</button>
+      <button onclick="closeConfirm()" style="background:#eee;color:#333;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const FOLDER_NAMES = { 'ready': '2 - Ready to Invoice', 'sent': '3 - Invoice Sent' };
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file';
+
+let accessToken = null;
+let tokenClient = null;
+let allWOs = [];
+let currentFolder = '2 - Ready to Invoice';
+let currentFolderId = null;
+
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu')?.classList.remove('open'); });
+function toggleDrawer() { document.getElementById('conn-drawer').classList.toggle('open'); }
+
+// ── Auth ──────────────────────────────────────────────────
+function initGoogle() {
+  const apiKey   = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  loadScript('https://accounts.google.com/gsi/client', () =>
+    loadScript('https://apis.google.com/js/api.js', () => startGapi(apiKey, clientId))
+  );
+}
+
+function loadScript(src, cb) {
+  const s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s);
+}
+
+function startGapi(apiKey, clientId) {
+  gapi.load('client', async () => {
+    await gapi.client.init({ apiKey, discoveryDocs: [] });
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: GOOGLE_SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setConnStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setConnStatus('✓ Connected', 'ok');
+        _scheduleTokenRefresh();
+        loadWOs();
+      }
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  });
+}
+
+function setConnStatus(msg, cls) {
+  const el = document.getElementById('conn-status');
+  el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
+  el.className = 'conn-status-pill ' + cls;
+  if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+}
+
+function _scheduleTokenRefresh() {
+  const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+  const delay = expiry - Date.now() - 5 * 60 * 1000;
+  if (delay > 0) setTimeout(() => { if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }, delay);
+}
+
+// ── Load WOs ──────────────────────────────────────────────
+async function loadWOs() {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+  showPlaceholder('<div class="spinner"></div><div>Loading…</div>');
+  document.getElementById('wo-count').textContent = '';
+  allWOs = [];
+  try {
+    currentFolderId = await findFolder(currentFolder);
+    if (!currentFolderId) {
+      showPlaceholder(`<div class="big-icon">📂</div><div>Folder "<strong>${currentFolder}</strong>" not found</div>`);
+      return;
+    }
+    const q = encodeURIComponent(`'${currentFolderId}' in parents and trashed=false`);
+    const res = await apiFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=files(id,name,modifiedTime,mimeType,appProperties)&includeItemsFromAllDrives=true&supportsAllDrives=true&pageSize=200&orderBy=name`
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    const files = (json.files || []).filter(f =>
+      f.mimeType === 'application/json' ||
+      f.mimeType === 'application/vnd.google-apps.document'
+    );
+    if (!files.length) {
+      showPlaceholder(`<div class="big-icon">📭</div><div>No work orders in "<strong>${currentFolder}</strong>"</div>`);
+      return;
+    }
+    allWOs = files.map(f => ({
+      id:           f.id,
+      name:         f.name,
+      mimeType:     f.mimeType,
+      modifiedTime: f.modifiedTime,
+      lineNum:      f.appProperties?.flips_line_num  || '',
+      client:       f.appProperties?.flips_client    || '',
+      amount:       f.appProperties?.flips_amount    || '',
+      date:         f.appProperties?.flips_date      || '',
+      services:     f.appProperties?.flips_services  || '',
+      acctNum:      f.appProperties?.flips_acct_num  || '',
+      billEmail:    f.appProperties?.flips_bill_email|| '',
+      svcAddr:      f.appProperties?.flips_svc_addr  || '',
+      citySt:       f.appProperties?.flips_city_st   || '',
+    }));
+    renderTable(allWOs);
+  } catch(e) {
+    showPlaceholder(`<div class="big-icon">⚠️</div><div>Error: ${e.message}</div>`);
+  }
+}
+
+function switchFolder(name) {
+  currentFolder = name;
+  document.getElementById('tab-ready').classList.toggle('active', name === '2 - Ready to Invoice');
+  document.getElementById('tab-sent').classList.toggle('active',  name === '3 - Invoice Sent');
+  document.getElementById('section-title').textContent = name === '2 - Ready to Invoice'
+    ? '📋 Work Orders — Ready to Invoice'
+    : '✅ Work Orders — Invoice Sent';
+  loadWOs();
+}
+
+function filterWOs() { renderTable(allWOs); }
+
+function renderTable(wos) {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = wos.filter(w =>
+    !q ||
+    (w.client   || '').toLowerCase().includes(q) ||
+    (w.lineNum  || '').toLowerCase().includes(q) ||
+    (w.services || '').toLowerCase().includes(q) ||
+    (w.name     || '').toLowerCase().includes(q)
+  );
+  document.getElementById('wo-count').textContent = `${filtered.length} work order${filtered.length !== 1 ? 's' : ''}`;
+  if (!filtered.length) { showPlaceholder('<div class="big-icon">🔍</div><div>No work orders match</div>'); return; }
+
+  const isReady = currentFolder === '2 - Ready to Invoice';
+  const rows = filtered.map(w => {
+    const isJson = w.mimeType === 'application/json';
+    const typeBadge = isJson
+      ? `<span class="wo-type-badge wo-type-json">JSON</span>`
+      : `<span class="wo-type-badge wo-type-gdoc">Doc</span>`;
+    const dateStr = w.date
+      ? new Date(w.date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+      : (w.modifiedTime ? new Date(w.modifiedTime).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '');
+    const amt = parseFloat(w.amount);
+    const amtStr = (w.amount && !isNaN(amt)) ? `$${amt.toLocaleString('en-US', { minimumFractionDigits:2 })}` : '—';
+    const svcShort = (w.services || '').replace(/ [–-] /, ' ').split('\n')[0] || '—';
+    const lineDisplay = w.lineNum ? `#${w.lineNum}` : '—';
+    const propDisplay = w.client || w.name.replace(/\.json$/, '');
+
+    const editBtn   = `<button class="action-btn btn-edit"   data-id="${w.id}" data-name="${escHtml(w.name)}" data-mime="${w.mimeType}" onclick="editWO(this.dataset.id,this.dataset.name,this.dataset.mime)">✏️ Edit</button>`;
+    const viewBtn   = isJson
+      ? `<button class="action-btn btn-view"   data-id="${w.id}" data-name="${escHtml(w.name)}" onclick="viewWO(this.dataset.id,this.dataset.name)">👁 View</button>`
+      : `<a class="action-btn btn-view" href="https://docs.google.com/document/d/${w.id}/edit" target="_blank" style="text-decoration:none;">👁 View</a>`;
+    const deleteBtn = `<button class="action-btn btn-delete" data-id="${w.id}" data-name="${escHtml(w.name)}" onclick="confirmDelete(this.dataset.id,this.dataset.name)">🗑 Delete</button>`;
+    const invoiceBtn = isReady ? `<a class="action-btn btn-invoice" href="create-invoices.html" target="_blank" style="text-decoration:none;">🧾 Invoice</a>` : '';
+
+    return `<tr>
+      <td class="wo-line">${lineDisplay} ${typeBadge}</td>
+      <td class="wo-prop">${escHtml(propDisplay)}</td>
+      <td class="wo-svc">${escHtml(svcShort)}</td>
+      <td class="wo-date">${dateStr}</td>
+      <td class="wo-amount">${amtStr}</td>
+      <td style="white-space:nowrap;">${editBtn}${viewBtn}${deleteBtn}${invoiceBtn}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('wo-list').innerHTML = `
+    <table class="wo-table">
+      <thead><tr>
+        <th>Line #</th><th>Property</th><th>Services</th><th>Date</th><th>Amount</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Edit / View ───────────────────────────────────────────
+async function editWO(docId, docName, mimeType) {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+  if (mimeType !== 'application/json') {
+    // Legacy Google Doc — open directly for editing
+    window.open(`https://docs.google.com/document/d/${docId}/edit`, '_blank');
+    return;
+  }
+  toast('⏳ Loading…');
+  try {
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?alt=media&supportsAllDrives=true`);
+    if (!res.ok) throw new Error('Could not load file');
+    const woData = await res.json();
+    const payload = buildEditPayloadFromWOData(docId, docName, woData, 'edit');
+    localStorage.setItem('flips_edit_workorder', JSON.stringify(payload));
+    window.open(`index.html?edit_wo=${encodeURIComponent(docId)}`, '_blank');
+    toast('✓ Opening editor…');
+  } catch(e) { toast('✗ ' + e.message); }
+}
+
+async function viewWO(docId, docName) {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+  toast('⏳ Loading…');
+  try {
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?alt=media&supportsAllDrives=true`);
+    if (!res.ok) throw new Error('Could not load file');
+    const woData = await res.json();
+    const payload = buildEditPayloadFromWOData(docId, docName, woData, 'view');
+    localStorage.setItem('flips_edit_workorder', JSON.stringify(payload));
+    window.open(`index.html?view_wo=${encodeURIComponent(docId)}`, '_blank');
+    toast('✓ Opening viewer…');
+  } catch(e) { toast('✗ ' + e.message); }
+}
+
+// ── Delete ────────────────────────────────────────────────
+let _pendingDelete = null;
+function confirmDelete(docId, docName) {
+  _pendingDelete = { docId, docName };
+  document.getElementById('confirm-msg').textContent = `Move "${docName}" to trash? It can be recovered from Google Drive Trash.`;
+  document.getElementById('confirm-ok').onclick = doDelete;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); _pendingDelete = null; }
+async function doDelete() {
+  if (!_pendingDelete) return;
+  const { docId, docName } = _pendingDelete;
+  closeConfirm();
+  try {
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?supportsAllDrives=true`, 'PATCH', { trashed: true });
+    if (!res.ok) throw new Error(await res.text());
+    allWOs = allWOs.filter(w => w.id !== docId);
+    renderTable(allWOs);
+    toast(`🗑 Moved to trash: ${docName}`);
+  } catch(e) { toast('✗ Delete failed: ' + e.message); }
+}
+
+// ── Payload builder (mirrors create-invoices.html) ────────
+function buildEditPayloadFromWOData(docId, docName, d, mode) {
+  const pd = (str) => parseWODate((str || '').trim());
+  const stripRate = (str) => (str || '').replace(/\$/, '').replace(/\/hr.*/, '').trim();
+  const stripNum  = (str) => (str || '').replace(/[^0-9.]/g, '');
+  let subRows = [], matRows = [];
+  try { subRows = JSON.parse(d['SUB-CONTRACTOR ROWS'] || '[]'); } catch(_) {}
+  try { matRows = JSON.parse(d['MATERIALS ROWS']      || '[]'); } catch(_) {}
+  return {
+    fileId: docId, fileName: docName, fileType: 'json', mode: mode || 'edit',
+    dateCompleted:    d['DATE COMPLETED ISO'] || pd(d['DATE COMPLETED']),
+    dateRequired:     pd(d['DATE REQUIRED']),
+    lineNum:          d['LINE #'],
+    priority:         d['PRIORITY'],
+    requestedBy:      d['REQUESTED BY'],
+    technician:       d['ASSIGNED TECHNICIAN'],
+    scheduledDate:    pd(d['SCHEDULED DATE']),
+    clientCompany:    d['CLIENT / COMPANY'],
+    propertyName:     d['PROPERTY NAME'],
+    flpsAcct:         d['FLPS ACCT #'],
+    serviceAddress:   d['SERVICE ADDRESS'],
+    citySt:           d['CITY / STATE / ZIP'],
+    propertyContact:  d['PROPERTY CONTACT'],
+    contactPhone:     d['CONTACT PHONE'],
+    contactEmail:     d['CONTACT EMAIL'],
+    billingEmail:     d['BILLING EMAIL'],
+    accessInfo:       d['ACCESS / ENTRY INFO'],
+    services:         (d['SERVICES'] || '').split('\n').map(s => s.trim()).filter(s => s && s !== '(none selected)'),
+    workDesc:         d['DESCRIPTION OF WORK'] || '',
+    systemTypes:      (d['SYSTEM TYPE'] || '').split(', ').filter(Boolean),
+    panelType:        d['PANEL SYSTEM TYPE'],
+    panelMfr:         d['PANEL MANUFACTURER'],
+    monitoringCo:     d['MONITORING COMPANY'],
+    monitoringAcct:   d['MONITORING ACCOUNT #'],
+    numSprinklers:    d['# SPRINKLER HEADS'],
+    numExtinguishers: d['# FIRE EXTINGUISHERS'],
+    numHydrants:      d['# HYDRANTS'],
+    numBackflows:     d['# BACKFLOWS'],
+    lastInspection:   pd(d['LAST INSPECTION DATE']),
+    complianceDue:    pd(d['COMPLIANCE DUE DATE']),
+    notes:            d['NOTES / DEFICIENCIES'] || '',
+    markupPct:        (d['MARKUP PCT'] || '25%').replace('%', ''),
+    labor1Rate:       stripRate(d['LABOR 1 RATE']),
+    labor1Hrs:        d['LABOR 1 HOURS'] || '',
+    labor2Rate:       stripRate(d['LABOR 2 RATE']),
+    labor2Hrs:        d['LABOR 2 HOURS'] || '',
+    tripChecked:      d['TRIP CHARGE'] === '$90.00',
+    miscDesc:         d['MISC DESCRIPTION'] || '',
+    miscExpense:      stripNum(d['MISC EXPENSE']),
+    complianceChecked: d['COMPLIANCE REPORT'] === 'Yes',
+    complianceDesc:   d['COMPLIANCE DESC'] || '',
+    complianceExpense: stripNum(d['COMPLIANCE EXPENSE']),
+    flatRate:         d['FLAT RATE'] === 'Yes',
+    flatRateAmount:   stripNum(d['FLAT RATE AMOUNT']),
+    grandTotal:       stripNum(d['TOTAL TO INVOICE']),
+    subRows, matRows,
+  };
+}
+
+function parseWODate(str) {
+  if (!str) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  const d = new Date(str);
+  if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  return '';
+}
+
+// ── Helpers ───────────────────────────────────────────────
+async function findFolder(name) {
+  const q = encodeURIComponent(`mimeType="application/vnd.google-apps.folder" and trashed=false`);
+  const res = await apiFetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives&pageSize=1000`
+  );
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.files?.find(f => f.name.trim().toLowerCase() === name.trim().toLowerCase())?.id || null;
+}
+
+function showPlaceholder(html) {
+  document.getElementById('wo-list').innerHTML = `<div id="list-placeholder">${html}</div>`;
+  document.getElementById('wo-count').textContent = '';
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ── On load ───────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const k = localStorage.getItem('flips_api_key');
+  const c = localStorage.getItem('flips_client_id');
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
+  if (k && c) {
+    const token  = localStorage.getItem('flips_access_token');
+    const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+    if (token && Date.now() < expiry) {
+      accessToken = token;
+      loadScript('https://accounts.google.com/gsi/client', () =>
+        loadScript('https://apis.google.com/js/api.js', () => {
+          gapi.load('client', async () => {
+            await gapi.client.init({ apiKey: k, discoveryDocs: [] });
+            tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: c, scope: GOOGLE_SCOPES,
+              callback: async (resp) => {
+                if (resp.error) { setConnStatus('✗ ' + resp.error, 'err'); return; }
+                accessToken = resp.access_token;
+                localStorage.setItem('flips_access_token', accessToken);
+                localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+                setConnStatus('✓ Connected', 'ok');
+                _scheduleTokenRefresh(); loadWOs();
+              }
+            });
+            setConnStatus('✓ Connected', 'ok');
+            _scheduleTokenRefresh();
+            loadWOs();
+          });
+        })
+      );
+    } else {
+      setConnStatus('⚠ Session expired', 'warn');
+      document.getElementById('conn-drawer').classList.add('open');
+    }
+  }
+});
+</script>
+<script src="js/flips-google-fetch.js"></script>
+</body>
+</html>
