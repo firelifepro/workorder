@@ -1542,10 +1542,12 @@ async function openEditWorkOrder(docId, docName) {
     // Trip charge
     const tripChecked = /Trip Charge[\s\S]{0,60}?☑\s*\$90/.test(text);
 
-    // Misc
-    const miscSection = text.match(/\bMisc\b[:\s]*([\s\S]{0,150}?)(?=\n(?:Compliance|Total|★|$))/i);
-    const miscDesc = miscSection ? g('Misc') : '';
-    const miscExpense = (text.match(/\bMisc\b[\s\S]{0,200}?\$(\d[\d,]*\.\d{2})[\s\S]{0,60}?\$(\d[\d,]*\.\d{2})[\s\S]{0,60}?\$(\d[\d,]*\.\d{2})/i)||[])[1] || '';
+    // Misc — isolate section to avoid matching other rows
+    const miscSec = (text.match(/\bMisc\b[:\s]*([\s\S]*?)(?=\bCompliance\b|Total to Invoice|★ FIXED RATE|COMPLETION)/i)||[])[1] || '';
+    const miscLines = miscSec.split(/[\r\n]/).map(l => l.trim()).filter(Boolean);
+    const miscDesc = miscLines.find(l => !/^\$/.test(l) && !/^\d+$/.test(l)) || '';
+    const miscExpenseRaw = miscLines.find(l => /^\$[\d,]+(\.\d{2})?$/.test(l)) || '';
+    const miscExpense = miscExpenseRaw.replace(/[^0-9.]/g, '');
 
     // Compliance
     const complianceChecked = text.includes('☑ Compliance Report');
