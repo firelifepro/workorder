@@ -920,6 +920,7 @@ let viewModeActive   = false;
 // Called by flips-shared.js after OAuth + loadSheet complete
 function onAfterAuth() {
   applyEditMode();
+  checkPendingWOFromLog();
 }
 
 // loadSheet, parseRows, parseCSV, findKey, buildDropdown, filterPropertyDropdown,
@@ -1734,7 +1735,7 @@ window.addEventListener('load', () => {
       API_KEY_VAL = k;
       setStatus('conn-status', '✓ Connected', 'ok');
       document.getElementById('refresh-props-btn').style.display = 'inline-block';
-      loadSheet().then(() => applyEditMode());
+      loadSheet().then(() => { applyEditMode(); checkPendingWOFromLog(); });
     } else {
       loadSheet();
       setStatus('conn-status', '⚠ Session expired', 'warn');
@@ -1948,6 +1949,37 @@ function checkPendingEstimate() {
       txt.textContent = `Estimate for ${est.propertyName || 'Unknown Property'} (${est.estDate || ''}) is ready to load.`;
       banner.style.display = 'block';
     }
+  } catch(_) {}
+}
+
+// ─────────────────────────────────────────────────────────
+// CREATE WO FROM WORK LOG ROW
+// ─────────────────────────────────────────────────────────
+function checkPendingWOFromLog() {
+  if (editModeFileId || viewModeActive) return;
+  try {
+    const raw = localStorage.getItem('flips_pending_wo_from_log');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    localStorage.removeItem('flips_pending_wo_from_log');
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+
+    setVal('wo-number',        d.lineNum);
+    setVal('requested-by',     d.requestedBy);
+    setVal('work-description', d.workDesc);
+    setVal('date-requested',   d.dateCompleted);
+
+    if (d.propertyName) {
+      const sel = document.getElementById('property-select');
+      if (sel) {
+        const opt = [...sel.options].find(o => o.value === d.propertyName);
+        if (opt) { sel.value = opt.value; onPropertySelect(); }
+        else { const s = document.getElementById('prop-search'); if (s) s.value = d.propertyName; }
+      }
+    }
+
+    toast('✓ Work log row pre-filled — complete and save the work order');
   } catch(_) {}
 }
 

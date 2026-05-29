@@ -123,6 +123,8 @@
     .act-btn { background: none; border: 1px solid #ddd; padding: 3px 7px; border-radius: 3px; cursor: pointer; font-size: 0.72rem; margin-left: 2px; }
     .act-btn:hover { background: #f0f0f0; }
     .act-btn.del:hover { background: #fff0f0; border-color: #e53e3e; color: #c53030; }
+    .act-btn.wo  { color: #2e6da4; }
+    .act-btn.wo:hover  { background: #e8f4ff; border-color: #2e6da4; }
 
     #empty-row td { text-align: center; padding: 44px 20px; color: #aaa; font-style: italic; }
 
@@ -812,13 +814,41 @@ function renderTable() {
         <span class="badge ${STATUS_BADGE[r._status]}">${STATUS_LABEL[r._status]}</span>
       </td>
       <td class="td-acts">
-        <button class="act-btn del" onclick="event.stopPropagation();deleteEntry(${r._rowNum})" title="Delete">✕</button>
+        <button class="act-btn wo"  onclick="event.stopPropagation();createWOFromRow(${r._rowNum})" title="Create Work Order from this row">📋</button>
+        <button class="act-btn del" onclick="event.stopPropagation();deleteEntry(${r._rowNum})" title="Mark row as unused (keeps row number)">✕</button>
       </td>
     </tr>`).join('');
   requestAnimationFrame(positionFixedScroll);
 }
 
 function applyFilters() { renderTable(); }
+
+function createWOFromRow(rowNum) {
+  const r = logRows.find(row => row._rowNum === rowNum);
+  if (!r) return;
+
+  const toISO = (str) => {
+    if (!str) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (mdy) {
+      const yr = mdy[3].length === 2 ? '20' + mdy[3] : mdy[3];
+      return `${yr}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+    }
+    const d = new Date(str);
+    return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+  };
+
+  localStorage.setItem('flips_pending_wo_from_log', JSON.stringify({
+    lineNum:       String(r._rowNum),
+    propertyName:  r.property  || '',
+    requestedBy:   r.reqBy     || '',
+    dateCompleted: toISO(r.dateComp),
+    workDesc:      r.workReq   || '',
+  }));
+  window.open('index.html', '_blank');
+  toast('✓ Opening work order form…');
+}
 
 // ─────────────────────────────────────────────────────
 // MODAL
@@ -971,21 +1001,43 @@ async function deleteEntry(rowNum) {
   const row = logRows.find(r => r._rowNum === rowNum);
   if (!row) return;
   const preview = [row.property, row.workReq].filter(Boolean).join(' — ');
-  if (!confirm(`Delete row ${rowNum}?\n\n${preview || '(empty row)'}`)) return;
+  if (!confirm(`Mark row ${rowNum} as unused? This will overwrite all cells with "DID NOT USE THIS LINE" and keep the row number in place.\n\n${preview || '(empty row)'}`)) return;
   if (!accessToken) { toast('⚠ Not connected'); return; }
+  if (!wrTabName)   { toast('⚠ Sheet not loaded — refresh first'); return; }
+  const VOID = 'DID NOT USE THIS LINE';
+  const range = `${wrTabName}!A${rowNum}:I${rowNum}`;
   try {
-    const res = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
-      requests: [{ deleteDimension: {
-        range: { sheetId: wrGid, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum }
-      }}]
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    logRows = logRows.filter(r => r._rowNum !== rowNum);
-    logRows.forEach(r => { if (r._rowNum > rowNum) r._rowNum--; });
+    // Overwrite all 9 columns with the void marker
+    const valRes = await apiFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+      'PUT',
+      { range, majorDimension: 'ROWS', values: [[VOID, VOID, VOID, VOID, VOID, VOID, VOID, VOID, VOID]] }
+    );
+    if (!valRes.ok) throw new Error('HTTP ' + valRes.status);
+
+    // Clear the background color so the row doesn't stay green/pink/etc.
+    if (wrGid !== null) {
+      await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
+        requests: [{ repeatCell: {
+          range: { sheetId: wrGid, startRowIndex: rowNum - 1, endRowIndex: rowNum, startColumnIndex: 0, endColumnIndex: 9 },
+          cell: { userEnteredFormat: { backgroundColor: STATUS_BG.paid } },
+          fields: 'userEnteredFormat.backgroundColor'
+        }}]
+      });
+    }
+
+    // Update local data so the row stays in the list with voided content
+    const r = logRows.find(r => r._rowNum === rowNum);
+    if (r) {
+      r.dateReq = VOID; r.reqBy = VOID; r.property = VOID;
+      r.workReq = VOID; r.compliance = VOID; r.notes = VOID;
+      r.dateComp = VOID; r.invoiced = VOID; r.paid = VOID;
+      r._status = 'paid';
+    }
     renderTable();
-    toast('✓ Row ' + rowNum + ' deleted');
+    toast(`✓ Row ${rowNum} marked as unused`);
   } catch(e) {
-    toast('⚠ Delete failed: ' + e.message);
+    toast('⚠ Failed: ' + e.message);
     console.error('deleteEntry:', e);
   }
 }
