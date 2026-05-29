@@ -1528,11 +1528,13 @@ async function openEditWorkOrder(docId, docName) {
       else if (prioSection[1].includes('☑ Routine')) priority = 'Routine';
     }
 
-    // Labor
-    const labor1Rate = (text.match(/Labor 1[\s\S]{0,60}?\$(\d+(?:\.\d+)?)\s*\/hr/i)||[])[1] || '';
-    const labor1Hrs  = (text.match(/Labor 1[\s\S]{0,120}?(\d+(?:\.\d+)?)\s*hrs/i)||[])[1]  || '';
-    const labor2Rate = (text.match(/Labor 2[\s\S]{0,60}?\$(\d+(?:\.\d+)?)\s*\/hr/i)||[])[1] || '';
-    const labor2Hrs  = (text.match(/Labor 2[\s\S]{0,120}?(\d+(?:\.\d+)?)\s*hrs/i)||[])[1]  || '';
+    // Labor — isolate each section before searching so regex can't bleed across rows
+    const labor1Sec = (text.match(/Labor 1([\s\S]*?)(?=Labor 2|Trip Charge)/i)||[])[1] || '';
+    const labor2Sec = (text.match(/Labor 2([\s\S]*?)(?=Trip Charge)/i)||[])[1] || '';
+    const labor1Rate = (labor1Sec.match(/\$(\d+(?:\.\d+)?)\s*\/hr/i)||[])[1] || '';
+    const labor1Hrs  = (labor1Sec.match(/(\d+(?:\.\d+)?)\s*hrs/i)||[])[1]  || '';
+    const labor2Rate = (labor2Sec.match(/\$(\d+(?:\.\d+)?)\s*\/hr/i)||[])[1] || '';
+    const labor2Hrs  = (labor2Sec.match(/(\d+(?:\.\d+)?)\s*hrs/i)||[])[1]  || '';
 
     // Markup %
     const markupPct = ((text.match(/Markup\s*\((\d+)%\)/i)||[])[1]) || '25';
