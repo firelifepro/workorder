@@ -1707,7 +1707,7 @@ window.addEventListener('load', () => {
       API_KEY_VAL = k;
       setStatus('conn-status', '✓ Connected', 'ok');
       document.getElementById('refresh-props-btn').style.display = 'inline-block';
-      loadSheet();
+      loadSheet().then(() => applyEditMode());
     } else {
       loadSheet();
       setStatus('conn-status', '⚠ Session expired', 'warn');
