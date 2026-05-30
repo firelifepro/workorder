@@ -180,7 +180,7 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
 
 <script>
 const FOLDER_NAMES = { 'ready': '2 - Ready to Invoice', 'sent': '3 - Invoice Sent' };
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents.readonly';
 
 let accessToken = null;
 let tokenClient = null;
@@ -284,9 +284,79 @@ async function loadWOs() {
       citySt:       f.appProperties?.flips_city_st   || '',
     }));
     renderTable(allWOs);
+    enrichMissingInBackground();
   } catch(e) {
     showPlaceholder(`<div class="big-icon">⚠️</div><div>Error: ${e.message}</div>`);
   }
+}
+
+async function enrichMissingInBackground() {
+  const needsEnrich = allWOs.filter(w => !w.lineNum || !w.services);
+  if (!needsEnrich.length) return;
+  for (const wo of needsEnrich) {
+    try {
+      let lineNum = '', services = '';
+      if (wo.mimeType === 'application/json') {
+        const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?alt=media&supportsAllDrives=true`);
+        if (!res.ok) continue;
+        const d = await res.json();
+        lineNum  = d['LINE #'] || '';
+        services = (d['SERVICES'] || '').split('\n').filter(s => s.trim() && s.trim() !== '(none selected)')[0] || '';
+      } else {
+        const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${wo.id}?fields=body`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const text = extractDocText(data);
+        lineNum  = parseWOField(text, 'Line #');
+        services = parseFirstService(text);
+      }
+      if (!lineNum && !services) continue;
+      wo.lineNum   = wo.lineNum   || lineNum;
+      wo.services  = wo.services  || services;
+      apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?supportsAllDrives=true`, 'PATCH', {
+        appProperties: {
+          flips_line_num: wo.lineNum  || '',
+          flips_services: wo.services || '',
+          flips_client:   wo.client   || '',
+          flips_amount:   wo.amount   || '',
+        }
+      }).catch(() => {});
+      renderTable(allWOs);
+    } catch(_) {}
+  }
+}
+
+function extractDocText(docData) {
+  const parts = [];
+  function walk(blocks) {
+    for (const b of (blocks || [])) {
+      if (b.paragraph) b.paragraph.elements?.forEach(e => { if (e.textRun?.content) parts.push(e.textRun.content); });
+      if (b.table) b.table.tableRows?.forEach(r => r.tableCells?.forEach(c => walk(c.content)));
+    }
+  }
+  walk(docData.body?.content);
+  return parts.join('');
+}
+
+function parseWOField(text, label) {
+  const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[:\\s]+([^\\n\\r\\t]+)', 'i');
+  const m = text.match(re);
+  return m ? m[1].trim() : '';
+}
+
+function parseFirstService(text) {
+  const markerIdx = text.indexOf('List of Selected Work Scope Items');
+  if (markerIdx < 0) return '';
+  const section = text.slice(markerIdx, markerIdx + 800);
+  const lines = section.split(/[\r\n]/);
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('•')) {
+      const item = t.replace(/^•\s*/, '').trim();
+      if (item && item.toLowerCase() !== 'none selected') return item;
+    }
+  }
+  return '';
 }
 
 function switchFolder(name) {
