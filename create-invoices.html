@@ -1212,6 +1212,7 @@ async function createQBInvoice(doc) {
     CustomerMemo: { value: 'Please remit payment to:\nFire Life Protection Systems, Inc.\n8201 Shaffer Parkway\nUnit B\nLittleton, CO 80127' },
     PrivateNote: `Created from Work Order: ${doc.name} (Google Drive ID: ${doc.id})`,
     ShipAddr: emptyShipAddr,
+    EmailStatus: 'NotSet',
     ...(docNumber     ? { DocNumber:    docNumber }                 : {}),
     ...(doc.billEmail ? { BillEmail:    { Address: doc.billEmail } } : {}),
     ...(ccEmail       ? { BillEmailCc: { Address: ccEmail }       } : {}),
