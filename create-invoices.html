@@ -1152,8 +1152,9 @@ async function createQBInvoice(doc) {
   const dueDays = parseInt(document.getElementById('qb-due-days').value) || 30;
 
   const custRef   = await findOrCreateCustomer(doc.client || doc.name, env, doc.acctNum);
-  const ccRaw     = parseCCEmailFromNotes(custRef.notes);
-  const ccEmail   = (ccRaw && ccRaw.toLowerCase() !== (doc.billEmail || '').toLowerCase()) ? ccRaw : '';
+  // Email addresses are intentionally excluded from the invoice payload — QB auto-send
+  // fires if BillEmail is set and company Automation is on. The customer's email on
+  // their QB record is used when you manually send from inside QB.
   const shipDate  = toQBDate(doc.dateCompleted);
   const docNumber = await getNextDocNumber(env);
 
@@ -1213,10 +1214,8 @@ async function createQBInvoice(doc) {
     PrivateNote: `Created from Work Order: ${doc.name} (Google Drive ID: ${doc.id})`,
     ShipAddr: emptyShipAddr,
     EmailStatus: 'NotSet',
-    ...(docNumber     ? { DocNumber:    docNumber }                 : {}),
-    ...(doc.billEmail ? { BillEmail:    { Address: doc.billEmail } } : {}),
-    ...(ccEmail       ? { BillEmailCc: { Address: ccEmail }       } : {}),
-    ...(billAddr      ? { BillAddr:    billAddr }                  : {}),
+    ...(docNumber ? { DocNumber: docNumber } : {}),
+    ...(billAddr  ? { BillAddr:  billAddr  } : {}),
   };
 
   const data = await qbProxy('POST', `/invoice?minorversion=70`, env, payload);
