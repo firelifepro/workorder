@@ -510,12 +510,14 @@ let qbAccessToken = null;
 let qbRealmId = null;
 
 let _workLogTab = null;
+let _workLogGid = null;
 
 async function ensureWorkLogTab() {
   if (_workLogTab) return;
   const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
   const meta = await metaRes.json();
   _workLogTab = meta.sheets[0].properties.title;
+  _workLogGid = meta.sheets[0].properties.sheetId;
 }
 
 function parseLineNum(docName) {
@@ -535,6 +537,16 @@ async function updateWorkLogInvoiced(doc, invoiceNum) {
     `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
     'PUT', { range, majorDimension: 'ROWS', values: [[stamp]] }
   );
+  // Set row background to yellow (waiting on payment)
+  await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
+    requests: [{
+      repeatCell: {
+        range: { sheetId: _workLogGid, startRowIndex: lineNum - 1, endRowIndex: lineNum },
+        cell: { userEnteredFormat: { backgroundColor: { red: 1.0, green: 1.0, blue: 0.0 } } },
+        fields: 'userEnteredFormat.backgroundColor'
+      }
+    }]
+  });
 }
 
 // ─────────────────────────────────────────────────────────
