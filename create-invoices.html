@@ -231,6 +231,11 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .doc-view-btn:hover { background: #d0e8ff; }
 .doc-edit-btn { font-size: 0.72rem; color: #7b3f00; background: #fff8f0; border: 1px solid #f0c080; border-radius: 3px; padding: 3px 7px; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: background 0.1s; }
 .doc-edit-btn:hover { background: #ffe8c0; }
+.doc-line-wrap { display: flex; align-items: center; gap: 3px; font-size: 0.71rem; color: #666; white-space: nowrap; flex-shrink: 0; }
+.doc-line-input { width: 54px; padding: 2px 4px; border: 1px solid #c0d8f0; border-radius: 3px; font-size: 0.75rem; text-align: center; }
+.doc-scope-wrap { margin-top: 4px; display: flex; align-items: flex-start; gap: 4px; }
+.doc-scope-lbl { font-size: 0.71rem; color: #888; white-space: nowrap; padding-top: 3px; }
+.doc-scope-input { font-size: 0.71rem; flex: 1; padding: 2px 4px; border: 1px solid #c0d8f0; border-radius: 3px; resize: vertical; min-height: 36px; }
 
 /* ── Empty / loading states ── */
 #list-placeholder {
@@ -527,7 +532,7 @@ function parseLineNum(docName) {
 
 async function updateWorkLogInvoiced(doc, invoiceNum) {
   if (!invoiceNum) return;
-  const lineNum = parseLineNum(doc.name);
+  const lineNum = doc.lineNum || parseLineNum(doc.name);
   if (!lineNum) return;
   await ensureWorkLogTab();
   const today = new Date();
@@ -547,6 +552,26 @@ async function updateWorkLogInvoiced(doc, invoiceNum) {
       }
     }]
   });
+}
+
+async function saveDocLineNum(docId, val) {
+  const doc = allDocs.find(d => d.id === docId);
+  if (!doc) return;
+  doc.lineNum = val ? parseInt(val, 10) : null;
+  try {
+    await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?supportsAllDrives=true`,
+      'PATCH', { appProperties: { flips_line_num: val ? String(parseInt(val, 10)) : '' } });
+  } catch(e) { console.warn('saveDocLineNum failed:', e); }
+}
+
+async function saveDocScope(docId, val) {
+  const doc = allDocs.find(d => d.id === docId);
+  if (!doc) return;
+  doc.scope = val ? val.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  try {
+    await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?supportsAllDrives=true`,
+      'PATCH', { appProperties: { flips_scope: val || '' } });
+  } catch(e) { console.warn('saveDocScope failed:', e); }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -662,6 +687,8 @@ async function loadDocs() {
       billEmail: f.appProperties?.flips_bill_email || null,
       svcAddr:   f.appProperties?.flips_svc_addr  || null,
       citySt:    f.appProperties?.flips_city_st   || null,
+      lineNum:   f.appProperties?.flips_line_num  ? parseInt(f.appProperties.flips_line_num, 10) : (parseLineNum(f.name) || null),
+      scope:     f.appProperties?.flips_scope     ? f.appProperties.flips_scope.split('\n').filter(Boolean) : null,
     }));
 
     renderDocList(allDocs);
@@ -698,7 +725,7 @@ async function enrichDocsInBackground() {
         doc.billEmail = woData['BILLING EMAIL']    || doc.billEmail;
         doc.svcAddr   = woData['SERVICE ADDRESS']  || doc.svcAddr;
         doc.citySt    = woData['CITY / STATE / ZIP'] || doc.citySt;
-      } else {
+      } else if (doc.mimeType !== 'application/pdf') {
         // Legacy Google Doc — parse text
         const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
         if (!res.ok) { failed++; continue; }
@@ -710,6 +737,10 @@ async function enrichDocsInBackground() {
         doc.billEmail = doc.billEmail || parseBillingEmail(text);
         doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
         doc.citySt    = doc.citySt    || parseCitySt(text);
+      } else {
+        // PDF — skip enrichment; metadata comes from Drive appProperties
+        failed++;
+        continue;
       }
 
       if (doc.amount || doc.client) {
@@ -929,6 +960,7 @@ function renderDocList(docs) {
   const list = document.getElementById('doc-list');
   list.innerHTML = filtered.map(doc => {
     const isDoc = doc.mimeType === 'application/vnd.google-apps.document';
+    const isPdf = doc.mimeType === 'application/pdf';
     const icon = isDoc ? '📄' : '📎';
     const date = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
     const _amt = parseFloat(doc.amount);
@@ -939,14 +971,21 @@ function renderDocList(docs) {
     const viewUrl = doc.mimeType === 'application/vnd.google-apps.document'
       ? `https://docs.google.com/document/d/${doc.id}/edit`
       : `https://drive.google.com/file/d/${doc.id}/view`;
+    const scopeVal = (doc.scope || []).join('\n');
+    const scopeHtml = isPdf ? `<div class="doc-scope-wrap">
+      <span class="doc-scope-lbl">Services:</span>
+      <textarea class="doc-scope-input" placeholder="One service per line" rows="2" onchange="event.stopPropagation();saveDocScope('${doc.id}',this.value)" onclick="event.stopPropagation()">${escHtml(scopeVal)}</textarea>
+    </div>` : '';
     return `<div class="doc-row" id="row-${doc.id}" onclick="toggleRow('${doc.id}')">
       <input type="checkbox" id="chk-${doc.id}" onchange="onCheckChange()" onclick="event.stopPropagation()">
       <div class="doc-icon">${icon}</div>
       <div class="doc-info">
         <div class="doc-name">${escHtml(doc.name)}</div>
         <div class="doc-meta">Modified ${date}${clientStr}</div>
+        ${scopeHtml}
       </div>
       ${amountHtml}
+      <label class="doc-line-wrap" onclick="event.stopPropagation()">Line&nbsp;#&nbsp;<input type="number" class="doc-line-input" value="${doc.lineNum != null ? doc.lineNum : ''}" placeholder="—" onchange="saveDocLineNum('${doc.id}',this.value)" onclick="event.stopPropagation()"></label>
       <button class="doc-edit-btn" data-id="${doc.id}" data-name="${escHtml(doc.name)}" data-mime="${doc.mimeType}" onclick="event.stopPropagation();openEditWorkOrder(this.dataset.id,this.dataset.name,this.dataset.mime)" title="Edit this work order and overwrite the Drive file">✏️ Edit WO</button>
       <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="Open in Google Docs">📄 View</a>
     </div>`;
@@ -1110,7 +1149,7 @@ async function createInvoices() {
           doc.workDesc      = woData['DESCRIPTION OF WORK'] || '';
           doc.dateCompleted = woData['DATE COMPLETED ISO'] || woData['DATE COMPLETED'] || '';
         }
-      } else {
+      } else if (doc.mimeType !== 'application/pdf') {
         const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${doc.id}?fields=body`);
         if (res.ok) {
           const data = await res.json();
@@ -1126,6 +1165,7 @@ async function createInvoices() {
           doc.dateCompleted = parseDateCompleted(text);
         }
       }
+      // PDFs: doc.scope / doc.lineNum already loaded from Drive appProperties in loadDocs
     } catch(_) { /* createQBInvoice will surface missing data */ }
   }));
 
