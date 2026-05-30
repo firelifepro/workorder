@@ -126,6 +126,20 @@
     .act-btn.wo  { color: #2e6da4; }
     .act-btn.wo:hover  { background: #e8f4ff; border-color: #2e6da4; }
 
+    /* ── View toggle ── */
+    #view-toggle-btn { background: #e8f4ff; border: 1px solid #2e6da4; color: #2e6da4; padding: 6px 13px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; font-weight: 600; white-space: nowrap; }
+    #view-toggle-btn:hover { background: #d0e8ff; }
+    #view-toggle-btn.full { background: #f5f5f5; border-color: #999; color: #555; }
+    #view-toggle-btn.full:hover { background: #e8e8e8; }
+
+    /* ── Simple view — larger font, hide detail columns ── */
+    #table-wrap.simple-view table { font-size: 12pt; }
+    #table-wrap.simple-view .col-compliance,
+    #table-wrap.simple-view .col-datecomp,
+    #table-wrap.simple-view .col-invoiced,
+    #table-wrap.simple-view .col-paid,
+    #table-wrap.simple-view .col-status { display: none; }
+
     #empty-row td { text-align: center; padding: 44px 20px; color: #aaa; font-style: italic; }
 
     /* ── Modal ── */
@@ -269,6 +283,7 @@
     </div>
     <button id="add-btn" onclick="openModal(null)">+ New Entry</button>
     <button class="icon-btn" onclick="loadWorkLog()" title="Refresh">↺ Refresh</button>
+    <button id="view-toggle-btn" onclick="toggleView()" title="Switch between simple (large font) and full view"></button>
   </div>
 
   <!-- Stats -->
@@ -295,12 +310,12 @@
           <th>Requested By</th>
           <th>Property</th>
           <th>Work Requested</th>
-          <th class="th-c">Compliance</th>
           <th>Notes</th>
-          <th>Date Completed</th>
-          <th>Invoiced</th>
-          <th>Paid</th>
-          <th class="th-c">Status</th>
+          <th class="th-c col-compliance">Compliance</th>
+          <th class="col-datecomp">Date Completed</th>
+          <th class="col-invoiced">Invoiced</th>
+          <th class="col-paid">Paid</th>
+          <th class="th-c col-status">Status</th>
           <th class="th-acts"></th>
         </tr>
       </thead>
@@ -805,12 +820,12 @@ function renderTable() {
       <td class="td-datecomp">${workCell(r.reqBy, 'rb' + r._rowNum)}</td>
       <td class="td-prop">${esc(r.property)}</td>
       <td class="td-work">${workCell(r.workReq, 'w' + r._rowNum)}</td>
-      <td class="td-comp">${workCell(r.compliance, 'c' + r._rowNum)}</td>
       <td class="td-note">${workCell(r.notes, 'n' + r._rowNum)}</td>
-      <td class="td-datecomp">${workCell(r.dateComp, 'd' + r._rowNum)}</td>
-      <td class="td-inv">${esc(r.invoiced)}</td>
-      <td class="td-datecomp">${workCell(r.paid, 'p' + r._rowNum)}</td>
-      <td style="text-align:center;white-space:nowrap;">
+      <td class="td-comp col-compliance">${workCell(r.compliance, 'c' + r._rowNum)}</td>
+      <td class="td-datecomp col-datecomp">${workCell(r.dateComp, 'd' + r._rowNum)}</td>
+      <td class="td-inv col-invoiced">${esc(r.invoiced)}</td>
+      <td class="td-datecomp col-paid">${workCell(r.paid, 'p' + r._rowNum)}</td>
+      <td class="col-status" style="text-align:center;white-space:nowrap;">
         <span class="badge ${STATUS_BADGE[r._status]}">${STATUS_LABEL[r._status]}</span>
       </td>
       <td class="td-acts">
@@ -822,6 +837,31 @@ function renderTable() {
 }
 
 function applyFilters() { renderTable(); }
+
+// ─────────────────────────────────────────────────────
+// VIEW TOGGLE (simple = large font, key columns only)
+// ─────────────────────────────────────────────────────
+let simpleView = localStorage.getItem('flips_worklog_view') !== 'full';
+
+function applyViewMode() {
+  const wrap = document.getElementById('table-wrap');
+  const btn  = document.getElementById('view-toggle-btn');
+  if (simpleView) {
+    wrap.classList.add('simple-view');
+    btn.textContent = '⊞ Full View';
+    btn.classList.remove('full');
+  } else {
+    wrap.classList.remove('simple-view');
+    btn.textContent = '⊟ Simple View';
+    btn.classList.add('full');
+  }
+}
+
+function toggleView() {
+  simpleView = !simpleView;
+  localStorage.setItem('flips_worklog_view', simpleView ? 'simple' : 'full');
+  applyViewMode();
+}
 
 function createWOFromRow(rowNum) {
   const r = logRows.find(row => row._rowNum === rowNum);
@@ -1114,6 +1154,8 @@ function updateLayout() {
 })();
 
 window.addEventListener('load', () => {
+  applyViewMode();
+
   const k = localStorage.getItem('flips_api_key');
   const c = localStorage.getItem('flips_client_id');
   if (k) document.getElementById('api-key').value = k;
