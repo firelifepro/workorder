@@ -291,17 +291,18 @@ async function loadWOs() {
 }
 
 async function enrichMissingInBackground() {
-  const needsEnrich = allWOs.filter(w => !w.lineNum || !w.services);
+  const needsEnrich = allWOs.filter(w => !w.lineNum || !w.services || !w.date);
   if (!needsEnrich.length) return;
   for (const wo of needsEnrich) {
     try {
-      let lineNum = '', services = '';
+      let lineNum = '', services = '', date = '';
       if (wo.mimeType === 'application/json') {
         const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?alt=media&supportsAllDrives=true`);
         if (!res.ok) continue;
         const d = await res.json();
         lineNum  = d['LINE #'] || '';
         services = (d['SERVICES'] || '').split('\n').filter(s => s.trim() && s.trim() !== '(none selected)')[0] || '';
+        date     = d['DATE COMPLETED ISO'] || parseWODate(d['DATE COMPLETED'] || '');
       } else {
         const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${wo.id}?fields=body`);
         if (!res.ok) continue;
@@ -309,14 +310,17 @@ async function enrichMissingInBackground() {
         const text = extractDocText(data);
         lineNum  = parseWOField(text, 'Line #');
         services = parseFirstService(text);
+        date     = parseWODate(parseWOField(text, 'Date Completed'));
       }
-      if (!lineNum && !services) continue;
-      wo.lineNum   = wo.lineNum   || lineNum;
-      wo.services  = wo.services  || services;
+      wo.lineNum  = wo.lineNum  || lineNum;
+      wo.services = wo.services || services;
+      wo.date     = wo.date     || date;
+      if (!wo.lineNum && !wo.services && !wo.date) continue;
       apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?supportsAllDrives=true`, 'PATCH', {
         appProperties: {
           flips_line_num: wo.lineNum  || '',
           flips_services: wo.services || '',
+          flips_date:     wo.date     || '',
           flips_client:   wo.client   || '',
           flips_amount:   wo.amount   || '',
         }
@@ -391,7 +395,7 @@ function renderTable(wos) {
       : `<span class="wo-type-badge wo-type-gdoc">Doc</span>`;
     const dateStr = w.date
       ? new Date(w.date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
-      : (w.modifiedTime ? new Date(w.modifiedTime).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '');
+      : '—';
     const amt = parseFloat(w.amount);
     const amtStr = (w.amount && !isNaN(amt)) ? `$${amt.toLocaleString('en-US', { minimumFractionDigits:2 })}` : '—';
     const svcShort = (w.services || '').replace(/ [–-] /, ' ').split('\n')[0] || '—';
@@ -418,7 +422,7 @@ function renderTable(wos) {
   document.getElementById('wo-list').innerHTML = `
     <table class="wo-table">
       <thead><tr>
-        <th>Line #</th><th>Property</th><th>Services</th><th>Date</th><th>Amount</th><th>Actions</th>
+        <th>Line #</th><th>Property</th><th>Services</th><th>Date Completed</th><th>Amount</th><th>Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
