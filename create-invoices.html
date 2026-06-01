@@ -1500,6 +1500,53 @@ async function findFolder(name) {
 // ─────────────────────────────────────────────────────────
 // EDIT WORK ORDER — parse doc, store to localStorage, open index.html
 // ─────────────────────────────────────────────────────────
+function parseExpenseRowsFromText(text) {
+  const lines = text.split(/[\r\n]/).map(l => l.trim());
+  let inSub = false, inMat = false;
+  const subLines = [], matLines = [];
+  for (const line of lines) {
+    if (line === 'Sub-Contractor/Vendor') { inSub = true; inMat = false; continue; }
+    if (line === 'Materials') {
+      if (inSub || subLines.length || !inMat) { inSub = false; inMat = true; continue; }
+    }
+    if (/^(Labor \d|Trip Charge|Misc\b|Compliance\b)/i.test(line)) break;
+    if (inSub && line) subLines.push(line);
+    if (inMat && line) matLines.push(line);
+  }
+
+  const isDollar = (s) => /^\$[\d,]+\.\d{2}$/.test(s);
+  const isNumeric = (s) => /^\d+(\.\d+)?$/.test(s);
+
+  function parseRows(lines, hasQty) {
+    const rows = [];
+    let current = [];
+    for (const line of lines) {
+      current.push(line);
+      const dollars = current.filter(isDollar);
+      if (dollars.length >= 3) {
+        const nonDollar = current.filter(l => !isDollar(l));
+        const qty = hasQty ? (nonDollar.find(isNumeric) || '') : '';
+        const desc = nonDollar.filter(l => !isNumeric(l)).join(' ').trim();
+        const expense = parseFloat(dollars[0].replace(/[^\d.]/g, '')) || 0;
+        const markup  = parseFloat(dollars[1].replace(/[^\d.]/g, '')) || 0;
+        const total   = parseFloat(dollars[2].replace(/[^\d.]/g, '')) || 0;
+        if (desc || expense > 0) {
+          rows.push(hasQty
+            ? { desc, qty, expense, markup, total }
+            : { label: desc, expense, markup, total });
+        }
+        current = [];
+      }
+    }
+    return rows;
+  }
+
+  return {
+    matRows: parseRows(matLines, true),
+    subRows: parseRows(subLines, false),
+  };
+}
+
 function extractSubMatNote(text) {
   const lines = text.split(/[\r\n]/).map(l => l.trim());
   let inSub = false, inMat = false;
@@ -1700,6 +1747,7 @@ async function openEditWorkOrder(docId, docName, mimeType) {
       complianceExpense: complianceExpRaw.replace(/,/g,''),
       flatRate, flatRateAmount,
       grandTotal: (flatRate ? flatRateAmount : null) || (parseAmount(text) || ''),
+      ...parseExpenseRowsFromText(text),
       subMatNote: extractSubMatNote(text),
       fileType,
     };

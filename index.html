@@ -1908,7 +1908,7 @@ function loadFromEditWO(d) {
   if (banner) banner.style.display = 'block';
   if (nameEl) nameEl.textContent = d.fileName || fileId;
   // Sub/mat note: show for GDoc edits (can't pre-fill rows); hide for JSON (rows are fully populated)
-  if (d.subMatNote && d.fileType !== 'json') {
+  if (d.subMatNote && d.fileType !== 'json' && !d.matRows?.length && !d.subRows?.length) {
     const noteEl = document.getElementById('edit-wo-submat');
     if (noteEl) {
       noteEl.textContent = '📋 Original sub/materials (re-enter manually):\n' + d.subMatNote;
