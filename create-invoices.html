@@ -1679,6 +1679,7 @@ async function openEditWorkOrder(docId, docName, mimeType) {
     const miscSec = (text.match(/\bMisc\b[:\s]*([\s\S]*?)(?=\bCompliance\b|Total to Invoice|★ FIXED RATE|COMPLETION)/i)||[])[1] || '';
     const miscLines = miscSec.split(/[\r\n]/).map(l => l.trim()).filter(Boolean);
     const miscDesc = miscLines.find(l => !/^\$/.test(l) && !/^\d+$/.test(l)) || '';
+    const miscQty  = miscLines.find(l => /^\d+$/.test(l)) || '';
     const miscExpenseRaw = miscLines.find(l => /^\$[\d,]+(\.\d{2})?$/.test(l)) || '';
     const miscExpense = miscExpenseRaw.replace(/[^0-9.]/g, '');
 
@@ -1741,7 +1742,7 @@ async function openEditWorkOrder(docId, docName, mimeType) {
       labor1Rate, labor1Hrs,
       labor2Rate, labor2Hrs,
       tripChecked,
-      miscDesc, miscExpense,
+      miscDesc, miscQty, miscExpense,
       complianceChecked,
       complianceDesc,
       complianceExpense: complianceExpRaw.replace(/,/g,''),
@@ -1834,6 +1835,7 @@ function buildEditPayloadFromWOData(docId, docName, d) {
     labor2Hrs:        d['LABOR 2 HOURS'] || '',
     tripChecked:      d['TRIP CHARGE'] === '$90.00',
     miscDesc:         d['MISC DESCRIPTION'] || '',
+    miscQty:          d['MISC QTY']         || '',
     miscExpense:      stripNonNum(d['MISC EXPENSE']),
     complianceChecked: d['COMPLIANCE REPORT'] === 'Yes',
     complianceDesc:   d['COMPLIANCE DESC'] || '',

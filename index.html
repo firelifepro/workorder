@@ -1045,6 +1045,7 @@ function collectForm() {
     'TRIP MARKUP':              '$' + (v('trip-markup')  || '0.00'),
     'TRIP TOTAL':               '$' + (v('trip-total')   || '0.00'),
     'MISC DESCRIPTION':         v('misc-desc'),
+    'MISC QTY':                 v('misc-qty'),
     'MISC EXPENSE':             '$' + (v('misc-expense') || '0.00'),
     'MISC MARKUP':              '$' + (v('misc-markup')  || '0.00'),
     'MISC TOTAL':               '$' + (v('misc-total')   || '0.00'),
@@ -1658,7 +1659,7 @@ function buildWorkOrderHTML(d) {
     d['TRIP CHARGE']==='$90.00' ? (d['TRIP MARKUP']||'')  : '',
     d['TRIP CHARGE']==='$90.00' ? (d['TRIP TOTAL']||'')   : '');
 
-  html += erow('Misc', d['MISC DESCRIPTION']||'', '',
+  html += erow('Misc', d['MISC DESCRIPTION']||'', d['MISC QTY']||'',
     d['MISC EXPENSE']||'', d['MISC MARKUP']||'', d['MISC TOTAL']||'');
 
   html += erow(
@@ -1736,7 +1737,9 @@ window.addEventListener('load', () => {
       API_KEY_VAL = k;
       setStatus('conn-status', '✓ Connected', 'ok');
       document.getElementById('refresh-props-btn').style.display = 'inline-block';
-      loadSheet().then(() => { applyEditMode(); checkPendingWOFromLog(); });
+      applyEditMode();
+      checkPendingWOFromLog();
+      loadSheet();
     } else {
       loadSheet();
       setStatus('conn-status', '⚠ Session expired', 'warn');
@@ -1884,6 +1887,7 @@ function loadFromEditWO(d) {
   if (tripCb) { tripCb.checked = !!d.tripChecked; onTripChange(); }
 
   if (d.miscDesc)    set('misc-desc', d.miscDesc);
+  if (d.miscQty)     set('misc-qty',  d.miscQty);
   if (d.miscExpense && parseFloat(d.miscExpense) > 0) { set('misc-expense', d.miscExpense); onExpenseChange('misc'); }
 
   if (d.complianceChecked) {
