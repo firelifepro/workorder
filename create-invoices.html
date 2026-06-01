@@ -719,8 +719,8 @@ async function enrichDocsInBackground() {
         const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media&supportsAllDrives=true`);
         if (!res.ok) { failed++; continue; }
         const woData = await res.json();
-        doc.amount    = (woData['TOTAL TO INVOICE'] || '').replace(/[^0-9.]/g, '') || null;
-        doc.client    = woData['PROPERTY NAME']    || null;
+        doc.amount    = doc.amount || (woData['TOTAL TO INVOICE'] || '').replace(/[^0-9.]/g, '') || null;
+        doc.client    = doc.client || woData['PROPERTY NAME']    || null;
         doc.acctNum   = woData['FLPS ACCT #']      || doc.acctNum;
         doc.billEmail = woData['BILLING EMAIL']    || doc.billEmail;
         doc.svcAddr   = woData['SERVICE ADDRESS']  || doc.svcAddr;
@@ -731,8 +731,8 @@ async function enrichDocsInBackground() {
         if (!res.ok) { failed++; continue; }
         const data = await res.json();
         const text = extractText(data);
-        doc.amount    = parseAmount(text);
-        doc.client    = parseClient(text);
+        doc.amount    = doc.amount || parseAmount(text);
+        doc.client    = doc.client || parseClient(text);
         doc.acctNum   = doc.acctNum   || parseAcctNum(text);
         doc.billEmail = doc.billEmail || parseBillingEmail(text);
         doc.svcAddr   = doc.svcAddr   || parseSvcAddr(text);
