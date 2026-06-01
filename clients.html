@@ -117,6 +117,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 /* ── Toast ── */
 #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 9999; white-space: nowrap; }
 #toast.show { transform: translateX(-50%) translateY(0); }
+#toast.warn { background: #c0392b; }
 
 /* ── Field comparison drawer ── */
 #compare-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 8000; }
@@ -1026,6 +1027,8 @@ async function createQBCustomer(idx) {
     if (!created) throw new Error('No customer in response: ' + JSON.stringify(result));
 
     toast(`✓ Created QB customer: ${created.DisplayName}`);
+    const hasCc = ccEmail && (!row.billEmail || ccEmail.toLowerCase() !== row.billEmail.toLowerCase());
+    if (hasCc) setTimeout(() => toast(`⚠ CC email not in QB — go into QB and set it manually (it's in Notes)`, 'warn'), 3700);
     reconciled[idx].qb = created;
     reconciled[idx].matchType = 'acct';
     qbCustomers.push(created);
@@ -1416,11 +1419,12 @@ function maybeCloseDrawer() {
   if (gOk && qOk) document.getElementById('conn-drawer').classList.remove('open');
 }
 function toggleDrawer() { document.getElementById('conn-drawer').classList.toggle('open'); }
-function toast(msg) {
+function toast(msg, type) {
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3500);
+  el.className = 'show' + (type === 'warn' ? ' warn' : '');
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.remove('show'), type === 'warn' ? 5000 : 3500);
 }
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
