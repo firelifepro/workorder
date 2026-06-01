@@ -1306,9 +1306,10 @@ async function createDoc() {
     setStatus('submit-status', editModeFileId ? '✓ Work order updated!' : '✓ Work order saved!', 'ok');
     const clientVal = data['PROPERTY NAME'] || '';
     const amountVal = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g, '') : '';
-    if (clientVal || amountVal) {
+    const propFileId = editModeFileId || newId;
+    if ((clientVal || amountVal) && propFileId) {
       apiFetch(
-        `https://www.googleapis.com/drive/v3/files/${newId}?supportsAllDrives=true`,
+        `https://www.googleapis.com/drive/v3/files/${propFileId}?supportsAllDrives=true`,
         'PATCH',
         { appProperties: {
             flips_client:     clientVal,
