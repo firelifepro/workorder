@@ -1309,22 +1309,26 @@ async function createDoc() {
     const amountVal = data['TOTAL TO INVOICE'] ? data['TOTAL TO INVOICE'].replace(/[^0-9.]/g, '') : '';
     const propFileId = editModeFileId || newId;
     if ((clientVal || amountVal) && propFileId) {
-      apiFetch(
-        `https://www.googleapis.com/drive/v3/files/${propFileId}?supportsAllDrives=true`,
-        'PATCH',
-        { appProperties: {
-            flips_client:     clientVal,
-            flips_amount:     amountVal,
-            flips_acct_num:   data['FLPS ACCT #']        || '',
-            flips_bill_to:    data['BILL TO ADDRESS']    || '',
-            flips_bill_email: data['BILLING EMAIL']      || '',
-            flips_svc_addr:   data['SERVICE ADDRESS']    || '',
-            flips_city_st:    data['CITY / STATE / ZIP'] || '',
-            flips_line_num:   data['LINE #']             || '',
-            flips_date:       data['DATE COMPLETED ISO'] || '',
-            flips_services:   (data['SERVICES'] || '').split('\n')[0] || '',
-        }}
-      ).catch(() => {});
+      try {
+        await apiFetch(
+          `https://www.googleapis.com/drive/v3/files/${propFileId}?supportsAllDrives=true`,
+          'PATCH',
+          { appProperties: {
+              flips_client:     clientVal,
+              flips_amount:     amountVal,
+              flips_acct_num:   data['FLPS ACCT #']        || '',
+              flips_bill_to:    data['BILL TO ADDRESS']    || '',
+              flips_bill_email: data['BILLING EMAIL']      || '',
+              flips_svc_addr:   data['SERVICE ADDRESS']    || '',
+              flips_city_st:    data['CITY / STATE / ZIP'] || '',
+              flips_line_num:   data['LINE #']             || '',
+              flips_date:       data['DATE COMPLETED ISO'] || '',
+              flips_services:   (data['SERVICES'] || '').split('\n')[0] || '',
+          }}
+        );
+      } catch(patchErr) {
+        console.warn('[WO] appProperties patch failed:', patchErr);
+      }
     }
 
   } catch(e) {
