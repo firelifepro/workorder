@@ -916,6 +916,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com
 let editModeFileId   = null; // set when opened via ?edit_wo=FILEID from create-invoices
 let editModeFileType = null; // 'json' | 'gdoc' — controls save format on overwrite
 let viewModeActive   = false;
+let _pendingPropMatch = null; // property name to match after loadSheet populates the dropdown
 
 // Called by flips-shared.js after OAuth + loadSheet complete
 function onAfterAuth() {
@@ -1743,7 +1744,16 @@ window.addEventListener('load', () => {
       document.getElementById('refresh-props-btn').style.display = 'inline-block';
       applyEditMode();
       checkPendingWOFromLog();
-      loadSheet();
+      loadSheet().then(() => {
+        if (_pendingPropMatch) {
+          const sel = document.getElementById('property-select');
+          if (sel && !sel.value) {
+            const opt = [...sel.options].find(o => o.value === _pendingPropMatch || o.text.startsWith(_pendingPropMatch));
+            if (opt) { sel.value = opt.value; onPropertySelect(); }
+          }
+          _pendingPropMatch = null;
+        }
+      });
     } else {
       loadSheet();
       setStatus('conn-status', '⚠ Session expired', 'warn');
@@ -1806,13 +1816,15 @@ function loadFromEditWO(d) {
   set('flps-acct-num',    d.flpsAcct);
   set('access-info',      d.accessInfo);
 
-  // Property name dropdown — try to match
+  // Property name dropdown — try to match (dropdown may still be loading)
   if (d.propertyName) {
     const sel = document.getElementById('property-select');
     if (sel) {
       const opt = [...sel.options].find(o => o.value === d.propertyName || o.text.startsWith(d.propertyName));
       if (opt) { sel.value = opt.value; onPropertySelect(); }
     }
+    // If dropdown not populated yet, store for retry after loadSheet completes
+    if (!document.getElementById('property-select').value) _pendingPropMatch = d.propertyName;
     // Also put it in the search box as a hint
     const search = document.getElementById('prop-search');
     if (search && !document.getElementById('property-select').value) search.value = d.propertyName;
