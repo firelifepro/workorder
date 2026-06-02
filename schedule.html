@@ -392,6 +392,7 @@ thead th.col-del:hover { background:#1a1a2e; }
 <script src="js/flips-history.js"></script>
 <script>
 const SHEET_ID          = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const HISTORY_SHEET_ID  = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ';
 const HISTORY_TAB_NAME  = 'Inspection History';
 const CLIENT_LIST_GID   = '1899870347';
 // spreadsheets (write) — schedule page now appends/deletes Inspection History rows directly.
@@ -471,7 +472,7 @@ async function loadSchedule(forceRefresh = false) {
 
   try {
     const res = await googleFetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(HISTORY_TAB_NAME)}`
+      `https://sheets.googleapis.com/v4/spreadsheets/${HISTORY_SHEET_ID}/values/${encodeURIComponent(HISTORY_TAB_NAME)}`
     );
 
     // Tab doesn't exist yet

@@ -8,7 +8,7 @@
 //   E Date Completed | F Frequency | G Source | H Notes
 // ─────────────────────────────────────────────────────────────────────────────
 
-const HISTORY_SHEET_ID = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const HISTORY_SHEET_ID = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ';
 const HISTORY_TAB      = 'Inspection History';
 
 // Format YYYY-MM-DD → M/D/YYYY so Sheets renders without a time component.
