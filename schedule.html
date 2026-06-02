@@ -928,6 +928,7 @@ async function saveLastDone(idx) {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '…'; }
 
   try {
+    await deleteInspectionHistoryEntries(row.acct, row.property, row.type, row.freq);
     await appendInspectionHistory([{
       propertyName:   row.property,
       acctNum:        row.acct,
