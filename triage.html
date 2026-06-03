@@ -151,19 +151,19 @@
     <div class="nav-menu" id="nav-menu">
       <div class="nav-section-label">Field Technicians</div>
       <a href="schedule.html">📅 Inspection Schedule</a>
-      <a href="estimate.html">📝 Estimate</a>
-      <a href="estimate-tracker.html">📊 Estimate Tracker</a>
-      <a href="worklog.html">🗒 Work Log</a>
-      <a href="index.html">📋 Work Order</a>
+      <a href="estimate.html">🎯 Estimate</a>
+      <a href="estimate-tracker.html">📈 Estimate Tracker</a>
+      <a href="worklog.html">🔨 Work Log</a>
+      <a href="index.html">⏰ Work Order</a>
       <a href="inspection.html">🔥 Fire Inspection</a>
       <a href="hospital-inspection.html">🏥 Hospital Inspection</a>
       <div class="nav-divider"></div>
       <div class="nav-section-label">Administrators</div>
       <a href="clients.html">👥 Client Management</a>
-      <a href="workorder-tracker.html">📂 Work Order Tracker</a>
+      <a href="workorder-tracker.html">🗄️ Work Order Tracker</a>
       <a href="create-invoices.html">🧾 Create QB Invoices</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
-      <a href="open-invoices.html">💵 Record Payments</a>
+      <a href="open-invoices.html">💰 Record Payments</a>
       </div>
   </div>
   <h1>📬 FLIPS Inbox Triage</h1>
@@ -840,11 +840,11 @@ function renderRow(e) {
       <div class="e-acts">
         <a class="act-btn primary" href="${esc(gmailUrl)}" target="_blank" rel="noopener">✉ Open Gmail</a>
         ${fromAddr ? `<a class="act-btn" href="${esc(replyUrl)}">↩ Reply</a>` : ''}
-        ${e.category === 'estimate_request' ? `<a class="act-btn" href="estimate.html" target="_blank">📝 Estimate</a>` : ''}
+        ${e.category === 'estimate_request' ? `<a class="act-btn" href="estimate.html" target="_blank">🎯 Estimate</a>` : ''}
         ${e.category === 'scheduling' ? `<a class="act-btn" href="schedule.html" target="_blank">📅 Schedule</a>` : ''}
-        ${e.category === 'complaint' || e.category === 'ahj_violation' ? `<a class="act-btn" href="index.html" target="_blank">📋 New WO</a>` : ''}
+        ${e.category === 'complaint' || e.category === 'ahj_violation' ? `<a class="act-btn" href="index.html" target="_blank">⏰ New WO</a>` : ''}
         ${e.category === 'sub_invoice' ? `<a class="act-btn" href="sub-invoices.html" target="_blank">📨 Sub Tool</a>` : ''}
-        ${e.category === 'payment_followup' ? `<a class="act-btn" href="open-invoices.html" target="_blank">💵 Open Invoices</a>` : ''}
+        ${e.category === 'payment_followup' ? `<a class="act-btn" href="open-invoices.html" target="_blank">💰 Open Invoices</a>` : ''}
         <button class="act-btn ${e.handled ? 'success' : 'muted'}" onclick="toggleHandled('${esc(e.messageId)}')">${e.handled ? '✓ Handled' : 'Mark handled'}</button>
         <button class="act-btn muted" onclick="dismissEmail('${esc(e.messageId)}')">✕ Dismiss</button>
       </div>
