@@ -1033,9 +1033,10 @@ function findWorkLogRowByInvoice(invoiceNum) {
   if (!invoiceNum || !workLog.length) return null;
   const num = String(invoiceNum).trim();
   if (!num) return null;
-  // Word-boundary match so invoice "123" doesn't match "1234" or "123 Main St".
-  // Handles: "1234", "Inv. 1234", "#1234", "1234 paid" — but NOT "12345" or "1234 W Main".
-  const re = new RegExp('(?:^|[^0-9A-Za-z])' + num.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^0-9A-Za-z]|$)');
+  // Require "INV #<num>" prefix so dollar amounts in the cell (e.g. $1,234.56) can't
+  // accidentally match a bare invoice number like 234.
+  const escaped = num.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('INV\\s*#\\s*' + escaped + '(?:[^0-9]|$)', 'i');
   return workLog.find(r => r.invoiced && re.test(String(r.invoiced)));
 }
 

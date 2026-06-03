@@ -536,7 +536,12 @@ async function updateWorkLogInvoiced(doc, invoiceNum) {
   if (!lineNum) return;
   await ensureWorkLogTab();
   const today = new Date();
-  const stamp = `INV #${invoiceNum} ${today.getMonth()+1}/${today.getDate()}/${String(today.getFullYear()).slice(-2)}`;
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}/${String(today.getFullYear()).slice(-2)}`;
+  const amtVal = parseFloat(doc.amount);
+  const amtLine = (doc.amount && !isNaN(amtVal) && amtVal > 0)
+    ? '\n$' + amtVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+  const stamp = `INV #${invoiceNum} ${dateStr}${amtLine}`;
   const range = `${_workLogTab}!H${lineNum}`;
   await apiFetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
