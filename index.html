@@ -1996,7 +1996,7 @@ function checkPendingWOFromLog() {
       if (sel) {
         const opt = [...sel.options].find(o => o.value === d.propertyName);
         if (opt) { sel.value = opt.value; onPropertySelect(); }
-        else { const s = document.getElementById('prop-search'); if (s) s.value = d.propertyName; }
+        else { _pendingPropMatch = d.propertyName; }
       }
     }
 
