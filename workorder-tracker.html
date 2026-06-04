@@ -84,6 +84,10 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
 .btn-invoice { background: #f0fff4; color: #2e7d50; border-color: #b7dfb7; }
 .btn-invoice:hover { background: #d0f0dc; }
 
+.show-more-btn { background: none; border: none; color: #2e6da4; font-size: 0.72rem; cursor: pointer; padding: 0 2px; text-decoration: underline; font-family: inherit; }
+.show-more-btn:hover { color: #1a4a7a; }
+.wo-desc { color: #555; font-size: 0.78rem; max-width: 220px; }
+
 #list-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 50px 20px; color: #999; font-size: 0.85rem; gap: 10px; }
 #list-placeholder .big-icon { font-size: 2.5rem; }
 .spinner { width: 18px; height: 18px; border: 2px solid rgba(46,109,164,0.25); border-top-color: #2e6da4; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
@@ -282,6 +286,7 @@ async function loadWOs() {
       billEmail:    f.appProperties?.flips_bill_email|| '',
       svcAddr:      f.appProperties?.flips_svc_addr  || '',
       citySt:       f.appProperties?.flips_city_st   || '',
+      workDesc:     f.appProperties?.flips_work_desc || '',
     }));
     renderTable(allWOs);
     enrichMissingInBackground();
@@ -291,11 +296,11 @@ async function loadWOs() {
 }
 
 async function enrichMissingInBackground() {
-  const needsEnrich = allWOs.filter(w => !w.lineNum || !w.services || !w.date);
+  const needsEnrich = allWOs.filter(w => !w.lineNum || !w.services || !w.date || !w.workDesc);
   if (!needsEnrich.length) return;
   for (const wo of needsEnrich) {
     try {
-      let lineNum = '', services = '', date = '';
+      let lineNum = '', services = '', date = '', workDesc = '';
       if (wo.mimeType === 'application/json') {
         const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?alt=media&supportsAllDrives=true`);
         if (!res.ok) continue;
@@ -303,6 +308,7 @@ async function enrichMissingInBackground() {
         lineNum  = d['LINE #'] || '';
         services = (d['SERVICES'] || '').split('\n').filter(s => s.trim() && s.trim() !== '(none selected)')[0] || '';
         date     = d['DATE COMPLETED ISO'] || parseWODate(d['DATE COMPLETED'] || '');
+        workDesc = d['DESCRIPTION OF WORK'] || '';
       } else {
         const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${wo.id}?fields=body`);
         if (!res.ok) continue;
@@ -311,18 +317,21 @@ async function enrichMissingInBackground() {
         lineNum  = parseWOField(text, 'Line #');
         services = parseFirstService(text);
         date     = parseWODate(parseWOField(text, 'Date Completed'));
+        workDesc = parseWOField(text, 'Description of Work');
       }
       wo.lineNum  = wo.lineNum  || lineNum;
       wo.services = wo.services || services;
       wo.date     = wo.date     || date;
-      if (!wo.lineNum && !wo.services && !wo.date) continue;
+      wo.workDesc = wo.workDesc || workDesc;
+      if (!wo.lineNum && !wo.services && !wo.date && !wo.workDesc) continue;
       apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?supportsAllDrives=true`, 'PATCH', {
         appProperties: {
-          flips_line_num: wo.lineNum  || '',
-          flips_services: wo.services || '',
-          flips_date:     wo.date     || '',
-          flips_client:   wo.client   || '',
-          flips_amount:   wo.amount   || '',
+          flips_line_num:  wo.lineNum  || '',
+          flips_services:  wo.services || '',
+          flips_date:      wo.date     || '',
+          flips_client:    wo.client   || '',
+          flips_amount:    wo.amount   || '',
+          flips_work_desc: wo.workDesc || '',
         }
       }).catch(() => {});
       renderTable(allWOs);
@@ -379,10 +388,11 @@ function renderTable(wos) {
   const q = document.getElementById('search-input').value.toLowerCase();
   const filtered = wos.filter(w =>
     !q ||
-    (w.client   || '').toLowerCase().includes(q) ||
-    (w.lineNum  || '').toLowerCase().includes(q) ||
-    (w.services || '').toLowerCase().includes(q) ||
-    (w.name     || '').toLowerCase().includes(q)
+    (w.client    || '').toLowerCase().includes(q) ||
+    (w.lineNum   || '').toLowerCase().includes(q) ||
+    (w.services  || '').toLowerCase().includes(q) ||
+    (w.workDesc  || '').toLowerCase().includes(q) ||
+    (w.name      || '').toLowerCase().includes(q)
   );
   document.getElementById('wo-count').textContent = `${filtered.length} work order${filtered.length !== 1 ? 's' : ''}`;
   if (!filtered.length) { showPlaceholder('<div class="big-icon">🔍</div><div>No work orders match</div>'); return; }
@@ -401,6 +411,10 @@ function renderTable(wos) {
     const svcShort = (w.services || '').replace(/ [–-] /, ' ').split('\n')[0] || '—';
     const lineDisplay = w.lineNum ? `#${w.lineNum}` : '—';
     const propDisplay = w.client || w.name.replace(/\.json$/, '');
+    const addrParts = [w.svcAddr, w.citySt].filter(Boolean);
+    const addrTitle = addrParts.length ? ` title="${escHtml(addrParts.join(', '))}"` : '';
+    const woIdx = filtered.indexOf(w);
+    const descHtml = renderWorkDesc(w.workDesc || '', `wd-${woIdx}`);
 
     const editBtn   = `<button class="action-btn btn-edit"   data-id="${w.id}" data-name="${escHtml(w.name)}" data-mime="${w.mimeType}" onclick="editWO(this.dataset.id,this.dataset.name,this.dataset.mime)">✏️ Edit</button>`;
     const viewBtn   = isJson
@@ -411,8 +425,9 @@ function renderTable(wos) {
 
     return `<tr>
       <td class="wo-line">${lineDisplay} ${typeBadge}</td>
-      <td class="wo-prop">${escHtml(propDisplay)}</td>
+      <td class="wo-prop"${addrTitle}>${escHtml(propDisplay)}</td>
       <td class="wo-svc">${escHtml(svcShort)}</td>
+      <td class="wo-desc">${descHtml}</td>
       <td class="wo-date">${dateStr}</td>
       <td class="wo-amount">${amtStr}</td>
       <td style="white-space:nowrap;">${editBtn}${viewBtn}${deleteBtn}${invoiceBtn}</td>
@@ -422,7 +437,7 @@ function renderTable(wos) {
   document.getElementById('wo-list').innerHTML = `
     <table class="wo-table">
       <thead><tr>
-        <th>Line #</th><th>Property</th><th>Services</th><th>Date Completed</th><th>Amount</th><th>Actions</th>
+        <th>Line #</th><th>Property</th><th>Services</th><th>Work Description</th><th>Date Completed</th><th>Amount</th><th>Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -541,6 +556,18 @@ function buildEditPayloadFromWOData(docId, docName, d, mode) {
     grandTotal:       stripNum(d['TOTAL TO INVOICE']),
     subRows, matRows,
   };
+}
+
+const WORK_MAX = 100;
+function renderWorkDesc(text, id) {
+  if (!text) return '<span style="color:#bbb;">—</span>';
+  if (text.length <= WORK_MAX) return escHtml(text);
+  return `<span id="wp-${id}">${escHtml(text.slice(0, WORK_MAX))}<span>… <button class="show-more-btn" onclick="event.stopPropagation();toggleWork('${id}',1)">more</button></span></span>`
+       + `<span id="wf-${id}" style="display:none">${escHtml(text)} <button class="show-more-btn" onclick="event.stopPropagation();toggleWork('${id}',0)">less</button></span>`;
+}
+function toggleWork(id, expand) {
+  document.getElementById('wp-' + id).style.display = expand ? 'none' : '';
+  document.getElementById('wf-' + id).style.display = expand ? ''     : 'none';
 }
 
 function parseWODate(str) {
