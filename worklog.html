@@ -597,7 +597,13 @@ function filterPropDropdown(q) {
   clr.style.display = query ? 'block' : 'none';
   sel.innerHTML = `<option value="">— All Properties —</option>`;
   Object.keys(clientData).sort().forEach(name => {
-    if (!query || name.toLowerCase().includes(query)) {
+    const matchesName = !query || name.toLowerCase().includes(query);
+    const matchesAddr = query && (() => {
+      const d = clientData[name] || {};
+      const k = Object.keys(d).find(h => h.includes('address') || h.includes(' addr'));
+      return k && (d[k] || '').toLowerCase().includes(query);
+    })();
+    if (matchesName || matchesAddr) {
       const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o);
     }
   });
@@ -630,7 +636,13 @@ function filterModalProps(q) {
   hidePropBadge();
   const sel   = document.getElementById('f-prop-select');
   const query = q.trim().toLowerCase();
-  const matches = Object.keys(clientData).filter(n => !query || n.toLowerCase().includes(query));
+  const matches = Object.keys(clientData).filter(n => {
+    if (!query) return true;
+    if (n.toLowerCase().includes(query)) return true;
+    const d = clientData[n] || {};
+    const k = Object.keys(d).find(h => h.includes('address') || h.includes(' addr'));
+    return k && (d[k] || '').toLowerCase().includes(query);
+  });
   sel.innerHTML = `<option value="">${query ? matches.length + ' match' + (matches.length !== 1 ? 'es' : '') : '— Select from list —'}</option>`;
   matches.sort().forEach(name => {
     const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o);
@@ -794,7 +806,10 @@ function renderTable() {
     if (statFilter !== 'all' && r._status !== statFilter) return false;
     if (rowNumQ && r._rowNum !== parseInt(rowNumQ, 10)) return false;
     if (textQ) {
-      const hay = [r.dateReq, r.reqBy, r.property, r.workReq, r.notes, r.invoiced, r.paid].join(' ').toLowerCase();
+      const propD = clientData[r.property] || {};
+      const addrKey = Object.keys(propD).find(k => k.includes('address') || k.includes(' addr'));
+      const addr = addrKey ? (propD[addrKey] || '') : '';
+      const hay = [r.dateReq, r.reqBy, r.property, addr, r.workReq, r.notes, r.invoiced, r.paid].join(' ').toLowerCase();
       if (!hay.includes(textQ)) return false;
     }
     return true;

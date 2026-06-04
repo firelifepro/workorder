@@ -911,7 +911,8 @@ document.addEventListener('click', e => {
 // ─────────────────────────────────────────────────────────
 
 const TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc';
-const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets.readonly';
+const WR_SHEET_ID     = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets';
 
 let editModeFileId   = null; // set when opened via ?edit_wo=FILEID from create-invoices
 let editModeFileType = null; // 'json' | 'gdoc' — controls save format on overwrite
@@ -1070,6 +1071,85 @@ function collectForm() {
 }
 
 // ─────────────────────────────────────────────────────────
+// WORK LOG HELPERS — validate line #, check duplicates, update status
+// ─────────────────────────────────────────────────────────
+
+async function _getWRSheetMeta() {
+  const res = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+  if (!res.ok) return null;
+  const meta = await res.json();
+  const props = meta.sheets?.[0]?.properties;
+  return props ? { tabName: props.title, sheetId: props.sheetId } : null;
+}
+
+async function validateWorkLogLineNum(lineNum) {
+  const num = parseInt(lineNum, 10);
+  if (!num || num < 2) return 'invalid';
+  try {
+    const m = await _getWRSheetMeta();
+    if (!m) return 'skip';
+    const res = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(m.tabName + '!A' + num + ':C' + num)}`);
+    if (!res.ok) return 'skip';
+    const { values = [] } = await res.json();
+    if (!values.length || !values[0].length) return 'invalid';
+    const cell = (values[0][0] || '').trim();
+    if (!cell || cell === 'DID NOT USE THIS LINE') return 'invalid';
+    return 'valid';
+  } catch(_) { return 'skip'; }
+}
+
+async function checkDuplicateWOLineNum(lineNum) {
+  try {
+    const q = encodeURIComponent(`appProperties has { key='flips_line_num' and value='${lineNum}'} and trashed=false`);
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+    if (!res.ok) return [];
+    const { files = [] } = await res.json();
+    return files;
+  } catch(_) { return []; }
+}
+
+function showDuplicateWOModal(lineNum, existingName) {
+  return new Promise(resolve => {
+    const modal = document.createElement('div');
+    modal.id = 'wo-error-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
+    const safeName = (existingName || '').replace(/[&<>"]/g, '');
+    modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
+      <div style="font-weight:700;font-size:1rem;color:#b45309;margin-bottom:8px;">Duplicate Line #</div>
+      <div style="font-size:0.875rem;color:#555;margin-bottom:20px;">Line #${lineNum} already has a work order in Drive:<br><strong style="font-size:0.82rem;">${safeName}</strong><br><br>Create another work order for this line number?</div>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button id="_dup_cancel" style="background:#f0f0f0;border:1px solid #ccc;padding:9px 20px;border-radius:5px;font-size:0.875rem;cursor:pointer;font-family:inherit;">Cancel</button>
+        <button id="_dup_ok" style="background:#2e6da4;color:white;border:none;padding:9px 24px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;font-family:inherit;">Continue Anyway</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#_dup_ok').onclick     = () => { modal.remove(); resolve(true); };
+    modal.querySelector('#_dup_cancel').onclick = () => { modal.remove(); resolve(false); };
+    modal.addEventListener('click', e => { if (e.target === modal) { modal.remove(); resolve(false); } });
+  });
+}
+
+async function updateWorkLogRowToInvoice(lineNum) {
+  const num = parseInt(lineNum, 10);
+  if (!num || num < 2) return;
+  try {
+    const m = await _getWRSheetMeta();
+    if (!m) return;
+    const invoiceBg = { red: 1.0, green: 0.22, blue: 0.6 };
+    await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}:batchUpdate`, 'POST', {
+      requests: [{
+        repeatCell: {
+          range: { sheetId: m.sheetId, startRowIndex: num - 1, endRowIndex: num },
+          cell: { userEnteredFormat: { backgroundColor: invoiceBg } },
+          fields: 'userEnteredFormat.backgroundColor'
+        }
+      }]
+    });
+  } catch(e) { console.warn('[WO] updateWorkLogRowToInvoice:', e.message); }
+}
+
+// ─────────────────────────────────────────────────────────
 // CREATE GOOGLE DOC  — builds a brand-new doc from scratch
 // (avoids FAILED_PRECONDITION that occurs when trying to
 //  replaceAllText on a doc converted from Google Docs HTML export)
@@ -1181,6 +1261,48 @@ async function createDoc() {
   }
   if (flatAmt) flatAmt.classList.remove('field-error');
 
+  // ── Button lock (prevents re-entrant clicks during async validation) ──
+  const btn = document.getElementById('submit-btn');
+  if (btn.disabled) return;
+  btn.disabled = true; btn.classList.add('loading');
+
+  // ── Async line # validation against work log ──────────────
+  const lineNumStr = woNumInput.value.trim();
+  setStatus('submit-status', 'Validating line #…', '');
+  const lineCheck = await validateWorkLogLineNum(lineNumStr);
+  if (lineCheck === 'invalid') {
+    btn.disabled = false; btn.classList.remove('loading');
+    setStatus('submit-status', '', '');
+    woNumInput.classList.add('field-error');
+    if (woNumCell) woNumCell.classList.add('field-error-cell');
+    const modal = document.createElement('div');
+    modal.id = 'wo-error-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
+      <div style="font-weight:700;font-size:1rem;color:#c0392b;margin-bottom:8px;">Invalid Line #</div>
+      <div style="font-size:0.875rem;color:#555;margin-bottom:20px;">Line # ${lineNumStr.replace(/[&<>"]/g,'')} does not exist in the Work Log. Please check the number and try again.</div>
+      <button onclick="document.getElementById('wo-error-modal').remove();document.getElementById('wo-number').focus();"
+        style="background:#2e6da4;color:white;border:none;padding:9px 28px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">OK</button>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    return;
+  }
+
+  // ── Duplicate line # check (new WOs only) ─────────────────
+  if (!editModeFileId) {
+    const dupes = await checkDuplicateWOLineNum(lineNumStr);
+    if (dupes.length > 0) {
+      const proceed = await showDuplicateWOModal(lineNumStr, dupes[0].name);
+      if (!proceed) {
+        btn.disabled = false; btn.classList.remove('loading');
+        setStatus('submit-status', '', '');
+        return;
+      }
+    }
+  }
+
   const data = collectForm();
   // Property name: parse up to first comma
   const rawProp = data['PROPERTY NAME'] || '';
@@ -1208,8 +1330,6 @@ async function createDoc() {
   const titleParts = [`Line ${woNum}`, property, firstSvc, dateTitle, hasSubForTitle ? 'Sub' : ''].filter(Boolean);
   const docName = titleParts.join(' - ');
 
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.classList.add('loading');
   setStatus('submit-status', 'Building document…', '');
 
   try {
@@ -1330,6 +1450,10 @@ async function createDoc() {
       } catch(patchErr) {
         console.warn('[WO] appProperties patch failed:', patchErr);
       }
+    }
+
+    if (data['LINE #'] && !editModeFileId) {
+      updateWorkLogRowToInvoice(data['LINE #']).catch(e => console.warn('[WO] worklog status update:', e.message));
     }
 
   } catch(e) {
