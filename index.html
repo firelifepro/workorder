@@ -43,12 +43,19 @@ body {
 .conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
 .conn-toggle:hover { background: rgba(255,255,255,0.18); }
 
+/* ── Sticky header wrapper (top-bar + conn-drawer) ── */
+#page-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  margin: -20px -20px 20px -20px;
+}
+
 /* ── Top bar ── */
 #top-bar {
   background: #1a1a2e;
   color: white;
   padding: 12px 20px;
-  margin: -20px -20px 20px -20px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -305,14 +312,15 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 
 @media print {
   body { background: white; padding: 0; }
-  #top-bar, #setup-guide, #submit-area, #toast { display: none; }
+  #page-header, #setup-guide, #submit-area, #toast { display: none; }
   #doc-wrapper { box-shadow: none; margin: 0; padding: 18pt 20pt; }
 }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
+<!-- TOP BAR + CONNECTION DRAWER (sticky wrapper) -->
+<div id="page-header">
 <div id="top-bar">
   <div class="nav-hamburger">
     <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
@@ -337,7 +345,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   <h1>⏰ Fire Life Protection – Work Order Form</h1>
   <span id="conn-status" class="conn-status-pill warn">Not connected</span>
   <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
-</div>
+</div><!-- /#top-bar -->
 <div id="conn-drawer">
   <div class="conn-drawer-inner">
     <div class="conn-field">
@@ -351,7 +359,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
     <button id="refresh-props-btn" class="conn-btn grey" onclick="loadSheet(true)" style="display:none;" title="Re-fetch client list from Google Sheet">↺ Refresh Properties</button>
   </div>
-</div>
+</div><!-- /#conn-drawer -->
+</div><!-- /#page-header -->
 
 <!-- VIEW WORK ORDER BANNER -->
 <div id="view-wo-banner" style="display:none;background:#e8f4ff;border:2px solid #2e6da4;padding:12px 16px;margin:8px;border-radius:6px;font-size:0.9rem;">

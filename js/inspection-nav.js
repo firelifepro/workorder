@@ -68,6 +68,8 @@ function goStep(n) {
         const genericDefics = document.getElementById('generic-defic-tbody')?.querySelectorAll('tr').length || 0;
         setOverallStatus(genericDefics > 0 ? 'DEFICIENT' : 'COMPLIANT');
       }
+      document.getElementById('fa-notes-card').style.display = 'block';
+      document.getElementById('sp-notes-card').style.display = 'none';
     }
   }
 }

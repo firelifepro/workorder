@@ -1115,6 +1115,29 @@ async function buildPDFDoc() {
           doc.text(nl, ML + 3, y + 4.5);
           y += nh + 3;
         }
+        // Step-4 general notes rows (fa-notes-tbody) — shown for all non-SP systems
+        const genNotesTbody = document.getElementById('fa-notes-tbody');
+        const genNoteRows = genNotesTbody
+          ? [...genNotesTbody.querySelectorAll('tr')].filter(r => r.querySelector('td:nth-child(2) input')?.value?.trim())
+          : [];
+        if (genNoteRows.length > 0) {
+          checkPage(10);
+          setFill([240,244,252]); doc.rect(ML, y, usableW, 5.5, 'F');
+          setFont(FS.tiny,'bold'); setTxt([50,80,130]);
+          doc.text('GENERAL NOTES & OBSERVATIONS', ML + 2, y + 4); y += 7;
+          genNoteRows.forEach((nrow, idx) => {
+            checkPage(7);
+            const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+            setFill(C.light); doc.rect(ML, y, usableW, 6, 'F');
+            setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+            setFont(FS.tiny,'bold'); setTxt(C.slate);
+            doc.text(String(idx + 1), ML + 3, y + 4.2, { align:'center' });
+            setFont(FS.small,'normal'); setTxt([30,30,30]);
+            doc.text(doc.splitTextToSize(ntxt, usableW - 12)[0], ML + 9, y + 4.2);
+            y += 6.5;
+          });
+          y += 2;
+        }
       }
     }
 

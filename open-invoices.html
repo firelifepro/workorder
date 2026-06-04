@@ -392,6 +392,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Pre-fill payment date
   document.getElementById('m-paydate').value = todayISO();
+
+  // Re-fit table height when conn-drawer opens/closes
+  new MutationObserver(() => requestAnimationFrame(updateLayout))
+    .observe(document.getElementById('conn-drawer'), { attributes: true, attributeFilter: ['class'] });
 });
 
 function todayISO() {
@@ -871,6 +875,7 @@ function renderTable() {
     return;
   }
 
+  requestAnimationFrame(updateLayout);
   tbody.innerHTML = filtered.map(inv => {
     const cls = inv._bucket === 'b90' ? 'aged-90' : inv._bucket === 'b60' ? 'aged-60' : inv._bucket === 'b30' ? 'aged-30' : '';
     const badge =
@@ -880,6 +885,10 @@ function renderTable() {
                                   `<span class="badge b-90">${inv._daysOver}d</span>`;
     const memo = (inv.Line?.[0]?.Description || '').slice(0, 80);
     const propMgr = lookupPropMgr(inv);
+    const wlRow = findWorkLogRowByInvoice(inv.DocNumber);
+    const wlBtn = wlRow
+      ? `<a href="worklog.html?row=${wlRow.rowNum}" target="_blank" class="act-btn" style="text-decoration:none;background:#2e7d50;margin-left:4px;" title="Work Log line #${wlRow.rowNum} — the work order this invoice was generated from"><img src="img/sheets.svg" style="width:11px;height:11px;vertical-align:middle;margin-right:2px;"> #${wlRow.rowNum}</a>`
+      : '';
     return `<tr class="${cls}">
       <td class="td-num">${esc(inv.DocNumber || inv.Id || '')}</td>
       <td class="td-cust">${esc(inv.CustomerRef?.name || '')}</td>
@@ -892,7 +901,8 @@ function renderTable() {
       <td style="font-size:8.2pt;color:#555;max-width:280px;">${esc(memo)}</td>
       <td class="td-acts">
         <button class="act-btn" onclick="openPayModal('${inv.Id}')">💰 Record Payment</button>
-        <button class="act-btn sec" onclick="openQBInvoice('${inv.Id}')" title="Open in QB">↗</button>
+        ${wlBtn}
+        <button class="act-btn sec" onclick="openQBInvoice('${inv.Id}')" title="Open in QuickBooks" style="margin-left:4px;"><img src="img/quickbooks.svg" style="width:11px;height:11px;vertical-align:middle;margin-right:2px;"> Open in QB</button>
       </td>
     </tr>`;
   }).join('');
@@ -1210,6 +1220,14 @@ function printInvoices() {
   w.focus();
   setTimeout(() => w.print(), 300);
 }
+
+function updateLayout() {
+  const wrap = document.getElementById('table-wrap');
+  if (!wrap) return;
+  const top = wrap.getBoundingClientRect().top + window.scrollY;
+  wrap.style.height = (window.innerHeight - top - 14) + 'px';
+}
+window.addEventListener('resize', updateLayout);
 
 function sendRemindersInfo() {
   alert(
