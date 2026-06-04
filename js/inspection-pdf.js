@@ -447,18 +447,23 @@ async function buildPDFDoc() {
   // DEFICIENCY SUMMARY (if any)
   // ══════════════════════════════════════════════════════════
   if (data.deficiencies.length > 0) {
-    checkPage(data.deficiencies.length * 8 + 16);
+    // Pre-compute wrapped lines so the enclosing box height is accurate
+    setFont(FS.small, 'bold');
+    const deficLinesList = data.deficiencies.map(d => {
+      const ditem  = (d.item        || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
+      const ddesc2 = (d.description || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
+      return doc.splitTextToSize('- ' + ditem + (ddesc2 ? ': ' + ddesc2 : ''), usableW - 8);
+    });
+    const totalTextH = deficLinesList.reduce((sum, lines) => sum + lines.length * 4, 0);
+    const defBlockH  = totalTextH + 14;
+    checkPage(defBlockH + 6);
     setFill([254,226,226]); setDraw([220,38,38]);
-    const defBlockH = data.deficiencies.length * 7 + 12;
     doc.roundedRect(ML, y, usableW, defBlockH, 1.5, 1.5, 'FD');
     setFont(FS.body,'bold'); setTxt([185,28,28]);
     doc.text('DEFICIENCIES FOUND: ' + data.deficiencies.length + ' ITEM(S) REQUIRING ATTENTION', ML + 4, y + 7);
     let dy = y + 13;
-    data.deficiencies.forEach(d => {
+    deficLinesList.forEach(dtxt => {
       setFont(FS.small,'bold'); setTxt([180,20,20]);
-      const ditem = (d.item || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
-      const ddesc2 = (d.description || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
-      const dtxt = doc.splitTextToSize('- ' + ditem + (ddesc2 ? ': ' + ddesc2 : ''), usableW - 8);
       doc.text(dtxt, ML + 5, dy);
       dy += dtxt.length * 4;
     });
@@ -504,15 +509,28 @@ async function buildPDFDoc() {
   // ══════════════════════════════════════════════════════════
   function inspRow(label, result, deficDesc) {
     label = (label || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
-    checkPage(result === 'FAIL' && deficDesc ? 14 : 8);
+
+    // Pre-compute wrapped lines so heights are known before drawing
+    setFont(FS.small, 'normal');
+    const labelLines = doc.splitTextToSize(label, usableW - 26);
+    const mainH = Math.max(7, labelLines.length * 4.5 + 2);
+
+    let deficLines = [];
+    let deficH = 0;
+    if (result === 'FAIL' && deficDesc) {
+      setFont(FS.tiny, 'italic');
+      deficLines = doc.splitTextToSize('Deficiency: ' + deficDesc, usableW - 10);
+      deficH = Math.max(6.5, deficLines.length * 3.8 + 4);
+    }
+
+    checkPage(mainH + deficH + 1);
+
     const bgColor = result === 'PASS' ? C.passGrn : result === 'FAIL' ? C.failRed :
                     result === 'N/A'  ? [248,250,252] : [255,255,255];
-    setFill(bgColor); doc.rect(ML, y, usableW, 7, 'F');
-    setDraw(C.border); doc.line(ML, y + 7, ML + usableW, y + 7);
+    setFill(bgColor); doc.rect(ML, y, usableW, mainH, 'F');
+    setDraw(C.border); doc.line(ML, y + mainH, ML + usableW, y + mainH);
 
-    // Label
     setFont(FS.small,'normal'); setTxt([25,25,25]);
-    const labelLines = doc.splitTextToSize(label, usableW - 26);
     doc.text(labelLines, ML + 2, y + 4.8);
 
     // Result badge
@@ -523,15 +541,13 @@ async function buildPDFDoc() {
       setTxt(C.white); setFont(FS.tiny,'bold');
       doc.text(result, W - MR - 10, y + 4.8, { align:'center' });
     }
-    y += labelLines.length > 1 ? labelLines.length * 4 + 2 : 8;
+    y += mainH;
 
-    if (result === 'FAIL' && deficDesc) {
-      checkPage(8);
-      setFill([255,236,236]); doc.rect(ML + 3, y, usableW - 3, 6.5, 'F');
+    if (deficLines.length > 0) {
+      setFill([255,236,236]); doc.rect(ML + 3, y, usableW - 3, deficH, 'F');
       setTxt([160,10,10]); setFont(FS.tiny,'italic');
-      const dl = doc.splitTextToSize('Deficiency: ' + deficDesc, usableW - 10);
-      doc.text(dl, ML + 5, y + 4);
-      y += dl.length * 3.8 + 2.5;
+      doc.text(deficLines, ML + 5, y + 4);
+      y += deficH + 0.5;
     }
     setTxt([20,20,20]);
   }
@@ -1042,16 +1058,19 @@ async function buildPDFDoc() {
       if (notesTbody && notesTbody.children.length) {
         subHdr('GENERAL NOTES & OBSERVATIONS');
         notesTbody.querySelectorAll('tr').forEach((nrow, idx) => {
-          checkPage(7);
           const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
           if (!ntxt) return;
-          setFill(C.light); doc.rect(ML, y, usableW, 6, 'F');
-          setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+          setFont(FS.small,'normal');
+          const nl = doc.splitTextToSize(ntxt, usableW - 12);
+          const rowH = Math.max(6.5, nl.length * 4.2 + 3);
+          checkPage(rowH + 1);
+          setFill(C.light); doc.rect(ML, y, usableW, rowH, 'F');
+          setDraw(C.border); doc.line(ML, y + rowH, ML + usableW, y + rowH);
           setFont(FS.tiny,'bold'); setTxt(C.slate);
           doc.text(String(idx + 1), ML + 3, y + 4.2, { align:'center' });
           setFont(FS.small,'normal'); setTxt([30,30,30]);
-          doc.text(doc.splitTextToSize(ntxt, usableW - 12)[0], ML + 9, y + 4.2);
-          y += 6.5;
+          doc.text(nl, ML + 9, y + 4.2);
+          y += rowH + 0.5;
         });
         y += 2;
       }
@@ -1126,15 +1145,18 @@ async function buildPDFDoc() {
           setFont(FS.tiny,'bold'); setTxt([50,80,130]);
           doc.text('GENERAL NOTES & OBSERVATIONS', ML + 2, y + 4); y += 7;
           genNoteRows.forEach((nrow, idx) => {
-            checkPage(7);
             const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
-            setFill(C.light); doc.rect(ML, y, usableW, 6, 'F');
-            setDraw(C.border); doc.line(ML, y + 6, ML + usableW, y + 6);
+            setFont(FS.small,'normal');
+            const nl = doc.splitTextToSize(ntxt, usableW - 12);
+            const rowH = Math.max(6.5, nl.length * 4.2 + 3);
+            checkPage(rowH + 1);
+            setFill(C.light); doc.rect(ML, y, usableW, rowH, 'F');
+            setDraw(C.border); doc.line(ML, y + rowH, ML + usableW, y + rowH);
             setFont(FS.tiny,'bold'); setTxt(C.slate);
             doc.text(String(idx + 1), ML + 3, y + 4.2, { align:'center' });
             setFont(FS.small,'normal'); setTxt([30,30,30]);
-            doc.text(doc.splitTextToSize(ntxt, usableW - 12)[0], ML + 9, y + 4.2);
-            y += 6.5;
+            doc.text(nl, ML + 9, y + 4.2);
+            y += rowH + 0.5;
           });
           y += 2;
         }
