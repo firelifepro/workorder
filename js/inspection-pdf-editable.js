@@ -3104,9 +3104,14 @@ async function buildHoodPDFBytes() {
     curY += 14 + 2;
     const greaseNoteVal = dv(`h${hid}-grease-note`);
     if (greaseNoteVal) {
-      checkPage(14);
-      mkField(greaseNoteVal, ML, ry(12), PW, 12, false);
-      curY += 13;
+      const gnLines = wrap(greaseNoteVal, 8, PW - 10);
+      const gnH = Math.max(12, gnLines.length * 11 + 6);
+      checkPage(gnH + 2);
+      page.drawRectangle({ x: ML, y: ry(gnH), width: PW, height: gnH, color: gold, borderColor: sky, borderWidth: 0.5 });
+      gnLines.forEach((line, li) => {
+        page.drawText(line, { x: ML+4, y: ry(gnH) + gnH - 10 - li * 11, size: 8, font: rFont, color: blk });
+      });
+      curY += gnH + 2;
     }
     gap(2);
 
