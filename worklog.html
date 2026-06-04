@@ -1173,6 +1173,11 @@ function updateLayout() {
 window.addEventListener('load', () => {
   applyViewMode();
 
+  const _rowParam = new URLSearchParams(location.search).get('row');
+  if (_rowParam && /^\d+$/.test(_rowParam)) {
+    document.getElementById('row-search').value = _rowParam;
+  }
+
   const k = localStorage.getItem('flips_api_key');
   const c = localStorage.getItem('flips_client_id');
   if (k) document.getElementById('api-key').value = k;

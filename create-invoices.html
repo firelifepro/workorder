@@ -229,6 +229,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .doc-amount { font-size: 0.82rem; font-weight: 700; color: #2e7d50; white-space: nowrap; margin-left: auto; }
 .doc-view-btn { font-size: 0.72rem; color: #2e6da4; text-decoration: none; padding: 3px 7px; border: 1px solid #c0d8f0; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0f6ff; transition: background 0.1s; }
 .doc-view-btn:hover { background: #d0e8ff; }
+.doc-worklog-btn { font-size: 0.72rem; color: #2e7d50; text-decoration: none; padding: 3px 7px; border: 1px solid #b7dfb7; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0fff4; transition: background 0.1s; display: inline-flex; align-items: center; gap: 4px; }
+.doc-worklog-btn:hover { background: #d0f0dc; }
 .doc-edit-btn { font-size: 0.72rem; color: #7b3f00; background: #fff8f0; border: 1px solid #f0c080; border-radius: 3px; padding: 3px 7px; white-space: nowrap; flex-shrink: 0; cursor: pointer; transition: background 0.1s; }
 .doc-edit-btn:hover { background: #ffe8c0; }
 .doc-line-wrap { display: flex; align-items: center; gap: 3px; font-size: 0.71rem; color: #666; white-space: nowrap; flex-shrink: 0; }
@@ -1001,9 +1003,9 @@ function renderDocList(docs) {
         ${scopeHtml}
       </div>
       ${amountHtml}
-      <label class="doc-line-wrap" onclick="event.stopPropagation()">Line&nbsp;#&nbsp;<input type="number" class="doc-line-input" value="${doc.lineNum != null ? doc.lineNum : ''}" placeholder="—" onchange="saveDocLineNum('${doc.id}',this.value)" onclick="event.stopPropagation()"></label>
+      ${doc.lineNum != null ? `<a class="doc-worklog-btn" href="worklog.html?row=${doc.lineNum}" target="_blank" onclick="event.stopPropagation()" title="Open Work Log row #${doc.lineNum}"><img src="img/sheets.svg" style="width:13px;height:13px;vertical-align:middle;"> #${doc.lineNum}</a>` : ''}
       <button class="doc-edit-btn" data-id="${doc.id}" data-name="${escHtml(doc.name)}" data-mime="${doc.mimeType}" onclick="event.stopPropagation();openEditWorkOrder(this.dataset.id,this.dataset.name,this.dataset.mime)" title="Edit this work order and overwrite the Drive file">✏️ Edit WO</button>
-      <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="Open in Google Docs">📄 View</a>
+      <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="View work order">⏰ View WO</a>
     </div>`;
   }).join('');
 

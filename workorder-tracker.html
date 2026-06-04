@@ -411,7 +411,9 @@ function renderTable(wos) {
     const amt = parseFloat(w.amount);
     const amtStr = (w.amount && !isNaN(amt)) ? `$${amt.toLocaleString('en-US', { minimumFractionDigits:2 })}` : '—';
     const svcShort = (w.services || '').replace(/ [–-] /, ' ').split('\n')[0] || '—';
-    const lineDisplay = w.lineNum ? `#${w.lineNum}` : '—';
+    const lineDisplay = w.lineNum
+      ? `<a href="worklog.html?row=${encodeURIComponent(w.lineNum)}" target="_blank" title="Open Work Log row #${escHtml(w.lineNum)}" style="color:#2e6da4;text-decoration:none;font-weight:700;">#${escHtml(w.lineNum)}</a>`
+      : '—';
     const propDisplay = w.client || w.name.replace(/\.json$/, '');
     const addrParts = [w.svcAddr, w.citySt].filter(Boolean);
     const addrTitle = addrParts.length ? ` title="${escHtml(addrParts.join(', '))}"` : '';
