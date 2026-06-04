@@ -303,6 +303,7 @@ function exitFireAlarmInspection(target) {
   document.getElementById('fa-active-banner').style.display = 'none';
   document.getElementById('step-nav').style.display = 'flex';
   activeInspectionSystem = null;
+  clearDraft();
   syncMainNavDisabled();
   // currentStep is still 2 from when we entered FA mode
   goStep(target === 'property' ? 1 : 2);
@@ -574,6 +575,7 @@ function exitSprinklerInspection(target) {
   document.getElementById('sp-active-banner').style.display = 'none';
   document.getElementById('step-nav').style.display = 'flex';
   activeInspectionSystem = null;
+  clearDraft();
   syncMainNavDisabled();
   goStep(target === 'property' ? 1 : 2);
 }
