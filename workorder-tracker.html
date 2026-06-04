@@ -157,7 +157,7 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
     <div class="folder-tab" id="tab-sent"  onclick="switchFolder('3 - Invoice Sent')">✅ Invoice Sent</div>
   </div>
   <div id="filter-bar">
-    <input type="text" id="search-input" placeholder="Search by property, line #, or service…" oninput="filterWOs()">
+    <input type="text" id="search-input" placeholder="Search by property, address, line #, or service…" oninput="filterWOs()">
     <button id="refresh-btn-bar" onclick="loadWOs()">⟳ Refresh</button>
     <span id="wo-count"></span>
   </div>
@@ -392,6 +392,8 @@ function renderTable(wos) {
     (w.lineNum   || '').toLowerCase().includes(q) ||
     (w.services  || '').toLowerCase().includes(q) ||
     (w.workDesc  || '').toLowerCase().includes(q) ||
+    (w.svcAddr   || '').toLowerCase().includes(q) ||
+    (w.citySt    || '').toLowerCase().includes(q) ||
     (w.name      || '').toLowerCase().includes(q)
   );
   document.getElementById('wo-count').textContent = `${filtered.length} work order${filtered.length !== 1 ? 's' : ''}`;
