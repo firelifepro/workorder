@@ -2877,14 +2877,14 @@ async function buildHoodPDFBytes() {
     secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
     data.deficiencies.forEach(d => {
       const text = d.item + (d.description ? ': ' + d.description : '');
-      const defRowH = 18;
+      const defLines = wrap(text, 8, PW - 20);
+      const defRowH = Math.max(18, defLines.length * 11 + 8);
       checkPage(defRowH + 2);
       page.drawRectangle({ x: ML, y: ry(defRowH), width: PW, height: defRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
-      page.drawText('•', { x: ML+4, y: ry(defRowH) + defRowH/2 + 2, size: 8, font: hFont, color: red });
-      const df = form.createTextField(fid());
-      df.setText(text);
-      df.addToPage(page, { x: ML+14, y: ry(defRowH)+2, width: PW-16, height: defRowH-4, font: rFont });
-      df.setFontSize(8);
+      page.drawText('•', { x: ML+4, y: ry(defRowH) + defRowH - 9, size: 8, font: hFont, color: red });
+      defLines.forEach((line, li) => {
+        page.drawText(line, { x: ML+14, y: ry(defRowH) + defRowH - 10 - li * 11, size: 8, font: rFont, color: blk });
+      });
       curY += defRowH + 3;
     });
     gap(4);
@@ -3235,6 +3235,29 @@ async function buildHoodPDFBytes() {
       });
     }
     gap(6);
+  }
+
+  // ── General Notes & Site Observations ──────────────────────────────────────
+  const notesTbody = document.getElementById('fa-notes-tbody');
+  const noteRows = notesTbody
+    ? [...notesTbody.querySelectorAll('tr')].filter(r => r.querySelector('td:nth-child(2) input')?.value?.trim())
+    : [];
+  if (noteRows.length > 0) {
+    secHdr('GENERAL NOTES & SITE OBSERVATIONS');
+    gap(2);
+    noteRows.forEach((nrow, idx) => {
+      const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+      const noteLines = wrap(ntxt, 8, PW - 20);
+      const rowH = Math.max(16, noteLines.length * 11 + 8);
+      checkPage(rowH + 3);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+      page.drawText(String(idx + 1) + '.', { x: ML+4, y: ry(rowH) + rowH - 10, size: 7.5, font: hFont, color: navy });
+      noteLines.forEach((line, li) => {
+        page.drawText(line, { x: ML+16, y: ry(rowH) + rowH - 10 - li * 11, size: 8, font: rFont, color: blk });
+      });
+      curY += rowH + 3;
+    });
+    gap(4);
   }
 
   // ── Signatures ─────────────────────────────────────────────────────────────
