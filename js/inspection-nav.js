@@ -61,6 +61,7 @@ function goStep(n) {
     const todayStr = todayMT();
     if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
+    syncStep4DateType();
     updateDeficiencySummary();
     // Auto-suggest status for generic/extinguisher (FA/SP have their own logic)
     if (activeInspectionSystem && !['fire-alarm','sprinkler'].includes(activeInspectionSystem)) {
@@ -123,6 +124,7 @@ function goFAStep(key) {
     const todayStr = todayMT();
     if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
+    syncStep4DateType();
     updateDeficiencySummary();
     const faDeficRows = document.getElementById('fa-defic-tbody')?.querySelectorAll('tr').length || 0;
     if (!overallStatusUserSet) {
@@ -341,6 +343,7 @@ function goSPStep(key) {
     const todayStr = todayMT();
     if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
     if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
+    syncStep4DateType();
     updateSPDeficiencySummary();
     const spDeficRows = document.getElementById('sp-defic-tbody')?.querySelectorAll('tr').length || 0;
     if (spDeficRows > 0) setOverallStatus('DEFICIENT');
@@ -768,6 +771,39 @@ function clearFAInspectionState() {
     const el = document.getElementById('fa-onsite-eq-' + (i + 1));
     if (el) el.value = val;
   });
+}
+
+function syncStep4DateType() {
+  const step4Date = document.getElementById('step4-insp-date');
+  if (step4Date) {
+    const inspDate = document.getElementById('insp-date');
+    const val = inspDate?.value || todayMT();
+    step4Date.value = val;
+    if (inspDate && !inspDate.value) inspDate.value = val;
+  }
+  const curRt = activeInspectionSystem === 'sprinkler'
+    ? (document.getElementById('sp-report-type')?.value || 'Annual')
+    : (document.getElementById('report-type')?.value || 'Annual');
+  document.getElementById('step4-rt-annual')?.classList.toggle('selected', curRt !== 'Semi-Annual');
+  document.getElementById('step4-rt-semi')?.classList.toggle('selected', curRt === 'Semi-Annual');
+}
+
+function setStep4ReportType(val) {
+  document.getElementById('step4-rt-annual')?.classList.toggle('selected', val !== 'Semi-Annual');
+  document.getElementById('step4-rt-semi')?.classList.toggle('selected', val === 'Semi-Annual');
+  if (activeInspectionSystem === 'sprinkler') {
+    const el = document.getElementById('sp-report-type');
+    if (el) el.value = val;
+    document.getElementById('sp-rt-annual')?.classList.toggle('selected', val !== 'Semi-Annual');
+    document.getElementById('sp-rt-semi')?.classList.toggle('selected', val === 'Semi-Annual');
+  } else {
+    const el = document.getElementById('report-type');
+    if (el) el.value = val;
+    if (activeInspectionSystem === 'fire-alarm') {
+      document.getElementById('fa-rt-annual')?.classList.toggle('selected', val !== 'Semi-Annual');
+      document.getElementById('fa-rt-semi')?.classList.toggle('selected', val === 'Semi-Annual');
+    }
+  }
 }
 
 function goBackFromSign() {

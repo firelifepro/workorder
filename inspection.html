@@ -468,6 +468,25 @@
   <!-- ══ STEP 4: REPORT ══ -->
   <div id="step-4" style="display:none;">
     <div class="card">
+      <div class="card-header"><span class="icon">📅</span><span>Inspection Date &amp; Report Type</span></div>
+      <div class="card-body">
+        <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="field-group" style="flex:0 0 auto;">
+            <label>Date of Inspection</label>
+            <input type="date" id="step4-insp-date" oninput="document.getElementById('insp-date').value=this.value">
+          </div>
+          <div style="flex:1 1 auto;">
+            <div style="font-size:0.78rem;font-weight:600;color:var(--slate);margin-bottom:6px;">Report Type</div>
+            <div class="overall-status-group" style="margin-bottom:0;">
+              <button class="ost-btn annual selected" id="step4-rt-annual" onclick="setStep4ReportType('Annual')">Annual<br><small style="font-weight:400;font-size:.7rem;">Full annual</small></button>
+              <button class="ost-btn semi" id="step4-rt-semi" onclick="setStep4ReportType('Semi-Annual')">Semi Annual<br><small style="font-weight:400;font-size:.7rem;">6-month</small></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-header"><span class="icon">📊</span><span>Overall System Status</span></div>
       <div class="card-body">
         <p style="font-size:0.82rem;color:var(--slate);margin-bottom:8px;">Select the overall compliance status for this inspection report:</p>
