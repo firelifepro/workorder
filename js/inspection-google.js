@@ -633,6 +633,8 @@ function _buildFreshGenericInspection() {
   overallStatus = '';
   overallStatusUserSet = false;
   document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
+  const rtEl = document.getElementById('report-type');
+  if (rtEl) rtEl.value = 'Annual';
   const container = document.getElementById('sys-forms');
   container.innerHTML = '';
 
