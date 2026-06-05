@@ -104,7 +104,7 @@ The fetch helpers in `flips-google-fetch.js` resolve `accessToken`/`tokenClient`
 ### Google Sheets
 - **Property list sheet**: `SHEET_ID = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI'`, `SHEET_GID = '1899870347'` — defined in `flips-shared.js`
 - **Work Requests / WO log sheet**: `WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik'` — in `estimate.html` and `index.html` (collectForm → createDoc)
-- **Inspection History tab**: Same `SHEET_ID` as the property list, tab name `'Inspection History'`. Columns A–H: Property Name, FLPS Acct #, Service Address, Inspection Type, Date Completed, Frequency, Source, Notes. Append-only — schedule.html groups rows and keeps the most recent per (property+type). Read by `schedule.html`, written by `js/flips-history.js`.
+- **Inspection History sheet**: Separate sheet from the property list — `HISTORY_SHEET_ID = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ'` (defined in `js/flips-history.js`). Intentionally separate so users can share/access inspection history without exposing the main property list. Tab name `'Inspection History'`. Columns A–H: Property Name, FLPS Acct #, Service Address, Inspection Type, Date Completed, Frequency, Source, Notes. Append-only — schedule.html groups rows and keeps the most recent per (property+type). Read by `schedule.html`, written by `js/flips-history.js`.
 - **Sub Invoices tab**: Inside `WR_SHEET_ID`, tab name `'Sub Invoices'` — auto-created on first sync by `sub-invoices.html`. Columns A–O: Email Date, Email From, Gmail Message ID (dedup key), Filename, Vendor, Invoice #, Invoice Date, Amount, Description, Matched WorkLog Row, Matched Property, Matched Work, Status, Notes, Last Updated.
 
 ### FLPS Account Number — cross-system key

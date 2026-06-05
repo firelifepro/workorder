@@ -124,11 +124,13 @@ async function loadSheet(forceRefresh = false) {
     const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`);
     if (!metaRes.ok) throw new Error('Sheet error ' + metaRes.status);
     const metaJson = await metaRes.json();
+    if (!metaJson.sheets || metaJson.sheets.length === 0) throw new Error('Spreadsheet returned no tabs');
     let tabName = metaJson.sheets[0].properties.title;
     for (const s of metaJson.sheets) {
       if (String(s.properties.sheetId) === String(SHEET_GID)) { tabName = s.properties.title; break; }
     }
     const valRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`);
+    if (!valRes.ok) throw new Error('Sheets values error ' + valRes.status);
     const valJson = await valRes.json();
     const rows = valJson.values || [];
     if (rows.length < 2) { toast('Sheet appears empty'); return; }
@@ -153,6 +155,7 @@ async function loadSheet(forceRefresh = false) {
 
 function buildDropdown() {
   const sel = document.getElementById('property-select');
+  if (!sel) return;
   sel.innerHTML = '<option value="">— Select property —</option>';
   Object.keys(clientData).sort().forEach(name => {
     const o = document.createElement('option');
@@ -187,8 +190,9 @@ function _updatePropertyBadge(propName) {
 function filterPropDropdown(query) {
   const sel   = document.getElementById('property-select');
   const clear = document.getElementById('prop-search-clear');
+  if (!sel) return;
   const q = query.trim().toLowerCase();
-  clear.style.display = q ? 'block' : 'none';
+  if (clear) clear.style.display = q ? 'block' : 'none';
   const prevVal = sel.value;
   const names = Object.keys(clientData).sort();
   sel.innerHTML = '';
@@ -210,8 +214,10 @@ function filterPropDropdown(query) {
 }
 
 function clearPropSearch() {
-  document.getElementById('prop-search').value = '';
-  document.getElementById('prop-search-clear').style.display = 'none';
+  const input = document.getElementById('prop-search');
+  const clear = document.getElementById('prop-search-clear');
+  if (input) input.value = '';
+  if (clear) clear.style.display = 'none';
   filterPropDropdown('');
 }
 
@@ -639,8 +645,6 @@ function _buildFreshGenericInspection() {
   container.innerHTML = '';
 
   const BUILDERS = {
-    'fire-alarm':          buildFireAlarmPanel,
-    'sprinkler':           buildSprinklerPanel,
     'fire-pump':           buildFirePumpPanel,
     'standpipe':           buildStandpipePanel,
     'hood':                buildHoodPanel,

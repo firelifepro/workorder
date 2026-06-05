@@ -64,6 +64,7 @@ function refreshAccessToken() {
 }
 
 async function googleFetch(url, method = 'GET', body = null) {
+  if (!accessToken) throw new Error('Not authenticated — connect Google first');
   const makeOpts = () => {
     const opts = { method, headers: { 'Authorization': 'Bearer ' + accessToken } };
     if (body !== null) {
