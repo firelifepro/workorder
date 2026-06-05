@@ -681,6 +681,12 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
   </table>
 
   <!-- ══ FLPS EXPENSES ══ -->
+  <div class="calc-legend" style="margin: 4px 2px 6px;">
+    <span><input type="checkbox" checked disabled style="width:12px;height:12px;vertical-align:middle;accent-color:#2e6da4;"> per-line toggle: <b>on</b> = add the markup&nbsp;%, <b>off</b> = no markup ($0)</span>
+    <span><span class="lg-dot">•</span> = you hand-edited this value (overrides the calc)</span>
+    <span><span class="row-reset" style="cursor:default;">↺</span> = reset that line back to the calculated amounts</span>
+    <span>every box is editable — type any amount to override</span>
+  </div>
   <table class="wo-table" id="expenses-table">
     <tr><td colspan="6" class="section-header">FLPS EXPENSES</td></tr>
     <tr>
@@ -703,16 +709,6 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-col-header" style="width:18%;text-align:center;">Expense</td>
       <td class="exp-col-header" style="width:18%;text-align:center;">Markup&nbsp;(<input type="number" id="markup-pct" value="25" min="0" max="999" step="1" style="width:38px;font-size:0.85em;padding:1px 3px;border:1px solid #aaa;border-radius:2px;font-weight:normal;" oninput="recalcAllMarkups()">%)</td>
       <td class="exp-col-header" style="width:18%;text-align:center;">Total</td>
-    </tr>
-    <tr>
-      <td colspan="6" style="background:#fafafa;padding:3px 6px;">
-        <div class="calc-legend">
-          <span><input type="checkbox" checked disabled style="width:12px;height:12px;vertical-align:middle;accent-color:#2e6da4;"> per-line toggle: <b>on</b> = add the markup&nbsp;%, <b>off</b> = no markup ($0)</span>
-          <span><span class="lg-dot">•</span> = you hand-edited this value (overrides the calc)</span>
-          <span><span class="row-reset" style="cursor:default;">↺</span> = reset that line back to the calculated amounts</span>
-          <span>every box is editable — type any amount to override</span>
-        </div>
-      </td>
     </tr>
     <!-- Sub-Contractor first/permanent row -->
     <tr id="sub-add-row">
