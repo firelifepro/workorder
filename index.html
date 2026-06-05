@@ -878,7 +878,12 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     <tr>
       <td colspan="4"></td>
       <td class="total-label" id="grand-total-label">Total to Invoice =</td>
-      <td class="value-cell" style="font-weight:700;"><span class="dollar-prefix">$</span><input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;"></td>
+      <td class="value-cell" style="font-weight:700;"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;" oninput="onGrandTotalEdit()">
+        <span class="ovr-dot" id="grand-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset to calculated values" onclick="resetGrandTotal()">↺</button>
+      </div></td>
     </tr>
   </table>
 
@@ -1065,11 +1070,20 @@ function onFlatRateChange() {
   if (note) note.style.display = cb.checked ? 'inline' : 'none';
   setGrandTotalStyle(cb.checked);
   if (!cb.checked) { amtEl.value = ''; calcTotal(); }
-  else if (amtEl.value) { document.getElementById('grand-total').value = parseFloat(amtEl.value).toFixed(2); }
+  else {
+    const grandEl = document.getElementById('grand-total');
+    const grandDot = document.getElementById('grand-total-ovr');
+    if (grandEl) delete grandEl.dataset.ovr;
+    if (grandDot) grandDot.style.display = 'none';
+    if (amtEl.value && grandEl) grandEl.value = parseFloat(amtEl.value).toFixed(2);
+  }
 }
 function onFlatRateAmountChange() {
   const amt = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
-  document.getElementById('grand-total').value = amt.toFixed(2);
+  const grandEl = document.getElementById('grand-total');
+  const grandDot = document.getElementById('grand-total-ovr');
+  if (grandEl) { delete grandEl.dataset.ovr; grandEl.value = amt.toFixed(2); }
+  if (grandDot) grandDot.style.display = 'none';
 }
 
 // ─────────────────────────────────────────────────────────

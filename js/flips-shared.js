@@ -697,16 +697,32 @@ function calcTotal() {
   const computedSum = subAmt + matAmt + labor1Amt + labor2Amt + tripAmt + miscAmt + compliAmt;
   const origEl = document.getElementById('original-total');
   if (origEl) origEl.value = computedSum.toFixed(2);
+  const grandEl = document.getElementById('grand-total');
+  const grandDot = document.getElementById('grand-total-ovr');
   if (document.getElementById('flat-rate-cb')?.checked) {
     const flat = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
-    const grandEl = document.getElementById('grand-total');
-    if (grandEl) grandEl.value = flat.toFixed(2);
+    // flat-rate always wins — clear any manual grand-total override
+    if (grandEl) { delete grandEl.dataset.ovr; grandEl.value = flat.toFixed(2); }
+    if (grandDot) grandDot.style.display = 'none';
     setGrandTotalStyle(true);
     return;
   }
   setGrandTotalStyle(false);
-  const grandEl = document.getElementById('grand-total');
-  if (grandEl) grandEl.value = computedSum.toFixed(2);
+  if (grandEl && grandEl.dataset.ovr !== '1') grandEl.value = computedSum.toFixed(2);
+  if (grandDot) grandDot.style.display = (grandEl?.dataset.ovr === '1') ? 'inline' : 'none';
+}
+
+function onGrandTotalEdit() {
+  const el = document.getElementById('grand-total');
+  if (el) el.dataset.ovr = '1';
+  const dot = document.getElementById('grand-total-ovr');
+  if (dot) dot.style.display = 'inline';
+}
+
+function resetGrandTotal() {
+  const el = document.getElementById('grand-total');
+  if (el) delete el.dataset.ovr;
+  calcTotal();
 }
 
 function onTripChange() {
