@@ -372,80 +372,164 @@ function onPropertySelect() {
 
 // ─────────────────────────────────────────────────────────
 // EXPENSE CALCULATIONS
+//
+// Unified row model. Every expense row has four controls keyed off a
+// single "row key":
+//   - expense input        (the cost)
+//   - markup toggle (mkcb)  checked → markup = expense × global %, else $0
+//   - markup input          editable; hand-edit sets an override (•)
+//   - total input           editable; hand-edit sets an override (•)
+// A row reset (↺) clears both overrides and re-derives from expense+toggle.
+// Override state lives in each input's dataset.ovr ('1' = manually edited).
 // ─────────────────────────────────────────────────────────
 function getMarkupPct() {
   return (parseFloat(document.getElementById('markup-pct')?.value) || 0) / 100;
 }
 
-function setMarkupAndTotal(expenseId, markupId, totalId) {
-  const expense = parseFloat(document.getElementById(expenseId)?.value) || 0;
-  const markup  = expense * getMarkupPct();
-  const elM = document.getElementById(markupId);
-  const elT = document.getElementById(totalId);
-  if (elM) elM.value = markup.toFixed(2);
-  if (elT) elT.value = (expense + markup).toFixed(2);
+// Resolve the element IDs for a row key. Dynamic sub/mat rows use the
+// legacy "sub-expense-N" id scheme; everything else is "<key>-expense".
+function rowIds(key) {
+  const m = /^(sub|mat)-(\d+)$/.exec(key);
+  if (m) {
+    const [, p, n] = m;
+    return { exp: `${p}-expense-${n}`, mk: `${p}-markup-${n}`, tot: `${p}-total-${n}`, cb: `${p}-mkcb-${n}` };
+  }
+  return { exp: `${key}-expense`, mk: `${key}-markup`, tot: `${key}-total`, cb: `${key}-mkcb` };
 }
 
-function onExpenseChange(prefix) {
-  setMarkupAndTotal(prefix + '-expense', prefix + '-markup', prefix + '-total');
+// Recompute one row, honoring the markup toggle and any per-cell overrides.
+function calcRow(key) {
+  const { exp: expId, mk: mkId, tot: totId, cb: cbId } = rowIds(key);
+  const expEl = document.getElementById(expId);
+  const mkEl  = document.getElementById(mkId);
+  const totEl = document.getElementById(totId);
+  if (!mkEl || !totEl) return;
+  const expense = parseFloat(expEl?.value) || 0;
+  const cb = document.getElementById(cbId);
+
+  if (mkEl.dataset.ovr !== '1') {
+    const applies = cb ? cb.checked : true;
+    const markup  = applies ? expense * getMarkupPct() : 0;
+    mkEl.value = expense ? markup.toFixed(2) : '';
+  }
+  const markup = parseFloat(mkEl.value) || 0;
+
+  if (totEl.dataset.ovr !== '1') {
+    totEl.value = (expense || markup) ? (expense + markup).toFixed(2) : '';
+  }
+  syncRowBadges(key);
   calcTotal();
 }
 
+// Show/hide the • override dots and dim the markup field when markup is off.
+function syncRowBadges(key) {
+  const { mk: mkId, tot: totId, cb: cbId } = rowIds(key);
+  const mkEl  = document.getElementById(mkId);
+  const totEl = document.getElementById(totId);
+  const mkDot  = document.getElementById(mkId + '-ovr');
+  const totDot = document.getElementById(totId + '-ovr');
+  if (mkDot)  mkDot.style.display  = (mkEl?.dataset.ovr === '1')  ? 'inline' : 'none';
+  if (totDot) totDot.style.display = (totEl?.dataset.ovr === '1') ? 'inline' : 'none';
+  const cb = document.getElementById(cbId);
+  if (mkEl && cb) mkEl.style.opacity = (cb.checked || mkEl.dataset.ovr === '1') ? '1' : '0.45';
+}
+
+// Event handlers wired from the row inputs ───────────────
+function onExpenseEdit(key) { calcRow(key); }
+
+function onMarkupEdit(key) {
+  const el = document.getElementById(rowIds(key).mk);
+  if (el) el.dataset.ovr = '1';
+  calcRow(key);
+}
+
+function onTotalEdit(key) {
+  const el = document.getElementById(rowIds(key).tot);
+  if (el) el.dataset.ovr = '1';
+  calcRow(key);
+}
+
+function onMarkupToggle(key) {
+  const el = document.getElementById(rowIds(key).mk);
+  if (el) delete el.dataset.ovr;   // toggle takes over from any manual markup
+  calcRow(key);
+}
+
+function resetRow(key) {
+  const { mk, tot } = rowIds(key);
+  [mk, tot].forEach(id => { const e = document.getElementById(id); if (e) delete e.dataset.ovr; });
+  calcRow(key);
+}
+
+// Restore a saved row, inferring the markup toggle + override state from the
+// saved numbers so that reopening a work order never silently changes its
+// totals. Pass { expense, markup, total }; omit `expense` to keep the value
+// already in the field (e.g. labor expense computed from rate × hrs).
+function restoreRow(key, saved) {
+  saved = saved || {};
+  const { exp, mk, tot, cb } = rowIds(key);
+  const expEl = document.getElementById(exp);
+  const mkEl  = document.getElementById(mk);
+  const totEl = document.getElementById(tot);
+  const cbEl  = document.getElementById(cb);
+  if (!mkEl || !totEl) return;
+  if (expEl && saved.expense != null && saved.expense !== '') expEl.value = saved.expense;
+  const expense = parseFloat(expEl?.value) || 0;
+  const markup  = parseFloat(saved.markup) || 0;
+  const total   = (saved.total != null && saved.total !== '')
+    ? (parseFloat(saved.total) || 0) : (expense + markup);
+
+  // Toggle reflects whether any markup was charged; an override is flagged
+  // only when the markup isn't simply "expense × current %".
+  if (cbEl) cbEl.checked = markup > 0;
+  const autoMarkup = expense * getMarkupPct();
+  if (markup > 0 && Math.abs(markup - autoMarkup) >= 0.005) mkEl.dataset.ovr = '1';
+  else delete mkEl.dataset.ovr;
+  mkEl.value = (expense || markup) ? markup.toFixed(2) : '';
+
+  if (Math.abs(total - (expense + markup)) >= 0.005) totEl.dataset.ovr = '1';
+  else delete totEl.dataset.ovr;
+  totEl.value = (expense || markup || total) ? total.toFixed(2) : '';
+
+  syncRowBadges(key);
+  calcTotal();
+}
+
+// Re-derive every non-overridden row when the global markup % changes.
 function recalcAllMarkups() {
-  setMarkupAndTotal('sub-head-expense', 'sub-head-markup', 'sub-head-total');
-  document.querySelectorAll('[id^="sub-row-"]').forEach(row => {
-    const n = row.id.replace('sub-row-', '');
-    setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
-  });
-  setMarkupAndTotal('mat-head-expense', 'mat-head-markup', 'mat-head-total');
-  document.querySelectorAll('[id^="mat-row-"]').forEach(row => {
-    const n = row.id.replace('mat-row-', '');
-    setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
-  });
-  setMarkupAndTotal('misc-expense', 'misc-markup', 'misc-total');
-  calcTotal();
+  ['sub-head', 'mat-head', 'misc', 'labor1', 'labor2', 'trip', 'compliance'].forEach(calcRow);
+  document.querySelectorAll('[id^="sub-row-"]').forEach(r => calcRow('sub-' + r.id.replace('sub-row-', '')));
+  document.querySelectorAll('[id^="mat-row-"]').forEach(r => calcRow('mat-' + r.id.replace('mat-row-', '')));
 }
 
-function onSubHeadExpenseChange() {
-  setMarkupAndTotal('sub-head-expense', 'sub-head-markup', 'sub-head-total');
-  calcTotal();
-}
+// ── Backward-compatible wrappers (called from index.html restore code) ──
+function onExpenseChange(prefix)      { calcRow(prefix); }
+function onSubHeadExpenseChange()     { calcRow('sub-head'); }
+function onMatHeadExpenseChange()     { calcRow('mat-head'); }
+function onComplianceExpenseChange()  { calcRow('compliance'); }
+function onComplianceMarkupChange()   { onMarkupEdit('compliance'); }
+function onLaborMarkupChange(n)       { onMarkupEdit('labor' + n); }
+function onTripMarkupChange()         { onMarkupEdit('trip'); }
 
-function onMatHeadExpenseChange() {
-  setMarkupAndTotal('mat-head-expense', 'mat-head-markup', 'mat-head-total');
-  calcTotal();
-}
-
-function onLaborMarkupChange(n) {
-  const expense = parseFloat(document.getElementById('labor' + n + '-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value)  || 0;
-  const totEl   = document.getElementById('labor' + n + '-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-function onTripMarkupChange() {
-  const expense = parseFloat(document.getElementById('trip-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('trip-markup')?.value)  || 0;
-  const totEl   = document.getElementById('trip-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-function onComplianceExpenseChange() {
-  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
-  const totEl   = document.getElementById('compliance-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
-}
-
-function onComplianceMarkupChange() {
-  const expense = parseFloat(document.getElementById('compliance-expense')?.value) || 0;
-  const markup  = parseFloat(document.getElementById('compliance-markup')?.value)  || 0;
-  const totEl   = document.getElementById('compliance-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
+// Builds the Markup + Total <td> pair for a row (used by dynamic rows;
+// static rows in index.html mirror this markup by hand).
+function mkCellHtml(key) {
+  const { mk, tot, cb } = rowIds(key);
+  return (
+    '<td class="value-cell"><div class="mk-cell">' +
+      '<label class="mk-toggle" title="Charge markup on this line">' +
+        '<input type="checkbox" id="' + cb + '" checked onchange="onMarkupToggle(\'' + key + '\')"></label>' +
+      '<span class="dollar-prefix">$</span>' +
+      '<input type="number" id="' + mk + '" min="0" step="0.01" oninput="onMarkupEdit(\'' + key + '\')">' +
+      '<span class="ovr-dot" id="' + mk + '-ovr" title="Manually edited — ↺ to recompute">•</span>' +
+    '</div></td>' +
+    '<td class="value-cell"><div class="mk-cell">' +
+      '<span class="dollar-prefix">$</span>' +
+      '<input type="number" id="' + tot + '" min="0" step="0.01" oninput="onTotalEdit(\'' + key + '\')">' +
+      '<span class="ovr-dot" id="' + tot + '-ovr" title="Manually edited">•</span>' +
+      '<button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow(\'' + key + '\')">↺</button>' +
+    '</div></td>'
+  );
 }
 
 // ─────────────────────────────────────────────────────────
@@ -467,17 +551,14 @@ function addSubRow(labelVal, expenseVal) {
     '<td class="value-cell"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
     '<input type="number" id="sub-expense-' + n + '" min="0" step="1" style="width:calc(100% - 14px);" oninput="onSubExpenseChange(' + n + ')"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="sub-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
+    mkCellHtml('sub-' + n);
   if (labelVal)   tr.querySelector('#sub-label-'   + n).value = labelVal;
   if (expenseVal) tr.querySelector('#sub-expense-' + n).value = expenseVal;
   const existing = [...document.querySelectorAll('[id^="sub-row-"]')];
   const anchor = existing.length > 0 ? existing[existing.length - 1] : document.getElementById('sub-add-row');
   if (anchor) anchor.insertAdjacentElement('afterend', tr);
   updateSubRowMinus();
-  if (expenseVal) setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
+  if (expenseVal) calcRow('sub-' + n);
   calcTotal();
 }
 
@@ -488,10 +569,7 @@ function updateSubRowMinus() {
   });
 }
 
-function onSubExpenseChange(n) {
-  setMarkupAndTotal('sub-expense-' + n, 'sub-markup-' + n, 'sub-total-' + n);
-  calcTotal();
-}
+function onSubExpenseChange(n) { calcRow('sub-' + n); }
 
 function removeSubRow(idx) {
   const tr = document.getElementById('sub-row-' + idx);
@@ -538,10 +616,7 @@ function addMatRow(descVal, qtyVal, expenseVal) {
     '<td class="value-cell" style="text-align:center;"><input type="number" id="mat-qty-' + n + '" min="0" step="1" style="text-align:center;"></td>' +
     '<td class="value-cell"><span class="dollar-prefix">$</span>' +
     '<input type="number" id="mat-expense-' + n + '" min="0" step="1" style="width:calc(100% - 14px);" oninput="onMatExpenseChange(' + n + ')"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="mat-markup-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>' +
-    '<td class="value-cell"><span class="dollar-prefix">$</span>' +
-    '<input type="number" id="mat-total-' + n + '" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>';
+    mkCellHtml('mat-' + n);
   if (descVal)    tr.querySelector('#mat-desc-'    + n).value = descVal;
   if (qtyVal)     tr.querySelector('#mat-qty-'     + n).value = qtyVal;
   if (expenseVal) tr.querySelector('#mat-expense-' + n).value = expenseVal;
@@ -549,7 +624,7 @@ function addMatRow(descVal, qtyVal, expenseVal) {
   const anchor = existing.length > 0 ? existing[existing.length - 1] : document.getElementById('mat-add-row');
   if (anchor) anchor.insertAdjacentElement('afterend', tr);
   updateMatRowMinus();
-  if (expenseVal) setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
+  if (expenseVal) calcRow('mat-' + n);
   calcTotal();
 }
 
@@ -560,10 +635,7 @@ function updateMatRowMinus() {
   });
 }
 
-function onMatExpenseChange(n) {
-  setMarkupAndTotal('mat-expense-' + n, 'mat-markup-' + n, 'mat-total-' + n);
-  calcTotal();
-}
+function onMatExpenseChange(n) { calcRow('mat-' + n); }
 
 function removeMatRow(idx) {
   const tr = document.getElementById('mat-row-' + idx);
@@ -641,17 +713,8 @@ function onTripChange() {
   const cb = document.getElementById('trip-cb');
   if (!cb) return;
   const expEl = document.getElementById('trip-expense');
-  if (cb.checked) {
-    if (expEl) expEl.value = '90.00';
-    const markup = parseFloat(document.getElementById('trip-markup')?.value) || 0;
-    const totEl  = document.getElementById('trip-total');
-    if (totEl) totEl.value = (90 + markup).toFixed(2);
-  } else {
-    if (expEl) expEl.value = '';
-    const totEl = document.getElementById('trip-total');
-    if (totEl) totEl.value = '';
-  }
-  calcTotal();
+  if (expEl) expEl.value = cb.checked ? '90.00' : '';
+  calcRow('trip');
 }
 
 function calcLaborRow(n) {
@@ -659,11 +722,7 @@ function calcLaborRow(n) {
   const qty   = parseFloat(document.getElementById('labor' + n + '-qty')?.value)  || 0;
   const expEl = document.getElementById('labor' + n + '-expense');
   if (expEl) expEl.value = (rate && qty) ? (rate * qty).toFixed(2) : '';
-  const expense = parseFloat(expEl?.value) || 0;
-  const markup  = parseFloat(document.getElementById('labor' + n + '-markup')?.value) || 0;
-  const totEl   = document.getElementById('labor' + n + '-total');
-  if (totEl) totEl.value = expense ? (expense + markup).toFixed(2) : '';
-  calcTotal();
+  calcRow('labor' + n);
 }
 
 // ─────────────────────────────────────────────────────────

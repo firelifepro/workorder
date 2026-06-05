@@ -229,6 +229,18 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .total-label { font-weight: 700; font-size: 9pt; text-align: right; }
 .dollar-prefix { font-size: 9pt; }
 
+/* ── Markup / total cell controls ── */
+.mk-cell { display: flex; align-items: center; gap: 2px; }
+.mk-cell input[type=number] { flex: 1 1 auto; min-width: 0; }
+.mk-toggle { display: inline-flex; align-items: center; cursor: pointer; flex-shrink: 0; }
+.mk-toggle input[type=checkbox] { width: 13px; height: 13px; accent-color: #2e6da4; margin: 0; cursor: pointer; }
+.ovr-dot { display: none; color: #e67e22; font-weight: 900; font-size: 12pt; line-height: 1; flex-shrink: 0; cursor: help; }
+.row-reset { flex-shrink: 0; background: #eef3f8; border: 1px solid #b5c7da; color: #2e6da4;
+  border-radius: 3px; padding: 0 4px; font-size: 0.8rem; line-height: 1.4; cursor: pointer; }
+.row-reset:hover { background: #dce8f5; }
+.calc-legend { font-size: 0.72rem; color: #555; margin: 2px 2px 6px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.calc-legend .lg-dot { color: #e67e22; font-weight: 900; }
+
 /* ── Notes area ── */
 .notes-cell { min-height: 100px; height: 104px; }
 
@@ -692,14 +704,34 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="exp-col-header" style="width:18%;text-align:center;">Markup&nbsp;(<input type="number" id="markup-pct" value="25" min="0" max="999" step="1" style="width:38px;font-size:0.85em;padding:1px 3px;border:1px solid #aaa;border-radius:2px;font-weight:normal;" oninput="recalcAllMarkups()">%)</td>
       <td class="exp-col-header" style="width:18%;text-align:center;">Total</td>
     </tr>
+    <tr>
+      <td colspan="6" style="background:#fafafa;padding:3px 6px;">
+        <div class="calc-legend">
+          <span><input type="checkbox" checked disabled style="width:12px;height:12px;vertical-align:middle;accent-color:#2e6da4;"> per-line toggle: <b>on</b> = add the markup&nbsp;%, <b>off</b> = no markup ($0)</span>
+          <span><span class="lg-dot">•</span> = you hand-edited this value (overrides the calc)</span>
+          <span><span class="row-reset" style="cursor:default;">↺</span> = reset that line back to the calculated amounts</span>
+          <span>every box is editable — type any amount to override</span>
+        </div>
+      </td>
+    </tr>
     <!-- Sub-Contractor first/permanent row -->
     <tr id="sub-add-row">
       <td class="exp-label" style="white-space:nowrap;">Sub-Contractor/Vendor&nbsp;<button type="button" onclick="addSubRow()" title="Add Sub-Contractor/Vendor" style="font-size:0.9rem;padding:1px 8px;background:#e8f4ff;border:1px solid #2e6da4;color:#2e6da4;border-radius:3px;cursor:pointer;font-weight:700;">+</button></td>
       <td class="value-cell"><input type="text" id="sub-head-label" placeholder="Sub-contractor name / description" style="width:100%;"></td>
       <td class="value-cell"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-expense" min="0" step="1" style="width:calc(100% - 14px);" oninput="onSubHeadExpenseChange()"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="sub-head-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="sub-head-mkcb" checked onchange="onMarkupToggle('sub-head')"></label>
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="sub-head-markup" min="0" step="0.01" oninput="onMarkupEdit('sub-head')">
+        <span class="ovr-dot" id="sub-head-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="sub-head-total" min="0" step="0.01" oninput="onTotalEdit('sub-head')">
+        <span class="ovr-dot" id="sub-head-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow('sub-head')">↺</button>
+      </div></td>
     </tr>
     <!-- Materials first/permanent row -->
     <tr id="mat-add-row">
@@ -707,8 +739,18 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="value-cell"><input type="text" id="mat-head-desc" style="width:100%;"></td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="mat-head-qty" min="0" step="1" style="text-align:center;"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-expense" min="0" step="1" style="width:calc(100% - 14px);" oninput="onMatHeadExpenseChange()"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="mat-head-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="mat-head-mkcb" checked onchange="onMarkupToggle('mat-head')"></label>
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="mat-head-markup" min="0" step="0.01" oninput="onMarkupEdit('mat-head')">
+        <span class="ovr-dot" id="mat-head-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="mat-head-total" min="0" step="0.01" oninput="onTotalEdit('mat-head')">
+        <span class="ovr-dot" id="mat-head-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow('mat-head')">↺</button>
+      </div></td>
     </tr>
     <!-- Labor 1 -->
     <tr>
@@ -721,9 +763,19 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
         </div>
       </td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="labor1-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(1)"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(1)" placeholder="0"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor1-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseEdit('labor1')"></td>
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="labor1-mkcb" onchange="onMarkupToggle('labor1')"></label>
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="labor1-markup" min="0" step="0.01" oninput="onMarkupEdit('labor1')" placeholder="0">
+        <span class="ovr-dot" id="labor1-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="labor1-total" min="0" step="0.01" oninput="onTotalEdit('labor1')">
+        <span class="ovr-dot" id="labor1-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow('labor1')">↺</button>
+      </div></td>
     </tr>
     <!-- Labor 2 -->
     <tr>
@@ -736,9 +788,19 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
         </div>
       </td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="labor2-qty" min="0" step="0.5" placeholder="hrs" style="text-align:center;" oninput="calcLaborRow(2)"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onLaborMarkupChange(2)" placeholder="0"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="labor2-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseEdit('labor2')"></td>
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="labor2-mkcb" onchange="onMarkupToggle('labor2')"></label>
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="labor2-markup" min="0" step="0.01" oninput="onMarkupEdit('labor2')" placeholder="0">
+        <span class="ovr-dot" id="labor2-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="labor2-total" min="0" step="0.01" oninput="onTotalEdit('labor2')">
+        <span class="ovr-dot" id="labor2-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow('labor2')">↺</button>
+      </div></td>
     </tr>
     <!-- Trip Charge -->
     <tr>
@@ -749,9 +811,19 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
         </div>
       </td>
       <td class="value-cell"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-expense" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onTripMarkupChange()" placeholder="0"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="trip-expense" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onExpenseEdit('trip')"></td>
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="trip-mkcb" onchange="onMarkupToggle('trip')"></label>
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="trip-markup" min="0" step="0.01" oninput="onMarkupEdit('trip')" placeholder="0">
+        <span class="ovr-dot" id="trip-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="trip-total" min="0" step="0.01" oninput="onTotalEdit('trip')">
+        <span class="ovr-dot" id="trip-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow('trip')">↺</button>
+      </div></td>
     </tr>
     <!-- Misc -->
     <tr>
@@ -759,8 +831,18 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="value-cell"><input type="text" id="misc-desc"></td>
       <td class="value-cell" style="text-align:center;"><input type="number" id="misc-qty" min="0" step="1" style="text-align:center;"></td>
       <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-expense" min="0" step="1" style="width:calc(100% - 14px);" oninput="onExpenseChange('misc')"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-markup" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
-      <td class="value-cell"><span class="dollar-prefix">$</span><input type="number" id="misc-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1"></td>
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="misc-mkcb" checked onchange="onMarkupToggle('misc')"></label>
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="misc-markup" min="0" step="0.01" oninput="onMarkupEdit('misc')">
+        <span class="ovr-dot" id="misc-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
+        <span class="dollar-prefix">$</span>
+        <input type="number" id="misc-total" min="0" step="0.01" oninput="onTotalEdit('misc')">
+        <span class="ovr-dot" id="misc-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" title="Reset line to calculated values" onclick="resetRow('misc')">↺</button>
+      </div></td>
     </tr>
     <!-- Compliance Report -->
     <tr id="compliance-row">
@@ -778,14 +860,18 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
         <input type="number" id="compliance-expense" min="0" step="0.01" style="width:calc(100% - 14px);"
                oninput="onComplianceExpenseChange()" disabled placeholder="Amount">
       </td>
-      <td class="value-cell">
+      <td class="value-cell"><div class="mk-cell">
+        <label class="mk-toggle" title="Charge markup on this line"><input type="checkbox" id="compliance-mkcb" onchange="onMarkupToggle('compliance')" disabled></label>
         <span class="dollar-prefix">$</span>
-        <input type="number" id="compliance-markup" min="0" step="0.01" style="width:calc(100% - 14px);" oninput="onComplianceMarkupChange()" disabled placeholder="0">
-      </td>
-      <td class="value-cell">
+        <input type="number" id="compliance-markup" min="0" step="0.01" oninput="onMarkupEdit('compliance')" disabled placeholder="0">
+        <span class="ovr-dot" id="compliance-markup-ovr" title="Manually edited — ↺ to recompute">•</span>
+      </div></td>
+      <td class="value-cell"><div class="mk-cell">
         <span class="dollar-prefix">$</span>
-        <input type="number" id="compliance-total" min="0" step="0.01" style="width:calc(100% - 14px);background:#f5f5f5;" readonly tabindex="-1" disabled>
-      </td>
+        <input type="number" id="compliance-total" min="0" step="0.01" oninput="onTotalEdit('compliance')" disabled>
+        <span class="ovr-dot" id="compliance-total-ovr" title="Manually edited">•</span>
+        <button type="button" class="row-reset" id="compliance-reset" title="Reset line to calculated values" onclick="resetRow('compliance')" disabled>↺</button>
+      </div></td>
     </tr>
     <!-- Total rows -->
     <tr id="original-total-row" style="display:none;">
@@ -946,11 +1032,15 @@ function onComplianceCbChange() {
   const expense = document.getElementById('compliance-expense');
   const mkup    = document.getElementById('compliance-markup');
   const tot     = document.getElementById('compliance-total');
-  [desc, expense, mkup, tot].forEach(el => { if (el) el.disabled = !cb.checked; });
+  const mkcb    = document.getElementById('compliance-mkcb');
+  const reset   = document.getElementById('compliance-reset');
+  [desc, expense, mkup, tot, mkcb, reset].forEach(el => { if (el) el.disabled = !cb.checked; });
   if (!cb.checked) {
     if (expense) expense.value = '';
-    if (mkup)    mkup.value    = '';
-    if (tot)     tot.value     = '';
+    if (mkup)  { mkup.value = ''; delete mkup.dataset.ovr; }
+    if (tot)   { tot.value  = ''; delete tot.dataset.ovr; }
+    if (mkcb)    mkcb.checked = false;
+    syncRowBadges('compliance');
   }
   calcTotal();
   const row = document.getElementById('compliance-row');
@@ -2007,10 +2097,11 @@ function loadFromEditWO(d) {
     const head = d.subRows[0];
     if (head) {
       set('sub-head-label', head.label || '');
-      if (head.expense) { set('sub-head-expense', head.expense); onSubHeadExpenseChange(); }
+      if (head.expense) restoreRow('sub-head', head);
     }
     for (let i = 1; i < d.subRows.length; i++) {
       addSubRow(d.subRows[i].label || '', d.subRows[i].expense || '');
+      restoreRow('sub-' + subRowCount, d.subRows[i]);
     }
   }
 
@@ -2020,30 +2111,36 @@ function loadFromEditWO(d) {
     if (head) {
       set('mat-head-desc', head.desc || '');
       if (head.qty) set('mat-head-qty', head.qty);
-      if (head.expense) { set('mat-head-expense', head.expense); onMatHeadExpenseChange(); }
+      if (head.expense) restoreRow('mat-head', head);
     }
     for (let i = 1; i < d.matRows.length; i++) {
       addMatRow(d.matRows[i].desc || '', d.matRows[i].qty || '', d.matRows[i].expense || '');
+      restoreRow('mat-' + matRowCount, d.matRows[i]);
     }
   }
 
   if (d.labor1Rate) set('labor1-rate', d.labor1Rate);
-  if (d.labor1Hrs)  { set('labor1-qty', d.labor1Hrs); calcLaborRow(1); }
+  if (d.labor1Hrs)  { set('labor1-qty', d.labor1Hrs); calcLaborRow(1);
+    restoreRow('labor1', { markup: d.labor1Markup, total: d.labor1Total }); }
   if (d.labor2Rate) set('labor2-rate', d.labor2Rate);
-  if (d.labor2Hrs)  { set('labor2-qty', d.labor2Hrs); calcLaborRow(2); }
+  if (d.labor2Hrs)  { set('labor2-qty', d.labor2Hrs); calcLaborRow(2);
+    restoreRow('labor2', { markup: d.labor2Markup, total: d.labor2Total }); }
 
   const tripCb = document.getElementById('trip-cb');
-  if (tripCb) { tripCb.checked = !!d.tripChecked; onTripChange(); }
+  if (tripCb) { tripCb.checked = !!d.tripChecked; onTripChange();
+    if (tripCb.checked) restoreRow('trip', { markup: d.tripMarkup, total: d.tripTotal }); }
 
   if (d.miscDesc)    set('misc-desc', d.miscDesc);
   if (d.miscQty)     set('misc-qty',  d.miscQty);
-  if (d.miscExpense && parseFloat(d.miscExpense) > 0) { set('misc-expense', d.miscExpense); onExpenseChange('misc'); }
+  if (d.miscExpense && parseFloat(d.miscExpense) > 0) {
+    restoreRow('misc', { expense: d.miscExpense, markup: d.miscMarkup, total: d.miscTotal });
+  }
 
   if (d.complianceChecked) {
     const cb = document.getElementById('compliance-cb');
     if (cb) { cb.checked = true; onComplianceCbChange(); }
     if (d.complianceDesc)    set('compliance-desc',    d.complianceDesc);
-    if (d.complianceExpense) { set('compliance-expense', d.complianceExpense); onComplianceExpenseChange(); }
+    if (d.complianceExpense) restoreRow('compliance', { expense: d.complianceExpense, markup: d.complianceMarkup, total: d.complianceTotal });
   }
 
   if (d.flatRate && d.flatRateAmount) {
@@ -2171,12 +2268,12 @@ function loadFromEstimate() {
       const head = est.subRows[0];
       if (head) {
         const lEl = document.getElementById('sub-head-label');
-        const eEl = document.getElementById('sub-head-expense');
         if (lEl) lEl.value = head.label || '';
-        if (eEl) { eEl.value = head.expense || ''; onSubHeadExpenseChange(); }
+        if (head.expense) restoreRow('sub-head', head);
       }
       for (let i = 1; i < est.subRows.length; i++) {
         addSubRow(est.subRows[i].label || '', est.subRows[i].expense || '');
+        restoreRow('sub-' + subRowCount, est.subRows[i]);
       }
     }
 
@@ -2186,13 +2283,13 @@ function loadFromEstimate() {
       if (head) {
         const dEl = document.getElementById('mat-head-desc');
         const qEl = document.getElementById('mat-head-qty');
-        const eEl = document.getElementById('mat-head-expense');
         if (dEl) dEl.value = head.desc || '';
         if (qEl) qEl.value = head.qty || '';
-        if (eEl) { eEl.value = head.expense || ''; onMatHeadExpenseChange(); }
+        if (head.expense) restoreRow('mat-head', head);
       }
       for (let i = 1; i < est.matRows.length; i++) {
         addMatRow(est.matRows[i].desc || '', est.matRows[i].qty || '', est.matRows[i].expense || '');
+        restoreRow('mat-' + matRowCount, est.matRows[i]);
       }
     }
 
