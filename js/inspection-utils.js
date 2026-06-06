@@ -15,6 +15,25 @@ function buildFileSlug(data) {
   return combined.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g,'').slice(0, 70);
 }
 
+// Build a per-unit filename slug for systems that can have multiple units at one
+// property (currently hoods, each with its own "HOOD ID"). Joining the unit
+// identifiers makes filenames distinct so two different hoods inspected on the
+// same day don't collide and look like duplicates. Returns '' for other systems
+// or when no identifiers were entered.
+function buildUnitSlug() {
+  if (typeof activeInspectionSystem !== 'undefined' && activeInspectionSystem === 'hood'
+      && typeof activeHoodList !== 'undefined' && Array.isArray(activeHoodList)) {
+    return activeHoodList
+      .filter(h => !h.excluded)
+      .map(h => (h.identifier || '').trim())
+      .filter(Boolean)
+      .join('_')
+      .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
+      .slice(0, 40);
+  }
+  return '';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PHOTO MANAGEMENT
 // Photos stored as array of { dataUrl, note } in module-level array.
