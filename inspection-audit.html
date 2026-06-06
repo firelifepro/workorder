@@ -999,25 +999,19 @@ function renderProp(p) {
 function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 
 // ── Email composition ──────────────────────────────────────
-function openEmailModal(groupKey) {
-  const f = currentFilters();
-  const props = filteredProps(f).filter(p => groupKeyFor(p, f.groupBy).key === groupKey);
-  if (!props.length) { toast('Nothing to email for this group'); return; }
-  const g = groupKeyFor(props[0], f.groupBy);
+const DRAFT_CAP    = 22 * 1024 * 1024;   // per-draft attachment cap, under Gmail's ~25 MB limit
+const DRAFTS_URL   = 'https://gmail.googleapis.com/gmail/v1/users/me/drafts';
+const GMAIL_DRAFTS = 'https://mail.google.com/mail/u/0/#drafts';
 
-  const mgrName = props[0].mgrName || '';
-  const greeting = mgrName ? `Hi ${mgrName.split(' ')[0]},` : 'Hello,';
-  const lines = [];
-  lines.push(greeting);
-  lines.push('');
-  lines.push('Please find attached the most recent fire & life-safety inspection reports for your building(s):');
-  lines.push('');
-
-  const attachments = [];   // { id, name, building }
-  const seen = new Set();
-  props.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+// Compose a plain-text body for a set of properties, and collect the PDFs to
+// attach. Reused for the whole-group draft and the per-building split.
+function composeBody(props, greetName) {
+  const greeting = greetName ? `Hi ${greetName.split(' ')[0]},` : 'Hello,';
+  const lines = [greeting, '', 'Please find attached the most recent fire & life-safety inspection reports for your building(s):', ''];
+  const attachments = [], seen = new Set();
+  props.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
     const shown = p.entries.filter(e => !e.external);
-    if (!shown.length) { return; }
+    if (!shown.length) return;
     lines.push(`${p.name}${p.addr ? ' — ' + p.addr : ''}`);
     shown.forEach(e => {
       const reps = e.reportList || [];
@@ -1026,9 +1020,7 @@ function openEmailModal(groupKey) {
       if (reps.length) {
         const tag = reps.length > 1 ? ` — ${reps.length} reports attached` : ' — report attached';
         lines.push(`  • ${e.type}${freq}${done}${tag}`);
-        reps.forEach(r => {
-          if (r.id && !seen.has(r.id)) { seen.add(r.id); attachments.push({ id: r.id, name: r.name, building: p.name }); }
-        });
+        reps.forEach(r => { if (r.id && !seen.has(r.id)) { seen.add(r.id); attachments.push({ id: r.id, name: r.name, building: p.name }); } });
       } else {
         lines.push(`  • ${e.type}${freq}${done} — report being located`);
       }
@@ -1036,18 +1028,22 @@ function openEmailModal(groupKey) {
     if (p.entries.some(e => e.external)) lines.push('  • Backflow — inspected by Morrison (provided separately)');
     lines.push('');
   });
+  lines.push('Please let us know if you need anything else.', '', 'Thank you,', 'Fire Life Protection Systems');
+  return { body: lines.join('\n'), attachments };
+}
 
-  lines.push('Please let us know if you need anything else.');
-  lines.push('');
-  lines.push('Thank you,');
-  lines.push('Fire Life Protection Systems');
+function openEmailModal(groupKey) {
+  const f = currentFilters();
+  const props = filteredProps(f).filter(p => groupKeyFor(p, f.groupBy).key === groupKey);
+  if (!props.length) { toast('Nothing to email for this group'); return; }
+  const g = groupKeyFor(props[0], f.groupBy);
+  const { body, attachments } = composeBody(props, props[0].mgrName || '');
 
   emailCtx = {
     to: g.email || '',
     subject: `FLPS Inspection Reports — ${g.label}`,
-    body: lines.join('\n'),
-    attachments,
-    label: g.label,
+    body, attachments, label: g.label,
+    props, mgrName: props[0].mgrName || '',
   };
 
   document.getElementById('email-title').textContent = 'Email reports — ' + g.label;
@@ -1055,9 +1051,11 @@ function openEmailModal(groupKey) {
     ? `To: <b>${escHtml(g.email)}</b>`
     : `<span style="color:#c08a00">No email on file — the draft will have a blank “To”; add it in Gmail.</span>`;
   document.getElementById('email-body').value = emailCtx.body;
+  const buildings = new Set(attachments.map(a => a.building)).size;
   const sum = document.getElementById('attach-summary');
   sum.innerHTML = attachments.length
     ? `📎 <b>${attachments.length}</b> report PDF${attachments.length>1?'s':''} will be attached.`
+      + (buildings > 1 ? ` <span style="color:#777;">If they total over ~22 MB, you'll be offered one draft per building.</span>` : '')
     : `<span style="color:#c08a00">No report PDFs found to attach for this group.</span>`;
   setCopyNote('');
   document.getElementById('draft-btn').disabled = !attachments.length;
@@ -1083,7 +1081,7 @@ function openMailto() {
   window.location.href = url.length > 1900 ? base : url;
 }
 
-// ── Gmail draft with the report PDFs attached ──────────────
+// ── Gmail draft(s) with the report PDFs attached ───────────
 async function createGroupDraft() {
   const btn = document.getElementById('draft-btn');
   const orig = btn.textContent;
@@ -1093,51 +1091,101 @@ async function createGroupDraft() {
   btn.disabled = true;
   setCopyNote('');
   try {
-    const CAP = 22 * 1024 * 1024;   // keep under Gmail's ~25 MB message limit
-    let total = 0;
-    const included = [], omitted = [];
-    for (let i = 0; i < atts.length; i++) {
-      btn.textContent = `⏳ Fetching report ${i+1}/${atts.length}…`;
-      let b64;
-      try { b64 = await fetchPdfBase64(atts[i].id); }
-      catch (e) { omitted.push({ ...atts[i], reason: 'could not download' }); continue; }
-      const bytes = Math.floor(b64.length * 3 / 4);
-      if (total + bytes > CAP) { omitted.push({ ...atts[i], reason: 'size limit' }); continue; }
-      total += bytes;
-      included.push({ name: atts[i].name, b64 });
-    }
-    if (!included.length) throw new Error('Could not attach any reports.');
+    const { fetched, failed } = await fetchAllPdfs(atts, btn);
+    if (!fetched.length) { toast('✗ Could not download any reports'); return; }
+    const total = fetched.reduce((s, a) => s + a.bytes, 0);
+    const buildings = new Set(fetched.map(a => a.building));
 
-    let body = document.getElementById('email-body').value;
-    if (omitted.length) {
-      body += `\n\n(Note: ${omitted.length} report${omitted.length>1?'s':''} too large to attach here — will be sent separately:)\n`
-        + omitted.map(o => `   • ${o.building}: ${o.name}`).join('\n');
+    // Too big for one email, and split would actually help → ask first.
+    if (total > DRAFT_CAP && buildings.size > 1) {
+      btn.disabled = false; btn.textContent = orig;
+      const proceed = confirm(
+        `These ${fetched.length} reports total ${(total/1048576).toFixed(1)} MB — over Gmail's ~25 MB limit for a single email.\n\n` +
+        `Create ONE DRAFT PER BUILDING instead? (${buildings.size} drafts, each with that building's reports.)`);
+      if (!proceed) { toast('Cancelled — no draft created'); return; }
+      btn.disabled = true;
+      await createPerBuildingDrafts(fetched, failed, btn);
+      return;
     }
 
+    // Single draft (fits, or only one building so a split wouldn't help).
     btn.textContent = '⏳ Creating draft…';
-    const raw = buildMimeDraft(emailCtx.to, emailCtx.subject, body, included);
-    const res = await googleFetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', 'POST', { message: { raw } });
-    if (!res.ok) {
-      const txt = await res.text();
-      if (/insufficient|ACCESS_TOKEN_SCOPE|PERMISSION_DENIED|scope/i.test(txt)) {
-        toast('✗ Gmail permission not granted yet — open ⚙ Connection → Connect Google to allow it, then retry');
-      } else if (/accessNotConfigured|not been used|disabled/i.test(txt)) {
-        toast('✗ Gmail API not enabled for this Google project — enable it and reconnect');
-      } else if (res.status === 401) {
-        toast('✗ Session expired — click Connect Google, then retry');
-      } else {
-        toast('✗ Draft failed: ' + txt.substring(0, 120));
-      }
-      throw new Error(txt.substring(0, 200));
-    }
+    let t = 0; const included = [], omitted = [];
+    fetched.forEach(a => { if (t + a.bytes > DRAFT_CAP) omitted.push(a); else { t += a.bytes; included.push(a); } });
+    failed.forEach(a => omitted.push(a));
+    if (!included.length) { toast('✗ Reports too large to attach'); return; }
+    let body = document.getElementById('email-body').value;
+    if (omitted.length) body += omittedNote(omitted);
+    const res = await googleFetch(DRAFTS_URL, 'POST', { message: { raw: buildMimeDraft(emailCtx.to, emailCtx.subject, body, included) } });
+    if (!res.ok) { await handleDraftErr(res); return; }
     toast(`✓ Draft created with ${included.length} report${included.length>1?'s':''} attached — opening Gmail`);
-    window.open('https://mail.google.com/mail/u/0/#drafts', '_blank');
+    window.open(GMAIL_DRAFTS, '_blank');
     closeEmailModal();
   } catch (e) {
     console.error('createGroupDraft:', e);
+    toast('✗ ' + e.message);
   } finally {
     btn.disabled = false;
     btn.textContent = orig;
+  }
+}
+
+// One Gmail draft per building (each addressed to the manager).
+async function createPerBuildingDrafts(fetched, failed, btn) {
+  const byBldg = new Map();
+  fetched.forEach(a => { if (!byBldg.has(a.building)) byBldg.set(a.building, []); byBldg.get(a.building).push(a); });
+  const failedByBldg = new Map();
+  (failed || []).forEach(a => { if (!failedByBldg.has(a.building)) failedByBldg.set(a.building, []); failedByBldg.get(a.building).push(a); });
+
+  const names = [...byBldg.keys()].sort();
+  let made = 0, errs = 0, firstErr = null;
+  for (let i = 0; i < names.length; i++) {
+    const bldg = names[i];
+    btn.textContent = `⏳ Draft ${i+1}/${names.length}…`;
+    const prop = (emailCtx.props || []).find(p => p.name === bldg);
+    const { body: baseBody } = composeBody(prop ? [prop] : [], emailCtx.mgrName);
+    let t = 0; const included = [], omitted = (failedByBldg.get(bldg) || []).slice();
+    byBldg.get(bldg).forEach(a => { if (t + a.bytes > DRAFT_CAP) omitted.push(a); else { t += a.bytes; included.push(a); } });
+    if (!included.length) { errs++; continue; }
+    let body = baseBody;
+    if (omitted.length) body += omittedNote(omitted);
+    const subject = `FLPS Inspection Reports — ${bldg}`;
+    const res = await googleFetch(DRAFTS_URL, 'POST', { message: { raw: buildMimeDraft(emailCtx.to, subject, body, included) } });
+    if (res.ok) made++; else { errs++; if (!firstErr) firstErr = res; }
+  }
+  if (firstErr && made === 0) { await handleDraftErr(firstErr); return; }
+  toast(`✓ Created ${made} per-building draft${made>1?'s':''}${errs?` (${errs} failed)`:''} — opening Gmail`);
+  window.open(GMAIL_DRAFTS, '_blank');
+  closeEmailModal();
+}
+
+async function fetchAllPdfs(atts, btn) {
+  const fetched = [], failed = [];
+  for (let i = 0; i < atts.length; i++) {
+    btn.textContent = `⏳ Fetching report ${i+1}/${atts.length}…`;
+    try {
+      const b64 = await fetchPdfBase64(atts[i].id);
+      fetched.push({ ...atts[i], b64, bytes: Math.floor(b64.length * 3 / 4) });
+    } catch (e) {
+      failed.push({ ...atts[i], reason: 'download failed' });
+    }
+  }
+  return { fetched, failed };
+}
+function omittedNote(omitted) {
+  return `\n\n(Note: ${omitted.length} report${omitted.length>1?'s':''} not attached here — will be sent separately:)\n`
+    + omitted.map(o => `   • ${o.building}: ${o.name}`).join('\n');
+}
+async function handleDraftErr(res) {
+  const txt = await res.text();
+  if (/insufficient|ACCESS_TOKEN_SCOPE|PERMISSION_DENIED|scope/i.test(txt)) {
+    toast('✗ Gmail permission not granted yet — open ⚙ Connection → Connect Google to allow it, then retry');
+  } else if (/accessNotConfigured|not been used|disabled/i.test(txt)) {
+    toast('✗ Gmail API not enabled for this Google project — enable it and reconnect');
+  } else if (res.status === 401) {
+    toast('✗ Session expired — click Connect Google, then retry');
+  } else {
+    toast('✗ Draft failed: ' + txt.substring(0, 120));
   }
 }
 
