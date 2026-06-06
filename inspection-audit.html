@@ -118,8 +118,12 @@ table.ent tr:last-child td { border-bottom: none; }
 .b-ok      { background: #e8f5e9; color: #2e7d32; }
 .b-unknown { background: #f5f5f5; color: #888; }
 
-.rep-link { color: #1a73e8; text-decoration: none; font-weight: 600; white-space: nowrap; }
+.rep-link { color: #1a73e8; text-decoration: none; font-weight: 600; }
 .rep-link:hover { text-decoration: underline; }
+.rep-item { display: flex; align-items: baseline; gap: 6px; padding: 1px 0; }
+.rep-item + .rep-item { border-top: 1px dotted #eee; }
+.rep-date { font-size: 0.68rem; color: #999; white-space: nowrap; }
+.rep-count { font-size: 0.68rem; font-weight: 700; color: #2e6da4; }
 .rep-maybe { color: #b8860b; }
 .rep-missing { color: #c62828; font-weight: 700; }
 .rep-external { color: #6b7280; font-style: italic; }
@@ -222,11 +226,11 @@ table.ent tr:last-child td { border-bottom: none; }
   </div>
 
   <div id="notes" style="display:none;">
-    <b>How to read this:</b> Each inspection on record is matched to a saved PDF in <b>FLPS Software › FLPS Inspection Reports</b> by property name, system, and date.
-    A <span style="color:#c62828;font-weight:700;">missing</span> flag means we have a record of the inspection but no PDF was found in Drive — those are the reports to locate or re-upload.
-    <b>Backflow</b> is handled outside this software, so it shows as <i>external</i> and won't have a Drive PDF here.
-    <b>3- and 5-year</b> cycles only have a "next due" when we already have a baseline date; otherwise it shows "—".
-    Matches marked <i>(likely)</i> are best-guess — open them to confirm before sending.
+    <b>How to read this:</b> Each inspection on record (from the <b>Inspection History</b> sheet — the same data as the Inspection Schedule page) is matched to saved PDFs in <b>FLPS Software › FLPS Inspection Reports</b> by property + system. A system can have <b>several reports</b> (e.g. multiple kitchen hoods) — all are listed on that one record, with their dates.
+    A <span style="color:#c62828;font-weight:700;">missing</span> flag means there's a record but no PDF in Drive — locate or re-upload it.
+    A report tagged <i>not in inspection schedule</i> means the PDF exists but no inspection was ever logged for it — worth adding to the schedule.
+    <b>Backflow</b> is inspected by <b>Morrison</b> (outside this software) so it shows as <i>external</i> with no Drive PDF here.
+    <b>3- and 5-year</b> cycles only show a "next due" when a baseline date exists. Matches tagged <i>(likely)</i> are best-guess — open to confirm.
   </div>
 
   <div id="filters" style="display:none;">
@@ -445,6 +449,24 @@ function parseFileDate(name) {
   if (m) return new Date(+m[1], +m[2]-1, +m[3], 12);
   return null;
 }
+// Human-readable report title from the filename: drop FLPS_ prefix, trailing date,
+// and .pdf, then underscores → spaces. Keeps any distinguishing tail (e.g. hood id).
+function cleanTitle(name) {
+  let t = (name || '').replace(/\.pdf$/i, '').replace(/^FLPS_/i, '');
+  t = t.replace(/_\d{4}-\d{2}-\d{2}$/, '').replace(/_\d{8}$/, '');
+  return t.replace(/_/g, ' ').trim();
+}
+// Truncate keeping the head AND tail so a distinguishing suffix stays visible.
+function truncMid(s, n) {
+  s = s || '';
+  if (s.length <= n) return s;
+  const head = Math.ceil((n - 1) * 0.6), tail = Math.floor((n - 1) * 0.4);
+  return s.slice(0, head) + '…' + s.slice(s.length - tail);
+}
+// JSON-serializable report descriptor (no Drive-file back-refs / Date objects).
+function reportObj(f) {
+  return { link: f.link, name: f.name, title: cleanTitle(f.name), dateMs: f.dateObj ? f.dateObj.getTime() : null };
+}
 
 // ── Load orchestrator ──────────────────────────────────────
 async function loadAudit(forceRefresh = false) {
@@ -459,9 +481,7 @@ async function loadAudit(forceRefresh = false) {
       if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
         AUDIT = cached.data;
         AUDIT.props.forEach(p => p.entries.forEach(e => {
-          e.nextDate   = e.next ? new Date(e.next) : null;
-          e.dateObj    = e.dateObj ? new Date(e.dateObj) : null;
-          e.reportDate = e.reportDate ? new Date(e.reportDate) : null;
+          e.nextDate = e.next ? new Date(e.next) : null;
         }));
         finishLoad();
         return;
@@ -675,7 +695,7 @@ function attachEntries(props, entries) {
       type: e.type, freq: e.freq, last: e.last, dateObj: e.dateObj,
       next: nd ? nd.toISOString() : '', nextDate: nd, bucket: bucketFor(nd),
       source: e.source, notes: e.notes,
-      report: null, reportLink: '', reportName: '', confident: false, missing: false, external: isBackflow(e.type),
+      reportList: null, confident: false, missing: false, external: isBackflow(e.type),
     });
   });
   props.forEach(p => p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || '')));
@@ -705,49 +725,65 @@ function matchReports(props, files) {
     if (best) best._files.push(f);
   });
 
-  // Phase 2 — link entries to same-system PDFs; leftover PDFs become "extra" rows.
+  // Phase 2 — attach every same-system PDF to that system's inspection record.
+  // A property can legitimately have many reports for one system (e.g. multiple
+  // kitchen hoods), so all same-system PDFs hang off the one record rather than
+  // showing as orphans. Only a system with NO record at all becomes a
+  // "not in inspection schedule" row (a genuinely unlogged report).
   props.forEach(p => {
+    const entriesBySys = {};   // canonical system key → [history entries]
     p.entries.forEach(e => {
-      if (e.external) return;                              // backflow etc — not stored here
-      const esys = sysFromType(e.type);
-      let cands = p._files.filter(f => !f.used);
-      cands = esys ? cands.filter(f => f.sys === esys)     // known system → must match
-                   : cands.filter(f => !f.sys);            // unknown type → only pair with unknown-system PDFs
-      const pick = pickClosestByDate(cands, e.dateObj);
-      if (pick) {
-        pick.used = true;
-        e.reportLink = pick.link; e.reportName = pick.name; e.reportDate = pick.dateObj;
-        e.confident = !!esys;                              // system actually matched
+      if (e.external) return;
+      e._sys = sysFromType(e.type);
+      e._reports = [];
+      (entriesBySys[e._sys] = entriesBySys[e._sys] || []).push(e);
+    });
+
+    const reportOnly = {};     // system → [files] with no matching record
+    p._files.forEach(f => {
+      const list = entriesBySys[f.sys];
+      if (list && list.length) {
+        // Attach to the closest-dated record of the same system.
+        let best = list[0], bd = Infinity;
+        list.forEach(e => {
+          const d = (e.dateObj && f.dateObj) ? Math.abs(e.dateObj - f.dateObj) : Infinity;
+          if (d < bd) { bd = d; best = e; }
+        });
+        best._reports.push(f);
       } else {
-        e.missing = true;
+        (reportOnly[f.sys] = reportOnly[f.sys] || []).push(f);
       }
     });
-    // Surface PDFs we found for this property that no inspection record claimed.
-    p._files.filter(f => !f.used).forEach(f => {
+
+    p.entries.forEach(e => {
+      if (e.external) return;
+      if (e._reports.length) {
+        e._reports.sort((a, b) => (b.dateObj || 0) - (a.dateObj || 0));
+        e.reportList = e._reports.map(reportObj);
+        e.confident = !!e._sys;
+        e.missing = false;
+      } else {
+        e.reportList = [];
+        e.missing = true;
+      }
+      delete e._reports; delete e._sys;
+    });
+
+    Object.keys(reportOnly).forEach(sys => {
+      const files = reportOnly[sys].sort((a, b) => (b.dateObj || 0) - (a.dateObj || 0));
       p.entries.push({
-        type: sysLabel(f.sys), freq: '', last: f.dateObj ? fmtDate(f.dateObj) : '', dateObj: f.dateObj,
+        type: sysLabel(sys), freq: '', last: '', dateObj: null,
         next: '', nextDate: null, bucket: 'unknown', source: '', notes: '',
-        reportLink: f.link, reportName: f.name, reportDate: f.dateObj,
-        confident: true, missing: false, external: false, extra: true,
+        reportList: files.map(reportObj), confident: true,
+        missing: false, external: false, extra: true,
       });
     });
+
     p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
   });
 
   // Drop helper/back-ref fields so the result is JSON-serializable for the cache.
   props.forEach(p => { delete p._files; delete p._nameToks; delete p._addrToks; });
-}
-
-function pickClosestByDate(cands, entryDate) {
-  if (!cands.length) return null;
-  const arr = cands.slice();
-  if (!entryDate) { arr.sort((a, b) => (b.dateObj || 0) - (a.dateObj || 0)); return arr[0]; }
-  arr.sort((a, b) => {
-    const da = a.dateObj ? Math.abs(a.dateObj - entryDate) : Infinity;
-    const db = b.dateObj ? Math.abs(b.dateObj - entryDate) : Infinity;
-    return da - db;
-  });
-  return arr[0];
 }
 
 // ── Filters / grouping ─────────────────────────────────────
@@ -825,9 +861,9 @@ function render() {
     nBuild++; if (p.isLCP) nLcp++;
     p.entries.forEach(e => {
       if (e.external) return;
-      if (e.extra) { nExtra++; return; }   // report on file with no inspection record
+      if (e.extra) { nExtra += (e.reportList ? e.reportList.length : 1); return; }  // reports with no record
       nRec++;
-      if (e.missing) nMiss++; else if (e.reportLink) nFound++;
+      if (e.missing) nMiss++; else nFound++;
     });
   });
   document.getElementById('s-buildings').textContent = nBuild;
@@ -856,9 +892,9 @@ function render() {
     let recs = 0, miss = 0, found = 0, extra = 0;
     g.props.forEach(p => p.entries.forEach(e => {
       if (e.external) return;
-      if (e.extra) { extra++; return; }
+      if (e.extra) { extra += (e.reportList ? e.reportList.length : 1); return; }
       recs++;
-      if (e.missing) miss++; else if (e.reportLink) found++;
+      if (e.missing) miss++; else found++;
     }));
     g.props.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -904,26 +940,26 @@ function renderProp(p) {
     const nextHtml = e.nextDate
       ? `<span class="badge ${nextCls}">${fmtDate(e.nextDate)}</span>`
       : `<span class="badge b-unknown">—</span>`;
-    // Show the report's own date when it differs from the inspection's by > ~6 weeks.
-    let dateNote = '';
-    if (e.reportLink && !e.extra && e.reportDate && e.dateObj && Math.abs(e.reportDate - e.dateObj) > 45*86400000) {
-      dateNote = `<span class="conf">(report dated ${fmtDate(new Date(e.reportDate))})</span>`;
-    }
     let rep;
     if (e.external) {
-      rep = `<span class="rep-external">↗ External (Brycer / manual)</span>`;
-    } else if (e.extra) {
-      rep = `<a class="rep-link" href="${escAttr(e.reportLink)}" target="_blank" rel="noopener">📄 Open report</a> <span class="conf">no inspection record</span>`;
+      rep = `<span class="rep-external">External (Morrison)</span>`;
     } else if (!AUDIT.reportsLoaded) {
       rep = `<span style="color:#aaa">—</span>`;
-    } else if (e.reportLink) {
-      rep = `<a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(e.reportLink)}" target="_blank" rel="noopener">📄 Open report${e.confident ? '' : '<span class="conf">(likely)</span>'}</a>${dateNote}`;
+    } else if (e.reportList && e.reportList.length) {
+      rep = e.reportList.map(r => {
+        const label = truncMid(r.title || r.name, 36);
+        const tip   = (r.title || r.name) + ' — Open report';
+        const dt    = r.dateMs ? `<span class="rep-date">${fmtDate(new Date(r.dateMs))}</span>` : '';
+        return `<div class="rep-item"><a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(r.link)}" target="_blank" rel="noopener" title="${escAttr(tip)}">📄 ${escHtml(label)}</a>${dt}</div>`;
+      }).join('');
+      if (!e.extra && !e.confident) rep += `<div class="conf">(likely match)</div>`;
     } else {
       rep = `<span class="rep-missing">⚠ No report in Drive</span>`;
     }
+    const count = (e.reportList && e.reportList.length > 1) ? ` <span class="rep-count">×${e.reportList.length}</span>` : '';
     const typeCell = e.extra
-      ? `${escHtml(e.type)} <span class="conf">(report only)</span>`
-      : escHtml(e.type);
+      ? `${escHtml(e.type)}${count} <span class="conf">not in inspection schedule</span>`
+      : `${escHtml(e.type)}${count}`;
     return `<tr${e.extra ? ' style="background:#fafbff"' : ''}>
       <td class="t-type">${typeCell}</td>
       <td class="t-freq">${e.freq ? escHtml(e.freq) : '—'}</td>
@@ -957,24 +993,27 @@ function openEmailModal(groupKey) {
   lines.push('Please find the most recent fire & life-safety inspection reports for your building(s) below:');
   lines.push('');
 
-  let anyMissing = false;
   props.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
     const shown = p.entries.filter(e => !e.external);
-    if (!shown.length && !p.entries.length) return;
+    if (!shown.length) { return; }
     lines.push(`${p.name}${p.addr ? ' — ' + p.addr : ''}`);
-    if (!shown.length) { lines.push('  • (no inspection reports on record)'); lines.push(''); return; }
     shown.forEach(e => {
-      const done = e.last ? `completed ${e.last}` : 'date n/a';
-      if (e.reportLink) {
-        lines.push(`  • ${e.type} (${e.freq}) — ${done}`);
-        lines.push(`      ${e.reportLink}`);
+      const reps = e.reportList || [];
+      const freq = e.freq ? ` (${e.freq})` : '';
+      if (reps.length) {
+        const done = e.last ? ` — completed ${e.last}` : '';
+        lines.push(`  • ${e.type}${freq}${done}`);
+        reps.forEach(r => {
+          const rd = r.dateMs ? ` [${fmtDate(new Date(r.dateMs))}]` : '';
+          lines.push(`      ${r.link}${rd}`);
+        });
       } else {
-        anyMissing = true;
-        lines.push(`  • ${e.type} (${e.freq}) — ${done} — report being located`);
+        const done = e.last ? ` — completed ${e.last}` : '';
+        lines.push(`  • ${e.type}${freq}${done} — report being located`);
       }
     });
     // note backflow external if present
-    if (p.entries.some(e => e.external)) lines.push('  • Backflow — tracked separately (provided directly)');
+    if (p.entries.some(e => e.external)) lines.push('  • Backflow — inspected by Morrison (provided separately)');
     lines.push('');
   });
 
