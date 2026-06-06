@@ -698,31 +698,17 @@ function calcTotal() {
   const origEl = document.getElementById('original-total');
   if (origEl) origEl.value = computedSum.toFixed(2);
   const grandEl = document.getElementById('grand-total');
-  const grandDot = document.getElementById('grand-total-ovr');
+  // A total that differs from the line items is expressed via Fixed Rate
+  // (see onGrandTotalEdit in index.html), so the grand total is otherwise
+  // always the computed sum — it is never a standalone manual override.
   if (document.getElementById('flat-rate-cb')?.checked) {
     const flat = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
-    // flat-rate always wins — clear any manual grand-total override
-    if (grandEl) { delete grandEl.dataset.ovr; grandEl.value = flat.toFixed(2); }
-    if (grandDot) grandDot.style.display = 'none';
+    if (grandEl) grandEl.value = flat.toFixed(2);
     setGrandTotalStyle(true);
     return;
   }
   setGrandTotalStyle(false);
-  if (grandEl && grandEl.dataset.ovr !== '1') grandEl.value = computedSum.toFixed(2);
-  if (grandDot) grandDot.style.display = (grandEl?.dataset.ovr === '1') ? 'inline' : 'none';
-}
-
-function onGrandTotalEdit() {
-  const el = document.getElementById('grand-total');
-  if (el) el.dataset.ovr = '1';
-  const dot = document.getElementById('grand-total-ovr');
-  if (dot) dot.style.display = 'inline';
-}
-
-function resetGrandTotal() {
-  const el = document.getElementById('grand-total');
-  if (el) delete el.dataset.ovr;
-  calcTotal();
+  if (grandEl) grandEl.value = computedSum.toFixed(2);
 }
 
 function onTripChange() {

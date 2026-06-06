@@ -880,9 +880,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       <td class="total-label" id="grand-total-label">Total to Invoice =</td>
       <td class="value-cell" style="font-weight:700;"><div class="mk-cell">
         <span class="dollar-prefix">$</span>
-        <input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;" oninput="onGrandTotalEdit()">
-        <span class="ovr-dot" id="grand-total-ovr" title="Manually edited">•</span>
-        <button type="button" class="row-reset" title="Reset to calculated values" onclick="resetGrandTotal()">↺</button>
+        <input type="number" id="grand-total" style="width:calc(100% - 14px);font-weight:700;" onchange="onGrandTotalEdit()">
       </div></td>
     </tr>
   </table>
@@ -1072,18 +1070,78 @@ function onFlatRateChange() {
   if (!cb.checked) { amtEl.value = ''; calcTotal(); }
   else {
     const grandEl = document.getElementById('grand-total');
-    const grandDot = document.getElementById('grand-total-ovr');
-    if (grandEl) delete grandEl.dataset.ovr;
-    if (grandDot) grandDot.style.display = 'none';
     if (amtEl.value && grandEl) grandEl.value = parseFloat(amtEl.value).toFixed(2);
   }
 }
 function onFlatRateAmountChange() {
   const amt = parseFloat(document.getElementById('flat-rate-amount')?.value) || 0;
   const grandEl = document.getElementById('grand-total');
-  const grandDot = document.getElementById('grand-total-ovr');
-  if (grandEl) { delete grandEl.dataset.ovr; grandEl.value = amt.toFixed(2); }
-  if (grandDot) grandDot.style.display = 'none';
+  if (grandEl) grandEl.value = amt.toFixed(2);
+}
+
+// Manually editing the Total to Invoice is allowed, but a total that differs
+// from the line items must be recorded as a Fixed Rate. Editing the field
+// prompts the user; on confirm we populate the fixed-rate amount and tick the
+// "Is this a Fixed Rate?" checkbox. On cancel we recompute from the line items.
+function onGrandTotalEdit() {
+  const gtEl = document.getElementById('grand-total');
+  if (!gtEl) return;
+  const typed = parseFloat(gtEl.value);
+  const flatCb = document.getElementById('flat-rate-cb');
+
+  // Already in Fixed Rate mode → just keep the fixed amount in sync, no prompt.
+  if (flatCb && flatCb.checked) {
+    const amtEl = document.getElementById('flat-rate-amount');
+    const val = (typed || 0);
+    if (amtEl) amtEl.value = val.toFixed(2);
+    gtEl.value = val.toFixed(2);
+    return;
+  }
+
+  // Cleared / non-positive, or unchanged from the computed line-item total →
+  // just recompute, no prompt.
+  const computed = parseFloat(document.getElementById('original-total')?.value) || 0;
+  if (!typed || typed <= 0 || Math.abs(typed - computed) < 0.005) {
+    calcTotal();
+    return;
+  }
+  showFixedRateModal(typed);
+}
+
+function showFixedRateModal(amount) {
+  document.getElementById('fixed-rate-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'fixed-rate-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `<div style="background:white;border-radius:8px;padding:28px 32px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">
+    <div style="font-size:2rem;margin-bottom:10px;">💲</div>
+    <div style="font-weight:700;font-size:1rem;color:#2e6da4;margin-bottom:8px;">Set a Fixed Rate?</div>
+    <div style="font-size:0.875rem;color:#555;margin-bottom:20px;line-height:1.45;">
+      To bill a Total to Invoice of <b>$${amount.toFixed(2)}</b> that differs from the line items,
+      FLIPS records it as a <b>Fixed Rate</b>. Continue to lock this amount as the fixed rate,
+      or cancel to recalculate the total from the line items.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button id="fr-cancel" style="background:#eee;color:#333;border:1px solid #ccc;padding:9px 22px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">Cancel</button>
+      <button id="fr-continue" style="background:#2e6da4;color:white;border:none;padding:9px 26px;border-radius:5px;font-size:0.875rem;font-weight:600;cursor:pointer;">Continue</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+
+  const cancel = () => { modal.remove(); calcTotal(); };
+  const proceed = () => {
+    modal.remove();
+    const amtEl = document.getElementById('flat-rate-amount');
+    const fcb   = document.getElementById('flat-rate-cb');
+    if (amtEl) amtEl.value = amount.toFixed(2);
+    if (fcb)   fcb.checked = true;
+    onFlatRateChange();   // enables amount field, sets fixed-rate styling, copies amount → grand total
+    toast('★ Fixed Rate set — total locked to $' + amount.toFixed(2));
+  };
+  document.getElementById('fr-cancel').onclick = cancel;
+  document.getElementById('fr-continue').onclick = proceed;
+  modal.addEventListener('click', e => { if (e.target === modal) cancel(); });
+  document.getElementById('fr-continue').focus();
 }
 
 // ─────────────────────────────────────────────────────────
