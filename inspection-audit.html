@@ -294,7 +294,7 @@ const REPORTS_FOLDER_NAME = 'FLPS Inspection Reports';
 const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Software › FLPS Inspection Reports
 // Read-only: this page never writes. Drive scope needed to list report files + links.
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly';
-const CACHE_KEY = 'flips_audit_cache_v1';
+const CACHE_KEY = 'flips_audit_cache_v2';  // bump when the cached data shape changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
