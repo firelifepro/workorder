@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<title>FLPS – Inspection Reports Audit</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
+
+/* ── Connection drawer ── */
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 300px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; white-space: nowrap; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok   { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err  { background: rgba(220,53,69,0.2);  color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; white-space: nowrap; }
+.conn-toggle:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Top bar ── */
+#top-bar { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+#top-bar h1 { font-size: 1rem; font-weight: 600; }
+
+/* ── Hamburger nav ── */
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.hamburger-btn:hover { background: rgba(255,255,255,0.22); }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; }
+.nav-menu a:last-child { border-bottom: none; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; pointer-events: none; }
+.nav-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 4px 0; }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+
+/* ── Content ── */
+#content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+
+/* ── Summary cards ── */
+#summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
+.sum-card { background: white; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); border-left: 4px solid #ccc; }
+.sum-card.buildings { border-color: #2e6da4; }
+.sum-card.records   { border-color: #6b7280; }
+.sum-card.found     { border-color: #2e7d32; }
+.sum-card.missing   { border-color: #e53935; }
+.sum-card.lcp       { border-color: #8e44ad; }
+.sum-card .num { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+.sum-card.found   .num { color: #2e7d32; }
+.sum-card.missing .num { color: #e53935; }
+.sum-card.lcp     .num { color: #8e44ad; }
+.sum-card .lbl { font-size: 0.72rem; color: #666; margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── Filters ── */
+#filters { background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+#filters label { font-size: 0.74rem; color: #666; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+#filters input[type=text], #filters select { border: 1px solid #ddd; border-radius: 4px; padding: 6px 10px; font-size: 0.8rem; font-family: inherit; outline: none; }
+#filters input[type=text]:focus, #filters select:focus { border-color: #2e6da4; }
+#search { width: 240px; }
+#refresh-btn { background: #2e6da4; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.78rem; font-weight: 600; margin-left: auto; }
+#refresh-btn:hover { background: #4a86e8; }
+#print-btn { background: #555; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.78rem; font-weight: 600; }
+#print-btn:hover { background: #333; }
+
+/* ── Notes box ── */
+#notes { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 11px 16px; margin-bottom: 16px; font-size: 0.78rem; color: #6d5200; line-height: 1.5; }
+#notes b { color: #4d3a00; }
+
+/* ── Group sections ── */
+.grp { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); margin-bottom: 16px; overflow: hidden; }
+.grp-head { background: #f3f5f9; padding: 12px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #e6e8ee; cursor: pointer; }
+.grp-head:hover { background: #eef1f7; }
+.grp-caret { font-size: 0.8rem; color: #999; transition: transform 0.15s; }
+.grp.collapsed .grp-caret { transform: rotate(-90deg); }
+.grp.collapsed .grp-body { display: none; }
+.grp-title { font-size: 0.95rem; font-weight: 700; color: #1a1a2e; }
+.grp-email { font-size: 0.76rem; color: #2e6da4; }
+.grp-stats { font-size: 0.72rem; color: #777; display: flex; gap: 10px; flex-wrap: wrap; }
+.grp-stats .st { white-space: nowrap; }
+.grp-stats .st.miss { color: #c62828; font-weight: 700; }
+.grp-actions { margin-left: auto; display: flex; gap: 8px; }
+.email-btn { background: #2e6da4; color: white; border: none; padding: 6px 13px; border-radius: 4px; cursor: pointer; font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
+.email-btn:hover { background: #4a86e8; }
+.lcp-pill { display: inline-block; background: #f3e8fb; color: #8e44ad; border: 1px solid #e1c8f2; font-size: 0.64rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; letter-spacing: 0.04em; vertical-align: middle; }
+.grp-body { padding: 4px 16px 14px; }
+
+/* ── Property block ── */
+.prop { border-top: 1px solid #f0f0f0; padding: 12px 0 6px; }
+.prop:first-child { border-top: none; }
+.prop-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.prop-name { font-weight: 700; color: #1a1a2e; font-size: 0.9rem; }
+.prop-addr { font-size: 0.75rem; color: #888; }
+.prop-acct { font-size: 0.7rem; color: #aaa; }
+.no-insp { font-size: 0.78rem; color: #b08900; font-style: italic; padding: 2px 0 6px; }
+
+table.ent { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+table.ent th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #999; font-weight: 700; padding: 4px 10px; border-bottom: 1px solid #eee; }
+table.ent td { padding: 6px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; }
+table.ent tr:last-child td { border-bottom: none; }
+.t-type { font-weight: 600; color: #333; }
+.t-freq { color: #777; font-size: 0.72rem; }
+.t-date { color: #444; }
+.t-next { font-weight: 600; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 11px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+.b-overdue { background: #fde8e8; color: #c62828; }
+.b-soon    { background: #fff3e0; color: #e65100; }
+.b-ok      { background: #e8f5e9; color: #2e7d32; }
+.b-unknown { background: #f5f5f5; color: #888; }
+
+.rep-link { color: #1a73e8; text-decoration: none; font-weight: 600; white-space: nowrap; }
+.rep-link:hover { text-decoration: underline; }
+.rep-maybe { color: #b8860b; }
+.rep-missing { color: #c62828; font-weight: 700; }
+.rep-external { color: #6b7280; font-style: italic; }
+.conf { font-size: 0.64rem; color: #999; margin-left: 4px; }
+
+/* ── States ── */
+#loading, #empty-state { text-align: center; padding: 60px 20px; color: #888; }
+.spinner-lg { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #2e6da4; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#load-status { font-size: 0.8rem; color: #888; margin-top: 8px; }
+
+/* ── Modal ── */
+#modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center; }
+#modal-backdrop.open { display:flex; }
+#email-modal { background:white; border-radius:10px; padding:22px 26px; width:640px; max-width:94vw; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+#email-modal h2 { font-size:1rem; font-weight:700; color:#1a1a2e; margin-bottom:6px; }
+#email-modal .sub { font-size:0.76rem; color:#777; margin-bottom:14px; }
+#email-to { font-size:0.8rem; color:#333; margin-bottom:10px; }
+#email-to b { color:#1a1a2e; }
+#email-body { width:100%; height:300px; border:1px solid #ddd; border-radius:6px; padding:10px 12px; font-family:inherit; font-size:0.8rem; line-height:1.5; resize:vertical; outline:none; }
+#email-body:focus { border-color:#2e6da4; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; align-items:center; }
+.btn-primary { background:#2e6da4; color:white; border:none; padding:8px 18px; border-radius:4px; cursor:pointer; font-size:0.82rem; font-weight:600; }
+.btn-primary:hover { background:#4a86e8; }
+.btn-secondary { background:#f3f4f6; color:#555; border:1px solid #ddd; padding:8px 14px; border-radius:4px; cursor:pointer; font-size:0.82rem; }
+.btn-secondary:hover { background:#e5e7eb; }
+.copy-note { font-size:0.72rem; color:#2e7d32; margin-right:auto; opacity:0; transition:opacity 0.2s; }
+.copy-note.show { opacity:1; }
+
+/* ── Toast ── */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 9999; white-space: nowrap; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 768px) { #summary { grid-template-columns: repeat(2, 1fr); } }
+
+@media print {
+  @page { size: landscape; margin: 0.5in; }
+  body { background: white; font-size: 9pt; }
+  #top-bar, #conn-drawer, #filters, #notes, .grp-actions, #refresh-btn, #print-btn, #toast, #modal-backdrop { display: none !important; }
+  #content { padding: 0; max-width: none; margin: 0; }
+  .grp, .sum-card { box-shadow: none; border: 1px solid #ddd; }
+  .grp.collapsed .grp-body { display: block !important; }
+  .grp-head { cursor: default; }
+  .rep-link { color: #1a73e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <div class="nav-section-label">Field Technicians</div>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="estimate.html">🎯 Estimate</a>
+      <a href="estimate-tracker.html">📈 Estimate Tracker</a>
+      <a href="worklog.html"><img src="img/sheets.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Work Log (the Drive)</a>
+      <a href="index.html">⏰ Work Order</a>
+      <a href="inspection.html">🔥 Fire Inspection</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection</a>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Administrators</div>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection-audit.html" class="active">📋 Inspection Reports Audit</a>
+      <a href="workorder-tracker.html">🗄️ Work Order Tracker</a>
+      <a href="create-invoices.html"><img src="img/quickbooks.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Create QB Invoices</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="open-invoices.html">💰 Record Payments</a>
+      </div>
+  </div>
+  <h1>📋 Inspection Reports Audit</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field">
+      <label>Google API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy…">
+    </div>
+    <div class="conn-field">
+      <label>OAuth Client ID</label>
+      <input type="text" id="client-id" placeholder="123456….apps.googleusercontent.com">
+    </div>
+    <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
+  </div>
+</div>
+
+<div id="content">
+
+  <div id="summary" style="display:none;">
+    <div class="sum-card buildings"><div class="num" id="s-buildings">0</div><div class="lbl">Buildings shown</div></div>
+    <div class="sum-card records"><div class="num" id="s-records">0</div><div class="lbl">Inspections on record</div></div>
+    <div class="sum-card found"><div class="num" id="s-found">0</div><div class="lbl">Reports in Drive</div></div>
+    <div class="sum-card missing"><div class="num" id="s-missing">0</div><div class="lbl">Missing reports</div></div>
+    <div class="sum-card lcp"><div class="num" id="s-lcp">0</div><div class="lbl">LCP buildings</div></div>
+  </div>
+
+  <div id="notes" style="display:none;">
+    <b>How to read this:</b> Each inspection on record is matched to a saved PDF in <b>FLPS Software › FLPS Inspection Reports</b> by property name, system, and date.
+    A <span style="color:#c62828;font-weight:700;">missing</span> flag means we have a record of the inspection but no PDF was found in Drive — those are the reports to locate or re-upload.
+    <b>Backflow</b> is handled outside this software, so it shows as <i>external</i> and won't have a Drive PDF here.
+    <b>3- and 5-year</b> cycles only have a "next due" when we already have a baseline date; otherwise it shows "—".
+    Matches marked <i>(likely)</i> are best-guess — open them to confirm before sending.
+  </div>
+
+  <div id="filters" style="display:none;">
+    <input type="text" id="search" placeholder="Search building, manager, address…" oninput="render()">
+    <label>Group by
+      <select id="group-by" onchange="render()">
+        <option value="manager">Property Manager</option>
+        <option value="billing">Billing account (groups LCP)</option>
+      </select>
+    </label>
+    <label>Show
+      <select id="filter-lcp" onchange="render()">
+        <option value="all">All clients</option>
+        <option value="lcp">LCP only</option>
+      </select>
+    </label>
+    <label>Type
+      <select id="filter-type" onchange="render()"><option value="">All types</option></select>
+    </label>
+    <label><input type="checkbox" id="filter-missing" onchange="render()"> Missing reports only</label>
+    <button id="print-btn" onclick="window.print()">🖨 Print</button>
+    <button id="refresh-btn" onclick="loadAudit(true)">↺ Refresh</button>
+  </div>
+
+  <div id="loading" style="display:none;">
+    <div class="spinner-lg"></div>
+    <div>Loading audit…</div>
+    <div id="load-status"></div>
+  </div>
+  <div id="empty-state" style="display:none;"></div>
+  <div id="groups"></div>
+</div>
+
+<!-- Email compose modal -->
+<div id="modal-backdrop" onclick="if(event.target===this)closeEmailModal()">
+  <div id="email-modal">
+    <h2 id="email-title">Email reports</h2>
+    <div class="sub">Review and edit, then copy the text or open your email client. Drive links open the report PDFs.</div>
+    <div id="email-to"></div>
+    <textarea id="email-body" spellcheck="false"></textarea>
+    <div class="modal-actions">
+      <span class="copy-note" id="copy-note">✓ Copied to clipboard</span>
+      <button class="btn-secondary" onclick="closeEmailModal()">Close</button>
+      <button class="btn-secondary" onclick="copyEmailBody()">📋 Copy text</button>
+      <button class="btn-primary" onclick="openMailto()">📧 Open in email</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-google-fetch.js"></script>
+<script>
+// ── Constants ──────────────────────────────────────────────
+const SHEET_ID         = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const CLIENT_LIST_GID  = '1899870347';
+const HISTORY_SHEET_ID = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ';
+const HISTORY_TAB_NAME = 'Inspection History';
+const REPORTS_FOLDER_NAME = 'FLPS Inspection Reports';
+const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Software › FLPS Inspection Reports
+// Read-only: this page never writes. Drive scope needed to list report files + links.
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly';
+const CACHE_KEY = 'flips_audit_cache_v1';
+const CACHE_TTL = 10 * 60 * 1000;
+
+let accessToken = null;
+let tokenClient = null;
+let AUDIT = { props: [], reportsLoaded: false };
+let emailCtx = { to: '', subject: '', body: '' };
+
+// ── Nav / drawer ───────────────────────────────────────────
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open');
+});
+function toggleDrawer() { document.getElementById('conn-drawer').classList.toggle('open'); }
+function setStatus(msg, cls) {
+  const el = document.getElementById('conn-status');
+  el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
+  el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn');
+  if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+function loadStatus(msg) { const el = document.getElementById('load-status'); if (el) el.textContent = msg; }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Auth ───────────────────────────────────────────────────
+function initGoogle() {
+  const apiKey   = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  setStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setStatus('✓ Connected', 'ok');
+        _scheduleTokenRefresh();
+        loadAudit();
+      },
+      error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e) { setStatus('✗ ' + e.message, 'err'); }
+}
+
+// ── Date / frequency helpers ───────────────────────────────
+function stripTime(str) {
+  return str ? str.trim().replace(/\s+\d{1,2}:\d{2}(:\d{2})?(\s*(AM|PM))?$/i, '').trim() : str;
+}
+function parseSheetDate(str) {
+  if (!str) return null;
+  str = stripTime(str);
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return new Date(+mdy[3], +mdy[1]-1, +mdy[2], 12);
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return new Date(+iso[1], +iso[2]-1, +iso[3], 12);
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+function freqMonths(freq) {
+  const f = (freq || 'annual').toLowerCase();
+  if (/semi|bi-?annual|6 ?mo/.test(f)) return 6;
+  if (/quarter|3 ?mo/.test(f)) return 3;
+  if (/month/.test(f)) return 1;
+  if (/\b5\b|five|5-?year/.test(f)) return 60;
+  if (/\b3\b|three|3-?year/.test(f)) return 36;
+  if (/\b2\b|bi-?ennial|two/.test(f)) return 24;
+  return 12;
+}
+function nextDue(dateObj, freq) {
+  if (!dateObj) return null;
+  const d = new Date(dateObj);
+  d.setMonth(d.getMonth() + freqMonths(freq));
+  return d;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+}
+function bucketFor(nextD) {
+  if (!nextD) return 'unknown';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.round((nextD - today) / 86400000);
+  if (days < 0) return 'overdue';
+  if (days <= 60) return 'soon';
+  return 'ok';
+}
+
+// ── Token text helpers (for fuzzy report matching) ─────────
+const STOP = new Set(['the','and','llc','inc','of','co','company','corp','ltd','at']);
+function tokens(s) {
+  return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ')
+    .filter(t => t.length >= 3 && !STOP.has(t));
+}
+function sysKeywords(type) {
+  const t = (type||'').toLowerCase();
+  if (/alarm|fire ?alarm|\bfa\b|detection/.test(t)) return ['alarm','fire'];
+  if (/sprinkler|standpipe|wet|dry|\bsp\b/.test(t)) return ['sprinkler','standpipe'];
+  if (/exting|\bfe\b/.test(t)) return ['extinguisher','exting'];
+  if (/hood|kitchen|ansul|suppress/.test(t)) return ['hood','kitchen','suppress','ansul'];
+  if (/backflow|\bbf\b/.test(t)) return ['backflow'];
+  if (/jockey|\bjp\b/.test(t)) return ['jockey'];
+  if (/pump/.test(t)) return ['pump'];
+  if (/emergency|exit|egress|\bem\b/.test(t)) return ['emergency','exit','egress'];
+  if (/elevator/.test(t)) return ['elevator'];
+  return [];
+}
+function isBackflow(type) { return /backflow/i.test(type || ''); }
+
+// ── Load orchestrator ──────────────────────────────────────
+async function loadAudit(forceRefresh = false) {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('groups').innerHTML = '';
+  ['summary','notes','filters'].forEach(id => document.getElementById(id).style.display = 'none');
+
+  if (!forceRefresh) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+        AUDIT = cached.data;
+        AUDIT.props.forEach(p => p.entries.forEach(e => { e.nextDate = e.next ? new Date(e.next) : null; }));
+        finishLoad();
+        return;
+      }
+    } catch(_) {}
+  }
+
+  try {
+    loadStatus('Reading client master list…');
+    const props = await loadMaster();
+    loadStatus('Reading inspection history…');
+    const entries = await loadHistory();
+    loadStatus('Listing report PDFs in Drive…');
+    let reportFiles = [];
+    let reportsLoaded = false;
+    try { reportFiles = await loadReports(); reportsLoaded = true; }
+    catch(e) { console.warn('[Audit] Reports folder load failed:', e.message); }
+
+    attachEntries(props, entries);
+    if (reportsLoaded) matchReports(props, reportFiles);
+
+    AUDIT = { props, reportsLoaded };
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: AUDIT })); } catch(_) {}
+    finishLoad();
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'block';
+    document.getElementById('empty-state').textContent = '⚠ Failed to load: ' + e.message;
+  }
+}
+
+function finishLoad() {
+  document.getElementById('loading').style.display = 'none';
+  ['summary','notes','filters'].forEach(id => document.getElementById(id).style.display = '');
+  populateTypeFilter();
+  render();
+}
+
+// ── Load master client list (all columns) ──────────────────
+async function loadMaster() {
+  const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`);
+  if (!metaRes.ok) throw new Error('Master meta error ' + metaRes.status);
+  const meta = await metaRes.json();
+  let tabName = meta.sheets[0].properties.title;
+  for (const s of meta.sheets) {
+    if (String(s.properties.sheetId) === String(CLIENT_LIST_GID)) { tabName = s.properties.title; break; }
+  }
+  const valRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName)}`);
+  if (!valRes.ok) throw new Error('Master values error ' + valRes.status);
+  const rows = (await valRes.json()).values || [];
+  if (rows.length < 2) throw new Error('Client master is empty');
+
+  const H = rows[0].map(h => (h || '').trim().toLowerCase());
+  let iName = H.findIndex(h => h.includes('property name') || h.includes('site name'));
+  if (iName < 0) iName = H.findIndex(h => h === 'property' || h === 'name');
+  if (iName < 0) iName = H.findIndex(h => h.includes('property'));
+  if (iName < 0) iName = 0;
+  let iAcct = H.findIndex(h => h.includes('acct') || (h.includes('account') && h.includes('number')) || h.includes('account no'));
+  if (iAcct < 0) iAcct = H.findIndex(h => h.includes('account'));
+  let iAddr = H.findIndex(h => h.includes('service address'));
+  if (iAddr < 0) iAddr = H.findIndex(h => (h.includes('address') || h.includes('street')) && !h.includes('billing') && !h.includes('email'));
+  let iBillEmail = H.findIndex(h => h.includes('billing') && h.includes('email'));
+  let iBillAddr  = H.findIndex(h => h.includes('billing') && h.includes('address'));
+  let iMgrName   = H.findIndex(h => h.includes('manager') && h.includes('name'));
+  if (iMgrName < 0) iMgrName = H.findIndex(h => h.includes('property manager') && !h.includes('contact') && !h.includes('info') && !h.includes('company') && !h.includes('email') && !h.includes('phone'));
+  let iMgrContact = H.findIndex(h => h.includes('manager') && (h.includes('contact') || h.includes('info')));
+
+  const emailRe = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i;
+  const phoneRe = /\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/;
+  const get = (r, i) => (i >= 0 ? (r[i] || '').trim() : '');
+
+  const props = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = get(r, iName);
+    if (!name) continue;
+    const billingEmail = get(r, iBillEmail);
+    const contactRaw   = get(r, iMgrContact);
+    const mgrEmail = (contactRaw.match(emailRe) || [''])[0];
+    const mgrPhone = (contactRaw.match(phoneRe) || [''])[0];
+    let mgrName = get(r, iMgrName);
+    const isLCP = /avidbill\.com/i.test(billingEmail) || /lcpmanagement\.net/i.test(mgrEmail) || /\blcp\b/i.test(mgrName);
+    props.push({
+      name,
+      acct: get(r, iAcct),
+      addr: get(r, iAddr),
+      billingEmail,
+      billingAddr: get(r, iBillAddr),
+      mgrName, mgrEmail, mgrPhone,
+      isLCP,
+      entries: [],
+      orphan: false,
+    });
+  }
+  return props;
+}
+
+// ── Load inspection history (most-recent per prop+type+freq) ─
+async function loadHistory() {
+  const res = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${HISTORY_SHEET_ID}/values/${encodeURIComponent(HISTORY_TAB_NAME)}`);
+  if (res.status === 400) return [];
+  if (!res.ok) throw new Error('History error ' + res.status);
+  const rows = (await res.json()).values || [];
+  if (rows.length < 2) return [];
+
+  const H = rows[0].map(h => h.trim().toLowerCase());
+  const col = (name) => H.findIndex(h => h.includes(name));
+  const iProp = col('property');
+  const iAcct = col('acct');
+  const iAddr = col('address') >= 0 ? col('address') : col('service');
+  const iType = col('inspection') >= 0 ? col('inspection') : col('type');
+  const iDate = col('date');
+  const iFreq = col('freq');
+  const iSrc  = col('source');
+  const iNote = col('notes');
+
+  const best = new Map();
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const get = (idx) => (idx >= 0 ? (r[idx] || '').trim() : '');
+    const property = get(iProp);
+    const type = get(iType);
+    if (!property || !type) continue;
+    const acct = get(iAcct);
+    const freq = get(iFreq) || 'Annual';
+    const dateRaw = stripTime(get(iDate));
+    const dateObj = parseSheetDate(dateRaw);
+    const key = (acct ? 'acct:' + acct : 'name:' + property.toLowerCase()) + '\x00' + type.toLowerCase() + '\x00' + freq.toLowerCase();
+    const cur = best.get(key);
+    if (!cur || (dateObj && (!cur.dateObj || dateObj > cur.dateObj))) {
+      best.set(key, {
+        property, acct, address: get(iAddr), type, freq,
+        last: dateRaw, dateObj, source: get(iSrc), notes: get(iNote),
+      });
+    }
+  }
+  return [...best.values()];
+}
+
+// ── Load report PDFs from the Drive folder ─────────────────
+async function loadReports() {
+  // Prefer the known folder ID (same folder inspection.html / hospital-inspection.html
+  // save PDFs to); fall back to a name search if it can't be reached.
+  let folderId = REPORTS_FOLDER_ID;
+  const probe = await googleFetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id&supportsAllDrives=true`);
+  if (!probe.ok) {
+    const fRes = await googleFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+        `name='${REPORTS_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      )}&fields=files(id,name)&pageSize=10`);
+    if (!fRes.ok) throw new Error('Drive folder lookup ' + fRes.status);
+    const folders = (await fRes.json()).files || [];
+    if (!folders.length) throw new Error('Reports folder not found');
+    folderId = folders[0].id;
+  }
+
+  const files = [];
+  let pageToken = '';
+  do {
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+      `'${folderId}' in parents and trashed=false`
+    )}&fields=nextPageToken,files(id,name,webViewLink,createdTime,mimeType)&pageSize=1000&orderBy=createdTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true` +
+      (pageToken ? `&pageToken=${pageToken}` : '');
+    const res = await googleFetch(url);
+    if (!res.ok) throw new Error('Drive list ' + res.status);
+    const j = await res.json();
+    (j.files || []).forEach(f => {
+      if (f.mimeType === 'application/vnd.google-apps.folder') return;
+      files.push({
+        id: f.id, name: f.name, link: f.webViewLink,
+        created: f.createdTime,
+        ntoks: tokens(f.name),
+        lname: (f.name || '').toLowerCase(),
+      });
+    });
+    pageToken = j.nextPageToken || '';
+  } while (pageToken);
+  return files;
+}
+
+// ── Attach history entries to master properties ────────────
+function attachEntries(props, entries) {
+  const byAcct = new Map();
+  const byName = new Map();
+  props.forEach(p => {
+    if (p.acct) byAcct.set(p.acct.toLowerCase(), p);
+    byName.set(p.name.toLowerCase().trim(), p);
+  });
+  entries.forEach(e => {
+    let p = (e.acct && byAcct.get(e.acct.toLowerCase())) || byName.get((e.property || '').toLowerCase().trim());
+    if (!p) {
+      // Property is in history but not in the client master — keep it visible as an orphan.
+      p = {
+        name: e.property, acct: e.acct, addr: e.address,
+        billingEmail: '', billingAddr: '', mgrName: '', mgrEmail: '', mgrPhone: '',
+        isLCP: /\blcp\b/i.test(e.property || ''), entries: [], orphan: true,
+      };
+      props.push(p);
+      byName.set((e.property || '').toLowerCase().trim(), p);
+      if (e.acct) byAcct.set(e.acct.toLowerCase(), p);
+    }
+    const nd = nextDue(e.dateObj, e.freq);
+    p.entries.push({
+      type: e.type, freq: e.freq, last: e.last, dateObj: e.dateObj,
+      next: nd ? nd.toISOString() : '', nextDate: nd, bucket: bucketFor(nd),
+      source: e.source, notes: e.notes,
+      report: null, reportLink: '', reportName: '', confident: false, missing: false, external: isBackflow(e.type),
+    });
+  });
+  props.forEach(p => p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || '')));
+}
+
+// ── Match each entry to a Drive report PDF ─────────────────
+function matchReports(props, files) {
+  props.forEach(p => {
+    const ptoks = tokens(p.name + ' ' + (p.addr || ''));
+    p.entries.forEach(e => {
+      if (e.external) return; // backflow etc — not stored here
+      const sysk = sysKeywords(e.type);
+      const yr = e.dateObj ? String(e.dateObj.getFullYear()) : '';
+      const iso = e.dateObj ? `${e.dateObj.getFullYear()}-${String(e.dateObj.getMonth()+1).padStart(2,'0')}-${String(e.dateObj.getDate()).padStart(2,'0')}` : '';
+      let best = null, bestScore = 0;
+      files.forEach(f => {
+        if (!ptoks.length) return;
+        const overlap = ptoks.filter(t => f.ntoks.includes(t)).length;
+        const nameScore = overlap / ptoks.length;
+        if (nameScore < 0.6) return;                       // property name must mostly appear
+        const sysMatch = sysk.some(k => f.lname.includes(k));
+        const dateMatch = iso && f.lname.includes(iso);
+        const yearMatch = yr && f.lname.includes(yr);
+        const score = nameScore + (sysMatch ? 0.6 : 0) + (dateMatch ? 0.5 : yearMatch ? 0.2 : 0);
+        const newer = best && f.created > best.created;
+        if (score > bestScore || (score === bestScore && newer)) {
+          bestScore = score; best = f; best._sys = sysMatch; best._date = dateMatch || yearMatch;
+        }
+      });
+      if (best) {
+        e.report = best;
+        e.reportLink = best.link;
+        e.reportName = best.name;
+        // High confidence when the system keyword AND date/year both line up.
+        e.confident = !!(best._sys && best._date);
+      } else {
+        e.missing = true;
+      }
+    });
+  });
+}
+
+// ── Filters / grouping ─────────────────────────────────────
+function populateTypeFilter() {
+  const types = new Set();
+  AUDIT.props.forEach(p => p.entries.forEach(e => e.type && types.add(e.type)));
+  const sel = document.getElementById('filter-type');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">All types</option>' +
+    [...types].sort().map(t => `<option>${escHtml(t)}</option>`).join('');
+  sel.value = prev;
+}
+
+function currentFilters() {
+  return {
+    q: document.getElementById('search').value.trim().toLowerCase(),
+    groupBy: document.getElementById('group-by').value,
+    lcp: document.getElementById('filter-lcp').value === 'lcp',
+    type: document.getElementById('filter-type').value,
+    missingOnly: document.getElementById('filter-missing').checked,
+  };
+}
+
+function groupKeyFor(p, mode) {
+  if (mode === 'billing') {
+    if (p.billingEmail) return { key: 'be:' + p.billingEmail.toLowerCase(), label: p.billingEmail, email: p.billingEmail };
+    if (p.billingAddr)  return { key: 'ba:' + p.billingAddr.toLowerCase(), label: p.billingAddr, email: '' };
+    return { key: 'none', label: '— No billing info —', email: '' };
+  }
+  if (p.mgrName) return { key: 'mn:' + p.mgrName.toLowerCase(), label: p.mgrName, email: p.mgrEmail };
+  if (p.mgrEmail) return { key: 'me:' + p.mgrEmail.toLowerCase(), label: p.mgrEmail, email: p.mgrEmail };
+  if (p.orphan) return { key: 'orphan', label: '— Not in client master —', email: '' };
+  return { key: 'unassigned', label: '— No property manager —', email: '' };
+}
+
+// Apply filters → return filtered shallow copies of props with filtered entries.
+function filteredProps(f) {
+  const out = [];
+  AUDIT.props.forEach(p => {
+    if (f.lcp && !p.isLCP) return;
+    let entries = p.entries;
+    if (f.type) entries = entries.filter(e => e.type === f.type);
+    if (f.missingOnly) entries = entries.filter(e => e.missing);
+    if (f.q) {
+      const hay = (p.name + ' ' + (p.addr||'') + ' ' + (p.mgrName||'') + ' ' + (p.mgrEmail||'') + ' ' + (p.billingEmail||'')).toLowerCase();
+      const entHay = entries.some(e => (e.type||'').toLowerCase().includes(f.q));
+      if (!hay.includes(f.q) && !entHay) return;
+    }
+    // When filtering to missing/type, hide buildings that now have nothing to show
+    if ((f.missingOnly || f.type) && !entries.length) return;
+    out.push({ ...p, entries });
+  });
+  return out;
+}
+
+// ── Render ─────────────────────────────────────────────────
+function render() {
+  const f = currentFilters();
+  const props = filteredProps(f);
+
+  // Build groups
+  const groups = new Map();
+  props.forEach(p => {
+    const g = groupKeyFor(p, f.groupBy);
+    if (!groups.has(g.key)) groups.set(g.key, { label: g.label, email: g.email, isLCP: false, props: [] });
+    const grp = groups.get(g.key);
+    grp.props.push(p);
+    if (p.isLCP) grp.isLCP = true;
+    if (!grp.email && g.email) grp.email = g.email;
+  });
+
+  // Summary
+  let nBuild = 0, nRec = 0, nFound = 0, nMiss = 0, nLcp = 0;
+  props.forEach(p => {
+    nBuild++; if (p.isLCP) nLcp++;
+    p.entries.forEach(e => {
+      if (e.external) return;
+      nRec++;
+      if (e.missing) nMiss++; else if (e.reportLink) nFound++;
+    });
+  });
+  document.getElementById('s-buildings').textContent = nBuild;
+  document.getElementById('s-records').textContent = nRec;
+  document.getElementById('s-found').textContent = AUDIT.reportsLoaded ? nFound : '—';
+  document.getElementById('s-missing').textContent = AUDIT.reportsLoaded ? nMiss : '—';
+  document.getElementById('s-lcp').textContent = nLcp;
+
+  // Sort groups: LCP first, then alpha
+  const sorted = [...groups.entries()].sort((a, b) => {
+    if (a[1].isLCP !== b[1].isLCP) return a[1].isLCP ? -1 : 1;
+    return a[1].label.localeCompare(b[1].label);
+  });
+
+  const host = document.getElementById('groups');
+  if (!sorted.length) {
+    host.innerHTML = '';
+    const es = document.getElementById('empty-state');
+    es.style.display = 'block';
+    es.textContent = 'No buildings match the current filters.';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+
+  host.innerHTML = sorted.map(([key, g]) => {
+    let recs = 0, miss = 0, found = 0;
+    g.props.forEach(p => p.entries.forEach(e => {
+      if (e.external) return; recs++;
+      if (e.missing) miss++; else if (e.reportLink) found++;
+    }));
+    g.props.sort((a, b) => a.name.localeCompare(b.name));
+
+    const stats = AUDIT.reportsLoaded
+      ? `<span class="st">${g.props.length} bldg</span><span class="st">${recs} inspections</span><span class="st">${found} reports</span>${miss ? `<span class="st miss">${miss} missing</span>` : ''}`
+      : `<span class="st">${g.props.length} bldg</span><span class="st">${recs} inspections</span>`;
+
+    const emailBtn = g.email
+      ? `<button class="email-btn" onclick="event.stopPropagation(); openEmailModal('${escAttr(key)}')">📧 Email reports</button>`
+      : `<button class="email-btn" style="background:#9aa3af" onclick="event.stopPropagation(); openEmailModal('${escAttr(key)}')" title="No manager email on file">📧 Compose</button>`;
+
+    const body = g.props.map(renderProp).join('');
+
+    return `<section class="grp" data-key="${escAttr(key)}">
+      <div class="grp-head" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span class="grp-caret">▼</span>
+        <span class="grp-title">${escHtml(g.label)}</span>
+        ${g.isLCP ? '<span class="lcp-pill">LCP</span>' : ''}
+        ${g.email ? `<span class="grp-email">${escHtml(g.email)}</span>` : ''}
+        <span class="grp-stats">${stats}</span>
+        <span class="grp-actions">${emailBtn}</span>
+      </div>
+      <div class="grp-body">${body}</div>
+    </section>`;
+  }).join('');
+}
+
+function renderProp(p) {
+  const head = `<div class="prop-head">
+      <span class="prop-name">${escHtml(p.name)}</span>
+      ${p.isLCP ? '<span class="lcp-pill">LCP</span>' : ''}
+      ${p.addr ? `<span class="prop-addr">${escHtml(p.addr)}</span>` : ''}
+      ${p.acct ? `<span class="prop-acct">#${escHtml(p.acct)}</span>` : ''}
+      ${p.orphan ? '<span class="prop-acct" style="color:#c08a00">(not in client master)</span>' : ''}
+    </div>`;
+
+  if (!p.entries.length) {
+    return `<div class="prop">${head}<div class="no-insp">No inspections recorded yet.</div></div>`;
+  }
+
+  const rows = p.entries.map(e => {
+    const nextCls = 'b-' + (e.bucket === 'overdue' ? 'overdue' : e.bucket === 'soon' ? 'soon' : e.bucket === 'ok' ? 'ok' : 'unknown');
+    const nextHtml = e.nextDate
+      ? `<span class="badge ${nextCls}">${fmtDate(e.nextDate)}</span>`
+      : `<span class="badge b-unknown">—</span>`;
+    let rep;
+    if (e.external) {
+      rep = `<span class="rep-external">↗ External (Brycer / manual)</span>`;
+    } else if (!AUDIT.reportsLoaded) {
+      rep = `<span style="color:#aaa">—</span>`;
+    } else if (e.reportLink) {
+      rep = `<a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(e.reportLink)}" target="_blank" rel="noopener">📄 Open report${e.confident ? '' : '<span class="conf">(likely)</span>'}</a>`;
+    } else {
+      rep = `<span class="rep-missing">⚠ No report in Drive</span>`;
+    }
+    return `<tr>
+      <td class="t-type">${escHtml(e.type)}</td>
+      <td class="t-freq">${escHtml(e.freq)}</td>
+      <td class="t-date">${e.last ? escHtml(e.last) : '—'}</td>
+      <td class="t-next">${nextHtml}</td>
+      <td>${rep}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="prop">${head}
+    <table class="ent">
+      <thead><tr><th>System</th><th>Frequency</th><th>Last done</th><th>Next due</th><th>Report</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
+
+// ── Email composition ──────────────────────────────────────
+function openEmailModal(groupKey) {
+  const f = currentFilters();
+  const props = filteredProps(f).filter(p => groupKeyFor(p, f.groupBy).key === groupKey);
+  if (!props.length) { toast('Nothing to email for this group'); return; }
+  const g = groupKeyFor(props[0], f.groupBy);
+
+  const mgrName = props[0].mgrName || '';
+  const greeting = mgrName ? `Hi ${mgrName.split(' ')[0]},` : 'Hello,';
+  const lines = [];
+  lines.push(greeting);
+  lines.push('');
+  lines.push('Please find the most recent fire & life-safety inspection reports for your building(s) below:');
+  lines.push('');
+
+  let anyMissing = false;
+  props.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+    const shown = p.entries.filter(e => !e.external);
+    if (!shown.length && !p.entries.length) return;
+    lines.push(`${p.name}${p.addr ? ' — ' + p.addr : ''}`);
+    if (!shown.length) { lines.push('  • (no inspection reports on record)'); lines.push(''); return; }
+    shown.forEach(e => {
+      const done = e.last ? `completed ${e.last}` : 'date n/a';
+      if (e.reportLink) {
+        lines.push(`  • ${e.type} (${e.freq}) — ${done}`);
+        lines.push(`      ${e.reportLink}`);
+      } else {
+        anyMissing = true;
+        lines.push(`  • ${e.type} (${e.freq}) — ${done} — report being located`);
+      }
+    });
+    // note backflow external if present
+    if (p.entries.some(e => e.external)) lines.push('  • Backflow — tracked separately (provided directly)');
+    lines.push('');
+  });
+
+  lines.push('Please let us know if you need anything else.');
+  lines.push('');
+  lines.push('Thank you,');
+  lines.push('Fire Life Protection Systems');
+
+  emailCtx.to = g.email || '';
+  emailCtx.subject = `FLPS Inspection Reports — ${g.label}`;
+  emailCtx.body = lines.join('\n');
+
+  document.getElementById('email-title').textContent = 'Email reports — ' + g.label;
+  document.getElementById('email-to').innerHTML = g.email
+    ? `To: <b>${escHtml(g.email)}</b>`
+    : `<span style="color:#c08a00">No email on file for this group — copy the text and send manually.</span>`;
+  document.getElementById('email-body').value = emailCtx.body;
+  document.getElementById('copy-note').classList.remove('show');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+function closeEmailModal() { document.getElementById('modal-backdrop').classList.remove('open'); }
+function copyEmailBody() {
+  const body = document.getElementById('email-body').value;
+  navigator.clipboard.writeText(body).then(() => {
+    document.getElementById('copy-note').classList.add('show');
+    setTimeout(() => document.getElementById('copy-note').classList.remove('show'), 2500);
+  }).catch(() => toast('⚠ Copy failed — select the text manually'));
+}
+function openMailto() {
+  const body = document.getElementById('email-body').value;
+  const url = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}&body=${encodeURIComponent(body)}`;
+  if (url.length > 1900) {
+    copyEmailBody();
+    toast('Report list is long — copied to clipboard; paste into your email');
+    window.location.href = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}`;
+  } else {
+    window.location.href = url;
+  }
+}
+
+// ── On load ────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const k = localStorage.getItem('flips_api_key');
+  const c = localStorage.getItem('flips_client_id');
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
+  if (!k || !c) { document.getElementById('conn-drawer').classList.add('open'); return; }
+
+  const cachedToken = localStorage.getItem('flips_access_token');
+  const tokenExpiry = parseInt(localStorage.getItem('flips_token_expiry') || '0');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: c, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
+        setStatus('✓ Connected', 'ok');
+        _scheduleTokenRefresh();
+        loadAudit();
+      },
+      error_callback: () => { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); }
+    });
+  } catch(e) { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); return; }
+
+  if (cachedToken && Date.now() < tokenExpiry) {
+    accessToken = cachedToken;
+    setStatus('✓ Connected', 'ok');
+    _scheduleTokenRefresh();
+    loadAudit();
+  } else {
+    setStatus('⏳ Reconnecting…', '');
+    tokenClient.requestAccessToken({ prompt: '' });
+  }
+});
+</script>
+<script>window.FLIPS_MODAL_CONFIG = { requiresQB: false };</script>
+<script src="js/flips-conn-modal.js"></script>
+</body>
+</html>
