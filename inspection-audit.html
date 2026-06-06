@@ -268,14 +268,16 @@ table.ent tr:last-child td { border-bottom: none; }
 <div id="modal-backdrop" onclick="if(event.target===this)closeEmailModal()">
   <div id="email-modal">
     <h2 id="email-title">Email reports</h2>
-    <div class="sub">Review and edit, then copy the text or open your email client. Drive links open the report PDFs.</div>
+    <div class="sub">Creates a <b>Gmail draft</b> with the report PDFs <b>attached</b> (in your Drafts — review before sending). Edit the message below first if you like.</div>
     <div id="email-to"></div>
     <textarea id="email-body" spellcheck="false"></textarea>
+    <div id="attach-summary" style="font-size:0.74rem;color:#555;margin-top:8px;"></div>
     <div class="modal-actions">
-      <span class="copy-note" id="copy-note">✓ Copied to clipboard</span>
+      <span class="copy-note" id="copy-note"></span>
       <button class="btn-secondary" onclick="closeEmailModal()">Close</button>
       <button class="btn-secondary" onclick="copyEmailBody()">📋 Copy text</button>
-      <button class="btn-primary" onclick="openMailto()">📧 Open in email</button>
+      <button class="btn-secondary" onclick="openMailto()" title="Opens your mail app with the text only — no attachments">📧 Plain email</button>
+      <button class="btn-primary" id="draft-btn" onclick="createGroupDraft()">📎 Create Gmail draft + attach reports</button>
     </div>
   </div>
 </div>
@@ -292,9 +294,10 @@ const HISTORY_SHEET_ID = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ';
 const HISTORY_TAB_NAME = 'Inspection History';
 const REPORTS_FOLDER_NAME = 'FLPS Inspection Reports';
 const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Software › FLPS Inspection Reports
-// Read-only: this page never writes. Drive scope needed to list report files + links.
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly';
-const CACHE_KEY = 'flips_audit_cache_v3';  // bump when the cached data shape or matching logic changes
+// Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
+// draft with the report PDFs attached (it only creates drafts, never sends).
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
+const CACHE_KEY = 'flips_audit_cache_v4';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -465,7 +468,7 @@ function truncMid(s, n) {
 }
 // JSON-serializable report descriptor (no Drive-file back-refs / Date objects).
 function reportObj(f) {
-  return { link: f.link, name: f.name, title: cleanTitle(f.name), dateMs: f.dateObj ? f.dateObj.getTime() : null };
+  return { id: f.id, link: f.link, name: f.name, title: cleanTitle(f.name), dateMs: f.dateObj ? f.dateObj.getTime() : null };
 }
 
 // ── Load orchestrator ──────────────────────────────────────
@@ -1007,9 +1010,11 @@ function openEmailModal(groupKey) {
   const lines = [];
   lines.push(greeting);
   lines.push('');
-  lines.push('Please find the most recent fire & life-safety inspection reports for your building(s) below:');
+  lines.push('Please find attached the most recent fire & life-safety inspection reports for your building(s):');
   lines.push('');
 
+  const attachments = [];   // { id, name, building }
+  const seen = new Set();
   props.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
     const shown = p.entries.filter(e => !e.external);
     if (!shown.length) { return; }
@@ -1017,19 +1022,17 @@ function openEmailModal(groupKey) {
     shown.forEach(e => {
       const reps = e.reportList || [];
       const freq = e.freq ? ` (${e.freq})` : '';
+      const done = e.last ? ` — completed ${e.last}` : '';
       if (reps.length) {
-        const done = e.last ? ` — completed ${e.last}` : '';
-        lines.push(`  • ${e.type}${freq}${done}`);
+        const tag = reps.length > 1 ? ` — ${reps.length} reports attached` : ' — report attached';
+        lines.push(`  • ${e.type}${freq}${done}${tag}`);
         reps.forEach(r => {
-          const rd = r.dateMs ? ` [${fmtDate(new Date(r.dateMs))}]` : '';
-          lines.push(`      ${r.link}${rd}`);
+          if (r.id && !seen.has(r.id)) { seen.add(r.id); attachments.push({ id: r.id, name: r.name, building: p.name }); }
         });
       } else {
-        const done = e.last ? ` — completed ${e.last}` : '';
         lines.push(`  • ${e.type}${freq}${done} — report being located`);
       }
     });
-    // note backflow external if present
     if (p.entries.some(e => e.external)) lines.push('  • Backflow — inspected by Morrison (provided separately)');
     lines.push('');
   });
@@ -1039,36 +1042,147 @@ function openEmailModal(groupKey) {
   lines.push('Thank you,');
   lines.push('Fire Life Protection Systems');
 
-  emailCtx.to = g.email || '';
-  emailCtx.subject = `FLPS Inspection Reports — ${g.label}`;
-  emailCtx.body = lines.join('\n');
+  emailCtx = {
+    to: g.email || '',
+    subject: `FLPS Inspection Reports — ${g.label}`,
+    body: lines.join('\n'),
+    attachments,
+    label: g.label,
+  };
 
   document.getElementById('email-title').textContent = 'Email reports — ' + g.label;
   document.getElementById('email-to').innerHTML = g.email
     ? `To: <b>${escHtml(g.email)}</b>`
-    : `<span style="color:#c08a00">No email on file for this group — copy the text and send manually.</span>`;
+    : `<span style="color:#c08a00">No email on file — the draft will have a blank “To”; add it in Gmail.</span>`;
   document.getElementById('email-body').value = emailCtx.body;
-  document.getElementById('copy-note').classList.remove('show');
+  const sum = document.getElementById('attach-summary');
+  sum.innerHTML = attachments.length
+    ? `📎 <b>${attachments.length}</b> report PDF${attachments.length>1?'s':''} will be attached.`
+    : `<span style="color:#c08a00">No report PDFs found to attach for this group.</span>`;
+  setCopyNote('');
+  document.getElementById('draft-btn').disabled = !attachments.length;
   document.getElementById('modal-backdrop').classList.add('open');
 }
 function closeEmailModal() { document.getElementById('modal-backdrop').classList.remove('open'); }
+function setCopyNote(msg, color) {
+  const el = document.getElementById('copy-note');
+  el.textContent = msg || '';
+  el.style.color = color || '#2e7d32';
+  el.classList.toggle('show', !!msg);
+}
 function copyEmailBody() {
-  const body = document.getElementById('email-body').value;
-  navigator.clipboard.writeText(body).then(() => {
-    document.getElementById('copy-note').classList.add('show');
-    setTimeout(() => document.getElementById('copy-note').classList.remove('show'), 2500);
+  navigator.clipboard.writeText(document.getElementById('email-body').value).then(() => {
+    setCopyNote('✓ Copied to clipboard');
+    setTimeout(() => setCopyNote(''), 2500);
   }).catch(() => toast('⚠ Copy failed — select the text manually'));
 }
 function openMailto() {
   const body = document.getElementById('email-body').value;
-  const url = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}&body=${encodeURIComponent(body)}`;
-  if (url.length > 1900) {
-    copyEmailBody();
-    toast('Report list is long — copied to clipboard; paste into your email');
-    window.location.href = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}`;
-  } else {
-    window.location.href = url;
+  const base = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}`;
+  const url = `${base}&body=${encodeURIComponent(body)}`;
+  window.location.href = url.length > 1900 ? base : url;
+}
+
+// ── Gmail draft with the report PDFs attached ──────────────
+async function createGroupDraft() {
+  const btn = document.getElementById('draft-btn');
+  const orig = btn.textContent;
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  const atts = (emailCtx.attachments || []);
+  if (!atts.length) { toast('No report PDFs to attach'); return; }
+  btn.disabled = true;
+  setCopyNote('');
+  try {
+    const CAP = 22 * 1024 * 1024;   // keep under Gmail's ~25 MB message limit
+    let total = 0;
+    const included = [], omitted = [];
+    for (let i = 0; i < atts.length; i++) {
+      btn.textContent = `⏳ Fetching report ${i+1}/${atts.length}…`;
+      let b64;
+      try { b64 = await fetchPdfBase64(atts[i].id); }
+      catch (e) { omitted.push({ ...atts[i], reason: 'could not download' }); continue; }
+      const bytes = Math.floor(b64.length * 3 / 4);
+      if (total + bytes > CAP) { omitted.push({ ...atts[i], reason: 'size limit' }); continue; }
+      total += bytes;
+      included.push({ name: atts[i].name, b64 });
+    }
+    if (!included.length) throw new Error('Could not attach any reports.');
+
+    let body = document.getElementById('email-body').value;
+    if (omitted.length) {
+      body += `\n\n(Note: ${omitted.length} report${omitted.length>1?'s':''} too large to attach here — will be sent separately:)\n`
+        + omitted.map(o => `   • ${o.building}: ${o.name}`).join('\n');
+    }
+
+    btn.textContent = '⏳ Creating draft…';
+    const raw = buildMimeDraft(emailCtx.to, emailCtx.subject, body, included);
+    const res = await googleFetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', 'POST', { message: { raw } });
+    if (!res.ok) {
+      const txt = await res.text();
+      if (/insufficient|ACCESS_TOKEN_SCOPE|PERMISSION_DENIED|scope/i.test(txt)) {
+        toast('✗ Gmail permission not granted yet — open ⚙ Connection → Connect Google to allow it, then retry');
+      } else if (/accessNotConfigured|not been used|disabled/i.test(txt)) {
+        toast('✗ Gmail API not enabled for this Google project — enable it and reconnect');
+      } else if (res.status === 401) {
+        toast('✗ Session expired — click Connect Google, then retry');
+      } else {
+        toast('✗ Draft failed: ' + txt.substring(0, 120));
+      }
+      throw new Error(txt.substring(0, 200));
+    }
+    toast(`✓ Draft created with ${included.length} report${included.length>1?'s':''} attached — opening Gmail`);
+    window.open('https://mail.google.com/mail/u/0/#drafts', '_blank');
+    closeEmailModal();
+  } catch (e) {
+    console.error('createGroupDraft:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
   }
+}
+
+async function fetchPdfBase64(fileId) {
+  const res = await googleFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`);
+  if (!res.ok) throw new Error('Drive fetch ' + res.status);
+  return abToB64(await res.arrayBuffer());
+}
+function abToB64(buf) {
+  let bin = '';
+  const bytes = new Uint8Array(buf), chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(bin);
+}
+// Build an RFC 2822 multipart/mixed message, base64url-encoded for Gmail's
+// drafts.create `raw` field. Both the text body and the PDFs are base64 so any
+// UTF-8 in the message (—, •, accented names) survives intact.
+function buildMimeDraft(to, subject, body, attachments) {
+  const boundary = 'flips_audit_' + Date.now();
+  const L = [];
+  if (to) L.push(`To: ${to}`);
+  L.push(`Subject: ${subject}`);
+  L.push('MIME-Version: 1.0');
+  L.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  L.push('');
+  L.push(`--${boundary}`);
+  L.push('Content-Type: text/plain; charset="UTF-8"');
+  L.push('Content-Transfer-Encoding: base64');
+  L.push('');
+  const bodyB64 = btoa(unescape(encodeURIComponent(body)));
+  for (let i = 0; i < bodyB64.length; i += 76) L.push(bodyB64.slice(i, i + 76));
+  L.push('');
+  attachments.forEach(a => {
+    const safeName = (a.name || 'report.pdf').replace(/"/g, '');
+    L.push(`--${boundary}`);
+    L.push(`Content-Type: application/pdf; name="${safeName}"`);
+    L.push('Content-Transfer-Encoding: base64');
+    L.push(`Content-Disposition: attachment; filename="${safeName}"`);
+    L.push('');
+    for (let i = 0; i < a.b64.length; i += 76) L.push(a.b64.slice(i, i + 76));
+    L.push('');
+  });
+  L.push(`--${boundary}--`);
+  const rawMime = L.join('\r\n');
+  return btoa(unescape(encodeURIComponent(rawMime))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // ── On load ────────────────────────────────────────────────
