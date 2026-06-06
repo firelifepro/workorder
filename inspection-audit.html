@@ -216,7 +216,7 @@ table.ent tr:last-child td { border-bottom: none; }
   <div id="summary" style="display:none;">
     <div class="sum-card buildings"><div class="num" id="s-buildings">0</div><div class="lbl">Buildings shown</div></div>
     <div class="sum-card records"><div class="num" id="s-records">0</div><div class="lbl">Inspections on record</div></div>
-    <div class="sum-card found"><div class="num" id="s-found">0</div><div class="lbl">Reports in Drive</div></div>
+    <div class="sum-card found"><div class="num" id="s-found">0</div><div class="lbl">Reports matched (+ unrecorded)</div></div>
     <div class="sum-card missing"><div class="num" id="s-missing">0</div><div class="lbl">Missing reports</div></div>
     <div class="sum-card lcp"><div class="num" id="s-lcp">0</div><div class="lbl">LCP buildings</div></div>
   </div>
@@ -393,20 +393,58 @@ function tokens(s) {
   return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ')
     .filter(t => t.length >= 3 && !STOP.has(t));
 }
-function sysKeywords(type) {
-  const t = (type||'').toLowerCase();
-  if (/alarm|fire ?alarm|\bfa\b|detection/.test(t)) return ['alarm','fire'];
-  if (/sprinkler|standpipe|wet|dry|\bsp\b/.test(t)) return ['sprinkler','standpipe'];
-  if (/exting|\bfe\b/.test(t)) return ['extinguisher','exting'];
-  if (/hood|kitchen|ansul|suppress/.test(t)) return ['hood','kitchen','suppress','ansul'];
-  if (/backflow|\bbf\b/.test(t)) return ['backflow'];
-  if (/jockey|\bjp\b/.test(t)) return ['jockey'];
-  if (/pump/.test(t)) return ['pump'];
-  if (/emergency|exit|egress|\bem\b/.test(t)) return ['emergency','exit','egress'];
-  if (/elevator/.test(t)) return ['elevator'];
-  return [];
+// Canonical inspection systems. `slug` is the leading segment of the saved PDF
+// filename (FLPS_{slug}_{property}_{date}.pdf, from inspection-main.js, where
+// slug = activeInspectionSystem with '-'→'_'). `rx` recognizes the system from a
+// free-text history "Inspection Type" string. Order matters: more specific first.
+const SYS_DEFS = [
+  { key: 'fire-alarm',          slug: 'fire_alarm',          label: 'Fire Alarm',            rx: /fire ?alarm|\bfa\b|fire detection|alarm/ },
+  { key: 'sprinkler',           slug: 'sprinkler',           label: 'Sprinkler',             rx: /sprinkler|wet system|dry system/ },
+  { key: 'standpipe',           slug: 'standpipe',           label: 'Standpipe',             rx: /standpipe/ },
+  { key: 'fire-pump',           slug: 'fire_pump',           label: 'Fire Pump',             rx: /fire ?pump/ },
+  { key: 'jockey-pump',         slug: 'jockey',              label: 'Jockey Pump',           rx: /jockey/ },
+  { key: 'hood',                slug: 'hood',                label: 'Kitchen Hood',          rx: /hood|kitchen|ansul/ },
+  { key: 'special-suppression', slug: 'special_suppression', label: 'Special Suppression',   rx: /special suppress|clean agent|co2 system|fm-?200/ },
+  { key: 'extinguisher',        slug: 'extinguisher',        label: 'Extinguishers',         rx: /exting|\bfe\b/ },
+  { key: 'exit-sign-lighting',  slug: 'exit_sign_lighting',  label: 'Exit Sign & Lighting',  rx: /exit|egress|emergency (exit )?light|emergency light/ },
+  { key: 'hydrant',             slug: 'hydrant',             label: 'Private Hydrants',      rx: /hydrant/ },
+  { key: 'bda',                 slug: 'bda',                 label: 'BDA / Emergency Radio', rx: /\bbda\b|emergency radio|ders\b/ },
+  { key: 'smoke-control',       slug: 'smoke_control',       label: 'Smoke Control',         rx: /smoke control/ },
+  { key: 'gas-detection',       slug: 'gas_detection',       label: 'Gas Detection',         rx: /gas detection/ },
+  { key: 'hospital',            slug: 'hospital',            label: 'Hospital TJC/CMS',      rx: /hospital|tjc|\bcms\b/ },
+  { key: 'backflow',            slug: 'backflow',            label: 'Backflow',              rx: /backflow|\bbf\b/ },
+  { key: 'elevator',            slug: 'elevator',            label: 'Elevator',              rx: /elevator/ },
+];
+const SYS_BY_KEY = Object.fromEntries(SYS_DEFS.map(d => [d.key, d]));
+// Slugs longest-first so e.g. 'special_suppression' is tried before shorter prefixes.
+const SYS_DEFS_BY_SLUG_LEN = [...SYS_DEFS].sort((a, b) => b.slug.length - a.slug.length);
+
+// History type string → canonical system key ('' if unrecognized).
+function sysFromType(type) {
+  const t = (type || '').toLowerCase();
+  for (const d of SYS_DEFS) if (d.rx.test(t)) return d.key;
+  return '';
 }
+// PDF filename → canonical system key ('' if unrecognized).
+function sysFromFile(name) {
+  let n = (name || '').toLowerCase();
+  if (n.startsWith('flps_')) n = n.slice(5);
+  for (const d of SYS_DEFS_BY_SLUG_LEN) if (n.startsWith(d.slug + '_')) return d.key;
+  // Fallback: recognizer anywhere in the filename.
+  for (const d of SYS_DEFS_BY_SLUG_LEN) if (d.rx.test(n)) return d.key;
+  return '';
+}
+function sysLabel(key) { return SYS_BY_KEY[key] ? SYS_BY_KEY[key].label : 'Other'; }
 function isBackflow(type) { return /backflow/i.test(type || ''); }
+// Pull the inspection date out of a report filename. System reports use
+// YYYY-MM-DD (e.g. ..._2026-05-20.pdf); hospital reports use YYYYMMDD (..._20260421.pdf).
+function parseFileDate(name) {
+  let m = (name || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3], 12);
+  m = (name || '').match(/_(\d{4})(\d{2})(\d{2})(?=[._]|$)/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3], 12);
+  return null;
+}
 
 // ── Load orchestrator ──────────────────────────────────────
 async function loadAudit(forceRefresh = false) {
@@ -420,7 +458,11 @@ async function loadAudit(forceRefresh = false) {
       const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
       if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
         AUDIT = cached.data;
-        AUDIT.props.forEach(p => p.entries.forEach(e => { e.nextDate = e.next ? new Date(e.next) : null; }));
+        AUDIT.props.forEach(p => p.entries.forEach(e => {
+          e.nextDate   = e.next ? new Date(e.next) : null;
+          e.dateObj    = e.dateObj ? new Date(e.dateObj) : null;
+          e.reportDate = e.reportDate ? new Date(e.reportDate) : null;
+        }));
         finishLoad();
         return;
       }
@@ -588,11 +630,18 @@ async function loadReports() {
     const j = await res.json();
     (j.files || []).forEach(f => {
       if (f.mimeType === 'application/vnd.google-apps.folder') return;
+      const name = f.name || '';
+      if (/_PREVIEW_/i.test(name)) return;                 // skip preview exports
+      if (!/\.pdf$/i.test(name)) return;                   // reports are PDFs
       files.push({
-        id: f.id, name: f.name, link: f.webViewLink,
+        id: f.id, name, link: f.webViewLink,
         created: f.createdTime,
-        ntoks: tokens(f.name),
-        lname: (f.name || '').toLowerCase(),
+        ntoks: tokens(name),
+        lname: name.toLowerCase(),
+        sys: sysFromFile(name),
+        dateObj: parseFileDate(name) || (f.createdTime ? new Date(f.createdTime) : null),
+        prop: null,            // assigned during matchReports
+        used: false,
       });
     });
     pageToken = j.nextPageToken || '';
@@ -632,41 +681,73 @@ function attachEntries(props, entries) {
   props.forEach(p => p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || '')));
 }
 
-// ── Match each entry to a Drive report PDF ─────────────────
+// ── Match Drive report PDFs to inspection entries ──────────
+// Two phases: (1) assign each PDF to the property whose name it best matches;
+// (2) within a property, link each inspection entry to a PDF of the SAME system
+// (closest date wins). A report is never linked to an entry of a different system
+// — so a lone fire-alarm PDF won't show up as the extinguisher's report. Any PDF
+// left unclaimed surfaces as a "report on file with no inspection record" row.
 function matchReports(props, files) {
+  props.forEach(p => { p._nameToks = tokens(p.name); p._addrToks = tokens(p.addr || ''); p._files = []; });
+
+  // Phase 1 — assign each PDF to its best-matching property by name tokens.
+  files.forEach(f => {
+    let best = null, bestScore = 0;
+    props.forEach(p => {
+      if (!p._nameToks.length) return;
+      const nOv = p._nameToks.filter(t => f.ntoks.includes(t)).length / p._nameToks.length;
+      if (nOv < 0.6) return;                               // property name must mostly appear
+      const aOv = p._addrToks.length ? p._addrToks.filter(t => f.ntoks.includes(t)).length / p._addrToks.length : 0;
+      const score = nOv + aOv * 0.5;                       // address overlap breaks ties
+      if (score > bestScore) { bestScore = score; best = p; }
+    });
+    f.prop = best;
+    if (best) best._files.push(f);
+  });
+
+  // Phase 2 — link entries to same-system PDFs; leftover PDFs become "extra" rows.
   props.forEach(p => {
-    const ptoks = tokens(p.name + ' ' + (p.addr || ''));
     p.entries.forEach(e => {
-      if (e.external) return; // backflow etc — not stored here
-      const sysk = sysKeywords(e.type);
-      const yr = e.dateObj ? String(e.dateObj.getFullYear()) : '';
-      const iso = e.dateObj ? `${e.dateObj.getFullYear()}-${String(e.dateObj.getMonth()+1).padStart(2,'0')}-${String(e.dateObj.getDate()).padStart(2,'0')}` : '';
-      let best = null, bestScore = 0;
-      files.forEach(f => {
-        if (!ptoks.length) return;
-        const overlap = ptoks.filter(t => f.ntoks.includes(t)).length;
-        const nameScore = overlap / ptoks.length;
-        if (nameScore < 0.6) return;                       // property name must mostly appear
-        const sysMatch = sysk.some(k => f.lname.includes(k));
-        const dateMatch = iso && f.lname.includes(iso);
-        const yearMatch = yr && f.lname.includes(yr);
-        const score = nameScore + (sysMatch ? 0.6 : 0) + (dateMatch ? 0.5 : yearMatch ? 0.2 : 0);
-        const newer = best && f.created > best.created;
-        if (score > bestScore || (score === bestScore && newer)) {
-          bestScore = score; best = f; best._sys = sysMatch; best._date = dateMatch || yearMatch;
-        }
-      });
-      if (best) {
-        e.report = best;
-        e.reportLink = best.link;
-        e.reportName = best.name;
-        // High confidence when the system keyword AND date/year both line up.
-        e.confident = !!(best._sys && best._date);
+      if (e.external) return;                              // backflow etc — not stored here
+      const esys = sysFromType(e.type);
+      let cands = p._files.filter(f => !f.used);
+      cands = esys ? cands.filter(f => f.sys === esys)     // known system → must match
+                   : cands.filter(f => !f.sys);            // unknown type → only pair with unknown-system PDFs
+      const pick = pickClosestByDate(cands, e.dateObj);
+      if (pick) {
+        pick.used = true;
+        e.reportLink = pick.link; e.reportName = pick.name; e.reportDate = pick.dateObj;
+        e.confident = !!esys;                              // system actually matched
       } else {
         e.missing = true;
       }
     });
+    // Surface PDFs we found for this property that no inspection record claimed.
+    p._files.filter(f => !f.used).forEach(f => {
+      p.entries.push({
+        type: sysLabel(f.sys), freq: '', last: f.dateObj ? fmtDate(f.dateObj) : '', dateObj: f.dateObj,
+        next: '', nextDate: null, bucket: 'unknown', source: '', notes: '',
+        reportLink: f.link, reportName: f.name, reportDate: f.dateObj,
+        confident: true, missing: false, external: false, extra: true,
+      });
+    });
+    p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
   });
+
+  // Drop helper/back-ref fields so the result is JSON-serializable for the cache.
+  props.forEach(p => { delete p._files; delete p._nameToks; delete p._addrToks; });
+}
+
+function pickClosestByDate(cands, entryDate) {
+  if (!cands.length) return null;
+  const arr = cands.slice();
+  if (!entryDate) { arr.sort((a, b) => (b.dateObj || 0) - (a.dateObj || 0)); return arr[0]; }
+  arr.sort((a, b) => {
+    const da = a.dateObj ? Math.abs(a.dateObj - entryDate) : Infinity;
+    const db = b.dateObj ? Math.abs(b.dateObj - entryDate) : Infinity;
+    return da - db;
+  });
+  return arr[0];
 }
 
 // ── Filters / grouping ─────────────────────────────────────
@@ -739,18 +820,19 @@ function render() {
   });
 
   // Summary
-  let nBuild = 0, nRec = 0, nFound = 0, nMiss = 0, nLcp = 0;
+  let nBuild = 0, nRec = 0, nFound = 0, nMiss = 0, nLcp = 0, nExtra = 0;
   props.forEach(p => {
     nBuild++; if (p.isLCP) nLcp++;
     p.entries.forEach(e => {
       if (e.external) return;
+      if (e.extra) { nExtra++; return; }   // report on file with no inspection record
       nRec++;
       if (e.missing) nMiss++; else if (e.reportLink) nFound++;
     });
   });
   document.getElementById('s-buildings').textContent = nBuild;
   document.getElementById('s-records').textContent = nRec;
-  document.getElementById('s-found').textContent = AUDIT.reportsLoaded ? nFound : '—';
+  document.getElementById('s-found').textContent = AUDIT.reportsLoaded ? (nExtra ? `${nFound} +${nExtra}` : nFound) : '—';
   document.getElementById('s-missing').textContent = AUDIT.reportsLoaded ? nMiss : '—';
   document.getElementById('s-lcp').textContent = nLcp;
 
@@ -771,15 +853,17 @@ function render() {
   document.getElementById('empty-state').style.display = 'none';
 
   host.innerHTML = sorted.map(([key, g]) => {
-    let recs = 0, miss = 0, found = 0;
+    let recs = 0, miss = 0, found = 0, extra = 0;
     g.props.forEach(p => p.entries.forEach(e => {
-      if (e.external) return; recs++;
+      if (e.external) return;
+      if (e.extra) { extra++; return; }
+      recs++;
       if (e.missing) miss++; else if (e.reportLink) found++;
     }));
     g.props.sort((a, b) => a.name.localeCompare(b.name));
 
     const stats = AUDIT.reportsLoaded
-      ? `<span class="st">${g.props.length} bldg</span><span class="st">${recs} inspections</span><span class="st">${found} reports</span>${miss ? `<span class="st miss">${miss} missing</span>` : ''}`
+      ? `<span class="st">${g.props.length} bldg</span><span class="st">${recs} inspections</span><span class="st">${found} reports</span>${miss ? `<span class="st miss">${miss} missing</span>` : ''}${extra ? `<span class="st">${extra} unrecorded report${extra>1?'s':''}</span>` : ''}`
       : `<span class="st">${g.props.length} bldg</span><span class="st">${recs} inspections</span>`;
 
     const emailBtn = g.email
@@ -820,21 +904,31 @@ function renderProp(p) {
     const nextHtml = e.nextDate
       ? `<span class="badge ${nextCls}">${fmtDate(e.nextDate)}</span>`
       : `<span class="badge b-unknown">—</span>`;
+    // Show the report's own date when it differs from the inspection's by > ~6 weeks.
+    let dateNote = '';
+    if (e.reportLink && !e.extra && e.reportDate && e.dateObj && Math.abs(e.reportDate - e.dateObj) > 45*86400000) {
+      dateNote = `<span class="conf">(report dated ${fmtDate(new Date(e.reportDate))})</span>`;
+    }
     let rep;
     if (e.external) {
       rep = `<span class="rep-external">↗ External (Brycer / manual)</span>`;
+    } else if (e.extra) {
+      rep = `<a class="rep-link" href="${escAttr(e.reportLink)}" target="_blank" rel="noopener">📄 Open report</a> <span class="conf">no inspection record</span>`;
     } else if (!AUDIT.reportsLoaded) {
       rep = `<span style="color:#aaa">—</span>`;
     } else if (e.reportLink) {
-      rep = `<a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(e.reportLink)}" target="_blank" rel="noopener">📄 Open report${e.confident ? '' : '<span class="conf">(likely)</span>'}</a>`;
+      rep = `<a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(e.reportLink)}" target="_blank" rel="noopener">📄 Open report${e.confident ? '' : '<span class="conf">(likely)</span>'}</a>${dateNote}`;
     } else {
       rep = `<span class="rep-missing">⚠ No report in Drive</span>`;
     }
-    return `<tr>
-      <td class="t-type">${escHtml(e.type)}</td>
-      <td class="t-freq">${escHtml(e.freq)}</td>
+    const typeCell = e.extra
+      ? `${escHtml(e.type)} <span class="conf">(report only)</span>`
+      : escHtml(e.type);
+    return `<tr${e.extra ? ' style="background:#fafbff"' : ''}>
+      <td class="t-type">${typeCell}</td>
+      <td class="t-freq">${e.freq ? escHtml(e.freq) : '—'}</td>
       <td class="t-date">${e.last ? escHtml(e.last) : '—'}</td>
-      <td class="t-next">${nextHtml}</td>
+      <td class="t-next">${e.extra ? '<span class="badge b-unknown">—</span>' : nextHtml}</td>
       <td>${rep}</td>
     </tr>`;
   }).join('');
