@@ -480,6 +480,23 @@ function toISO(d) {
   const iso = String(d).match(/(\d{4})-(\d{2})-(\d{2})/); if (iso) return iso[0];
   const dt = new Date(d); return isNaN(dt) ? '' : dt.toISOString().slice(0,10);
 }
+// Pull a date out of the attachment filename ("title of the PDF") — vendors put
+// the inspection/service date there. Handles YYYY-MM-DD, YYYYMMDD, MM-DD-YYYY (any
+// of . _ - / separators). Returns '' if none / out of range.
+function dateFromFilename(name) {
+  const s = String(name || '').replace(/\.pdf$/i, '');
+  const mk = (y, mo, d) => {
+    mo = String(mo).padStart(2, '0'); d = String(d).padStart(2, '0');
+    return (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31) ? `${y}-${mo}-${d}` : '';
+  };
+  let m = s.match(/(20\d{2})[._\-\/](\d{1,2})[._\-\/](\d{1,2})/);   // YYYY-MM-DD
+  if (m) return mk(m[1], m[2], m[3]);
+  m = s.match(/(\d{1,2})[._\-\/](\d{1,2})[._\-\/](20\d{2})/);       // MM-DD-YYYY
+  if (m) return mk(m[3], m[1], m[2]);
+  m = s.match(/(?:^|[^\d])(20\d{2})(\d{2})(\d{2})(?:[^\d]|$)/);     // YYYYMMDD
+  if (m) return mk(m[1], m[2], m[3]);
+  return '';
+}
 
 async function addRow(msgId, detail, pdf, anthKey) {
   const attId = pdf.body.attachmentId;
@@ -510,7 +527,9 @@ async function addRow(msgId, detail, pdf, anthKey) {
   const freq = (parsed.frequency && FREQ_KEYS.has(parsed.frequency)) ? parsed.frequency : guessFreq(sysKey, hintText);
   const propText = ((parsed.properties || []).join(' ') + ' ' + (parsed.property||'') + ' ' + detail._subject);
   const matched = matchProperty(propText || detail._subject);
-  const date = toISO(parsed.inspectionDate) || toISO(detail._date);
+  // Prefer the date Claude read from the PDF, then the date in the PDF's filename,
+  // and only fall back to the email's received date.
+  const date = toISO(parsed.inspectionDate) || dateFromFilename(pdf.filename) || toISO(detail._date);
 
   const prev = done[cacheKey];
   rows.push({
