@@ -592,7 +592,7 @@ function renderTable() {
       <td><select class="prop-sel" onchange="setField(${idx},'propName',this.value)">${propOpts}</select></td>
       <td><select class="sys-sel" onchange="setField(${idx},'sysKey',this.value)">${sysOpts}</select></td>
       <td><select class="sys-sel" onchange="setField(${idx},'freq',this.value)">${freqOpts}</select></td>
-      <td><input class="date-in" type="date" value="${escAttr(r.date)}" onchange="setField(${idx},'date',this.value)"></td>
+      <td><input class="date-in" type="text" value="${escAttr(r.date)}" placeholder="MM/DD/YYYY" title="Type MM/DD/YYYY or YYYY-MM-DD — normalized when you click away" onchange="setDate(${idx}, this.value)"></td>
       <td><span class="fname">${escHtml(buildFilename(r))}</span></td>
       <td><span class="row-status ${r._statusCls||''}" title="${escAttr(r.importedName||'')}">${r.imported ? '✓ imported' : (r.status||'')}</span> ${dupBtn}</td>
     </tr>`;
@@ -600,6 +600,13 @@ function renderTable() {
   refreshImportBtn();
 }
 function setField(i, k, v) { rows[i][k] = v; renderTable(); }
+// Date is a free-type text field (fires only on blur, so you can type the whole
+// thing). Normalize MM/DD/YYYY or YYYY-MM-DD to ISO; keep raw text if unparseable.
+function setDate(i, v) {
+  const iso = toISO(v);
+  rows[i].date = iso || (v || '').trim();
+  renderTable();
+}
 // Duplicate a row so one PDF can be imported as two systems (e.g. a combined
 // 5-Yr Internal Pipe + FDC Hydrostatic report → one file per test, so neither
 // shows as "missing" on the audit). The copy shares the same PDF bytes.
@@ -629,7 +636,7 @@ async function importSelected() {
   // Validate
   for (const r of picked) {
     if (!r.propName) { toast('⚠ Pick a property for every selected row first'); return; }
-    if (!r.date) { toast('⚠ Set an inspection date for every selected row'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) { toast('⚠ Enter a valid date (MM/DD/YYYY or YYYY-MM-DD) for every selected row'); return; }
   }
   if (existingNames === null) await loadExistingNames();
   const btn = document.getElementById('import-btn'); btn.disabled = true;
