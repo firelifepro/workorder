@@ -131,16 +131,17 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
 <div id="content">
   <div id="notes">
     Searches Gmail for <b>inspection reports</b> from outside vendors (Convergint, Martinez Fire), reads each PDF to guess <b>property / system / date</b>, and (on your OK) uploads them to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so they show on the
-    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b>
+    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b> After importing, the email is tagged with the Gmail label <b>Inspect_Rpt_Imported</b>, and the default search excludes that label so handled emails won't come back.
   </div>
 
   <div id="controls">
     <label>Gmail search</label>
-    <input type="text" id="gmail-query" value="from:(convergint.com OR martinezfireprotection.com) has:attachment filename:pdf newer_than:18m">
+    <input type="text" id="gmail-query" value="from:(convergint.com OR martinezfireprotection.com) has:attachment filename:pdf newer_than:18m -label:Inspect_Rpt_Imported">
     <label>Max</label><input type="number" id="max-results" value="40" min="1" max="100">
     <button class="btn btn-primary" id="search-btn" onclick="runSearch()">🔍 Search</button>
     <button class="btn btn-green" id="import-btn" onclick="importSelected()" disabled>📥 Import selected to Drive</button>
     <button class="btn btn-grey" onclick="toggleInvoices()" id="toggle-inv-btn">Show invoices</button>
+    <button class="btn btn-grey" onclick="toggleImported()" id="toggle-imp-btn">Hide imported</button>
   </div>
 
   <div id="progress"></div>
@@ -170,7 +171,10 @@ const REPORTS_FOLDER_ID = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg';   // FLPS Softwar
 const ANTH_KEY_LS       = 'flips_anth_key';
 const ANTH_MODEL_LS     = 'flips_anth_model';
 const CACHE_LS          = 'flips_import_reports_v1';
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets.readonly';
+const DONE_LS           = 'flips_import_done_v1';   // { 'msgId:attId': { filename, at } } — imported attachments
+// gmail.modify = read messages/attachments + add labels (no delete). drive = upload PDFs.
+const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets.readonly';
+const IMPORT_LABEL = 'Inspect_Rpt_Imported';   // applied to emails whose reports were imported
 
 // System options — `slug` matches the audit page's sysFromFile so imported files classify.
 const SYSTEMS = [
@@ -192,8 +196,11 @@ let accessToken = null, tokenClient = null;
 let properties = [];          // [{name, addr, acct, toks}]
 let rows = [];                // table rows
 let cache = {};               // { 'msgId:attId': parsed }
+let done = {};                // { 'msgId:attId': {filename, at} } — already imported
 let existingNames = null;     // Set of filenames already in the reports folder
 let showInvoices = false;
+let hideImported = false;
+let _labelId = null;          // cached Gmail label id for IMPORT_LABEL
 
 // ── Nav / drawer / toast ───────────────────────────────────
 function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
@@ -288,8 +295,12 @@ function matchProperty(text) {
 }
 
 // ── Gmail search ───────────────────────────────────────────
-function loadCache() { try { cache = JSON.parse(localStorage.getItem(CACHE_LS) || '{}'); } catch(_) { cache = {}; } }
+function loadCache() {
+  try { cache = JSON.parse(localStorage.getItem(CACHE_LS) || '{}'); } catch(_) { cache = {}; }
+  try { done = JSON.parse(localStorage.getItem(DONE_LS) || '{}'); } catch(_) { done = {}; }
+}
 function saveCache() { try { localStorage.setItem(CACHE_LS, JSON.stringify(cache)); } catch(_){} }
+function saveDone() { try { localStorage.setItem(DONE_LS, JSON.stringify(done)); } catch(_){} }
 
 async function runSearch() {
   if (!accessToken) { toast('⚠ Connect Google first'); return; }
@@ -397,6 +408,7 @@ async function addRow(msgId, detail, pdf, anthKey) {
   const matched = matchProperty(propText || detail._subject);
   const date = toISO(parsed.inspectionDate) || toISO(detail._date);
 
+  const prev = done[cacheKey];
   rows.push({
     msgId, attId, cacheKey,
     from: detail._from, date: detail._date, subject: detail._subject, filename: pdf.filename,
@@ -405,7 +417,8 @@ async function addRow(msgId, detail, pdf, anthKey) {
     propName: matched ? matched.name : '',
     sysKey, date,
     b64: parsed._b64 || null,
-    status: '', imported: false,
+    status: prev ? '✓ imported' : '', _statusCls: prev ? 'ok' : '',
+    imported: !!prev, importedName: prev ? prev.filename : '',
   });
 }
 
@@ -451,7 +464,7 @@ function buildFilename(row) {
 
 function renderTable() {
   const tb = document.getElementById('tbody');
-  const visible = rows.filter(r => showInvoices || r.kind !== 'invoice');
+  const visible = rows.filter(r => (showInvoices || r.kind !== 'invoice') && (!hideImported || !r.imported));
   document.getElementById('empty').style.display = visible.length ? 'none' : 'block';
   tb.innerHTML = visible.map(r => {
     const idx = rows.indexOf(r);
@@ -469,7 +482,7 @@ function renderTable() {
       <td><select class="sys-sel" onchange="setField(${idx},'sysKey',this.value)">${sysOpts}</select></td>
       <td><input class="date-in" type="date" value="${escAttr(r.date)}" onchange="setField(${idx},'date',this.value)"></td>
       <td><span class="fname">${escHtml(buildFilename(r))}</span></td>
-      <td><span class="row-status ${r._statusCls||''}">${r.imported ? '✓ imported' : (r.status||'')}</span></td>
+      <td><span class="row-status ${r._statusCls||''}" title="${escAttr(r.importedName||'')}">${r.imported ? '✓ imported' : (r.status||'')}</span></td>
     </tr>`;
   }).join('');
   refreshImportBtn();
@@ -478,6 +491,7 @@ function setField(i, k, v) { rows[i][k] = v; renderTable(); }
 function onCheck(i, c) { rows[i]._checked = c; refreshImportBtn(); }
 function toggleAll(c) { rows.forEach(r => { if (r.kind !== 'invoice' && !r.imported) r._checked = c; }); renderTable(); }
 function toggleInvoices() { showInvoices = !showInvoices; document.getElementById('toggle-inv-btn').textContent = showInvoices ? 'Hide invoices' : 'Show invoices'; renderTable(); }
+function toggleImported() { hideImported = !hideImported; document.getElementById('toggle-imp-btn').textContent = hideImported ? 'Show imported' : 'Hide imported'; renderTable(); }
 function refreshImportBtn() {
   const n = rows.filter(r => r._checked && !r.imported).length;
   const b = document.getElementById('import-btn');
@@ -495,14 +509,20 @@ async function importSelected() {
   }
   if (existingNames === null) await loadExistingNames();
   const btn = document.getElementById('import-btn'); btn.disabled = true;
-  let done = 0, skipped = 0, failed = 0;
+  let uploaded = 0, skipped = 0, failed = 0;
+  const importedMsgIds = new Set();   // messages to tag with the Gmail label
   for (let i = 0; i < picked.length; i++) {
     const r = picked[i];
     r.status = 'uploading…'; r._statusCls = ''; renderTable();
     setProgress(`Importing ${i+1}/${picked.length}…`);
     try {
       const fname = buildFilename(r);
-      if (existingNames.has(fname.toLowerCase())) { r.status = 'already in Drive'; r.imported = true; skipped++; renderTable(); continue; }
+      if (existingNames.has(fname.toLowerCase())) {
+        r.status = 'already in Drive'; r._statusCls = 'ok'; r.imported = true; r.importedName = fname;
+        done[r.cacheKey] = { filename: fname, at: Date.now() }; saveDone();
+        importedMsgIds.add(r.msgId);
+        skipped++; renderTable(); continue;
+      }
       let b64 = r.b64;
       if (!b64) {
         const attRes = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${r.msgId}/attachments/${r.attId}`);
@@ -511,13 +531,45 @@ async function importSelected() {
       }
       await driveUpload(fname, b64, REPORTS_FOLDER_ID);
       existingNames.add(fname.toLowerCase());
-      r.status = '✓ uploaded'; r._statusCls = 'ok'; r.imported = true; done++;
+      done[r.cacheKey] = { filename: fname, at: Date.now() }; saveDone();
+      r.status = '✓ uploaded'; r._statusCls = 'ok'; r.imported = true; r.importedName = fname; uploaded++;
+      importedMsgIds.add(r.msgId);
     } catch(e) { console.error('import', e); r.status = '✗ ' + e.message.slice(0,40); r._statusCls = 'err'; failed++; }
     renderTable();
   }
-  setProgress(`Imported ${done}, skipped ${skipped} (already there)${failed?`, ${failed} failed`:''}.`, failed ? 'err' : 'done');
-  toast(`✓ Imported ${done} report(s) to Drive`);
+  // Tag handled emails in Gmail with the Inspect_Rpt_Imported label.
+  let labelNote = '';
+  if (importedMsgIds.size) {
+    setProgress(`Labeling ${importedMsgIds.size} email(s)…`);
+    try { await applyLabel([...importedMsgIds]); labelNote = ` · labeled ${importedMsgIds.size} email(s)`; }
+    catch(e) { labelNote = ' · ⚠ labeling failed (reconnect Google to grant Gmail label permission)'; console.warn(e); }
+  }
+  setProgress(`Imported ${uploaded}, skipped ${skipped} (already there)${failed?`, ${failed} failed`:''}${labelNote}.`, failed ? 'err' : 'done');
+  toast(`✓ Imported ${uploaded} report(s) to Drive`);
   btn.disabled = false; refreshImportBtn();
+}
+
+// Find (or create) the Gmail label, then tag each imported message with it.
+async function ensureLabel() {
+  if (_labelId) return _labelId;
+  const res = await apiFetch('https://gmail.googleapis.com/gmail/v1/users/me/labels');
+  if (!res.ok) throw new Error('labels list HTTP ' + res.status);
+  const found = ((await res.json()).labels || []).find(l => l.name === IMPORT_LABEL);
+  if (found) { _labelId = found.id; return _labelId; }
+  const cr = await apiFetch('https://gmail.googleapis.com/gmail/v1/users/me/labels', 'POST',
+    { name: IMPORT_LABEL, labelListVisibility: 'labelShow', messageListVisibility: 'show' });
+  if (!cr.ok) throw new Error('label create HTTP ' + cr.status);
+  _labelId = (await cr.json()).id;
+  return _labelId;
+}
+async function applyLabel(msgIds) {
+  if (!msgIds.length) return;
+  const labelId = await ensureLabel();
+  for (const id of msgIds) {
+    try {
+      await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}/modify`, 'POST', { addLabelIds: [labelId] });
+    } catch(e) { console.warn('label', id, e); }
+  }
 }
 
 async function loadExistingNames() {
