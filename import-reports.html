@@ -75,6 +75,9 @@ tbody tr.report td { }
 select.prop-sel, select.sys-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 200px; }
 input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; width: 120px; }
 .fname { font-size: 0.68rem; color: #2e6da4; font-family: monospace; word-break: break-all; max-width: 260px; }
+.dup-btn { background:#eef2f8; border:1px solid #cdd8e6; color:#2e6da4; border-radius:4px; cursor:pointer; font-size:0.82rem; padding:1px 6px; line-height:1.2; }
+.dup-btn:hover { background:#dde7f3; }
+.dup-tag { font-size:0.58rem; color:#2e6da4; font-weight:700; letter-spacing:0.04em; }
 .kind { font-size: 0.66rem; font-weight: 700; padding: 2px 7px; border-radius: 9px; white-space: nowrap; }
 .kind.report { background: #e8f5e9; color: #2e7d32; } .kind.invoice { background: #f5f5f5; color: #888; } .kind.unsure { background: #fff3e0; color: #e65100; }
 .row-status { font-size: 0.7rem; color: #888; }
@@ -143,7 +146,7 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
 <div id="content">
   <div id="notes">
     Searches Gmail for <b>inspection reports</b> from outside vendors (Convergint, Martinez Fire), reads each PDF to guess <b>property / system / date</b>, and (on your OK) uploads them to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so they show on the
-    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b> <b>Tip:</b> click a row's <b>subject/from</b> to open its PDF in a new tab and verify before you set the property/date and import. After importing, the email is tagged with the Gmail label <b>Inspect_Rpt_Imported</b>, and the default search excludes that label so handled emails won't come back.
+    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b> <b>Tip:</b> click a row's <b>subject/from</b> to open its PDF and verify before you set the property/system/frequency/date. If one PDF covers <b>two tests</b> (e.g. a combined 5-Yr Internal Pipe + FDC Hydrostatic), click <b>⧉</b> on the row to duplicate it and import the same PDF under both systems — so neither shows as missing on the audit. After importing, the email is tagged with the Gmail label <b>Inspect_Rpt_Imported</b>, and the default search excludes that label so handled emails won't come back.
     <details id="cost-details" style="margin-top:8px;">
       <summary style="cursor:pointer;font-weight:600;color:#1a4d8f;">ⓘ How the matching works &amp; what it costs</summary>
       <div style="margin-top:8px;font-size:0.76rem;line-height:1.6;">
@@ -179,7 +182,7 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
       <thead><tr>
         <th><input type="checkbox" id="check-all" onclick="toggleAll(this.checked)"></th>
         <th>Kind</th><th>From / Date</th><th>Subject / File</th>
-        <th>Property</th><th>System</th><th>Insp. date</th><th>New filename</th><th>Status</th>
+        <th>Property</th><th>System</th><th>Freq</th><th>Insp. date</th><th>New filename</th><th>Status</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -206,20 +209,59 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googlea
 const IMPORT_LABEL = 'Inspect_Rpt_Imported';   // applied to emails whose reports were imported
 
 // System options — `slug` matches the audit page's sysFromFile so imported files classify.
+// Mirrors the audit page's SYS_DEFS (key + slug must match so imported filenames
+// classify correctly). Labels are import-friendly; the two 5-year NFPA-25 tests
+// read as "Sprinkler 5-Yr" since that's how a 5-year sprinkler report is described.
 const SYSTEMS = [
-  { key:'fire-alarm',    slug:'fire_alarm',    label:'Fire Alarm' },
-  { key:'sprinkler',     slug:'sprinkler',     label:'Sprinkler (annual)' },
-  { key:'internal-pipe', slug:'internal_pipe', label:'5-Yr Internal Pipe' },
-  { key:'fdc-hydro',     slug:'fdc',           label:'5-Yr FDC Hydrostatic' },
-  { key:'standpipe',     slug:'standpipe',     label:'Standpipe' },
-  { key:'fire-pump',     slug:'fire_pump',     label:'Fire Pump' },
-  { key:'backflow',      slug:'backflow',      label:'Backflow' },
-  { key:'extinguisher',  slug:'extinguisher',  label:'Extinguisher' },
-  { key:'hood',          slug:'hood',          label:'Kitchen Hood' },
-  { key:'jockey-pump',   slug:'jockey',        label:'Jockey Pump' },
-  { key:'other',         slug:'report',        label:'Other / Unknown' },
+  { key:'fire-alarm',          slug:'fire_alarm',          label:'Fire Alarm' },
+  { key:'sprinkler',           slug:'sprinkler',           label:'Sprinkler — Annual' },
+  { key:'internal-pipe',       slug:'internal_pipe',       label:'Sprinkler 5-Yr — Internal Pipe' },
+  { key:'fdc-hydro',           slug:'fdc',                 label:'Sprinkler 5-Yr — FDC Hydrostatic' },
+  { key:'dry-pipe',            slug:'dry_pipe',            label:'Dry Pipe — 3-Yr Trip Test' },
+  { key:'standpipe',           slug:'standpipe',           label:'Standpipe' },
+  { key:'fire-pump',           slug:'fire_pump',           label:'Fire Pump' },
+  { key:'jockey-pump',         slug:'jockey',              label:'Jockey Pump' },
+  { key:'backflow',            slug:'backflow',            label:'Backflow' },
+  { key:'extinguisher',        slug:'extinguisher',        label:'Extinguisher' },
+  { key:'hood',                slug:'hood',                label:'Kitchen Hood' },
+  { key:'special-suppression', slug:'special_suppression', label:'Special Suppression (clean agent / CO₂)' },
+  { key:'exit-sign-lighting',  slug:'exit_sign_lighting',  label:'Exit Sign & Emergency Lighting' },
+  { key:'hydrant',             slug:'hydrant',             label:'Private Hydrants' },
+  { key:'bda',                 slug:'bda',                 label:'BDA / Emergency Radio' },
+  { key:'smoke-control',       slug:'smoke_control',       label:'Smoke Control' },
+  { key:'gas-detection',       slug:'gas_detection',       label:'Gas Detection' },
+  { key:'hospital',            slug:'hospital',            label:'Hospital TJC/CMS' },
+  { key:'elevator',            slug:'elevator',            label:'Elevator' },
+  { key:'other',               slug:'report',              label:'Other / Unknown' },
 ];
 const SLUG_BY_KEY = Object.fromEntries(SYSTEMS.map(s => [s.key, s.slug]));
+
+// Frequency is recorded separately and folded into the filename for clarity
+// (the audit matches on system + date, so this is informational/disambiguating).
+const FREQS = [
+  { key:'',           label:'— freq —' },
+  { key:'annual',     label:'Annual' },
+  { key:'semiannual', label:'Semi-Annual' },
+  { key:'quarterly',  label:'Quarterly' },
+  { key:'monthly',    label:'Monthly' },
+  { key:'5yr',        label:'5-Year' },
+  { key:'3yr',        label:'3-Year' },
+  { key:'2yr',        label:'2-Year' },
+];
+const FREQ_KEYS = new Set(FREQS.map(f => f.key));
+function guessFreq(sysKey, text) {
+  if (sysKey === 'internal-pipe' || sysKey === 'fdc-hydro') return '5yr';
+  if (sysKey === 'dry-pipe') return '3yr';
+  const t = (text || '').toLowerCase();
+  if (/semi.?annual|semiannual|bi.?annual/.test(t)) return 'semiannual';
+  if (/quarterly/.test(t)) return 'quarterly';
+  if (/monthly/.test(t)) return 'monthly';
+  if (/5.?year|five year/.test(t)) return '5yr';
+  if (/3.?year|three year/.test(t)) return '3yr';
+  if (/2.?year|two year|biennial/.test(t)) return '2yr';
+  if (/annual|yearly/.test(t)) return 'annual';
+  return '';
+}
 
 let accessToken = null, tokenClient = null;
 let properties = [];          // [{name, addr, acct, toks}]
@@ -430,6 +472,7 @@ function guessSystem(text) {
   const t = (text||'').toLowerCase();
   if (/internal (pipe|assessment|obstruction)|5.?year internal|internal inspection/.test(t)) return 'internal-pipe';
   if (/\bfdc\b|hydrostatic|hydro ?test/.test(t)) return 'fdc-hydro';
+  if (/dry pipe|dry.?valve|trip test/.test(t)) return 'dry-pipe';
   if (/backflow/.test(t)) return 'backflow';
   if (/standpipe/.test(t)) return 'standpipe';
   if (/fire ?pump/.test(t)) return 'fire-pump';
@@ -438,6 +481,14 @@ function guessSystem(text) {
   if (/fire ?alarm|\bfa\b|detection/.test(t)) return 'fire-alarm';
   if (/exting/.test(t)) return 'extinguisher';
   if (/hood|kitchen|ansul/.test(t)) return 'hood';
+  if (/special suppress|clean agent|co2|fm-?200/.test(t)) return 'special-suppression';
+  if (/exit|egress|emergency light/.test(t)) return 'exit-sign-lighting';
+  if (/hydrant/.test(t)) return 'hydrant';
+  if (/\bbda\b|emergency radio|ders\b/.test(t)) return 'bda';
+  if (/smoke control/.test(t)) return 'smoke-control';
+  if (/gas detection/.test(t)) return 'gas-detection';
+  if (/hospital|tjc|\bcms\b/.test(t)) return 'hospital';
+  if (/elevator/.test(t)) return 'elevator';
   return 'other';
 }
 function toISO(d) {
@@ -471,7 +522,9 @@ async function addRow(msgId, detail, pdf, anthKey) {
   }
 
   const isInvoice = parsed.isInspectionReport === false || (parsed.isInspectionReport === undefined && invoiceGuess);
-  const sysKey = parsed.system && SLUG_BY_KEY[parsed.system] ? parsed.system : guessSystem((parsed.summary||'') + ' ' + detail._subject + ' ' + pdf.filename);
+  const hintText = (parsed.summary||'') + ' ' + detail._subject + ' ' + pdf.filename;
+  const sysKey = parsed.system && SLUG_BY_KEY[parsed.system] ? parsed.system : guessSystem(hintText);
+  const freq = (parsed.frequency && FREQ_KEYS.has(parsed.frequency)) ? parsed.frequency : guessFreq(sysKey, hintText);
   const propText = ((parsed.properties || []).join(' ') + ' ' + (parsed.property||'') + ' ' + detail._subject);
   const matched = matchProperty(propText || detail._subject);
   const date = toISO(parsed.inspectionDate) || toISO(detail._date);
@@ -483,7 +536,7 @@ async function addRow(msgId, detail, pdf, anthKey) {
     vendor: parsed.vendor || vendorFromEmail(detail._from),
     kind: isInvoice ? 'invoice' : (parsed.isInspectionReport ? 'report' : 'unsure'),
     propName: matched ? matched.name : '',
-    sysKey, date,
+    sysKey, freq, date,
     b64: parsed._b64 || null,
     status: prev ? '✓ imported' : '', _statusCls: prev ? 'ok' : '',
     imported: !!prev, importedName: prev ? prev.filename : '',
@@ -500,7 +553,8 @@ async function readReportWithClaude(b64, anthKey, subject, from, filename) {
     '  "isInspectionReport": boolean,   // true ONLY if this is an inspection/test report (not an invoice/quote/statement/COI)\n' +
     '  "vendor": string,                // e.g. "Convergint" or "Martinez"\n' +
     '  "property": string,              // building name and/or service address the report is for\n' +
-    '  "system": string,                // ONE of: fire-alarm, sprinkler, internal-pipe, fdc-hydro, standpipe, fire-pump, backflow, extinguisher, hood, jockey-pump, other\n' +
+    '  "system": string,                // ONE of: fire-alarm, sprinkler, internal-pipe, fdc-hydro, dry-pipe, standpipe, fire-pump, jockey-pump, backflow, extinguisher, hood, special-suppression, exit-sign-lighting, hydrant, bda, smoke-control, gas-detection, hospital, elevator, other\n' +
+    '  "frequency": string,             // ONE of: annual, semiannual, quarterly, monthly, 5yr, 3yr, 2yr, or "" if unknown\n' +
     '  "inspectionDate": string,        // date the inspection/test was performed, MM/DD/YYYY, else ""\n' +
     '  "summary": string                // short note on what it is\n}\n\n' +
     `Email subject: ${subject||'(none)'}\nEmail from: ${from||''}\nAttachment filename: ${filename||''}\n` +
@@ -526,8 +580,11 @@ function buildFilename(row) {
   const ps = p ? propSlug(p) : 'Unknown';
   const slug = SLUG_BY_KEY[row.sysKey] || 'report';
   const v = (row.vendor || 'vendor').replace(/[^a-zA-Z0-9]+/g,'');
+  const fr = row.freq ? row.freq + '_' : '';
   const d = row.date || 'nodate';
-  return `EXT_${v}_${slug}_${ps}_${d}.pdf`;
+  // System slug comes right after EXT_ so the audit's sysFromFile() (which strips
+  // the EXT_ prefix then checks the leading system slug) classifies it correctly.
+  return `EXT_${slug}_${fr}${v}_${ps}_${d}.pdf`;
 }
 
 function renderTable() {
@@ -540,22 +597,38 @@ function renderTable() {
     const propOpts = '<option value="">— pick property —</option>' +
       properties.map(p => `<option value="${escAttr(p.name)}"${p.name===r.propName?' selected':''}>${escHtml(p.name)}</option>`).join('');
     const sysOpts = SYSTEMS.map(s => `<option value="${s.key}"${s.key===r.sysKey?' selected':''}>${escHtml(s.label)}</option>`).join('');
+    const freqOpts = FREQS.map(f => `<option value="${f.key}"${f.key===(r.freq||'')?' selected':''}>${escHtml(f.label)}</option>`).join('');
     const canImport = r.kind !== 'invoice';
+    const dupBtn = (canImport && !r.imported)
+      ? `<button class="dup-btn" title="Duplicate this row to import the SAME PDF as a second system (e.g. a combined 5-Yr Internal + FDC report)" onclick="dupRow(${idx})">⧉</button>` : '';
     return `<tr class="${r.imported ? 'imported' : r.kind==='invoice' ? 'invoice' : 'report'}">
       <td>${canImport ? `<input type="checkbox" class="row-chk" data-i="${idx}" ${r.imported?'disabled':''} ${r._checked?'checked':''} onchange="onCheck(${idx}, this.checked)">` : ''}</td>
-      <td><span class="kind ${kindCls}">${r.kind}</span></td>
+      <td><span class="kind ${kindCls}">${r.kind}</span>${r._dup ? '<div class="dup-tag">copy</div>' : ''}</td>
       <td class="clickable" onclick="openPdf(${idx})" title="Open this PDF to verify"><div class="cell-from">${escHtml(r.vendor)}</div><div class="cell-from">${escHtml((r.date||'').replace(/\s*\(.*\)$/,'').slice(0,16))}</div></td>
       <td class="cell-subj clickable" onclick="openPdf(${idx})" title="Open this PDF to verify before importing"><span class="s">${escHtml(r.subject)}</span><span class="f">📄 ${escHtml(r.filename)}</span></td>
       <td><select class="prop-sel" onchange="setField(${idx},'propName',this.value)">${propOpts}</select></td>
       <td><select class="sys-sel" onchange="setField(${idx},'sysKey',this.value)">${sysOpts}</select></td>
+      <td><select class="sys-sel" onchange="setField(${idx},'freq',this.value)">${freqOpts}</select></td>
       <td><input class="date-in" type="date" value="${escAttr(r.date)}" onchange="setField(${idx},'date',this.value)"></td>
       <td><span class="fname">${escHtml(buildFilename(r))}</span></td>
-      <td><span class="row-status ${r._statusCls||''}" title="${escAttr(r.importedName||'')}">${r.imported ? '✓ imported' : (r.status||'')}</span></td>
+      <td><span class="row-status ${r._statusCls||''}" title="${escAttr(r.importedName||'')}">${r.imported ? '✓ imported' : (r.status||'')}</span> ${dupBtn}</td>
     </tr>`;
   }).join('');
   refreshImportBtn();
 }
 function setField(i, k, v) { rows[i][k] = v; renderTable(); }
+// Duplicate a row so one PDF can be imported as two systems (e.g. a combined
+// 5-Yr Internal Pipe + FDC Hydrostatic report → one file per test, so neither
+// shows as "missing" on the audit). The copy shares the same PDF bytes.
+function dupRow(i) {
+  const r = rows[i];
+  const copy = { ...r, _checked: true, imported: false, status: '', _statusCls: '', importedName: '', _dup: true };
+  if (r.sysKey === 'internal-pipe') copy.sysKey = 'fdc-hydro';        // default to the complementary 5-yr test
+  else if (r.sysKey === 'fdc-hydro') copy.sysKey = 'internal-pipe';
+  rows.splice(i + 1, 0, copy);
+  renderTable();
+  toast('Duplicated — set the 2nd system on the copy, then import both');
+}
 function onCheck(i, c) { rows[i]._checked = c; refreshImportBtn(); }
 function toggleAll(c) { rows.forEach(r => { if (r.kind !== 'invoice' && !r.imported) r._checked = c; }); renderTable(); }
 function toggleInvoices() { showInvoices = !showInvoices; document.getElementById('toggle-inv-btn').textContent = showInvoices ? 'Hide invoices' : 'Show invoices'; renderTable(); }

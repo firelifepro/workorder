@@ -298,7 +298,7 @@ const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Softwar
 // Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
 // draft with the report PDFs attached (it only creates drafts, never sends).
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
-const CACHE_KEY = 'flips_audit_cache_v5';  // bump when the cached data shape or matching logic changes
+const CACHE_KEY = 'flips_audit_cache_v6';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -411,6 +411,7 @@ const SYS_DEFS = [
   // 'sprinkler' so a report naming both still classifies as the specific test.
   { key: 'internal-pipe',       slug: 'internal_pipe',       label: '5-Yr Internal Pipe',    rx: /internal pipe|internal assessment|internal obstruction|5.?year internal|internal inspection/ },
   { key: 'fdc-hydro',           slug: 'fdc',                 label: '5-Yr FDC Hydrostatic',  rx: /\bfdc\b|hydrostatic|hydro ?test/ },
+  { key: 'dry-pipe',            slug: 'dry_pipe',            label: 'Dry Pipe (3-Yr Trip)',  rx: /dry pipe|dry.?valve|trip test/ },
   { key: 'sprinkler',           slug: 'sprinkler',           label: 'Sprinkler',             rx: /sprinkler|wet system|dry system/ },
   { key: 'standpipe',           slug: 'standpipe',           label: 'Standpipe',             rx: /standpipe/ },
   { key: 'fire-pump',           slug: 'fire_pump',           label: 'Fire Pump',             rx: /fire ?pump/ },
