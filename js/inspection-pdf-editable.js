@@ -839,6 +839,7 @@ async function buildSprinklerPDFBytes() {
   // ── PAGE 2: SYSTEM OVERVIEW ─────────────────────────────────────────────────
   addPage();
   secHdr('SYSTEM CONFIGURATION');
+  gap(4);
   dataRow([
     { label: 'SYSTEM TYPE',          val: fd['sp-type']        || '', w: PW/3 },
     { label: 'MANUFACTURER / MAKE',  val: fd['sp-mfr']         || '', w: PW/3 },
@@ -1052,11 +1053,12 @@ async function buildSprinklerPDFBytes() {
   checkPage(120);
   gap(10);
   secHdr('OVERALL STATUS & SIGNATURES');
+  gap(4);
 
   // Overall status
   const statusVal = data.overallStatus || '';
   dataRow([{ label: 'OVERALL INSPECTION STATUS', val: statusVal, w: PW }]);
-  gap(6);
+  gap(12);
 
   // Inspector signature
   const sigH = 40;
