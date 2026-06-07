@@ -32,7 +32,7 @@
 
     /* Connect Drawer */
     #conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
-    #conn-drawer.open { max-height: 320px; }
+    #conn-drawer.open { max-height: 440px; }
     #conn-inner { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
     .conn-field { display: flex; flex-direction: column; gap: 4px; }
     .conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; }
@@ -201,6 +201,13 @@
         <option value="claude-opus-4-7">Opus 4.7 (highest quality)</option>
       </select>
     </div>
+    <div class="conn-field">
+      <label>Auto-read PDFs with Claude</label>
+      <label title="When ON, Claude reads each invoice PDF and extracts vendor/amount/property (costs a few cents per PDF). When OFF, the key stays saved but parsing is paused." style="display:flex;align-items:center;gap:8px;color:#e0e0e0;font-size:0.82rem;cursor:pointer;text-transform:none;letter-spacing:0;padding:4px 0;">
+        <input type="checkbox" id="use-claude" onchange="toggleClaude()" style="width:auto;cursor:pointer;">
+        <span id="use-claude-lbl">On — read invoices (paid)</span>
+      </label>
+    </div>
     <button class="top-btn" onclick="saveAnthropicSettings()">💾 Save</button>
   </div>
 </div>
@@ -228,6 +235,21 @@
         <button class="icon-btn" onclick="loadCachedInvoices()" title="Show cached parsed invoices without re-fetching">📂 Load Cached</button>
         <button class="icon-btn" onclick="clearCache()" title="Clear local cache of parsed PDFs">🗑 Clear Cache</button>
       </div>
+      <details style="margin-top:10px;">
+        <summary style="cursor:pointer;font-weight:600;color:#1a4d8f;font-size:0.85rem;">ⓘ How the matching works &amp; what it costs</summary>
+        <div style="margin-top:8px;font-size:0.8rem;line-height:1.6;color:#333;">
+          <b>Matching:</b> With <i>Auto-read</i> ON, Claude reads each invoice PDF and extracts <b>vendor</b>, <b>invoice #</b>, <b>date</b>, <b>amount</b>, <b>description</b> and the <b>properties</b> mentioned. Each invoice is then fuzzy-matched to a <b>Work Log row</b> (property name + work + date proximity); a strong match (≥ 0.85) auto-links, weaker ones show as suggestions to confirm. With <i>Auto-read</i> OFF the key stays saved but no parsing runs (this page needs Claude to read invoices).
+          <br><br>
+          <b>Cost:</b> Only Claude costs money (Gmail/Sheets are free), and each PDF is read <b>once</b> then cached by message ID — re-running the search never re-pays. Rough per-invoice estimate (invoices are usually 1–3 pages, so the low end):
+          <table style="border-collapse:collapse;margin-top:6px;font-size:0.78rem;">
+            <tr style="text-align:left;"><th style="padding:2px 12px 2px 0;">Model</th><th style="padding:2px 12px;">Per invoice (1–3 pp)</th><th style="padding:2px 12px;">~25 invoices</th></tr>
+            <tr><td style="padding:2px 12px 2px 0;"><b>Haiku 4.5</b></td><td style="padding:2px 12px;">~$0.005–0.015</td><td style="padding:2px 12px;">~$0.15–0.40</td></tr>
+            <tr><td style="padding:2px 12px 2px 0;"><b>Sonnet 4.6</b> (default)</td><td style="padding:2px 12px;">~$0.015–0.04</td><td style="padding:2px 12px;">~$0.40–1.00</td></tr>
+            <tr><td style="padding:2px 12px 2px 0;"><b>Opus 4.7</b></td><td style="padding:2px 12px;">~$0.08–0.20</td><td style="padding:2px 12px;">~$2–5</td></tr>
+          </table>
+          <span style="color:#777;">After the first batch, cached invoices are free; only new PDFs cost anything. Tip: <b>Haiku</b> is ~3× cheaper and usually plenty for invoice fields.</span>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -344,6 +366,18 @@ const SCOPES = [
 const CACHE_KEY = 'flips_sub_invoices_v1';
 const ANTH_KEY_LS = 'flips_anth_key';
 const ANTH_MODEL_LS = 'flips_anth_model';
+const USE_CLAUDE_LS = 'flips_subinv_use_claude';   // '1' on (default) / '0' off — toggles paid auto-read
+
+function claudeEnabled() {
+  const el = document.getElementById('use-claude');
+  return el ? el.checked : (localStorage.getItem(USE_CLAUDE_LS) !== '0');
+}
+function toggleClaude() {
+  const on = document.getElementById('use-claude').checked;
+  localStorage.setItem(USE_CLAUDE_LS, on ? '1' : '0');
+  document.getElementById('use-claude-lbl').textContent = on ? 'On — read invoices (paid)' : 'Off — paused (no parsing)';
+  toast(on ? '✓ Auto-read ON' : '✓ Auto-read OFF (paused)');
+}
 
 // Sub Invoices tab columns
 const SUB_HEADERS = [
@@ -370,6 +404,9 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('client-id').value = localStorage.getItem('flips_client_id') || '';
   document.getElementById('anth-key').value  = localStorage.getItem(ANTH_KEY_LS) || '';
   document.getElementById('anth-model').value = localStorage.getItem(ANTH_MODEL_LS) || 'claude-sonnet-4-6';
+  const useClaude = localStorage.getItem(USE_CLAUDE_LS) !== '0';   // default ON
+  document.getElementById('use-claude').checked = useClaude;
+  document.getElementById('use-claude-lbl').textContent = useClaude ? 'On — read invoices (paid)' : 'Off — paused (no parsing)';
 
   loadCachedInvoices();
 
@@ -512,6 +549,7 @@ async function runSearch() {
   if (!accessToken) { toast('⚠ Connect Google first'); return; }
   const anthKey = localStorage.getItem(ANTH_KEY_LS);
   if (!anthKey) { toast('⚠ Set Anthropic API key in Settings'); document.getElementById('conn-drawer').classList.add('open'); return; }
+  if (!claudeEnabled()) { toast('⚠ Auto-read is OFF — turn it on in ⚙ Settings to parse invoices'); document.getElementById('conn-drawer').classList.add('open'); return; }
 
   const q = document.getElementById('gmail-query').value.trim();
   const maxResults = Math.min(100, parseInt(document.getElementById('max-results').value) || 25);

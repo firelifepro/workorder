@@ -9,6 +9,17 @@ npx wrangler deploy
 ```
 Deploys the entire directory as static assets plus the `_worker.js` API routes. Files listed in `.assetsignore` are excluded from the public deploy (e.g. `_worker.js`, `CLAUDE.md`, `README.md`, abandoned test files). Cloudflare caches aggressively — users may need to hard-refresh (Cmd+Shift+R) after a deploy if they have the page open.
 
+## Testing & linting
+Node is installed via Homebrew (`/opt/homebrew/bin/node`). Even though the app has no build step, there's a small Node-based safety net — **run it before every deploy**:
+```bash
+npm run lint    # node --check (syntax-only) on every file in js/ and tests/
+npm test        # runs tests/run.js — the unit suite
+npm run check   # lint + test together
+```
+- **`lint`** catches syntax errors (unbalanced braces, broken template literals, stray chars) that would otherwise silently break a whole `<script>` at runtime with no build to catch them. It does NOT check logic, runtime, or DOM/undefined-variable errors — it's a cheap first gate, not ESLint.
+- **Test pattern**: `tests/run.js` defines global `test()`/`assert` and auto-runs every `tests/*.test.js`. Tests load source one of two ways: (a) `require()` a module that has a CommonJS export tail (e.g. `js/inspection-pdf-layout.js`), or (b) `tests/helpers.js` runs a browser-coupled source file inside a `vm` context with DOM/`sessionStorage` stubs (`loadShared`, `loadHistory`). A few helpers (`scoreMatch`, `matchProperty`) are hand-copied into `helpers.js` with a "keep in sync" comment — update both if you change the source.
+- **What can't be unit-tested**: anything that reads the live DOM or renders a PDF. To make PDF/layout logic testable, extract the pure math into a dual-export module (see `js/inspection-pdf-layout.js`) and inject browser dependencies (fonts, etc.) as callbacks. Visual output still needs a real **👁 Preview PDF** in the browser.
+
 ---
 
 ## Files
@@ -27,10 +38,14 @@ Deploys the entire directory as static assets plus the `_worker.js` API routes. 
 | `sub-invoices.html` | Subcontractor invoice inbox — pulls PDF attachments from Gmail, parses with Claude API, fuzzy-matches to work log rows, writes to Sub Invoices tab in WR sheet |
 | `open-invoices.html` | Open invoices dashboard — lists all unpaid QB invoices with aging, records payments (creates QB Payment txn), optionally marks matching Work Log row paid |
 | `triage.html` | Inbox triage — pulls recent emails from Gmail, classifies each via Claude (estimate request / scheduling / complaint / AHJ violation / payment / sub invoice / vendor / newsletter / other), fuzzy-matches mentioned property to the property list, groups by category for quick action. Read-only on Gmail; cache lives in `localStorage.flips_triage_v1` keyed by Gmail message ID. |
+| `inspection-audit.html` | Inspection-report audit — joins client master + Inspection History sheet + the **FLPS Inspection Reports** Drive folder. Groups buildings by Property Manager or Billing (LCP highlighted), matches each inspection record to its report PDF(s) **by canonical system** (see `SYS_DEFS`), flags missing/unrecorded reports, and composes a per-group **Gmail draft with the report PDFs attached** (splits per-building if over ~22 MB). Read-only Sheets/Drive + `gmail.compose`. Cache key `flips_audit_cache_vN` — bump N when the cached data shape or matching changes. |
+| `import-reports.html` | Import External Reports — searches Gmail for outside-vendor inspection reports (Convergint, Martinez Fire), reads each PDF with Claude (classify report-vs-invoice + extract property/system/date), and on confirm uploads to the FLPS Inspection Reports folder named `EXT_{vendor}_{system}_{property}_{date}.pdf` so the audit picks them up. Scopes: `gmail.modify` (read + label) + `drive` + `spreadsheets.readonly`. Tags handled emails with the Gmail label `Inspect_Rpt_Imported` (default query excludes it). Per-attachment imported ledger in `localStorage.flips_import_done_v1`; parsed cache in `flips_import_reports_v1`. Claude auto-read is toggleable (`flips_import_use_claude`). |
 | `js/flips-google-fetch.js` | **Canonical fetch helpers** — `apiFetch`, `googleFetch`, `refreshAccessToken`. Loaded by every page. Single source of truth for the 401-retry / token-refresh path. |
 | `js/flips-shared.js` | Shared auth (`initGoogle`), property loading (`loadSheet`), expense calcs, dynamic row helpers, Drive utilities. Used by `index.html`, `estimate.html`, `estimate-tracker.html`. |
 | `js/flips-history.js` | Inspection History writes — `appendInspectionHistory`, `deleteInspectionHistoryEntries`. Direct Sheets API calls (no Apps Script). Used by `index.html`, `schedule.html`, `inspection.html`, `hospital-inspection.html`. |
 | `js/inspection-google.js` | Auth + sheet loader specific to `inspection.html` and `hospital-inspection.html` (has its own proactive token refresh). |
+| `js/inspection-pdf-editable.js` | **The current inspection PDF engine** for `inspection.html` — one `build*PDFBytes()` function per system, all using pdf-lib fillable forms. `inspection-main.js` dispatches to the right one by `activeInspectionSystem`. See the PDF generation section below. |
+| `js/inspection-pdf-layout.js` | Pure, dependency-free PDF layout math (`wrapText`, `pdfRowHeight`) shared by the builders. Dual-export (browser global + CommonJS) so it's unit-tested in `tests/pdf-layout.test.js`. Must be loaded **before** `inspection-pdf.js` in `inspection.html`. |
 | `js/inspection-*.js` | Other inspection page modules (main, pdf, panels, nav, etc.) |
 | `_worker.js` | Cloudflare Worker — API proxy routes for QuickBooks OAuth only. Same-origin lock on `/api/*` (cross-origin returns 403). |
 | `.assetsignore` | Files in this list are NOT served publicly by Cloudflare. Add anything sensitive here. |
@@ -117,6 +132,8 @@ The FLPS internal account number links the property list sheet to QuickBooks cus
 - **Estimate folder**: `EST_FOLDER_ID = '1Ma-hUFL3t4l6NsWdmPRB45JJMaaK1Oc1'` — estimates saved as `FLPS_EST_*.json` and `FLPS_EST_*.pdf`
 - **WO folders**: Named folders ("2 - Ready to Invoice", "3 - Invoice Sent") — `create-invoices.html` finds them by name via Drive API
 - **Work order template Google Doc**: `TEMPLATE_DOC_ID = '1x96eu74Jlo-8mz8Ztah2noGc7SY-HvX1CQNQ6Vl07Sc'` — in `index.html`
+- **Inspection reports folder**: `REPORTS_FOLDER_ID = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'` (under **FLPS Software › FLPS Inspection Reports**). The inspection pages save report PDFs here; `inspection-audit.html` reads it; `import-reports.html` writes external reports here. The inspection JSON + property profiles live in sibling folders (`FLPS Inspection History`, `FLPS Property Profiles`, `FLPS Drafts`) under the `FLPS Software` root — see `getFlpsRootFolderId()`/`findOrCreateFolder()` in `js/inspection-drafts.js`.
+- **Report filename convention** (this is the join key the audit matches on): `FLPS_{systemSlug}_{propertySlug}_{date}.pdf`, where `systemSlug = activeInspectionSystem` with `-`→`_` (from `SYS_META` in `js/inspection-config.js`), `propertySlug = buildFileSlug()` (name+address, `js/inspection-utils.js`), `date` = `YYYY-MM-DD` (hospital uses `YYYYMMDD`). **Hoods** also fold the hood ID(s) in via `buildUnitSlug()` so same-day different hoods don't collide. **Externally-sourced** reports use an `EXT_{vendor}_…` prefix. The audit's `sysFromFile()`/`parseFileDate()` parse these; keep the convention in sync if you change either side.
 
 ---
 
@@ -165,7 +182,14 @@ Defaults: `method='GET'`, `body=null`. `Content-Type: application/json` is only 
 ### PDF generation
 - Work orders: Google Docs template copy via Drive API (server-side rendering)
 - Estimates: jsPDF (cdnjs 2.5.1 UMD) — client-side generation
-- Inspection reports: jsPDF — client-side generation
+- Inspection reports (`inspection.html`): **pdf-lib** fillable forms, in `js/inspection-pdf-editable.js`. (The older `js/inspection-pdf.js` jsPDF path still defines `collectAllData()` — used for the JSON save — but no longer renders the report.)
+- Hospital inspection (`hospital-inspection.html`): separate engine, `js/inspection-hospital-pdf.js` (not affected by changes to the editable builders).
+
+#### Inspection PDF builders — one per system
+`js/inspection-pdf-editable.js` has a dedicated `build…PDFBytes()` per system: `buildSprinklerPDFBytes`, `buildEditablePDFBytes` (fire-alarm), `buildHoodPDFBytes`, `buildExtinguisherPDFBytes`, `buildExitSignLightingPDFBytes`, and `buildGenericSystemPDFBytes` (everything else). `js/inspection-main.js` dispatches on `activeInspectionSystem` in **two** places — `saveAndDownload()` and `previewPDF()` — so changes to which builder runs must be made in both. Each builder defines its own local `page`/`curY` cursor helpers (`ry`, `ty`, `checkPage`, `secHdr`, etc.) and a `wrap` closure that now delegates to the shared `wrapText`.
+
+#### Deficiency & notes rendering convention
+Deficiency and general-notes entries are rendered as **editable, multiline, auto-growing** form fields: compute wrapped line count with `wrap(text, size, maxWidth)`, size the box with `pdfRowHeight(lineCount, { lineH, pad, min })`, then `field.enableMultiline()` and add it at that height so long text wraps instead of truncating in a single-line field. The fire-alarm `table()` helper takes an optional `wrapCol` index to make one column auto-grow this way. Keep these consistent across all builders — if you touch one system's deficiency/notes block, mirror the same wrap + auto-height pattern in the others. `wrapText`/`pdfRowHeight` live in `js/inspection-pdf-layout.js` and are unit-tested, so the layout math can be changed in one place.
 
 ### QuickBooks
 API calls proxied through `_worker.js` at `/api/qb-api` to keep client secrets off the client. See `clients.html` and `create-invoices.html` for QB customer matching and invoice creation logic.
@@ -179,7 +203,8 @@ API calls proxied through `_worker.js` at `/api/qb-api` to keep client secrets o
 ### Sub Invoice Inbox (`sub-invoices.html`)
 - **Auth scopes**: needs both `https://www.googleapis.com/auth/spreadsheets` AND `https://www.googleapis.com/auth/gmail.readonly`. Existing tokens won't have Gmail scope — first connect prompts the consent dialog with `prompt: 'consent'`.
 - **Anthropic API**: called directly from the browser via `https://api.anthropic.com/v1/messages` with the `anthropic-dangerous-direct-browser-access: true` header. API key stored in `localStorage.flips_anth_key`. Default model `claude-sonnet-4-6`. PDF passed as a `document` content block (base64). System prompt asks for strict JSON output (no code fences) with vendor / invoiceNumber / invoiceDate / amount / description / properties / lineItems.
-- **Gmail attachments are base64URL-encoded** (uses `-` and `_` instead of `+` and `/`); `b64UrlToB64()` converts before sending to Claude.
+- **Gmail attachments are base64URL-encoded** (uses `-` and `_` instead of `+` and `/`); `b64UrlToB64()` converts before sending to Claude. The browser Gmail API (`messages/{id}/attachments/{attId}`) is the only way to get attachment *bytes* — the Claude.ai Gmail MCP connector can search/read/label but **cannot download attachments**, which is why report-import is in-app, not MCP.
+- **Claude auto-read cost toggle** (pages that read PDFs with Claude — `sub-invoices.html`, `import-reports.html`): a checkbox in the settings drawer toggles paid auto-read independently of the stored key (`localStorage.flips_*_use_claude`, default on), with an "ⓘ how it works & cost" `<details>` panel on the page. `runSearch` gates the Claude call on `claudeEnabled()`. Reuse this pattern for any new Claude-on-PDF page.
 - **Caching**: parsed invoices stored in `localStorage.flips_sub_invoices_v1` keyed by Gmail message ID. Re-running the search skips already-parsed messages so you never pay Claude twice for the same PDF.
 - **Fuzzy matching**: `scoreMatch(inv, row)` weights property name overlap (token-based), description vs. work-requested overlap, and date proximity. Score ≥ 0.85 auto-matches; lower scores show as suggestions for manual confirm.
 - **Sync to Sheets**: `syncToSheets()` ensures the `Sub Invoices` tab exists (auto-creates with formatted header row), reads existing rows to dedup by Gmail Message ID (column C), then appends new rows and updates existing ones via `values:batchUpdate`.

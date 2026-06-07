@@ -1,5 +1,7 @@
 {
   "scripts": {
-    "test": "node tests/run.js"
+    "lint": "node -e \"const{execSync}=require('child_process'),fs=require('fs');let n=0,bad=0;for(const d of['js','tests']){for(const f of fs.readdirSync(d)){if(!f.endsWith('.js'))continue;n++;try{execSync('node --check '+d+'/'+f)}catch(e){bad++;console.error('\\u2717 '+d+'/'+f+'\\n'+String(e.stderr||e.message))}}}console.log(bad?bad+' of '+n+' file(s) failed':'\\u2713 '+n+' js files OK');process.exit(bad?1:0)\"",
+    "test": "node tests/run.js",
+    "check": "npm run lint && npm test"
   }
 }

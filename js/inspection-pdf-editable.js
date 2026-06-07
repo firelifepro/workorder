@@ -26,18 +26,7 @@ async function buildExtinguisherPDFBytes() {
   const ty = (h, a = 3) => PH - curY - h + a;
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
 
-  const wrap = (text, sz, maxW) => {
-    if (!text) return [''];
-    const words = String(text).split(' ');
-    const lines = []; let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
-      else cur = test;
-    }
-    if (cur) lines.push(cur);
-    return lines.length ? lines : [''];
-  };
+  const wrap = (text, sz, maxW) => wrapText(text, sz, maxW, (s, z) => rFont.widthOfTextAtSize(s, z));
 
   const secHdr = (title) => {
     checkPage(18);
@@ -410,13 +399,15 @@ async function buildExtinguisherPDFBytes() {
   } else {
     deficTrs.forEach((tr, i) => {
       const desc = tr.querySelector('td:nth-child(2) input')?.value?.trim() || '';
-      checkPage(14);
-      page.drawRectangle({ x: ML,    y: ry(13), width: 24,     height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-      page.drawText(String(i+1), { x: ML+8, y: ty(13,4), size: 7, font: hFont, color: blk });
-      page.drawRectangle({ x: ML+24, y: ry(13), width: PW-24,  height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
+      const rh = pdfRowHeight(wrap(desc, 7, PW-30).length, { lineH: 9, pad: 4, min: 13 });
+      checkPage(rh + 1);
+      page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
+      page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: 7, font: hFont, color: blk });
+      page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24,  height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
       const nf = form.createTextField(fid());
-      nf.setText(desc); nf.addToPage(page, { x: ML+25, y: ry(13)+1, width: PW-26, height: 11, font: rFont }); nf.setFontSize(7);
-      curY += 14;
+      nf.setText(desc); nf.enableMultiline();
+      nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont }); nf.setFontSize(7);
+      curY += rh + 1;
     });
   }
   gap(6);
@@ -439,14 +430,16 @@ async function buildExtinguisherPDFBytes() {
   unitNotes.forEach(n => allNotes.push(n));
   const noteRowCount = Math.max(allNotes.length, 3);
   for (let i = 0; i < noteRowCount; i++) {
-    checkPage(14);
-    page.drawRectangle({ x: ML,    y: ry(13), width: 24,     height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText(String(i+1), { x: ML+8, y: ty(13,4), size: 7, font: hFont, color: blk });
-    page.drawRectangle({ x: ML+24, y: ry(13), width: PW-24,  height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
+    const ntxt = allNotes[i] || '';
+    const rh = pdfRowHeight(wrap(ntxt, 7, PW-30).length, { lineH: 9, pad: 4, min: 13 });
+    checkPage(rh + 1);
+    page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
+    page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: 7, font: hFont, color: blk });
+    page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24,  height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
     const nf = form.createTextField(fid());
-    nf.setText(allNotes[i] || '');
-    nf.addToPage(page, { x: ML+25, y: ry(13)+1, width: PW-26, height: 11, font: rFont }); nf.setFontSize(7);
-    curY += 14;
+    nf.setText(ntxt); nf.enableMultiline();
+    nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont }); nf.setFontSize(7);
+    curY += rh + 1;
   }
   gap(6);
 
@@ -561,18 +554,7 @@ async function buildSprinklerPDFBytes() {
   const ty = (h, a = 3) => PH - curY - h + a;
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
 
-  const wrap = (text, sz, maxW) => {
-    if (!text) return [''];
-    const words = String(text).split(' ');
-    const lines = []; let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
-      else cur = test;
-    }
-    if (cur) lines.push(cur);
-    return lines.length ? lines : [''];
-  };
+  const wrap = (text, sz, maxW) => wrapText(text, sz, maxW, (s, z) => rFont.widthOfTextAtSize(s, z));
 
   const secHdr = (title) => {
     checkPage(18);
@@ -1034,15 +1016,16 @@ async function buildSprinklerPDFBytes() {
   } else {
     spDeficRows.forEach((tr, i) => {
       const desc = tr.querySelector('td:nth-child(2) input')?.value?.trim() || '';
-      checkPage(14);
-      page.drawRectangle({ x: ML,    y: ry(13), width: 24,     height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-      page.drawText(String(i+1), { x: ML+8, y: ty(13,4), size: 7, font: hFont, color: blk });
+      const rh = pdfRowHeight(wrap(desc, 7, PW-30).length, { lineH: 9, pad: 4, min: 13 });
+      checkPage(rh + 1);
+      page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
+      page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: 7, font: hFont, color: blk });
       const nf = form.createTextField(fid());
-      nf.setText(desc);
-      page.drawRectangle({ x: ML+24, y: ry(13), width: PW-24, height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-      nf.addToPage(page, { x: ML+25, y: ry(13)+1, width: PW-26, height: 11, font: rFont });
+      nf.setText(desc); nf.enableMultiline();
+      page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24, height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
+      nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont });
       nf.setFontSize(7);
-      curY += 14;
+      curY += rh + 1;
     });
   }
   gap(6);
@@ -1053,15 +1036,16 @@ async function buildSprinklerPDFBytes() {
   const noteRowCount = Math.max(spNoteRows.length, 3);
   for (let i = 0; i < noteRowCount; i++) {
     const note = i < spNoteRows.length ? (spNoteRows[i].querySelector('td:nth-child(2) input')?.value?.trim() || '') : '';
-    checkPage(14);
-    page.drawRectangle({ x: ML,    y: ry(13), width: 24,     height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText(String(i+1), { x: ML+8, y: ty(13,4), size: 7, font: hFont, color: blk });
+    const rh = pdfRowHeight(wrap(note, 7, PW-30).length, { lineH: 9, pad: 4, min: 13 });
+    checkPage(rh + 1);
+    page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
+    page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: 7, font: hFont, color: blk });
     const nf = form.createTextField(fid());
-    nf.setText(note);
-    page.drawRectangle({ x: ML+24, y: ry(13), width: PW-24, height: 13, color: gold, borderColor: sky, borderWidth: 0.3 });
-    nf.addToPage(page, { x: ML+25, y: ry(13)+1, width: PW-26, height: 11, font: rFont });
+    nf.setText(note); nf.enableMultiline();
+    page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24, height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
+    nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont });
     nf.setFontSize(7);
-    curY += 14;
+    curY += rh + 1;
   }
 
   // ── SIGNATURES ───────────────────────────────────────────────────────────────
@@ -1194,18 +1178,7 @@ async function buildGenericSystemPDFBytes() {
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
   const gap = (h) => { curY += h; };
 
-  const wrap = (text, sz, maxW) => {
-    if (!text) return [''];
-    const words = String(text).split(' ');
-    const lines = []; let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
-      else cur = test;
-    }
-    if (cur) lines.push(cur);
-    return lines.length ? lines : [''];
-  };
+  const wrap = (text, sz, maxW) => wrapText(text, sz, maxW, (s, z) => rFont.widthOfTextAtSize(s, z));
 
   const secHdr = (title) => {
     checkPage(20);
@@ -1571,13 +1544,13 @@ async function buildGenericSystemPDFBytes() {
     data.deficiencies.forEach(d => {
       const sanitize = s => (s || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
       const text = sanitize(d.item) + (d.description ? ': ' + sanitize(d.description) : '');
-      const rowH = 13;
+      const rowH = pdfRowHeight(wrap(text, 7.5, PW-18).length, { lineH: 10, pad: 4, min: 13 });
       checkPage(rowH + 2);
       page.drawRectangle({ x: ML, y: ry(rowH), width: 12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
-      page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH/2 - 1, size: 8, font: hFont, color: red });
+      page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: 8, font: hFont, color: red });
       page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
       const dff = form.createTextField(fid());
-      dff.setText(text);
+      dff.setText(text); dff.enableMultiline();
       dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
       dff.setFontSize(7.5);
       curY += rowH + 2;
@@ -1777,18 +1750,7 @@ async function buildExitSignLightingPDFBytes() {
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
   const gap = (h) => { curY += h; };
 
-  const wrap = (text, sz, maxW) => {
-    if (!text) return [''];
-    const words = String(text).split(' ');
-    const lines = []; let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
-      else cur = test;
-    }
-    if (cur) lines.push(cur);
-    return lines.length ? lines : [''];
-  };
+  const wrap = (text, sz, maxW) => wrapText(text, sz, maxW, (s, z) => rFont.widthOfTextAtSize(s, z));
 
   const secHdr = (title) => {
     checkPage(20);
@@ -2037,19 +1999,8 @@ async function buildEditablePDFBytes() {
 
     const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
 
-    // Word-wrap helper
-    const wrap = (text, sz, maxW) => {
-      if (!text) return [''];
-      const words = String(text).split(' ');
-      const lines = []; let cur = '';
-      for (const w of words) {
-        const test = cur ? cur + ' ' + w : w;
-        if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
-        else { cur = test; }
-      }
-      if (cur) lines.push(cur);
-      return lines.length ? lines : [''];
-    };
+    // Word-wrap helper (delegates to the shared, unit-tested wrapText)
+    const wrap = (text, sz, maxW) => wrapText(text, sz, maxW, (s, z) => rFont.widthOfTextAtSize(s, z));
 
     // Section header (navy bar)
     const secHdr = (title) => {
@@ -2113,8 +2064,10 @@ async function buildEditablePDFBytes() {
     };
     const gap = (h) => { curY += h; };
 
-    // Table: draws header + rows of editable cells, handles page breaks
-    const table = (hdrs, rows, cellH) => {
+    // Table: draws header + rows of editable cells, handles page breaks.
+    // Pass wrapCol (column index) to let that column's text wrap onto multiple
+    // lines — the row grows to fit and that cell becomes a multiline field.
+    const table = (hdrs, rows, cellH, wrapCol) => {
       const drawHdr = () => {
         checkPage(13);
         let x = ML;
@@ -2127,17 +2080,21 @@ async function buildEditablePDFBytes() {
       };
       drawHdr();
       rows.forEach(row => {
-        if (curY + cellH > PH - MB) { addPage(); drawHdr(); }
+        const rowH = (wrapCol != null)
+          ? pdfRowHeight(wrap(String(row[wrapCol]||''), 7, hdrs[wrapCol].w-4).length, { lineH: 9, pad: 4, min: cellH })
+          : cellH;
+        if (curY + rowH > PH - MB) { addPage(); drawHdr(); }
         let x = ML;
         hdrs.forEach((h, i) => {
-          page.drawRectangle({ x, y: ry(cellH), width: h.w, height: cellH, color: gold, borderColor: sky, borderWidth: 0.3 });
+          page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
           const f = form.createTextField(fid());
           f.setText(String(row[i]||''));
-          f.addToPage(page, { x: x+1, y: ry(cellH)+1, width: h.w-2, height: cellH-2, font: rFont });
+          if (wrapCol != null && i === wrapCol) f.enableMultiline();
+          f.addToPage(page, { x: x+1, y: ry(rowH)+1, width: h.w-2, height: rowH-2, font: rFont });
           f.setFontSize(7);
           x += h.w;
         });
-        curY += cellH + 1;
+        curY += rowH + 1;
       });
     };
 
@@ -2547,7 +2504,7 @@ async function buildEditablePDFBytes() {
     while (deficList.length < 10) deficList.push(Array(3).fill(''));
     table(
       [{label:'#',w:25},{label:'DEFICIENCY & PROPOSED SOLUTIONS',w:425},{label:'MAKE/MODEL',w:90}],
-      deficList, 14
+      deficList, 14, 1
     );
     gap(6);
     subHdr('FAILED BATTERIES (IF APPLICABLE)');
@@ -2570,7 +2527,7 @@ async function buildEditablePDFBytes() {
       notesList.push([String(i+1), txt]);
     });
     while (notesList.length < 3) notesList.push(['','']);
-    table([{label:'#',w:25},{label:'NOTE',w:515}], notesList, 14);
+    table([{label:'#',w:25},{label:'NOTE',w:515}], notesList, 14, 1);
     gap(10);
     // Signatures
     checkPage(60);
@@ -2709,18 +2666,7 @@ async function buildHoodPDFBytes() {
   const checkPage = (needed) => { if (curY + needed > PH - MB) addPage(); };
   const gap = (h) => { curY += h; };
 
-  const wrap = (text, sz, maxW) => {
-    if (!text) return [''];
-    const words = String(text).split(' ');
-    const lines = []; let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (rFont.widthOfTextAtSize(test, sz) > maxW && cur) { lines.push(cur); cur = w; }
-      else cur = test;
-    }
-    if (cur) lines.push(cur);
-    return lines.length ? lines : [''];
-  };
+  const wrap = (text, sz, maxW) => wrapText(text, sz, maxW, (s, z) => rFont.widthOfTextAtSize(s, z));
 
   const secHdr = (title) => {
     checkPage(18);

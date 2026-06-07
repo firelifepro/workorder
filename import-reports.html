@@ -19,6 +19,8 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
 .conn-field input::placeholder { color: rgba(255,255,255,0.35); }
 .conn-field select { width: auto; }
 .conn-field select option { background:#1a1a2e; }
+.toggle-row { display:flex; align-items:center; gap:8px; color:#e0e0e0; font-size:0.8rem; font-weight:500; cursor:pointer; text-transform:none; letter-spacing:0; padding:6px 0; }
+.toggle-row input { width:auto; cursor:pointer; }
 .conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; align-self: flex-end; }
 .conn-btn:hover { background: #4a86e8; }
 .conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
@@ -117,11 +119,18 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
     <div class="conn-field"><label>OAuth Client ID</label><input type="text" id="client-id" placeholder="…apps.googleusercontent.com"></div>
     <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
     <div class="conn-field"><label>Anthropic API Key (for auto-reading PDFs)</label><input type="password" id="anth-key" placeholder="sk-ant-… (optional)"></div>
+    <div class="conn-field">
+      <label>Auto-read PDFs with Claude</label>
+      <label class="toggle-row" title="When ON, Claude reads each report PDF and auto-fills property / system / date (costs a few cents per report). When OFF, the key stays saved but is not used — you fill the dropdowns yourself, for free.">
+        <input type="checkbox" id="use-claude" onchange="toggleClaude()">
+        <span id="use-claude-lbl">On — auto-fill (paid)</span>
+      </label>
+    </div>
     <div class="conn-field"><label>Claude model</label>
       <select id="anth-model">
-        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheap)</option>
+        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheapest)</option>
         <option value="claude-sonnet-4-6" selected>Sonnet 4.6</option>
-        <option value="claude-opus-4-8">Opus 4.8</option>
+        <option value="claude-opus-4-8">Opus 4.8 (priciest)</option>
       </select>
     </div>
     <button class="conn-btn" onclick="saveSettings()">💾 Save</button>
@@ -132,6 +141,22 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
   <div id="notes">
     Searches Gmail for <b>inspection reports</b> from outside vendors (Convergint, Martinez Fire), reads each PDF to guess <b>property / system / date</b>, and (on your OK) uploads them to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so they show on the
     <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b> After importing, the email is tagged with the Gmail label <b>Inspect_Rpt_Imported</b>, and the default search excludes that label so handled emails won't come back.
+    <details id="cost-details" style="margin-top:8px;">
+      <summary style="cursor:pointer;font-weight:600;color:#1a4d8f;">ⓘ How the matching works &amp; what it costs</summary>
+      <div style="margin-top:8px;font-size:0.76rem;line-height:1.6;">
+        <b>Matching:</b> With <i>Auto-read</i> ON, Claude reads each PDF and returns whether it's an inspection report (vs. invoice), the <b>vendor</b>, <b>property</b>, <b>system</b> (sprinkler, FDC hydrostatic, internal pipe, backflow, …) and <b>inspection date</b>. The property is matched against your client list; the system + date drive the filename so the
+        <a href="inspection-audit.html">audit page</a> slots it into the right row. You can override any guess in the dropdowns before importing. With <i>Auto-read</i> OFF, those fields come from the email subject/filename only — free, but rougher.
+        <br><br>
+        <b>Cost:</b> Only Claude costs money (Google + Drive are free), and only on report PDFs (invoices are skipped). Each PDF is read <b>once</b> and cached; handled emails are excluded from later searches, so you don't re-pay. Rough per-report estimate by model:
+        <table style="border-collapse:collapse;margin-top:6px;font-size:0.74rem;">
+          <tr style="text-align:left;"><th style="padding:2px 10px 2px 0;">Model</th><th style="padding:2px 10px;">Per report (3–8 pp)</th><th style="padding:2px 10px;">~15 reports (first run)</th></tr>
+          <tr><td style="padding:2px 10px 2px 0;"><b>Haiku 4.5</b></td><td style="padding:2px 10px;">~$0.01–0.03</td><td style="padding:2px 10px;">~$0.15–0.45</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;"><b>Sonnet 4.6</b> (default)</td><td style="padding:2px 10px;">~$0.03–0.08</td><td style="padding:2px 10px;">~$0.50–1.20</td></tr>
+          <tr><td style="padding:2px 10px 2px 0;"><b>Opus 4.8</b></td><td style="padding:2px 10px;">~$0.18–0.45</td><td style="padding:2px 10px;">~$2.50–6.50</td></tr>
+        </table>
+        <span style="color:#777;">Backflow certs (1–2 pp) cost less; long 5-year reports more. After the first catch-up, new reports cost pennies. Tip: <b>Haiku</b> is ~3× cheaper and usually plenty for this.</span>
+      </div>
+    </details>
   </div>
 
   <div id="controls">
@@ -170,6 +195,7 @@ const CLIENT_LIST_GID   = '1899870347';
 const REPORTS_FOLDER_ID = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg';   // FLPS Software › FLPS Inspection Reports
 const ANTH_KEY_LS       = 'flips_anth_key';
 const ANTH_MODEL_LS     = 'flips_anth_model';
+const USE_CLAUDE_LS     = 'flips_import_use_claude';   // '1' on (default) / '0' off — toggles paid auto-read
 const CACHE_LS          = 'flips_import_reports_v1';
 const DONE_LS           = 'flips_import_done_v1';   // { 'msgId:attId': { filename, at } } — imported attachments
 // gmail.modify = read messages/attachments + add labels (no delete). drive = upload PDFs.
@@ -222,6 +248,17 @@ function saveSettings() {
   if (k) localStorage.setItem(ANTH_KEY_LS, k);
   localStorage.setItem(ANTH_MODEL_LS, document.getElementById('anth-model').value);
   toast('✓ Settings saved');
+}
+// Auto-read toggle — lets you keep the key stored but switch the paid PDF reading on/off.
+function claudeEnabled() {
+  const el = document.getElementById('use-claude');
+  return el ? el.checked : (localStorage.getItem(USE_CLAUDE_LS) !== '0');
+}
+function toggleClaude() {
+  const on = document.getElementById('use-claude').checked;
+  localStorage.setItem(USE_CLAUDE_LS, on ? '1' : '0');
+  document.getElementById('use-claude-lbl').textContent = on ? 'On — auto-fill (paid)' : 'Off — manual, free';
+  toast(on ? '✓ Auto-read ON (Claude reads PDFs)' : '✓ Auto-read OFF (free — fill fields yourself)');
 }
 
 // ── Auth ───────────────────────────────────────────────────
@@ -314,7 +351,8 @@ async function runSearch() {
     if (!listRes.ok) throw new Error('Gmail list HTTP ' + listRes.status);
     const msgs = (await listRes.json()).messages || [];
     if (!msgs.length) { setProgress('No messages found.', 'done'); btn.disabled = false; return; }
-    const anthKey = localStorage.getItem(ANTH_KEY_LS) || '';
+    // Claude only runs when both a key is set AND the auto-read toggle is on.
+    const anthKey = claudeEnabled() ? (localStorage.getItem(ANTH_KEY_LS) || '') : '';
     for (let i = 0; i < msgs.length; i++) {
       setProgress(`Processing message ${i+1}/${msgs.length} — ${rows.length} attachment(s) found…`);
       try {
@@ -609,6 +647,9 @@ window.addEventListener('load', () => {
   if (c) document.getElementById('client-id').value = c;
   const ak = localStorage.getItem(ANTH_KEY_LS); if (ak) document.getElementById('anth-key').value = ak;
   const am = localStorage.getItem(ANTH_MODEL_LS); if (am) document.getElementById('anth-model').value = am;
+  const useClaude = localStorage.getItem(USE_CLAUDE_LS) !== '0';   // default ON
+  document.getElementById('use-claude').checked = useClaude;
+  document.getElementById('use-claude-lbl').textContent = useClaude ? 'On — auto-fill (paid)' : 'Off — manual, free';
   if (!k || !c) { document.getElementById('conn-drawer').classList.add('open'); return; }
   const cachedToken = localStorage.getItem('flips_access_token');
   const tokenExpiry = parseInt(localStorage.getItem('flips_token_expiry') || '0');
