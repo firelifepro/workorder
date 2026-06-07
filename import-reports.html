@@ -69,6 +69,9 @@ tbody tr.report td { }
 .cell-subj .s { font-weight: 600; color: #1a1a2e; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
 .cell-subj .f { font-size: 0.7rem; color: #888; }
 .cell-from { font-size: 0.72rem; color: #555; white-space: nowrap; }
+.clickable { cursor: pointer; }
+.clickable:hover .s, .clickable:hover .f, .clickable:hover { color: #1a73e8; }
+.clickable:hover .s { text-decoration: underline; }
 select.prop-sel, select.sys-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 200px; }
 input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; width: 120px; }
 .fname { font-size: 0.68rem; color: #2e6da4; font-family: monospace; word-break: break-all; max-width: 260px; }
@@ -140,7 +143,7 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
 <div id="content">
   <div id="notes">
     Searches Gmail for <b>inspection reports</b> from outside vendors (Convergint, Martinez Fire), reads each PDF to guess <b>property / system / date</b>, and (on your OK) uploads them to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so they show on the
-    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b> After importing, the email is tagged with the Gmail label <b>Inspect_Rpt_Imported</b>, and the default search excludes that label so handled emails won't come back.
+    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b> <b>Tip:</b> click a row's <b>subject/from</b> to open its PDF in a new tab and verify before you set the property/date and import. After importing, the email is tagged with the Gmail label <b>Inspect_Rpt_Imported</b>, and the default search excludes that label so handled emails won't come back.
     <details id="cost-details" style="margin-top:8px;">
       <summary style="cursor:pointer;font-weight:600;color:#1a4d8f;">ⓘ How the matching works &amp; what it costs</summary>
       <div style="margin-top:8px;font-size:0.76rem;line-height:1.6;">
@@ -387,6 +390,33 @@ function findAllPdfs(part, out) {
   return out;
 }
 function b64UrlToB64(s) { return s.replace(/-/g,'+').replace(/_/g,'/') + '=='.slice(0, (4 - s.length % 4) % 4); }
+function b64ToBlob(b64, type) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: type || 'application/pdf' });
+}
+// Open a row's PDF in a new tab so you can verify it before importing.
+async function openPdf(i) {
+  const r = rows[i]; if (!r) return;
+  const w = window.open('', '_blank');   // open synchronously so popup blockers don't kill it
+  try { if (w) w.document.write('<p style="font-family:sans-serif;padding:20px;">Loading PDF…</p>'); } catch(_){}
+  try {
+    let b64 = r.b64;
+    if (!b64) {
+      const res = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${r.msgId}/attachments/${r.attId}`);
+      if (!res.ok) throw new Error('Gmail attachment HTTP ' + res.status);
+      b64 = b64UrlToB64((await res.json()).data);
+      r.b64 = b64;   // reuse for import so we don't refetch
+    }
+    const url = URL.createObjectURL(b64ToBlob(b64, 'application/pdf'));
+    if (w) w.location = url; else window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) {
+    console.error('openPdf', e);
+    try { if (w) w.document.body.innerHTML = '<p style="font-family:sans-serif;padding:20px;color:#c0392b;">Could not load PDF: ' + escHtml(e.message) + '</p>'; } catch(_){}
+    toast('✗ ' + e.message);
+  }
+}
 
 function looksLikeInvoice(subject, filename) {
   return /invoice|statement|past due|rate change|\bw-?9\b|certificate of insurance|\bcoi\b|quote|screwdriver|\bIN00\d|\bSI2\d/i.test((subject||'') + ' ' + (filename||''));
@@ -514,8 +544,8 @@ function renderTable() {
     return `<tr class="${r.imported ? 'imported' : r.kind==='invoice' ? 'invoice' : 'report'}">
       <td>${canImport ? `<input type="checkbox" class="row-chk" data-i="${idx}" ${r.imported?'disabled':''} ${r._checked?'checked':''} onchange="onCheck(${idx}, this.checked)">` : ''}</td>
       <td><span class="kind ${kindCls}">${r.kind}</span></td>
-      <td><div class="cell-from">${escHtml(r.vendor)}</div><div class="cell-from">${escHtml((r.date||'').replace(/\s*\(.*\)$/,'').slice(0,16))}</div></td>
-      <td class="cell-subj"><span class="s" title="${escAttr(r.subject)}">${escHtml(r.subject)}</span><span class="f">${escHtml(r.filename)}</span></td>
+      <td class="clickable" onclick="openPdf(${idx})" title="Open this PDF to verify"><div class="cell-from">${escHtml(r.vendor)}</div><div class="cell-from">${escHtml((r.date||'').replace(/\s*\(.*\)$/,'').slice(0,16))}</div></td>
+      <td class="cell-subj clickable" onclick="openPdf(${idx})" title="Open this PDF to verify before importing"><span class="s">${escHtml(r.subject)}</span><span class="f">📄 ${escHtml(r.filename)}</span></td>
       <td><select class="prop-sel" onchange="setField(${idx},'propName',this.value)">${propOpts}</select></td>
       <td><select class="sys-sel" onchange="setField(${idx},'sysKey',this.value)">${sysOpts}</select></td>
       <td><input class="date-in" type="date" value="${escAttr(r.date)}" onchange="setField(${idx},'date',this.value)"></td>
