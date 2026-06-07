@@ -284,7 +284,9 @@ function setSectionNA(cardId, btn) {
   });
 }
 
-// Clear forced N/A when YES is clicked — deselect all groups except Present
+// Clear forced N/A when YES is clicked. Only clears the N/A selections that
+// "Present: N/A" forced on — leaves any PASS/FAIL the user (or Fast Track)
+// already set intact, so answering Present afterward doesn't wipe real results.
 function clearSectionNA(cardId, btn) {
   setFAPF(btn);
   const card = document.getElementById(cardId);
@@ -292,7 +294,7 @@ function clearSectionNA(cardId, btn) {
   const presentGroup = card.querySelector('.inspect-row .pf-group');
   card.querySelectorAll('.pf-group').forEach(group => {
     if (group === presentGroup) return;
-    group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+    group.querySelectorAll('.pf-btn.na').forEach(b => b.classList.remove('selected'));
   });
 }
 
@@ -1136,6 +1138,120 @@ function setOverallStatus(val, btn) {
   else {
     document.querySelectorAll('.ost-btn').forEach(b => { if (b.textContent.includes(val)) b.classList.add('selected'); });
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FAST TRACK — "easy button" for a clean inspection with no deficiencies.
+// Marks every still-unanswered item PASS / Y (and UL300 = YES, grease = LOW for
+// hoods) and sets the overall status to COMPLIANT. Only fills items that have
+// NOT been set yet, so any FAIL / N / N/A the inspector already chose is kept —
+// mark your few exceptions first, then hit Fast Track to clear the rest.
+// Not used by the hospital form (separate engine). Active system is detected
+// automatically so one button works for every system type.
+// ─────────────────────────────────────────────────────────────────────────────
+function _fastTrackScopes() {
+  if (activeInspectionSystem === 'fire-alarm')
+    return ['step-fa-panel', 'step-fa-devices', 'step-fa-aux'];
+  if (activeInspectionSystem === 'sprinkler')
+    return ['step-sp-overview', 'step-sp-inspection', 'step-sp-drain'];
+  // Extinguisher verification (Y/N/NA) questions live on the summary step.
+  if (activeInspectionSystem === 'extinguisher')
+    return ['sys-forms', 'step-ext-summary'];
+  return ['sys-forms']; // every other system renders into #sys-forms
+}
+
+function fastTrackCompliant() {
+  if (!activeInspectionSystem) { toast('⚠ Start an inspection first.'); return; }
+
+  // Extinguisher: make sure the verification (QA) table exists so its questions
+  // get answered even if the inspector hasn't opened the summary step yet.
+  if (activeInspectionSystem === 'extinguisher' &&
+      !document.getElementById('ext-qa-tbody')?.children.length) {
+    if (typeof buildExtSvcTable === 'function') buildExtSvcTable();
+    if (typeof buildExtQATable === 'function') buildExtQATable();
+  }
+
+  const hasSelection = (groupEl, sel) => !!groupEl.querySelector(sel + '.selected');
+  // Inventory / applicability questions (what equipment exists, which services
+  // are due) are intentionally LEFT BLANK — they're judgement calls the user
+  // must make. Their containers are tagged `data-ft-skip="<label>"` in the HTML.
+  const isSkipped = (btn) => !!btn.closest('[data-ft-skip]');
+  let filled = 0;
+  const skipLabels = new Set();
+
+  _fastTrackScopes().forEach(scopeId => {
+    const scope = document.getElementById(scopeId);
+    if (!scope) return;
+
+    // Collect the labels of any inventory sections we're leaving for the user.
+    scope.querySelectorAll('[data-ft-skip]').forEach(el => {
+      const l = el.getAttribute('data-ft-skip');
+      if (l) skipLabels.add(l);
+    });
+
+    // PASS/FAIL(/NA) groups → click PASS. Covers makeRow items, fire-alarm
+    // aux + on-site condition, hood Y rows + verif groups, exit-sign/lighting,
+    // extinguisher units, device/sub-panel tables, and sprinkler overview.
+    scope.querySelectorAll('.pf-btn.pass').forEach(btn => {
+      if (isSkipped(btn)) return;
+      if (!hasSelection(btn.parentElement, '.pf-btn')) { btn.click(); filled++; }
+    });
+    // Y/N/NA groups → click Y. Covers FA pre/post checklists, sprinkler
+    // pre-inspection rows, and extinguisher verification questions.
+    scope.querySelectorAll('.yna-btn.y').forEach(btn => {
+      if (isSkipped(btn)) return;
+      if (!hasSelection(btn.parentElement, '.yna-btn')) { btn.click(); filled++; }
+    });
+    // Hood-only toggles: UL 300 Compliant = YES, Grease Accumulation = LOW.
+    scope.querySelectorAll('input[type="hidden"][id$="-ul300"]').forEach(h => {
+      if (!h.value) { document.getElementById(h.id + '-yes')?.click(); filled++; }
+    });
+    scope.querySelectorAll('input[type="hidden"][id$="-grease"]').forEach(h => {
+      if (!h.value) { document.getElementById(h.id + '-low')?.click(); filled++; }
+    });
+  });
+
+  // Set overall status COMPLIANT — pass the real button so it sticks
+  // (overallStatusUserSet) and won't be overwritten by the auto-suggest logic.
+  setOverallStatus('COMPLIANT', document.querySelector('.ost-btn.compliant') || undefined);
+
+  if (typeof saveDraft === 'function') saveDraft();
+  toast(filled > 0
+    ? `⚡ Fast Track: marked ${filled} item${filled === 1 ? '' : 's'} pass · status COMPLIANT.`
+    : '⚡ All items already answered · status set to COMPLIANT.');
+
+  // Remind the user about the inventory questions Fast Track deliberately skipped.
+  if (skipLabels.size) showFastTrackNotice([...skipLabels]);
+}
+
+// Modal reminding the user to hand-answer the inventory/applicability questions
+// that Fast Track leaves blank (built lazily, reused on repeat clicks).
+function showFastTrackNotice(labels) {
+  let ov = document.getElementById('ft-notice-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'ft-notice-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(13,27,42,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;">
+        <div style="background:var(--amber);color:#fff;padding:14px 18px;font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:8px;">
+          <span>⚠</span><span>A few items need your answer</span>
+        </div>
+        <div style="padding:16px 18px;">
+          <p style="font-size:.84rem;color:var(--navy);margin:0 0 10px;line-height:1.5;">
+            Fast Track passed the standard inspection items and set the report <strong>COMPLIANT</strong>, but it left the sections below <strong>blank on purpose</strong> — they describe which equipment exists and which services are due, so please answer them yourself:
+          </p>
+          <ul id="ft-notice-list" style="margin:0 0 14px;padding-left:20px;font-size:.82rem;color:var(--slate);line-height:1.6;"></ul>
+          <div style="text-align:right;">
+            <button onclick="document.getElementById('ft-notice-overlay').style.display='none'" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:.84rem;font-weight:700;font-family:inherit;cursor:pointer;">Got it</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+  const list = ov.querySelector('#ft-notice-list');
+  list.innerHTML = labels.map(l => `<li>${escHtml(l)}</li>`).join('');
+  ov.style.display = 'flex';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

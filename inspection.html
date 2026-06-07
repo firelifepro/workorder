@@ -375,6 +375,10 @@
   <!-- ══ STEP 3: INSPECTION FORMS ══ -->
   <div id="step-3" style="display:none;">
     <div id="active-system-banner"></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:8px;">
+      <button onclick="fastTrackCompliant()" style="background:var(--green);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:.82rem;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">⚡ Fast Track: All Pass</button>
+      <span style="font-size:.74rem;color:var(--slate);">Marks every unanswered item PASS/Y and sets status <strong>COMPLIANT</strong> — for a clean inspection with no deficiencies. Fills blanks only; review before exporting.</span>
+    </div>
     <div id="defic-summary" class="defic-summary">
       <div class="defic-summary-hdr">
         ⚠ Active Deficiencies — <span class="defic-count-pill" id="defic-count-pill">0</span>
@@ -621,6 +625,11 @@
   <!-- ══ FIRE ALARM STEP 2: PANEL & MONITORING ══ -->
   <div id="step-fa-panel" style="display:none;">
 
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:8px;">
+      <button onclick="fastTrackCompliant()" style="background:var(--green);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:.82rem;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">⚡ Fast Track: All Pass</button>
+      <span style="font-size:.74rem;color:var(--slate);">Marks every unanswered item across all Fire Alarm steps PASS/Y and sets status <strong>COMPLIANT</strong> — for a clean inspection with no deficiencies. Fills blanks only; review before exporting.</span>
+    </div>
+
     <div class="card">
       <div class="card-header"><span class="icon">📋</span><span>Report Type</span></div>
       <div class="card-body">
@@ -835,7 +844,7 @@
             <div class="inspect-label">Visual notification present? (strobes &amp; combos)</div>
             <div style="display:flex;gap:6px;align-items:center;">
               <span style="font-size:.7rem;color:var(--slate);">Present:</span>
-              <div class="pf-group">
+              <div class="pf-group" data-ft-skip="Auxiliary &quot;Present?&quot; questions (Audio/Visual, Door Holder, HVAC) — confirm what equipment exists">
                 <button class="pf-btn na" onclick="setSectionNA('fa-av-card', this)">N/A</button>
                 <button class="pf-btn pass" onclick="clearSectionNA('fa-av-card', this)">YES</button>
               </div>
@@ -892,7 +901,7 @@
             <div class="inspect-label">Door holder hardware present? (magnetic locks, card access)</div>
             <div style="display:flex;gap:6px;align-items:center;">
               <span style="font-size:.7rem;color:var(--slate);">Present:</span>
-              <div class="pf-group">
+              <div class="pf-group" data-ft-skip="Auxiliary &quot;Present?&quot; questions (Audio/Visual, Door Holder, HVAC) — confirm what equipment exists">
                 <button class="pf-btn na" onclick="setSectionNA('fa-door-card', this)">N/A</button>
                 <button class="pf-btn pass" onclick="clearSectionNA('fa-door-card', this)">YES</button>
               </div>
@@ -939,7 +948,7 @@
             <div class="inspect-label">HVAC shut down present?</div>
             <div style="display:flex;gap:6px;align-items:center;">
               <span style="font-size:.7rem;color:var(--slate);">Present:</span>
-              <div class="pf-group">
+              <div class="pf-group" data-ft-skip="Auxiliary &quot;Present?&quot; questions (Audio/Visual, Door Holder, HVAC) — confirm what equipment exists">
                 <button class="pf-btn na" onclick="setSectionNA('fa-hvac-card', this)">N/A</button>
                 <button class="pf-btn pass" onclick="clearSectionNA('fa-hvac-card', this)">YES</button>
               </div>
@@ -1042,6 +1051,11 @@
   <!-- ══ SPRINKLER STEP 1: OVERVIEW ══ -->
   <div id="step-sp-overview" style="display:none;">
 
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:8px;">
+      <button onclick="fastTrackCompliant()" style="background:var(--green);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:.82rem;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">⚡ Fast Track: All Pass</button>
+      <span style="font-size:.74rem;color:var(--slate);">Marks every unanswered item across all Sprinkler steps PASS/Y and sets status <strong>COMPLIANT</strong> — for a clean inspection with no deficiencies. Fills blanks only; review before exporting.</span>
+    </div>
+
     <div class="card">
       <div class="card-header"><span class="icon">📋</span><span>Report Type</span></div>
       <div class="card-body">
@@ -1092,7 +1106,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-ft-skip="Existing Sprinkler Systems Overview — which systems are present and which you're inspecting">
       <div class="card-header"><span class="icon">📊</span><span>Existing Sprinkler Systems Overview</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
@@ -1112,7 +1126,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-ft-skip="3 &amp; 5 Year service items — whether each is applicable and being inspected now">
       <div class="card-header"><span class="icon">📅</span><span>3 &amp; 5 Year — Previous Inspection Year (If Applicable)</span></div>
       <div class="card-body" style="overflow-x:auto;">
         <table class="dyn-table">
