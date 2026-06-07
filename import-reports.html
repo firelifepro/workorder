@@ -42,7 +42,7 @@ body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8
 .nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
 .nav-menu a.active { color: #7fc4fd; font-weight: 600; }
 
-#content { padding: 18px 20px; max-width: 1280px; margin: 0 auto; }
+#content { padding: 18px 24px; max-width: min(1840px, 98vw); margin: 0 auto; }
 #controls { background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
 #controls label { font-size: 0.74rem; color: #666; font-weight: 600; }
 #gmail-query { flex: 1; min-width: 320px; border: 1px solid #ddd; border-radius: 4px; padding: 7px 10px; font-size: 0.8rem; font-family: inherit; }
@@ -72,7 +72,8 @@ tbody tr.report td { }
 .clickable { cursor: pointer; }
 .clickable:hover .s, .clickable:hover .f, .clickable:hover { color: #1a73e8; }
 .clickable:hover .s { text-decoration: underline; }
-select.prop-sel, select.sys-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 200px; }
+select.prop-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 230px; }
+select.sys-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 210px; }
 input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; width: 120px; }
 .fname { font-size: 0.68rem; color: #2e6da4; font-family: monospace; word-break: break-all; max-width: 260px; }
 .dup-btn { background:#eef2f8; border:1px solid #cdd8e6; color:#2e6da4; border-radius:4px; cursor:pointer; font-size:0.82rem; padding:1px 6px; line-height:1.2; }
@@ -209,58 +210,39 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googlea
 const IMPORT_LABEL = 'Inspect_Rpt_Imported';   // applied to emails whose reports were imported
 
 // System options — `slug` matches the audit page's sysFromFile so imported files classify.
-// Mirrors the audit page's SYS_DEFS (key + slug must match so imported filenames
-// classify correctly). Labels are import-friendly; the two 5-year NFPA-25 tests
-// read as "Sprinkler 5-Yr" since that's how a 5-year sprinkler report is described.
+// Inspection types — the SAME list as the schedule's Add-Entry modal (schedule.html
+// #modal-type). `label` is the schedule's exact type string; `key`/`slug` are the
+// canonical system the audit matches on (sysFromFile reads the leading slug).
 const SYSTEMS = [
-  { key:'fire-alarm',          slug:'fire_alarm',          label:'Fire Alarm' },
-  { key:'sprinkler',           slug:'sprinkler',           label:'Sprinkler — Annual' },
-  { key:'internal-pipe',       slug:'internal_pipe',       label:'Sprinkler 5-Yr — Internal Pipe' },
-  { key:'fdc-hydro',           slug:'fdc',                 label:'Sprinkler 5-Yr — FDC Hydrostatic' },
-  { key:'dry-pipe',            slug:'dry_pipe',            label:'Dry Pipe — 3-Yr Trip Test' },
-  { key:'standpipe',           slug:'standpipe',           label:'Standpipe' },
-  { key:'fire-pump',           slug:'fire_pump',           label:'Fire Pump' },
-  { key:'jockey-pump',         slug:'jockey',              label:'Jockey Pump' },
-  { key:'backflow',            slug:'backflow',            label:'Backflow' },
-  { key:'extinguisher',        slug:'extinguisher',        label:'Extinguisher' },
-  { key:'hood',                slug:'hood',                label:'Kitchen Hood' },
-  { key:'special-suppression', slug:'special_suppression', label:'Special Suppression (clean agent / CO₂)' },
-  { key:'exit-sign-lighting',  slug:'exit_sign_lighting',  label:'Exit Sign & Emergency Lighting' },
-  { key:'hydrant',             slug:'hydrant',             label:'Private Hydrants' },
-  { key:'bda',                 slug:'bda',                 label:'BDA / Emergency Radio' },
-  { key:'smoke-control',       slug:'smoke_control',       label:'Smoke Control' },
-  { key:'gas-detection',       slug:'gas_detection',       label:'Gas Detection' },
-  { key:'hospital',            slug:'hospital',            label:'Hospital TJC/CMS' },
-  { key:'elevator',            slug:'elevator',            label:'Elevator' },
-  { key:'other',               slug:'report',              label:'Other / Unknown' },
+  { key:'fire-alarm',         slug:'fire_alarm',         label:'Fire Alarm Inspection' },
+  { key:'sprinkler',          slug:'sprinkler',          label:'Sprinkler Inspection' },
+  { key:'extinguisher',       slug:'extinguisher',       label:'Extinguisher Inspection' },
+  { key:'exit-sign-lighting', slug:'exit_sign_lighting', label:'Emergency Exit Light Inspection' },
+  { key:'hood',               slug:'hood',               label:'Hood Inspection' },
+  { key:'fire-pump',          slug:'fire_pump',          label:'Fire Pump Inspection' },
+  { key:'jockey-pump',        slug:'jockey',             label:'Jockey Pump Inspection' },
+  { key:'backflow',           slug:'backflow',           label:'Annual Backflow Prevention Test' },
+  { key:'internal-pipe',      slug:'internal_pipe',      label:'5-Year Internal Pipe Inspection' },
+  { key:'fdc-hydro',          slug:'fdc',                label:'5-Year FDC Hydrostatic Test' },
+  { key:'dry-pipe',           slug:'dry_pipe',           label:'3-Year Dry Pipe Test' },
+  { key:'other',              slug:'report',             label:'Other / Unknown' },
 ];
 const SLUG_BY_KEY = Object.fromEntries(SYSTEMS.map(s => [s.key, s.slug]));
 
-// Frequency is recorded separately and folded into the filename for clarity
-// (the audit matches on system + date, so this is informational/disambiguating).
-const FREQS = [
-  { key:'',           label:'— freq —' },
-  { key:'annual',     label:'Annual' },
-  { key:'semiannual', label:'Semi-Annual' },
-  { key:'quarterly',  label:'Quarterly' },
-  { key:'monthly',    label:'Monthly' },
-  { key:'5yr',        label:'5-Year' },
-  { key:'3yr',        label:'3-Year' },
-  { key:'2yr',        label:'2-Year' },
-];
-const FREQ_KEYS = new Set(FREQS.map(f => f.key));
+// Frequency — the SAME list as the schedule's Add-Entry modal (#modal-freq).
+// Folded into the filename for clarity (audit matches on system + date).
+const FREQS = ['Annual', 'Semi Annual', 'Quarterly', 'Monthly', '3-Year', '5-Year'];
+const FREQ_KEYS = new Set(FREQS);
 function guessFreq(sysKey, text) {
-  if (sysKey === 'internal-pipe' || sysKey === 'fdc-hydro') return '5yr';
-  if (sysKey === 'dry-pipe') return '3yr';
+  if (sysKey === 'internal-pipe' || sysKey === 'fdc-hydro') return '5-Year';
+  if (sysKey === 'dry-pipe') return '3-Year';
   const t = (text || '').toLowerCase();
-  if (/semi.?annual|semiannual|bi.?annual/.test(t)) return 'semiannual';
-  if (/quarterly/.test(t)) return 'quarterly';
-  if (/monthly/.test(t)) return 'monthly';
-  if (/5.?year|five year/.test(t)) return '5yr';
-  if (/3.?year|three year/.test(t)) return '3yr';
-  if (/2.?year|two year|biennial/.test(t)) return '2yr';
-  if (/annual|yearly/.test(t)) return 'annual';
-  return '';
+  if (/semi.?annual|bi.?annual/.test(t)) return 'Semi Annual';
+  if (/quarterly/.test(t)) return 'Quarterly';
+  if (/monthly/.test(t)) return 'Monthly';
+  if (/5.?yr|5.?year|five year/.test(t)) return '5-Year';
+  if (/3.?yr|3.?year|three year/.test(t)) return '3-Year';
+  return 'Annual';   // schedule default
 }
 
 let accessToken = null, tokenClient = null;
@@ -523,7 +505,8 @@ async function addRow(msgId, detail, pdf, anthKey) {
 
   const isInvoice = parsed.isInspectionReport === false || (parsed.isInspectionReport === undefined && invoiceGuess);
   const hintText = (parsed.summary||'') + ' ' + detail._subject + ' ' + pdf.filename;
-  const sysKey = parsed.system && SLUG_BY_KEY[parsed.system] ? parsed.system : guessSystem(hintText);
+  let sysKey = parsed.system && SLUG_BY_KEY[parsed.system] ? parsed.system : guessSystem(hintText);
+  if (!SLUG_BY_KEY[sysKey]) sysKey = 'other';   // clamp to the schedule's type list
   const freq = (parsed.frequency && FREQ_KEYS.has(parsed.frequency)) ? parsed.frequency : guessFreq(sysKey, hintText);
   const propText = ((parsed.properties || []).join(' ') + ' ' + (parsed.property||'') + ' ' + detail._subject);
   const matched = matchProperty(propText || detail._subject);
@@ -553,8 +536,8 @@ async function readReportWithClaude(b64, anthKey, subject, from, filename) {
     '  "isInspectionReport": boolean,   // true ONLY if this is an inspection/test report (not an invoice/quote/statement/COI)\n' +
     '  "vendor": string,                // e.g. "Convergint" or "Martinez"\n' +
     '  "property": string,              // building name and/or service address the report is for\n' +
-    '  "system": string,                // ONE of: fire-alarm, sprinkler, internal-pipe, fdc-hydro, dry-pipe, standpipe, fire-pump, jockey-pump, backflow, extinguisher, hood, special-suppression, exit-sign-lighting, hydrant, bda, smoke-control, gas-detection, hospital, elevator, other\n' +
-    '  "frequency": string,             // ONE of: annual, semiannual, quarterly, monthly, 5yr, 3yr, 2yr, or "" if unknown\n' +
+    '  "system": string,                // ONE of: fire-alarm, sprinkler, extinguisher, exit-sign-lighting, hood, fire-pump, jockey-pump, backflow, internal-pipe, fdc-hydro, dry-pipe, other\n' +
+    '  "frequency": string,             // ONE of: Annual, Semi Annual, Quarterly, Monthly, 3-Year, 5-Year, or "" if unknown\n' +
     '  "inspectionDate": string,        // date the inspection/test was performed, MM/DD/YYYY, else ""\n' +
     '  "summary": string                // short note on what it is\n}\n\n' +
     `Email subject: ${subject||'(none)'}\nEmail from: ${from||''}\nAttachment filename: ${filename||''}\n` +
@@ -580,7 +563,7 @@ function buildFilename(row) {
   const ps = p ? propSlug(p) : 'Unknown';
   const slug = SLUG_BY_KEY[row.sysKey] || 'report';
   const v = (row.vendor || 'vendor').replace(/[^a-zA-Z0-9]+/g,'');
-  const fr = row.freq ? row.freq + '_' : '';
+  const fr = row.freq ? row.freq.replace(/[^a-zA-Z0-9]+/g,'_') + '_' : '';   // "Semi Annual" → "Semi_Annual_"
   const d = row.date || 'nodate';
   // System slug comes right after EXT_ so the audit's sysFromFile() (which strips
   // the EXT_ prefix then checks the leading system slug) classifies it correctly.
@@ -597,7 +580,7 @@ function renderTable() {
     const propOpts = '<option value="">— pick property —</option>' +
       properties.map(p => `<option value="${escAttr(p.name)}"${p.name===r.propName?' selected':''}>${escHtml(p.name)}</option>`).join('');
     const sysOpts = SYSTEMS.map(s => `<option value="${s.key}"${s.key===r.sysKey?' selected':''}>${escHtml(s.label)}</option>`).join('');
-    const freqOpts = FREQS.map(f => `<option value="${f.key}"${f.key===(r.freq||'')?' selected':''}>${escHtml(f.label)}</option>`).join('');
+    const freqOpts = FREQS.map(f => `<option value="${escAttr(f)}"${f===(r.freq||'')?' selected':''}>${escHtml(f)}</option>`).join('');
     const canImport = r.kind !== 'invoice';
     const dupBtn = (canImport && !r.imported)
       ? `<button class="dup-btn" title="Duplicate this row to import the SAME PDF as a second system (e.g. a combined 5-Yr Internal + FDC report)" onclick="dupRow(${idx})">⧉</button>` : '';

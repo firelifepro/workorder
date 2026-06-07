@@ -109,7 +109,10 @@ async function saveAndDownload() {
     // (otherwise FLPS_hood_{prop}_{date} collides and they look like duplicates).
     const unitSlug = buildUnitSlug();
     const unitPart = unitSlug ? `_${unitSlug}` : '';
-    filename = `FLPS_${sysSlug}_${propSlug}${unitPart}_${dateSlug}.pdf`;
+    // Frequency segment (Annual / Semi_Annual / …) — shares inspectionFrequency()
+    // with the schedule append so the filename and schedule row agree.
+    const freqSlug = (typeof inspectionFrequency === 'function' ? inspectionFrequency(data) : 'Annual').replace(/[^a-zA-Z0-9]+/g, '_');
+    filename = `FLPS_${sysSlug}_${freqSlug}_${propSlug}${unitPart}_${dateSlug}.pdf`;
 
     // ── 4. Save JSON inspection data to Drive ──────────────────────────────────
     if (accessToken) {
@@ -117,7 +120,7 @@ async function saveAndDownload() {
         setStatus2('Saving inspection data…', 'var(--slate)');
         const propName = data.property.name || 'Unknown';
         const dateStr  = data.inspection.date || todayMT();
-        const jsonFileName = `FLPS_Insp_${sysSlug}_${propSlug}${unitPart}_${dateStr}.json`;
+        const jsonFileName = `FLPS_Insp_${sysSlug}_${freqSlug}_${propSlug}${unitPart}_${dateStr}.json`;
         const folderId = await findOrCreateFolder('FLPS Inspection History', await getFlpsRootFolderId());
         const content = JSON.stringify({ ...data, photos: inspectionPhotos.map(p => ({ note: p.note })) }, null, 2);
         const uploaded = await driveUploadFile(jsonFileName, 'application/json', content, folderId, null);

@@ -26,6 +26,17 @@ const INSP_FREQ_MAP = {
   'monthly':     'Monthly',
 };
 
+// Canonical frequency string for an inspection — shared by the schedule append
+// and the saved report filename (js/inspection-main.js) so they stay in sync.
+function inspectionFrequency(data) {
+  const sysKey = (data && data.inspectionSystem) ||
+    (typeof activeInspectionSystem !== 'undefined' ? activeInspectionSystem : '') || '';
+  const rawFreq = sysKey === 'sprinkler'
+    ? ((data && data.fieldData && data.fieldData['sp-report-type']) || 'Annual').toLowerCase()
+    : ((data && data.inspection && data.inspection.reportType) || 'Annual').toLowerCase();
+  return INSP_FREQ_MAP[rawFreq] || 'Annual';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // updateInspectionSchedule — non-blocking, fire-and-forget.
 // data: result of collectAllData()
@@ -56,10 +67,7 @@ async function updateInspectionSchedule(data) {
   }
 
   // Sprinkler has its own report-type field; all others use the main one
-  const rawFreq = sysKey === 'sprinkler'
-    ? (data.fieldData?.['sp-report-type'] || 'Annual').toLowerCase()
-    : (data.inspection?.reportType || 'Annual').toLowerCase();
-  const frequency = INSP_FREQ_MAP[rawFreq] || 'Annual';
+  const frequency = inspectionFrequency(data);
 
   const updates = [{ propertyName, acctNum, inspectionType, dateCompleted, frequency, source: 'Inspection' }];
 
