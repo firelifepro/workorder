@@ -190,6 +190,7 @@ table.ent tr:last-child td { border-bottom: none; }
       <div class="nav-section-label">Administrators</div>
       <a href="clients.html">👥 Client Management</a>
       <a href="inspection-audit.html" class="active">📋 Inspection Reports Audit</a>
+      <a href="import-reports.html">📥 Import External Reports</a>
       <a href="workorder-tracker.html">🗄️ Work Order Tracker</a>
       <a href="create-invoices.html"><img src="img/quickbooks.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Create QB Invoices</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
@@ -229,7 +230,7 @@ table.ent tr:last-child td { border-bottom: none; }
     <b>How to read this:</b> Each inspection on record (from the <b>Inspection History</b> sheet — the same data as the Inspection Schedule page) is matched to saved PDFs in <b>FLPS Software › FLPS Inspection Reports</b> by property + system. A system can have <b>several reports</b> (e.g. multiple kitchen hoods) — all are listed on that one record, with their dates.
     A <span style="color:#c62828;font-weight:700;">missing</span> flag means there's a record but no PDF in Drive — locate or re-upload it.
     A report tagged <i>not in inspection schedule</i> means the PDF exists but no inspection was ever logged for it — worth adding to the schedule.
-    <b>Backflow</b> is inspected by <b>Morrison</b> (outside this software) so it shows as <i>external</i> with no Drive PDF here.
+    <b>Backflow</b> and <b>5-year</b> tests (FDC hydrostatic, internal pipe) are often done by outside vendors (Morrison / Martinez / Convergint) — import their PDFs via <a href="import-reports.html">Import External Reports</a> and they'll match here like any other report.
     <b>3- and 5-year</b> cycles only show a "next due" when a baseline date exists. Matches tagged <i>(likely)</i> are best-guess — open to confirm.
   </div>
 
@@ -297,7 +298,7 @@ const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Softwar
 // Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
 // draft with the report PDFs attached (it only creates drafts, never sends).
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
-const CACHE_KEY = 'flips_audit_cache_v4';  // bump when the cached data shape or matching logic changes
+const CACHE_KEY = 'flips_audit_cache_v5';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -406,6 +407,10 @@ function tokens(s) {
 // free-text history "Inspection Type" string. Order matters: more specific first.
 const SYS_DEFS = [
   { key: 'fire-alarm',          slug: 'fire_alarm',          label: 'Fire Alarm',            rx: /fire ?alarm|\bfa\b|fire detection|alarm/ },
+  // 5-year NFPA-25 tests (often done by Convergint/Martinez) — listed before
+  // 'sprinkler' so a report naming both still classifies as the specific test.
+  { key: 'internal-pipe',       slug: 'internal_pipe',       label: '5-Yr Internal Pipe',    rx: /internal pipe|internal assessment|internal obstruction|5.?year internal|internal inspection/ },
+  { key: 'fdc-hydro',           slug: 'fdc',                 label: '5-Yr FDC Hydrostatic',  rx: /\bfdc\b|hydrostatic|hydro ?test/ },
   { key: 'sprinkler',           slug: 'sprinkler',           label: 'Sprinkler',             rx: /sprinkler|wet system|dry system/ },
   { key: 'standpipe',           slug: 'standpipe',           label: 'Standpipe',             rx: /standpipe/ },
   { key: 'fire-pump',           slug: 'fire_pump',           label: 'Fire Pump',             rx: /fire ?pump/ },
@@ -436,6 +441,7 @@ function sysFromType(type) {
 function sysFromFile(name) {
   let n = (name || '').toLowerCase();
   if (n.startsWith('flps_')) n = n.slice(5);
+  else if (n.startsWith('ext_')) n = n.slice(4);   // externally-sourced reports (Convergint/Martinez)
   for (const d of SYS_DEFS_BY_SLUG_LEN) if (n.startsWith(d.slug + '_')) return d.key;
   // Fallback: recognizer anywhere in the filename.
   for (const d of SYS_DEFS_BY_SLUG_LEN) if (d.rx.test(n)) return d.key;
@@ -715,7 +721,7 @@ function attachEntries(props, entries) {
       type: e.type, freq: e.freq, last: e.last, dateObj: e.dateObj,
       next: nd ? nd.toISOString() : '', nextDate: nd, bucket: bucketFor(nd),
       source: e.source, notes: e.notes,
-      reportList: null, confident: false, missing: false, external: isBackflow(e.type),
+      reportList: null, confident: false, missing: false, external: false,
     });
   });
   props.forEach(p => p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || '')));

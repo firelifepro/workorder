@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<title>FLPS – Import External Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
+
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 360px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field input::placeholder { color: rgba(255,255,255,0.35); }
+.conn-field select { width: auto; }
+.conn-field select option { background:#1a1a2e; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; align-self: center; }
+.conn-status-pill.ok { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err { background: rgba(220,53,69,0.2); color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.conn-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; }
+
+#top-bar { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+#top-bar h1 { font-size: 1rem; font-weight: 600; }
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.nav-menu a:last-child { border-bottom: none; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; }
+.nav-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 4px 0; }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+
+#content { padding: 18px 20px; max-width: 1280px; margin: 0 auto; }
+#controls { background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+#controls label { font-size: 0.74rem; color: #666; font-weight: 600; }
+#gmail-query { flex: 1; min-width: 320px; border: 1px solid #ddd; border-radius: 4px; padding: 7px 10px; font-size: 0.8rem; font-family: inherit; }
+#max-results { width: 64px; border: 1px solid #ddd; border-radius: 4px; padding: 7px 8px; font-size: 0.8rem; }
+.btn { border: none; border-radius: 4px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.btn-primary { background: #2e6da4; color: white; } .btn-primary:hover { background: #4a86e8; }
+.btn-primary:disabled { opacity: 0.55; cursor: default; }
+.btn-green { background: #1fb272; color: white; } .btn-green:hover { background: #27ae60; }
+.btn-grey { background: #f3f4f6; color: #555; border: 1px solid #ddd; }
+
+#progress { font-size: 0.8rem; color: #555; margin-bottom: 12px; min-height: 18px; }
+#progress.err { color: #c0392b; } #progress.done { color: #1b7a4b; }
+
+#notes { background: #eef5ff; border: 1px solid #bcd8ff; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.78rem; color: #234; line-height: 1.5; }
+
+#table-wrap { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+thead th { background: #1a1a2e; color: white; padding: 9px 10px; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+tbody td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+tbody tr.invoice { background: #fbfbfb; color: #999; }
+tbody tr.imported { background: #f1faf4; }
+tbody tr.report td { }
+.cell-subj { max-width: 240px; }
+.cell-subj .s { font-weight: 600; color: #1a1a2e; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+.cell-subj .f { font-size: 0.7rem; color: #888; }
+.cell-from { font-size: 0.72rem; color: #555; white-space: nowrap; }
+select.prop-sel, select.sys-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 200px; }
+input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; width: 120px; }
+.fname { font-size: 0.68rem; color: #2e6da4; font-family: monospace; word-break: break-all; max-width: 260px; }
+.kind { font-size: 0.66rem; font-weight: 700; padding: 2px 7px; border-radius: 9px; white-space: nowrap; }
+.kind.report { background: #e8f5e9; color: #2e7d32; } .kind.invoice { background: #f5f5f5; color: #888; } .kind.unsure { background: #fff3e0; color: #e65100; }
+.row-status { font-size: 0.7rem; color: #888; }
+.row-status.ok { color: #1b7a4b; font-weight: 700; }
+.row-status.err { color: #c0392b; }
+.spinner { width: 14px; height: 14px; border: 2px solid #ddd; border-top-color: #2e6da4; border-radius: 50%; display: inline-block; animation: spin 0.7s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#empty { text-align: center; padding: 50px; color: #999; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s; z-index: 9999; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()" title="Navigation menu">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <div class="nav-section-label">Field Technicians</div>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="estimate.html">🎯 Estimate</a>
+      <a href="estimate-tracker.html">📈 Estimate Tracker</a>
+      <a href="worklog.html">📒 Work Log (the Drive)</a>
+      <a href="index.html">⏰ Work Order</a>
+      <a href="inspection.html">🔥 Fire Inspection</a>
+      <a href="hospital-inspection.html">🏥 Hospital Inspection</a>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Administrators</div>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection-audit.html">📋 Inspection Reports Audit</a>
+      <a href="import-reports.html" class="active">📥 Import External Reports</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="open-invoices.html">💰 Record Payments</a>
+    </div>
+  </div>
+  <h1>📥 Import External Reports</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-toggle" onclick="toggleDrawer()">⚙ Connection</button>
+</div>
+
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field"><label>Google API Key</label><input type="password" id="api-key" placeholder="AIzaSy…"></div>
+    <div class="conn-field"><label>OAuth Client ID</label><input type="text" id="client-id" placeholder="…apps.googleusercontent.com"></div>
+    <button class="conn-btn" id="connect-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <div class="conn-field"><label>Anthropic API Key (for auto-reading PDFs)</label><input type="password" id="anth-key" placeholder="sk-ant-… (optional)"></div>
+    <div class="conn-field"><label>Claude model</label>
+      <select id="anth-model">
+        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (cheap)</option>
+        <option value="claude-sonnet-4-6" selected>Sonnet 4.6</option>
+        <option value="claude-opus-4-8">Opus 4.8</option>
+      </select>
+    </div>
+    <button class="conn-btn" onclick="saveSettings()">💾 Save</button>
+  </div>
+</div>
+
+<div id="content">
+  <div id="notes">
+    Searches Gmail for <b>inspection reports</b> from outside vendors (Convergint, Martinez Fire), reads each PDF to guess <b>property / system / date</b>, and (on your OK) uploads them to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so they show on the
+    <a href="inspection-audit.html">audit page</a>. Invoices are auto-flagged and skipped. <b>Nothing is uploaded until you click Import.</b>
+  </div>
+
+  <div id="controls">
+    <label>Gmail search</label>
+    <input type="text" id="gmail-query" value="from:(convergint.com OR martinezfireprotection.com) has:attachment filename:pdf newer_than:18m">
+    <label>Max</label><input type="number" id="max-results" value="40" min="1" max="100">
+    <button class="btn btn-primary" id="search-btn" onclick="runSearch()">🔍 Search</button>
+    <button class="btn btn-green" id="import-btn" onclick="importSelected()" disabled>📥 Import selected to Drive</button>
+    <button class="btn btn-grey" onclick="toggleInvoices()" id="toggle-inv-btn">Show invoices</button>
+  </div>
+
+  <div id="progress"></div>
+
+  <div id="table-wrap">
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="check-all" onclick="toggleAll(this.checked)"></th>
+        <th>Kind</th><th>From / Date</th><th>Subject / File</th>
+        <th>Property</th><th>System</th><th>Insp. date</th><th>New filename</th><th>Status</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty">Connect Google, then click Search.</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-google-fetch.js"></script>
+<script>
+// ── Constants ──────────────────────────────────────────────
+const SHEET_ID          = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const CLIENT_LIST_GID   = '1899870347';
+const REPORTS_FOLDER_ID = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg';   // FLPS Software › FLPS Inspection Reports
+const ANTH_KEY_LS       = 'flips_anth_key';
+const ANTH_MODEL_LS     = 'flips_anth_model';
+const CACHE_LS          = 'flips_import_reports_v1';
+const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets.readonly';
+
+// System options — `slug` matches the audit page's sysFromFile so imported files classify.
+const SYSTEMS = [
+  { key:'fire-alarm',    slug:'fire_alarm',    label:'Fire Alarm' },
+  { key:'sprinkler',     slug:'sprinkler',     label:'Sprinkler (annual)' },
+  { key:'internal-pipe', slug:'internal_pipe', label:'5-Yr Internal Pipe' },
+  { key:'fdc-hydro',     slug:'fdc',           label:'5-Yr FDC Hydrostatic' },
+  { key:'standpipe',     slug:'standpipe',     label:'Standpipe' },
+  { key:'fire-pump',     slug:'fire_pump',     label:'Fire Pump' },
+  { key:'backflow',      slug:'backflow',      label:'Backflow' },
+  { key:'extinguisher',  slug:'extinguisher',  label:'Extinguisher' },
+  { key:'hood',          slug:'hood',          label:'Kitchen Hood' },
+  { key:'jockey-pump',   slug:'jockey',        label:'Jockey Pump' },
+  { key:'other',         slug:'report',        label:'Other / Unknown' },
+];
+const SLUG_BY_KEY = Object.fromEntries(SYSTEMS.map(s => [s.key, s.slug]));
+
+let accessToken = null, tokenClient = null;
+let properties = [];          // [{name, addr, acct, toks}]
+let rows = [];                // table rows
+let cache = {};               // { 'msgId:attId': parsed }
+let existingNames = null;     // Set of filenames already in the reports folder
+let showInvoices = false;
+
+// ── Nav / drawer / toast ───────────────────────────────────
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open'); });
+function toggleDrawer() { document.getElementById('conn-drawer').classList.toggle('open'); }
+function setStatus(msg, cls) {
+  const el = document.getElementById('conn-status');
+  el.textContent = cls === 'ok' ? '✓ Google connected' : msg;
+  el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn');
+  if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open');
+}
+function setProgress(msg, cls) { const el = document.getElementById('progress'); el.textContent = msg; el.className = cls || ''; }
+function toast(msg) { const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 3000); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
+
+function saveSettings() {
+  const k = document.getElementById('anth-key').value.trim();
+  if (k) localStorage.setItem(ANTH_KEY_LS, k);
+  localStorage.setItem(ANTH_MODEL_LS, document.getElementById('anth-model').value);
+  toast('✓ Settings saved');
+}
+
+// ── Auth ───────────────────────────────────────────────────
+function initGoogle() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey);
+  localStorage.setItem('flips_client_id', clientId);
+  setStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55*60*1000);
+        setStatus('✓ Connected', 'ok');
+        _scheduleTokenRefresh();
+        loadProperties();
+      },
+      error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });   // gmail+drive scopes need consent
+  } catch(e) { setStatus('✗ ' + e.message, 'err'); }
+}
+
+// ── Property list (for the property dropdown + fuzzy match) ──
+const STOP = new Set(['the','and','llc','inc','of','co','company','corp','ltd','at','ste','suite','unit']);
+function toks(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(t => t.length >= 3 && !STOP.has(t)); }
+
+async function loadProperties() {
+  try {
+    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`);
+    const meta = await metaRes.json();
+    let tab = meta.sheets[0].properties.title;
+    for (const s of meta.sheets) if (String(s.properties.sheetId) === String(CLIENT_LIST_GID)) { tab = s.properties.title; break; }
+    const valRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tab)}`);
+    const data = (await valRes.json()).values || [];
+    if (data.length < 2) return;
+    const H = data[0].map(h => (h||'').trim().toLowerCase());
+    let iName = H.findIndex(h => h.includes('property name') || h.includes('site name'));
+    if (iName < 0) iName = H.findIndex(h => h.includes('property')); if (iName < 0) iName = 0;
+    let iAddr = H.findIndex(h => h.includes('service address')); if (iAddr < 0) iAddr = H.findIndex(h => (h.includes('address')||h.includes('street')) && !h.includes('billing'));
+    let iAcct = H.findIndex(h => h.includes('acct') || (h.includes('account') && h.includes('number'))); if (iAcct < 0) iAcct = H.findIndex(h => h.includes('account'));
+    properties = [];
+    for (let i = 1; i < data.length; i++) {
+      const r = data[i];
+      const name = (iName>=0 ? r[iName] : '').trim();
+      if (!name) continue;
+      const addr = (iAddr>=0 ? (r[iAddr]||'') : '').trim();
+      properties.push({ name, addr, acct: (iAcct>=0?(r[iAcct]||''):'').trim(), toks: toks(name + ' ' + addr) });
+    }
+    properties.sort((a,b) => a.name.localeCompare(b.name));
+    setProgress(`Loaded ${properties.length} properties. Ready to search.`);
+  } catch(e) { console.warn('loadProperties', e); setProgress('⚠ Could not load property list: ' + e.message, 'err'); }
+}
+
+function matchProperty(text) {
+  const t = toks(text);
+  if (!t.length || !properties.length) return null;
+  let best = null, bestScore = 0;
+  properties.forEach(p => {
+    if (!p.toks.length) return;
+    const inter = p.toks.filter(x => t.includes(x)).length;
+    const score = inter / p.toks.length;
+    if (score > bestScore) { bestScore = score; best = p; }
+  });
+  return bestScore >= 0.5 ? best : null;
+}
+
+// ── Gmail search ───────────────────────────────────────────
+function loadCache() { try { cache = JSON.parse(localStorage.getItem(CACHE_LS) || '{}'); } catch(_) { cache = {}; } }
+function saveCache() { try { localStorage.setItem(CACHE_LS, JSON.stringify(cache)); } catch(_){} }
+
+async function runSearch() {
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  if (!properties.length) await loadProperties();
+  const q = document.getElementById('gmail-query').value.trim();
+  const max = Math.min(100, parseInt(document.getElementById('max-results').value) || 40);
+  const btn = document.getElementById('search-btn'); btn.disabled = true;
+  rows = []; renderTable(); setProgress('Searching Gmail…');
+  try {
+    const listRes = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(q)}&maxResults=${max}`);
+    if (!listRes.ok) throw new Error('Gmail list HTTP ' + listRes.status);
+    const msgs = (await listRes.json()).messages || [];
+    if (!msgs.length) { setProgress('No messages found.', 'done'); btn.disabled = false; return; }
+    const anthKey = localStorage.getItem(ANTH_KEY_LS) || '';
+    for (let i = 0; i < msgs.length; i++) {
+      setProgress(`Processing message ${i+1}/${msgs.length} — ${rows.length} attachment(s) found…`);
+      try {
+        const detail = await fetchMessageDetail(msgs[i].id);
+        const pdfs = findAllPdfs(detail.payload);
+        for (const pdf of pdfs) {
+          await addRow(msgs[i].id, detail, pdf, anthKey);
+          renderTable();
+        }
+      } catch(e) { console.error('msg', msgs[i].id, e); }
+    }
+    setProgress(`Done. ${rows.filter(r=>r.kind!=='invoice').length} report(s), ${rows.filter(r=>r.kind==='invoice').length} invoice(s).`, 'done');
+    refreshImportBtn();
+  } catch(e) { setProgress('Error: ' + e.message, 'err'); }
+  finally { btn.disabled = false; }
+}
+
+async function fetchMessageDetail(id) {
+  const res = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`);
+  if (!res.ok) throw new Error('Gmail detail HTTP ' + res.status);
+  const j = await res.json();
+  const headers = j.payload?.headers || [];
+  const h = (n) => (headers.find(x => x.name.toLowerCase() === n.toLowerCase())?.value) || '';
+  j._from = h('From'); j._subject = h('Subject'); j._date = h('Date');
+  return j;
+}
+function findAllPdfs(part, out) {
+  out = out || [];
+  if (!part) return out;
+  if (part.filename && /\.pdf$/i.test(part.filename) && part.body?.attachmentId) out.push(part);
+  if (part.parts) part.parts.forEach(p => findAllPdfs(p, out));
+  return out;
+}
+function b64UrlToB64(s) { return s.replace(/-/g,'+').replace(/_/g,'/') + '=='.slice(0, (4 - s.length % 4) % 4); }
+
+function looksLikeInvoice(subject, filename) {
+  return /invoice|statement|past due|rate change|\bw-?9\b|certificate of insurance|\bcoi\b|quote|screwdriver|\bIN00\d|\bSI2\d/i.test((subject||'') + ' ' + (filename||''));
+}
+function vendorFromEmail(from) {
+  if (/convergint/i.test(from)) return 'Convergint';
+  if (/martinez/i.test(from)) return 'Martinez';
+  const m = from.match(/@([\w.\-]+)/); return m ? m[1].split('.')[0] : 'vendor';
+}
+function guessSystem(text) {
+  const t = (text||'').toLowerCase();
+  if (/internal (pipe|assessment|obstruction)|5.?year internal|internal inspection/.test(t)) return 'internal-pipe';
+  if (/\bfdc\b|hydrostatic|hydro ?test/.test(t)) return 'fdc-hydro';
+  if (/backflow/.test(t)) return 'backflow';
+  if (/standpipe/.test(t)) return 'standpipe';
+  if (/fire ?pump/.test(t)) return 'fire-pump';
+  if (/jockey/.test(t)) return 'jockey-pump';
+  if (/sprinkler|wet|dry/.test(t)) return 'sprinkler';
+  if (/fire ?alarm|\bfa\b|detection/.test(t)) return 'fire-alarm';
+  if (/exting/.test(t)) return 'extinguisher';
+  if (/hood|kitchen|ansul/.test(t)) return 'hood';
+  return 'other';
+}
+function toISO(d) {
+  if (!d) return '';
+  const m = String(d).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${m[3]}-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;
+  const iso = String(d).match(/(\d{4})-(\d{2})-(\d{2})/); if (iso) return iso[0];
+  const dt = new Date(d); return isNaN(dt) ? '' : dt.toISOString().slice(0,10);
+}
+
+async function addRow(msgId, detail, pdf, anthKey) {
+  const attId = pdf.body.attachmentId;
+  const cacheKey = msgId + ':' + attId;
+  let parsed = cache[cacheKey];
+
+  const invoiceGuess = looksLikeInvoice(detail._subject, pdf.filename);
+
+  if (!parsed) {
+    parsed = {};
+    // Only spend Claude on likely reports (skip obvious invoices) when a key is set.
+    if (anthKey && !invoiceGuess) {
+      try {
+        const attRes = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}/attachments/${attId}`);
+        const b64 = b64UrlToB64((await attRes.json()).data);
+        parsed = await readReportWithClaude(b64, anthKey, detail._subject, detail._from, pdf.filename);
+        parsed._b64 = b64;   // keep bytes so import doesn't refetch
+      } catch(e) { console.warn('claude', e); parsed = { _err: e.message }; }
+    }
+    cache[cacheKey] = { ...parsed }; delete cache[cacheKey]._b64;  // don't persist big bytes
+    saveCache();
+  }
+
+  const isInvoice = parsed.isInspectionReport === false || (parsed.isInspectionReport === undefined && invoiceGuess);
+  const sysKey = parsed.system && SLUG_BY_KEY[parsed.system] ? parsed.system : guessSystem((parsed.summary||'') + ' ' + detail._subject + ' ' + pdf.filename);
+  const propText = ((parsed.properties || []).join(' ') + ' ' + (parsed.property||'') + ' ' + detail._subject);
+  const matched = matchProperty(propText || detail._subject);
+  const date = toISO(parsed.inspectionDate) || toISO(detail._date);
+
+  rows.push({
+    msgId, attId, cacheKey,
+    from: detail._from, date: detail._date, subject: detail._subject, filename: pdf.filename,
+    vendor: parsed.vendor || vendorFromEmail(detail._from),
+    kind: isInvoice ? 'invoice' : (parsed.isInspectionReport ? 'report' : 'unsure'),
+    propName: matched ? matched.name : '',
+    sysKey, date,
+    b64: parsed._b64 || null,
+    status: '', imported: false,
+  });
+}
+
+async function readReportWithClaude(b64, anthKey, subject, from, filename) {
+  const model = localStorage.getItem(ANTH_MODEL_LS) || 'claude-sonnet-4-6';
+  const sys = "You classify and extract fields from PDFs a fire-life-safety company receives by email. " +
+    "Some are inspection/test REPORTS from outside fire vendors (Convergint, Martinez Fire); others are invoices, statements, quotes, or insurance certs. " +
+    "Return ONLY one JSON object, no prose, no code fences.";
+  const user =
+    "Return JSON with EXACTLY these keys:\n{\n" +
+    '  "isInspectionReport": boolean,   // true ONLY if this is an inspection/test report (not an invoice/quote/statement/COI)\n' +
+    '  "vendor": string,                // e.g. "Convergint" or "Martinez"\n' +
+    '  "property": string,              // building name and/or service address the report is for\n' +
+    '  "system": string,                // ONE of: fire-alarm, sprinkler, internal-pipe, fdc-hydro, standpipe, fire-pump, backflow, extinguisher, hood, jockey-pump, other\n' +
+    '  "inspectionDate": string,        // date the inspection/test was performed, MM/DD/YYYY, else ""\n' +
+    '  "summary": string                // short note on what it is\n}\n\n' +
+    `Email subject: ${subject||'(none)'}\nEmail from: ${from||''}\nAttachment filename: ${filename||''}\n` +
+    "For 5-year NFPA-25 work: 'internal pipe assessment' → internal-pipe; 'FDC hydrostatic' → fdc-hydro.";
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens: 700, system: sys, messages: [{ role:'user', content: [
+      { type:'document', source:{ type:'base64', media_type:'application/pdf', data: b64 } },
+      { type:'text', text: user }
+    ]}]})
+  });
+  if (!res.ok) throw new Error('Claude HTTP ' + res.status + ': ' + (await res.text()).slice(0,150));
+  const txt = (await res.json()).content?.[0]?.text || '';
+  const cleaned = txt.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+  try { return JSON.parse(cleaned); } catch(_) { const m = cleaned.match(/\{[\s\S]*\}/); if (m) return JSON.parse(m[0]); throw new Error('non-JSON from Claude'); }
+}
+
+// ── Render ─────────────────────────────────────────────────
+function propSlug(p) { return ((p?.name||'') + ' ' + (p?.addr||'')).replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,60); }
+function buildFilename(row) {
+  const p = properties.find(x => x.name === row.propName);
+  const ps = p ? propSlug(p) : 'Unknown';
+  const slug = SLUG_BY_KEY[row.sysKey] || 'report';
+  const v = (row.vendor || 'vendor').replace(/[^a-zA-Z0-9]+/g,'');
+  const d = row.date || 'nodate';
+  return `EXT_${v}_${slug}_${ps}_${d}.pdf`;
+}
+
+function renderTable() {
+  const tb = document.getElementById('tbody');
+  const visible = rows.filter(r => showInvoices || r.kind !== 'invoice');
+  document.getElementById('empty').style.display = visible.length ? 'none' : 'block';
+  tb.innerHTML = visible.map(r => {
+    const idx = rows.indexOf(r);
+    const kindCls = r.kind === 'report' ? 'report' : r.kind === 'invoice' ? 'invoice' : 'unsure';
+    const propOpts = '<option value="">— pick property —</option>' +
+      properties.map(p => `<option value="${escAttr(p.name)}"${p.name===r.propName?' selected':''}>${escHtml(p.name)}</option>`).join('');
+    const sysOpts = SYSTEMS.map(s => `<option value="${s.key}"${s.key===r.sysKey?' selected':''}>${escHtml(s.label)}</option>`).join('');
+    const canImport = r.kind !== 'invoice';
+    return `<tr class="${r.imported ? 'imported' : r.kind==='invoice' ? 'invoice' : 'report'}">
+      <td>${canImport ? `<input type="checkbox" class="row-chk" data-i="${idx}" ${r.imported?'disabled':''} ${r._checked?'checked':''} onchange="onCheck(${idx}, this.checked)">` : ''}</td>
+      <td><span class="kind ${kindCls}">${r.kind}</span></td>
+      <td><div class="cell-from">${escHtml(r.vendor)}</div><div class="cell-from">${escHtml((r.date||'').replace(/\s*\(.*\)$/,'').slice(0,16))}</div></td>
+      <td class="cell-subj"><span class="s" title="${escAttr(r.subject)}">${escHtml(r.subject)}</span><span class="f">${escHtml(r.filename)}</span></td>
+      <td><select class="prop-sel" onchange="setField(${idx},'propName',this.value)">${propOpts}</select></td>
+      <td><select class="sys-sel" onchange="setField(${idx},'sysKey',this.value)">${sysOpts}</select></td>
+      <td><input class="date-in" type="date" value="${escAttr(r.date)}" onchange="setField(${idx},'date',this.value)"></td>
+      <td><span class="fname">${escHtml(buildFilename(r))}</span></td>
+      <td><span class="row-status ${r._statusCls||''}">${r.imported ? '✓ imported' : (r.status||'')}</span></td>
+    </tr>`;
+  }).join('');
+  refreshImportBtn();
+}
+function setField(i, k, v) { rows[i][k] = v; renderTable(); }
+function onCheck(i, c) { rows[i]._checked = c; refreshImportBtn(); }
+function toggleAll(c) { rows.forEach(r => { if (r.kind !== 'invoice' && !r.imported) r._checked = c; }); renderTable(); }
+function toggleInvoices() { showInvoices = !showInvoices; document.getElementById('toggle-inv-btn').textContent = showInvoices ? 'Hide invoices' : 'Show invoices'; renderTable(); }
+function refreshImportBtn() {
+  const n = rows.filter(r => r._checked && !r.imported).length;
+  const b = document.getElementById('import-btn');
+  b.disabled = n === 0; b.textContent = n ? `📥 Import ${n} to Drive` : '📥 Import selected to Drive';
+}
+
+// ── Import → Drive ─────────────────────────────────────────
+async function importSelected() {
+  const picked = rows.filter(r => r._checked && !r.imported);
+  if (!picked.length) return;
+  // Validate
+  for (const r of picked) {
+    if (!r.propName) { toast('⚠ Pick a property for every selected row first'); return; }
+    if (!r.date) { toast('⚠ Set an inspection date for every selected row'); return; }
+  }
+  if (existingNames === null) await loadExistingNames();
+  const btn = document.getElementById('import-btn'); btn.disabled = true;
+  let done = 0, skipped = 0, failed = 0;
+  for (let i = 0; i < picked.length; i++) {
+    const r = picked[i];
+    r.status = 'uploading…'; r._statusCls = ''; renderTable();
+    setProgress(`Importing ${i+1}/${picked.length}…`);
+    try {
+      const fname = buildFilename(r);
+      if (existingNames.has(fname.toLowerCase())) { r.status = 'already in Drive'; r.imported = true; skipped++; renderTable(); continue; }
+      let b64 = r.b64;
+      if (!b64) {
+        const attRes = await apiFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${r.msgId}/attachments/${r.attId}`);
+        if (!attRes.ok) throw new Error('attach HTTP ' + attRes.status);
+        b64 = b64UrlToB64((await attRes.json()).data);
+      }
+      await driveUpload(fname, b64, REPORTS_FOLDER_ID);
+      existingNames.add(fname.toLowerCase());
+      r.status = '✓ uploaded'; r._statusCls = 'ok'; r.imported = true; done++;
+    } catch(e) { console.error('import', e); r.status = '✗ ' + e.message.slice(0,40); r._statusCls = 'err'; failed++; }
+    renderTable();
+  }
+  setProgress(`Imported ${done}, skipped ${skipped} (already there)${failed?`, ${failed} failed`:''}.`, failed ? 'err' : 'done');
+  toast(`✓ Imported ${done} report(s) to Drive`);
+  btn.disabled = false; refreshImportBtn();
+}
+
+async function loadExistingNames() {
+  existingNames = new Set();
+  let pageToken = '';
+  try {
+    do {
+      const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${REPORTS_FOLDER_ID}' in parents and trashed=false`)}&fields=nextPageToken,files(name)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true` + (pageToken?`&pageToken=${pageToken}`:''));
+      const j = await res.json();
+      (j.files||[]).forEach(f => existingNames.add((f.name||'').toLowerCase()));
+      pageToken = j.nextPageToken || '';
+    } while (pageToken);
+  } catch(e) { console.warn('loadExistingNames', e); }
+}
+
+async function driveUpload(name, base64, folderId) {
+  const boundary = 'flips_up_' + Date.now();
+  const meta = { name, parents: [folderId] };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` + JSON.stringify(meta) + `\r\n` +
+    `--${boundary}\r\nContent-Type: application/pdf\r\nContent-Transfer-Encoding: base64\r\n\r\n` + base64 + `\r\n--${boundary}--`;
+  let res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name', {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': `multipart/related; boundary="${boundary}"` }, body
+  });
+  if (res.status === 401) { try { await refreshAccessToken(); } catch(_){}
+    res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': `multipart/related; boundary="${boundary}"` }, body }); }
+  if (!res.ok) throw new Error('Drive ' + res.status + ': ' + (await res.text()).slice(0,120));
+  return res.json();
+}
+
+// ── On load ────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  loadCache();
+  const k = localStorage.getItem('flips_api_key'), c = localStorage.getItem('flips_client_id');
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
+  const ak = localStorage.getItem(ANTH_KEY_LS); if (ak) document.getElementById('anth-key').value = ak;
+  const am = localStorage.getItem(ANTH_MODEL_LS); if (am) document.getElementById('anth-model').value = am;
+  if (!k || !c) { document.getElementById('conn-drawer').classList.add('open'); return; }
+  const cachedToken = localStorage.getItem('flips_access_token');
+  const tokenExpiry = parseInt(localStorage.getItem('flips_token_expiry') || '0');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: c, scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55*60*1000);
+        setStatus('✓ Connected', 'ok'); _scheduleTokenRefresh(); loadProperties();
+      },
+      error_callback: () => { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); }
+    });
+  } catch(e) { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); return; }
+  if (cachedToken && Date.now() < tokenExpiry) {
+    accessToken = cachedToken; setStatus('✓ Connected', 'ok'); _scheduleTokenRefresh(); loadProperties();
+  } else {
+    setStatus('⏳ Reconnecting…', ''); tokenClient.requestAccessToken({ prompt: '' });
+  }
+});
+</script>
+</body>
+</html>
