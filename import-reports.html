@@ -72,7 +72,8 @@ tbody tr.report td { }
 .clickable { cursor: pointer; }
 .clickable:hover .s, .clickable:hover .f, .clickable:hover { color: #1a73e8; }
 .clickable:hover .s { text-decoration: underline; }
-select.prop-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 230px; }
+input.prop-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; width: 230px; max-width: 230px; box-sizing: border-box; }
+input.prop-sel.prop-unmatched { border-color: #dc2626; background: #fef2f2; }
 select.sys-sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 210px; }
 input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; width: 120px; }
 .fname { font-size: 0.68rem; color: #2e6da4; font-family: monospace; word-break: break-all; max-width: 260px; }
@@ -188,6 +189,7 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
+    <datalist id="prop-options"></datalist>
     <div id="empty">Connect Google, then click Search.</div>
   </div>
 </div>
@@ -342,8 +344,17 @@ async function loadProperties() {
       properties.push({ name, addr, acct: (iAcct>=0?(r[iAcct]||''):'').trim(), toks: toks(name + ' ' + addr) });
     }
     properties.sort((a,b) => a.name.localeCompare(b.name));
+    buildPropDatalist();
     setProgress(`Loaded ${properties.length} properties. Ready to search.`);
   } catch(e) { console.warn('loadProperties', e); setProgress('⚠ Could not load property list: ' + e.message, 'err'); }
+}
+
+// Shared options list backing every row's type-to-filter property input.
+function buildPropDatalist() {
+  const dl = document.getElementById('prop-options');
+  if (!dl) return;
+  dl.innerHTML = properties.map(p =>
+    `<option value="${escAttr(p.name)}">${escAttr(p.addr || '')}</option>`).join('');
 }
 
 function matchProperty(text) {
@@ -597,8 +608,7 @@ function renderTable() {
   tb.innerHTML = visible.map(r => {
     const idx = rows.indexOf(r);
     const kindCls = r.kind === 'report' ? 'report' : r.kind === 'invoice' ? 'invoice' : 'unsure';
-    const propOpts = '<option value="">— pick property —</option>' +
-      properties.map(p => `<option value="${escAttr(p.name)}"${p.name===r.propName?' selected':''}>${escHtml(p.name)}</option>`).join('');
+    const propUnmatched = r.propName && !properties.some(p => p.name === r.propName);
     const sysOpts = SYSTEMS.map(s => `<option value="${s.key}"${s.key===r.sysKey?' selected':''}>${escHtml(s.label)}</option>`).join('');
     const freqOpts = FREQS.map(f => `<option value="${escAttr(f)}"${f===(r.freq||'')?' selected':''}>${escHtml(f)}</option>`).join('');
     const canImport = r.kind !== 'invoice';
@@ -609,7 +619,7 @@ function renderTable() {
       <td><span class="kind ${kindCls}">${r.kind}</span>${r._dup ? '<div class="dup-tag">copy</div>' : ''}</td>
       <td class="clickable" onclick="openPdf(${idx})" title="Open this PDF to verify"><div class="cell-from">${escHtml(r.vendor)}</div><div class="cell-from">${escHtml((r.date||'').replace(/\s*\(.*\)$/,'').slice(0,16))}</div></td>
       <td class="cell-subj clickable" onclick="openPdf(${idx})" title="Open this PDF to verify before importing"><span class="s">${escHtml(r.subject)}</span><span class="f">📄 ${escHtml(r.filename)}</span></td>
-      <td><select class="prop-sel" onchange="setField(${idx},'propName',this.value)">${propOpts}</select></td>
+      <td><input class="prop-sel${propUnmatched?' prop-unmatched':''}" list="prop-options" value="${escAttr(r.propName||'')}" placeholder="🔍 Type to filter…" title="${propUnmatched?'No matching property — pick one from the list':'Type to filter the property list, then pick a match'}" onchange="setPropName(${idx}, this.value)"></td>
       <td><select class="sys-sel" onchange="setField(${idx},'sysKey',this.value)">${sysOpts}</select></td>
       <td><select class="sys-sel" onchange="setField(${idx},'freq',this.value)">${freqOpts}</select></td>
       <td><input class="date-in" type="text" value="${escAttr(r.date)}" placeholder="MM/DD/YYYY" title="Type MM/DD/YYYY or YYYY-MM-DD — normalized when you click away" onchange="setDate(${idx}, this.value)"></td>
@@ -620,6 +630,15 @@ function renderTable() {
   refreshImportBtn();
 }
 function setField(i, k, v) { rows[i][k] = v; renderTable(); }
+// Property is a type-to-filter combobox (datalist). Normalize the typed text to
+// the canonical property name (case-insensitive) so buildFilename can match it;
+// an unmatched value is kept as-is and flagged red in renderTable.
+function setPropName(i, v) {
+  const typed = (v || '').trim();
+  const exact = properties.find(p => p.name.toLowerCase() === typed.toLowerCase());
+  rows[i].propName = exact ? exact.name : typed;
+  renderTable();
+}
 // Date is a free-type text field (fires only on blur, so you can type the whole
 // thing). Normalize MM/DD/YYYY or YYYY-MM-DD to ISO; keep raw text if unparseable.
 function setDate(i, v) {
@@ -656,6 +675,7 @@ async function importSelected() {
   // Validate
   for (const r of picked) {
     if (!r.propName) { toast('⚠ Pick a property for every selected row first'); return; }
+    if (!properties.some(p => p.name === r.propName)) { toast(`⚠ "${r.propName}" isn't in the property list — pick a match from the dropdown`); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) { toast('⚠ Enter a valid date (MM/DD/YYYY or YYYY-MM-DD) for every selected row'); return; }
   }
   if (existingNames === null) await loadExistingNames();
