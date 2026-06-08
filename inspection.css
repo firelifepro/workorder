@@ -452,10 +452,24 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   background: white; color: var(--navy); font-size: 0.85rem;
 }
 .hood-ident-input::placeholder { color: #aaa; }
-.hood-exclude-label {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 0.72rem; color: rgba(255,255,255,0.8); cursor: pointer; white-space: nowrap;
+/* Hoods-on-file include picker (repeat inspections) */
+#hood-picker {
+  border: 1.5px solid var(--border); border-radius: 8px;
+  background: var(--light); padding: 10px 12px; margin-bottom: 12px;
 }
+.hood-picker-title {
+  font-size: 0.72rem; font-weight: 700; color: var(--slate);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;
+}
+.hood-picker-list { display: flex; flex-direction: column; gap: 4px; }
+.hood-picker-item {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 8px; background: white; border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer; font-size: 0.82rem;
+}
+.hood-picker-item input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; }
+.hood-picker-name { font-weight: 600; color: var(--navy); }
+.hood-picker-sub { font-size: 0.7rem; color: var(--slate); margin-left: auto; white-space: nowrap; }
 .hood-delete-btn {
   background: rgba(220,38,38,0.7); color: white; border: none; border-radius: 4px;
   padding: 3px 8px; font-size: 0.75rem; cursor: pointer; line-height: 1.4;

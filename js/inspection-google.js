@@ -600,14 +600,13 @@ function initHoodPanel() {
   _hoodApplianceCounts = {};
 
   const savedHoods = (_propertyProfile && _propertyProfile.hoodIdentifiers) || [];
+  renderHoodPicker(savedHoods);
   if (savedHoods.length === 0) {
     addHoodCard('', null, false);
   } else {
-    savedHoods.forEach(identifier => {
-      const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
-      const prev = lastByHood[identifier] || null;
-      addHoodCard(identifier, prev, false);
-    });
+    // Include all hoods on file by default; the picker lets the inspector
+    // uncheck any that aren't part of this visit.
+    savedHoods.forEach(identifier => addSavedHoodCard(identifier));
   }
 }
 
@@ -640,7 +639,9 @@ function _buildFreshGenericInspection() {
   overallStatusUserSet = false;
   document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
   const rtEl = document.getElementById('report-type');
-  if (rtEl) rtEl.value = 'Annual';
+  // Kitchen hoods are inspected semi-annually by default (per NFPA 96 / company practice);
+  // everything else defaults to Annual. User can still override on step 4.
+  if (rtEl) rtEl.value = (activeInspectionSystem === 'hood') ? 'Semi-Annual' : 'Annual';
   const container = document.getElementById('sys-forms');
   container.innerHTML = '';
 

@@ -692,6 +692,7 @@ function buildHoodPanel() {
   div.id = 'hood-section';
   div.innerHTML = `
     <div style="font-size:0.82rem;font-weight:700;color:var(--navy);margin-bottom:12px;">🍳 Kitchen Hoods — add all hoods at this property</div>
+    <div id="hood-picker" style="display:none;"></div>
     <div id="hood-cards-container"></div>
     <button class="add-row-btn" onclick="addHoodCard('',null,false)" style="white-space:nowrap;margin-top:10px;">+ Add Hood</button>`;
   return div;
@@ -725,11 +726,7 @@ function addHoodCard(identifier, prefill, excluded) {
         placeholder="e.g. Main Hood, Line 1, Southwest Hood"
         oninput="updateHoodListEntry(${id})">
       ${prevInfo}
-      <label class="hood-exclude-label">
-        <input type="checkbox" id="hood-exclude-${id}" onchange="toggleHoodExclusion(${id})" ${excluded ? 'checked' : ''}>
-        Exclude
-      </label>
-      <button class="hood-delete-btn" onclick="removeHoodCard(${id})" title="Delete this hood">✕</button>
+      <button class="hood-delete-btn" onclick="removeHoodCard(${id})" title="Remove this hood from this inspection">✕</button>
       <button class="hood-collapse-btn" onclick="toggleHoodCardBody(${id})">▼</button>
     </div>
     <div class="hood-card-body" id="hood-card-body-${id}">
@@ -748,10 +745,17 @@ function addHoodCard(identifier, prefill, excluded) {
 }
 
 function removeHoodCard(id) {
+  const entry = activeHoodList.find(h => h.id === id);
   document.getElementById(`hood-card-${id}`)?.remove();
   const idx = activeHoodList.findIndex(h => h.id === id);
   if (idx !== -1) activeHoodList.splice(idx, 1);
   delete _hoodApplianceCounts[id];
+  // Keep the "hoods on file" picker checkbox in sync when a card is deleted
+  if (entry && entry.identifier) {
+    document.querySelectorAll('#hood-picker input[type=checkbox]').forEach(cb => {
+      if (cb.dataset.hoodIdf === entry.identifier) cb.checked = false;
+    });
+  }
 }
 
 function updateHoodListEntry(id) {
@@ -759,12 +763,51 @@ function updateHoodListEntry(id) {
   if (entry) entry.identifier = document.getElementById(`hood-ident-${id}`)?.value || '';
 }
 
-function toggleHoodExclusion(id) {
-  const card = document.getElementById(`hood-card-${id}`);
-  const checked = document.getElementById(`hood-exclude-${id}`)?.checked;
-  if (card) card.classList.toggle('excluded', !!checked);
-  const entry = activeHoodList.find(h => h.id === id);
-  if (entry) entry.excluded = !!checked;
+// ─── HOODS-ON-FILE INCLUDE PICKER ─────────────────────────────────────────────
+// On repeat inspections we know the hoods at this property (from the property
+// profile). Show them as a checklist so the inspector picks which to include in
+// THIS inspection, rather than excluding ones that don't apply. Unchecked hoods
+// stay on file (and keep their saved appliances) for next time.
+function renderHoodPicker(savedHoods) {
+  const picker = document.getElementById('hood-picker');
+  if (!picker) return;
+  if (!savedHoods || savedHoods.length === 0) { picker.innerHTML = ''; picker.style.display = 'none'; return; }
+  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
+  picker.style.display = '';
+  picker.innerHTML = `
+    <div class="hood-picker-title">Hoods on file — check the ones to include in this inspection</div>
+    <div class="hood-picker-list">
+      ${savedHoods.map(idf => {
+        const prev = lastByHood[idf] || null;
+        const appN = prev && prev.appliances ? prev.appliances.length : 0;
+        const meta = prev
+          ? `Last: ${prev.date || '—'}${appN ? ` · ${appN} appliance${appN === 1 ? '' : 's'}` : ''}`
+          : 'No prior data';
+        const safe = String(idf).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        return `<label class="hood-picker-item">
+          <input type="checkbox" checked data-hood-idf="${safe}" onchange="toggleHoodInclude(this)">
+          <span class="hood-picker-name">${safe || '(unnamed hood)'}</span>
+          <span class="hood-picker-sub">${meta}</span>
+        </label>`;
+      }).join('')}
+    </div>`;
+}
+
+// Adds a hood card pre-filled from the property profile (fields + appliances).
+function addSavedHoodCard(identifier) {
+  const lastByHood = (_propertyProfile && _propertyProfile.lastInspByHood) || {};
+  addHoodCard(identifier, lastByHood[identifier] || null, false);
+}
+
+// Toggle a hood in/out of this inspection from the picker checkbox.
+function toggleHoodInclude(cb) {
+  const identifier = cb.dataset.hoodIdf;
+  if (cb.checked) {
+    if (!activeHoodList.some(h => h.identifier === identifier)) addSavedHoodCard(identifier);
+  } else {
+    const entry = activeHoodList.find(h => h.identifier === identifier);
+    if (entry) removeHoodCard(entry.id);
+  }
 }
 
 function toggleHoodCardBody(id) {

@@ -161,6 +161,8 @@ async function clearDraftFromDrive(key) {
 
 function saveDraft() {
   if (!activeInspectionSystem) return;
+  // Any save resets the debounce window so we don't save again moments later.
+  if (typeof cancelAutosave === 'function') cancelAutosave();
   // Sync current input values into HTML attributes so innerHTML captures them
   const allStepIds = ['step-fa-panel','step-fa-devices','step-fa-aux','step-fa-defic',
                       'step-sp-overview','step-sp-inspection','step-sp-drain','step-sp-defic'];
@@ -261,6 +263,41 @@ function saveDraft() {
   }
   // Background Drive backup — does not block the UI
   saveDraftToDrive(draft, key).catch(() => {});
+}
+
+// ─── DEBOUNCED AUTOSAVE ───────────────────────────────────────────────────────
+// Saves the draft ~30s after the last input change, so free-text typing that
+// doesn't trigger a step/deficiency save is still captured. saveDraft() itself
+// no-ops if no system is active, so this is safe to schedule unconditionally.
+let _autosaveTimer = null;
+const AUTOSAVE_DELAY_MS = 30000;
+
+function scheduleAutosave() {
+  if (!activeInspectionSystem) return;
+  if (_autosaveTimer) clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(() => {
+    _autosaveTimer = null;
+    saveDraft();
+  }, AUTOSAVE_DELAY_MS);
+}
+
+// Cancel a pending autosave (call after any explicit saveDraft so we don't
+// double-save right after a step transition or button-triggered save).
+function cancelAutosave() {
+  if (_autosaveTimer) { clearTimeout(_autosaveTimer); _autosaveTimer = null; }
+}
+
+function installAutosave() {
+  ['input', 'change'].forEach(evt => {
+    document.addEventListener(evt, (e) => {
+      const t = e.target;
+      if (!t) return;
+      // Only react to real form fields the user edits
+      if (t.matches && t.matches('input:not([type=button]):not([type=submit]), textarea, select')) {
+        scheduleAutosave();
+      }
+    }, true);
+  });
 }
 
 function loadDraft() {

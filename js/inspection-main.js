@@ -300,6 +300,9 @@ window.addEventListener('load', () => {
 
   syncMainNavDisabled();
 
+  // Debounced autosave: persist the draft ~30s after the last input change
+  if (typeof installAutosave === 'function') installAutosave();
+
   // Block the app with an overlay until Google is connected
   if (!accessToken) {
     document.getElementById('conn-overlay').style.display = 'flex';
