@@ -641,6 +641,7 @@ function _buildFreshGenericInspection() {
   const rtEl = document.getElementById('report-type');
   // Kitchen hoods are inspected semi-annually by default (per NFPA 96 / company practice);
   // everything else defaults to Annual. User can still override on step 4.
+  reportTypeUserSet = false;
   if (rtEl) rtEl.value = (activeInspectionSystem === 'hood') ? 'Semi-Annual' : 'Annual';
   const container = document.getElementById('sys-forms');
   container.innerHTML = '';

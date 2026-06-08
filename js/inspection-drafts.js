@@ -242,6 +242,7 @@ function saveDraft() {
     custSigData,
     counters:    { faSubpanelCount, faDetectionCount, faFlowCount, faTamperCount, faBatteryCount, faDeficCount, faNoteCount, spDeficCount, spNoteCount, spDrainCount, genericDeficCount, extUnitCount, extDeficCount, extNoteCount, elCount, esCount },
     overallStatus,
+    reportTypeUserSet,
     onsiteUnsat: Object.assign({}, _onsiteUnsat),
     currentFAStep,
     currentSPStep,
@@ -349,6 +350,9 @@ function restoreDraft(draft) {
       if (b.textContent.includes(draft.overallStatus)) b.classList.add('selected');
     });
   }
+  // Restore whether the user had manually chosen a report type (so the hood
+  // Semi-Annual default doesn't override a deliberate choice on resume)
+  reportTypeUserSet = !!draft.reportTypeUserSet;
   // Restore _onsiteUnsat tracking
   Object.assign(_onsiteUnsat, draft.onsiteUnsat || {});
   genericDeficCount = draft.counters?.genericDeficCount || 0;

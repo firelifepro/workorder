@@ -707,6 +707,7 @@ function toggleSPType(btn, val) {
 }
 
 function setSPReportType(val, btn) {
+  reportTypeUserSet = true;
   document.getElementById('sp-report-type').value = val;
   document.querySelectorAll('#sp-rt-annual, #sp-rt-semi, #sp-rt-quarterly').forEach(b => b.classList.remove('selected'));
   if (btn) btn.classList.add('selected');
@@ -781,6 +782,13 @@ function syncStep4DateType() {
     step4Date.value = val;
     if (inspDate && !inspDate.value) inspDate.value = val;
   }
+  // Kitchen hoods default to Semi-Annual until the user explicitly picks a type.
+  // Enforce it here so the default holds regardless of how step 4 was reached
+  // (fresh build, draft restore, or a stale hidden value).
+  if (activeInspectionSystem === 'hood' && !reportTypeUserSet) {
+    const rt = document.getElementById('report-type');
+    if (rt) rt.value = 'Semi-Annual';
+  }
   const curRt = activeInspectionSystem === 'sprinkler'
     ? (document.getElementById('sp-report-type')?.value || 'Annual')
     : (document.getElementById('report-type')?.value || 'Annual');
@@ -789,6 +797,7 @@ function syncStep4DateType() {
 }
 
 function setStep4ReportType(val) {
+  reportTypeUserSet = true;
   document.getElementById('step4-rt-annual')?.classList.toggle('selected', val !== 'Semi-Annual');
   document.getElementById('step4-rt-semi')?.classList.toggle('selected', val === 'Semi-Annual');
   if (activeInspectionSystem === 'sprinkler') {

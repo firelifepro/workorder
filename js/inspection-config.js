@@ -26,6 +26,7 @@ let _propertyProfile = null;
 let _currentPropertyAcct = '';
 let overallStatus = '';
 let overallStatusUserSet = false;
+let reportTypeUserSet = false; // true once the user manually picks a report type (Annual/Semi-Annual)
 let sigDrawing = false;
 let sigCtx = null;
 let sigHasData = false;

@@ -725,6 +725,7 @@ function syncOnsiteDefic(n) {
 
 // ─── REPORT TYPE BUTTONS ──────────────────────────────────────────────────────
 function setFAReportType(val, btn) {
+  reportTypeUserSet = true;
   document.getElementById('report-type').value = val;
   document.querySelectorAll('#fa-rt-annual, #fa-rt-semi').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
