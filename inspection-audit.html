@@ -191,6 +191,7 @@ table.ent tr:last-child td { border-bottom: none; }
       <a href="clients.html">👥 Client Management</a>
       <a href="inspection-audit.html" class="active">📋 Inspection Reports Audit</a>
       <a href="import-reports.html">📥 Import External Reports</a>
+      <a href="legacy-cleanup.html">🧹 Legacy Report Cleanup</a>
       <a href="workorder-tracker.html">🗄️ Work Order Tracker</a>
       <a href="create-invoices.html"><img src="img/quickbooks.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Create QB Invoices</a>
       <a href="sub-invoices.html">📨 Sub Invoices</a>
@@ -298,7 +299,7 @@ const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Softwar
 // Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
 // draft with the report PDFs attached (it only creates drafts, never sends).
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
-const CACHE_KEY = 'flips_audit_cache_v6';  // bump when the cached data shape or matching logic changes
+const CACHE_KEY = 'flips_audit_cache_v7';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -427,6 +428,9 @@ const SYS_DEFS = [
   { key: 'hospital',            slug: 'hospital',            label: 'Hospital TJC/CMS',      rx: /hospital|tjc|\bcms\b/ },
   { key: 'backflow',            slug: 'backflow',            label: 'Backflow',              rx: /backflow|\bbf\b/ },
   { key: 'elevator',            slug: 'elevator',            label: 'Elevator',              rx: /elevator/ },
+  // Document types we don't fully track yet but want surfaced in the audit.
+  { key: 'deficiency',          slug: 'deficiency',          label: 'Deficiency / Re-inspect', rx: /deficiency|re-?inspection/ },
+  { key: 'correction',          slug: 'correction',          label: 'Correction Notice',     rx: /correction notice/ },
 ];
 const SYS_BY_KEY = Object.fromEntries(SYS_DEFS.map(d => [d.key, d]));
 // Slugs longest-first so e.g. 'special_suppression' is tried before shorter prefixes.
@@ -648,34 +652,46 @@ async function loadReports() {
     folderId = folders[0].id;
   }
 
+  // Read the main folder AND its subfolders (e.g. "Legacy inspection reports",
+  // and any future "Deficiency"/"Hydrant" subfolders) — one level deep.
+  const folderIds = [folderId];
+  try {
+    const subRes = await googleFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+      `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    )}&fields=files(id)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+    if (subRes.ok) ((await subRes.json()).files || []).forEach(f => folderIds.push(f.id));
+  } catch(_) {}
+
   const files = [];
-  let pageToken = '';
-  do {
-    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
-      `'${folderId}' in parents and trashed=false`
-    )}&fields=nextPageToken,files(id,name,webViewLink,createdTime,mimeType)&pageSize=1000&orderBy=createdTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true` +
-      (pageToken ? `&pageToken=${pageToken}` : '');
-    const res = await googleFetch(url);
-    if (!res.ok) throw new Error('Drive list ' + res.status);
-    const j = await res.json();
-    (j.files || []).forEach(f => {
-      if (f.mimeType === 'application/vnd.google-apps.folder') return;
-      const name = f.name || '';
-      if (/_PREVIEW_/i.test(name)) return;                 // skip preview exports
-      if (!/\.pdf$/i.test(name)) return;                   // reports are PDFs
-      files.push({
-        id: f.id, name, link: f.webViewLink,
-        created: f.createdTime,
-        ntoks: tokens(name),
-        lname: name.toLowerCase(),
-        sys: sysFromFile(name),
-        dateObj: parseFileDate(name) || (f.createdTime ? new Date(f.createdTime) : null),
-        prop: null,            // assigned during matchReports
-        used: false,
+  for (const fid of folderIds) {
+    let pageToken = '';
+    do {
+      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+        `'${fid}' in parents and trashed=false`
+      )}&fields=nextPageToken,files(id,name,webViewLink,createdTime,mimeType)&pageSize=1000&orderBy=createdTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true` +
+        (pageToken ? `&pageToken=${pageToken}` : '');
+      const res = await googleFetch(url);
+      if (!res.ok) throw new Error('Drive list ' + res.status);
+      const j = await res.json();
+      (j.files || []).forEach(f => {
+        if (f.mimeType === 'application/vnd.google-apps.folder') return;
+        const name = f.name || '';
+        if (/_PREVIEW_/i.test(name)) return;                 // skip preview exports
+        if (!/\.pdf$/i.test(name)) return;                   // reports are PDFs
+        files.push({
+          id: f.id, name, link: f.webViewLink,
+          created: f.createdTime,
+          ntoks: tokens(name),
+          lname: name.toLowerCase(),
+          sys: sysFromFile(name),
+          dateObj: parseFileDate(name) || (f.createdTime ? new Date(f.createdTime) : null),
+          prop: null,            // assigned during matchReports
+          used: false,
+        });
       });
-    });
-    pageToken = j.nextPageToken || '';
-  } while (pageToken);
+      pageToken = j.nextPageToken || '';
+    } while (pageToken);
+  }
 
   // De-duplicate the same report saved more than once. A report's filename is
   // FLPS_{system}_{property}_{date}.pdf, so identical names = same inspection on

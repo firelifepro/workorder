@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<title>FLPS – Legacy Report Cleanup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 420px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input, .conn-field select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-field select { width: auto; } .conn-field select option { background:#1a1a2e; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; align-self: center; }
+.conn-status-pill.ok { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err { background: rgba(220,53,69,0.2); color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+.toggle-row { display:flex; align-items:center; gap:8px; color:#e0e0e0; font-size:0.8rem; cursor:pointer; text-transform:none; letter-spacing:0; padding:4px 0; }
+.toggle-row input { width:auto; cursor:pointer; }
+#top-bar { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+#top-bar h1 { font-size: 1rem; font-weight: 600; }
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 230px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; }
+#content { padding: 18px 24px; max-width: min(1840px, 98vw); margin: 0 auto; }
+#notes { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.78rem; color: #5b4a00; line-height: 1.5; }
+#controls { background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+#controls label { font-size: 0.74rem; color: #666; font-weight: 600; }
+#folder-id { width: 320px; border: 1px solid #ddd; border-radius: 4px; padding: 7px 10px; font-size: 0.78rem; font-family: monospace; }
+.btn { border: none; border-radius: 4px; padding: 8px 15px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.btn-primary { background: #2e6da4; color: white; } .btn-primary:hover { background: #4a86e8; }
+.btn-primary:disabled { opacity: 0.55; cursor: default; }
+.btn-green { background: #1fb272; color: white; } .btn-green:hover { background: #27ae60; }
+.btn-grey { background: #f3f4f6; color: #555; border: 1px solid #ddd; }
+#progress { font-size: 0.8rem; color: #555; margin-bottom: 12px; min-height: 18px; }
+#progress.err { color: #c0392b; } #progress.done { color: #1b7a4b; }
+#table-wrap { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+thead th { background: #1a1a2e; color: white; padding: 9px 10px; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+tbody td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+tbody tr.renamed { background: #f1faf4; }
+tbody tr.skip { background: #fafafa; color: #999; }
+.cur-name { max-width: 320px; }
+.cur-name .n { font-weight: 600; color: #1a1a2e; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.clickable { cursor: pointer; } .clickable:hover .n { color: #1a73e8; text-decoration: underline; }
+select.sel { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; max-width: 220px; }
+input.txt { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; font-family: inherit; }
+.fname { font-size: 0.68rem; color: #2e6da4; font-family: monospace; word-break: break-all; max-width: 280px; }
+.row-status { font-size: 0.7rem; color: #888; } .row-status.ok { color: #1b7a4b; font-weight: 700; } .row-status.err { color: #c0392b; }
+.read-btn { background:#eef2f8; border:1px solid #cdd8e6; color:#2e6da4; border-radius:4px; cursor:pointer; font-size:0.72rem; padding:2px 7px; }
+.read-btn:hover { background:#dde7f3; }
+#empty { text-align: center; padding: 50px; color: #999; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s; z-index: 9999; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <div class="nav-section-label">Administrators</div>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="inspection-audit.html">📋 Inspection Reports Audit</a>
+      <a href="import-reports.html">📥 Import External Reports</a>
+      <a href="legacy-cleanup.html" class="active">🧹 Legacy Report Cleanup</a>
+      <a href="schedule.html">📅 Inspection Schedule</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="sub-invoices.html">📨 Sub Invoices</a>
+      <a href="open-invoices.html">💰 Record Payments</a>
+    </div>
+  </div>
+  <h1>🧹 Legacy Report Cleanup</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-btn" style="padding:4px 10px;font-size:0.72rem;" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Connection</button>
+</div>
+
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field"><label>Google API Key</label><input type="password" id="api-key" placeholder="AIzaSy…"></div>
+    <div class="conn-field"><label>OAuth Client ID</label><input type="text" id="client-id" placeholder="…apps.googleusercontent.com"></div>
+    <button class="conn-btn" onclick="initGoogle()">🔗 Connect Google</button>
+    <div class="conn-field"><label>Anthropic API Key (page-1 reads)</label><input type="password" id="anth-key" placeholder="sk-ant-… (optional)"></div>
+    <div class="conn-field"><label>Claude model</label>
+      <select id="anth-model">
+        <option value="claude-haiku-4-5-20251001" selected>Haiku 4.5 (cheapest)</option>
+        <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+        <option value="claude-opus-4-8">Opus 4.8</option>
+      </select>
+    </div>
+    <div class="conn-field"><label>Auto-read PDFs with Claude</label>
+      <label class="toggle-row" title="ON: page-1 read fills/confirms property, type, date (a few cents/PDF on Haiku). OFF: filename-only, free."><input type="checkbox" id="use-claude" onchange="toggleClaude()"><span id="use-claude-lbl">On (paid)</span></label>
+    </div>
+    <button class="conn-btn" onclick="saveSettings()">💾 Save</button>
+  </div>
+</div>
+
+<div id="content">
+  <div id="notes">
+    <b>One-time cleanup.</b> Lists PDFs in the Legacy folder, guesses <b>property / type / frequency / date</b> from the filename (and Claude's read of page 1 if enabled), and on your OK <b>renames each file in place</b> to <code>FLPS_{type}_…_{date}.pdf</code> so the <a href="inspection-audit.html">audit</a> picks them up (the audit now reads this subfolder). Files already named <code>FLPS_…</code> are skipped. <b>Click a filename to open the PDF</b> and verify. Deficiency/Correction notices and Hydrants keep their own type. Nothing is renamed until you click Apply.
+  </div>
+
+  <div id="controls">
+    <label>Folder ID</label>
+    <input type="text" id="folder-id" value="1DJHsyazuUGV9aeN0NCOOMS7L7AAzJlJ0">
+    <button class="btn btn-primary" id="list-btn" onclick="listFolder()">📁 List files</button>
+    <button class="btn btn-grey" id="readall-btn" onclick="readAll()">📖 Read page 1 of all (Claude)</button>
+    <button class="btn btn-green" id="apply-btn" onclick="applyRenames()" disabled>✏️ Apply renames</button>
+    <label style="margin-left:auto;"><input type="checkbox" id="hide-skip" onchange="render()"> Hide already-named</label>
+  </div>
+
+  <div id="progress"></div>
+  <div id="table-wrap">
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="check-all" onclick="toggleAll(this.checked)"></th>
+        <th>Current filename</th><th>Property</th><th>Type</th><th>Freq</th><th>Insp. date</th><th>New filename</th><th></th><th>Status</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty">Connect Google, then click “List files”.</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="js/flips-google-fetch.js"></script>
+<script>
+const SHEET_ID         = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const CLIENT_LIST_GID  = '1899870347';
+const ANTH_KEY_LS      = 'flips_anth_key';
+const ANTH_MODEL_LS    = 'flips_anth_model';
+const USE_CLAUDE_LS    = 'flips_legacy_use_claude';
+const DONE_LS          = 'flips_legacy_done_v1';
+const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets.readonly';
+
+// Type list = schedule types + the things we'll start tracking (Hydrant) + doc
+// types (Deficiency / Correction). key/slug match the audit's SYS_DEFS.
+const TYPES = [
+  { key:'fire-alarm',         slug:'fire_alarm',         label:'Fire Alarm Inspection' },
+  { key:'sprinkler',          slug:'sprinkler',          label:'Sprinkler Inspection' },
+  { key:'extinguisher',       slug:'extinguisher',       label:'Extinguisher Inspection' },
+  { key:'exit-sign-lighting', slug:'exit_sign_lighting', label:'Emergency Exit Light Inspection' },
+  { key:'hood',               slug:'hood',               label:'Hood Inspection' },
+  { key:'fire-pump',          slug:'fire_pump',          label:'Fire Pump Inspection' },
+  { key:'jockey-pump',        slug:'jockey',             label:'Jockey Pump Inspection' },
+  { key:'backflow',           slug:'backflow',           label:'Backflow' },
+  { key:'standpipe',          slug:'standpipe',          label:'Standpipe' },
+  { key:'hydrant',            slug:'hydrant',            label:'Fire Hydrant' },
+  { key:'internal-pipe',      slug:'internal_pipe',      label:'5-Year Internal Pipe' },
+  { key:'fdc-hydro',          slug:'fdc',                label:'5-Year FDC Hydrostatic' },
+  { key:'dry-pipe',           slug:'dry_pipe',           label:'3-Year Dry Pipe' },
+  { key:'deficiency',         slug:'deficiency',         label:'Deficiency / Re-inspection' },
+  { key:'correction',         slug:'correction',         label:'Correction Notice' },
+  { key:'other',              slug:'report',             label:'Other / Unknown' },
+];
+const SLUG_BY_KEY = Object.fromEntries(TYPES.map(t => [t.key, t.slug]));
+const FREQS = ['', 'Annual', 'Semi Annual', 'Quarterly', 'Monthly', '3-Year', '5-Year'];
+
+let accessToken = null, tokenClient = null;
+let properties = [];
+let rows = [];
+let done = {};
+
+// ── helpers ────────────────────────────────────────────────
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open'); });
+function setStatus(msg, cls) { const el = document.getElementById('conn-status'); el.textContent = cls === 'ok' ? '✓ Google connected' : msg; el.className = 'conn-status-pill ' + (cls === 'ok' ? 'ok' : cls === 'err' ? 'err' : 'warn'); if (cls === 'ok') document.getElementById('conn-drawer').classList.remove('open'); }
+function setProgress(msg, cls) { const el = document.getElementById('progress'); el.textContent = msg; el.className = cls || ''; }
+function toast(msg) { const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 3000); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
+function claudeEnabled() { const el = document.getElementById('use-claude'); return el ? el.checked : (localStorage.getItem(USE_CLAUDE_LS) !== '0'); }
+function toggleClaude() { const on = document.getElementById('use-claude').checked; localStorage.setItem(USE_CLAUDE_LS, on ? '1' : '0'); document.getElementById('use-claude-lbl').textContent = on ? 'On (paid)' : 'Off (free)'; }
+function saveSettings() { const k = document.getElementById('anth-key').value.trim(); if (k) localStorage.setItem(ANTH_KEY_LS, k); localStorage.setItem(ANTH_MODEL_LS, document.getElementById('anth-model').value); toast('✓ Saved'); }
+
+const STOP = new Set(['the','and','llc','inc','of','co','company','corp','ltd','at','ste','suite','unit','report','annual','inspection','fire','portable','extinguisher']);
+function tokens(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(t => t.length >= 3 && !STOP.has(t)); }
+function abToB64(input) { const bytes = input instanceof Uint8Array ? input : new Uint8Array(input); let bin=''; const ch=0x8000; for (let i=0;i<bytes.length;i+=ch) bin += String.fromCharCode.apply(null, bytes.subarray(i,i+ch)); return btoa(bin); }
+function propSlug(p) { return ((p?.name||'') + ' ' + (p?.addr||'')).replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,60); }
+function slugify(s) { return String(s||'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,50); }
+
+function toISO(d) {
+  if (!d) return '';
+  const m = String(d).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return `${m[3]}-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;
+  const iso = String(d).match(/(\d{4})-(\d{2})-(\d{2})/); if (iso) return iso[0];
+  const dt = new Date(d); return isNaN(dt) ? '' : dt.toISOString().slice(0,10);
+}
+function dateFromName(name) {
+  const s = String(name||'').replace(/\.pdf$/i,'');
+  const mk = (y,mo,d) => { mo=String(mo).padStart(2,'0'); d=String(d).padStart(2,'0'); return (+mo>=1&&+mo<=12&&+d>=1&&+d<=31)?`${y}-${mo}-${d}`:''; };
+  let m = s.match(/(20\d{2})[._\-\/](\d{1,2})[._\-\/](\d{1,2})/); if (m) return mk(m[1],m[2],m[3]);
+  m = s.match(/(\d{1,2})[._\-\/](\d{1,2})[._\-\/](20\d{2})/); if (m) return mk(m[3],m[1],m[2]);
+  m = s.match(/(?:^|[^\d])(20\d{2})(\d{2})(\d{2})(?:[^\d]|$)/); if (m) return mk(m[1],m[2],m[3]);
+  return '';
+}
+function typeFromText(t) {
+  t = (t||'').toLowerCase();
+  if (/correction notice/.test(t)) return 'correction';
+  if (/deficiency|re-?inspection|compliance report/.test(t)) return 'deficiency';
+  if (/hydrant/.test(t)) return 'hydrant';
+  if (/internal (pipe|assessment|obstruction)|5.?year internal/.test(t)) return 'internal-pipe';
+  if (/\bfdc\b|hydrostatic/.test(t)) return 'fdc-hydro';
+  if (/dry pipe|trip test/.test(t)) return 'dry-pipe';
+  if (/standpipe/.test(t)) return 'standpipe';
+  if (/fire ?pump/.test(t)) return 'fire-pump';
+  if (/jockey/.test(t)) return 'jockey-pump';
+  if (/backflow/.test(t)) return 'backflow';
+  if (/exting/.test(t)) return 'extinguisher';
+  if (/hood|kitchen|ansul/.test(t)) return 'hood';
+  if (/exit|egress|emergency light/.test(t)) return 'exit-sign-lighting';
+  if (/sprinkler|sprinklerscan|wet|dry system/.test(t)) return 'sprinkler';
+  if (/fire ?alarm|\bfa\b|detection/.test(t)) return 'fire-alarm';
+  return 'other';
+}
+function freqFromText(type, t) {
+  t = (t||'').toLowerCase();
+  if (type === 'internal-pipe' || type === 'fdc-hydro') return '5-Year';
+  if (type === 'dry-pipe') return '3-Year';
+  if (type === 'deficiency' || type === 'correction') return '';
+  if (/semi.?annual/.test(t)) return 'Semi Annual';
+  if (/quarterly/.test(t)) return 'Quarterly';
+  if (/monthly/.test(t)) return 'Monthly';
+  if (/annual|yearly/.test(t)) return 'Annual';
+  return 'Annual';
+}
+function hydrantUnit(name) { const m = String(name||'').match(/\b([NSEW]{1,2}[-\s]?\d{1,2})\b/i); return m ? m[1].replace(/[^a-z0-9]/gi,'') : ''; }
+
+// ── auth ───────────────────────────────────────────────────
+function initGoogle() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey); localStorage.setItem('flips_client_id', clientId);
+  setStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: (resp) => {
+        if (resp.error) { setStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55*60*1000);
+        setStatus('✓ Connected', 'ok'); _scheduleTokenRefresh(); loadProperties();
+      },
+      error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e) { setStatus('✗ ' + e.message, 'err'); }
+}
+
+async function loadProperties() {
+  try {
+    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties`);
+    const meta = await metaRes.json();
+    let tab = meta.sheets[0].properties.title;
+    for (const s of meta.sheets) if (String(s.properties.sheetId) === String(CLIENT_LIST_GID)) { tab = s.properties.title; break; }
+    const valRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tab)}`);
+    const data = (await valRes.json()).values || [];
+    if (data.length < 2) return;
+    const H = data[0].map(h => (h||'').trim().toLowerCase());
+    let iName = H.findIndex(h => h.includes('property name') || h.includes('site name')); if (iName<0) iName = H.findIndex(h=>h.includes('property')); if (iName<0) iName=0;
+    let iAddr = H.findIndex(h => h.includes('service address')); if (iAddr<0) iAddr = H.findIndex(h => (h.includes('address')||h.includes('street')) && !h.includes('billing'));
+    properties = [];
+    for (let i=1;i<data.length;i++){ const r=data[i]; const name=(iName>=0?r[iName]:'').trim(); if(!name) continue; const addr=(iAddr>=0?(r[iAddr]||''):'').trim(); properties.push({name,addr,toks:tokens(name+' '+addr)}); }
+    properties.sort((a,b)=>a.name.localeCompare(b.name));
+    setProgress(`Loaded ${properties.length} properties. Ready to list the folder.`);
+  } catch(e) { setProgress('⚠ Could not load property list: ' + e.message, 'err'); }
+}
+function matchProperty(text) {
+  const t = tokens(text); if (!t.length || !properties.length) return null;
+  let best=null, bestScore=0;
+  properties.forEach(p => { if(!p.toks.length) return; const inter=p.toks.filter(x=>t.includes(x)).length; const score=inter/p.toks.length; if(score>bestScore){bestScore=score;best=p;} });
+  return bestScore >= 0.45 ? best : null;
+}
+
+// ── list folder ────────────────────────────────────────────
+async function listFolder() {
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  if (!properties.length) await loadProperties();
+  const folderId = document.getElementById('folder-id').value.trim();
+  if (!folderId) { toast('⚠ Enter a folder ID'); return; }
+  rows = []; render(); setProgress('Listing folder…');
+  try {
+    let pageToken = '', all = [];
+    do {
+      const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${folderId}' in parents and trashed=false`)}&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true` + (pageToken?`&pageToken=${pageToken}`:''));
+      if (!res.ok) throw new Error('Drive list HTTP ' + res.status);
+      const j = await res.json();
+      (j.files||[]).forEach(f => { if (f.mimeType==='application/pdf' || /\.pdf$/i.test(f.name||'')) all.push(f); });
+      pageToken = j.nextPageToken || '';
+    } while (pageToken);
+
+    rows = all.map(f => {
+      const already = /^FLPS_/i.test(f.name || '');
+      const type = typeFromText(f.name);
+      const matched = matchProperty(f.name);
+      return {
+        id: f.id, cur: f.name, folderId,
+        propName: matched ? matched.name : '',
+        type, freq: freqFromText(type, f.name),
+        date: dateFromName(f.name),
+        unit: type === 'hydrant' ? hydrantUnit(f.name) : '',
+        skip: already, renamed: !!done[f.id], status: done[f.id] ? '✓ renamed' : '',
+        _statusCls: done[f.id] ? 'ok' : '', _checked: false, b64page1: null,
+      };
+    });
+    setProgress(`Found ${rows.length} PDF(s). ${rows.filter(r=>r.skip).length} already FLPS-named. Review, then Apply.`, 'done');
+    render();
+  } catch(e) { setProgress('Error: ' + e.message, 'err'); }
+}
+
+// ── new filename ───────────────────────────────────────────
+function newName(r) {
+  const p = properties.find(x => x.name === r.propName);
+  const ps = p ? propSlug(p) : slugify(r.propName || 'Unknown');
+  const slug = SLUG_BY_KEY[r.type] || 'report';
+  const noFreq = (r.type === 'deficiency' || r.type === 'correction');
+  const fr = (!noFreq && r.freq) ? r.freq.replace(/[^a-zA-Z0-9]+/g,'_') + '_' : '';
+  const unit = (r.type === 'hydrant' && r.unit) ? r.unit.replace(/[^a-zA-Z0-9]+/g,'') + '_' : '';
+  const d = r.date || 'nodate';
+  return `FLPS_${slug}_${fr}${ps}_${unit}${d}.pdf`;
+}
+
+// ── render ─────────────────────────────────────────────────
+function render() {
+  const tb = document.getElementById('tbody');
+  const hideSkip = document.getElementById('hide-skip').checked;
+  const vis = rows.filter(r => !(hideSkip && (r.skip || r.renamed)));
+  document.getElementById('empty').style.display = vis.length ? 'none' : 'block';
+  tb.innerHTML = vis.map(r => {
+    const idx = rows.indexOf(r);
+    const propOpts = '<option value="">— pick property —</option>' + properties.map(p => `<option value="${escAttr(p.name)}"${p.name===r.propName?' selected':''}>${escHtml(p.name)}</option>`).join('');
+    const typeOpts = TYPES.map(t => `<option value="${t.key}"${t.key===r.type?' selected':''}>${escHtml(t.label)}</option>`).join('');
+    const freqOpts = FREQS.map(f => `<option value="${escAttr(f)}"${f===(r.freq||'')?' selected':''}>${escHtml(f||'— freq —')}</option>`).join('');
+    const enabled = !r.renamed;
+    return `<tr class="${r.renamed?'renamed':r.skip?'skip':''}">
+      <td>${enabled ? `<input type="checkbox" ${r._checked?'checked':''} onchange="onCheck(${idx},this.checked)">` : ''}</td>
+      <td class="cur-name clickable" onclick="openPdf(${idx})" title="Open PDF to verify"><span class="n">${escHtml(r.cur)}</span>${r.skip?'<span class="row-status"> already FLPS-named</span>':''}</td>
+      <td><select class="sel" onchange="setField(${idx},'propName',this.value)">${propOpts}</select></td>
+      <td><select class="sel" onchange="setField(${idx},'type',this.value)">${typeOpts}</select></td>
+      <td><select class="sel" onchange="setField(${idx},'freq',this.value)">${freqOpts}</select></td>
+      <td><input class="txt" style="width:118px" type="text" value="${escAttr(r.date)}" placeholder="MM/DD/YYYY" onchange="setDate(${idx},this.value)"></td>
+      <td><span class="fname">${escHtml(newName(r))}</span></td>
+      <td>${enabled ? `<button class="read-btn" title="Read page 1 with Claude to confirm" onclick="readOne(${idx})">📖</button>` : ''}</td>
+      <td><span class="row-status ${r._statusCls||''}">${r.renamed ? '✓ renamed' : (r.status||'')}</span></td>
+    </tr>`;
+  }).join('');
+  refreshApply();
+}
+function setField(i,k,v){ rows[i][k]=v; if(k==='type'){ if(rows[i].type!=='hydrant') rows[i].unit=''; } render(); }
+function setDate(i,v){ const iso=toISO(v); rows[i].date=iso||(v||'').trim(); render(); }
+function onCheck(i,c){ rows[i]._checked=c; refreshApply(); }
+function toggleAll(c){ rows.forEach(r=>{ if(!r.renamed && !r.skip) r._checked=c; }); render(); }
+function refreshApply(){ const n=rows.filter(r=>r._checked && !r.renamed).length; const b=document.getElementById('apply-btn'); b.disabled=n===0; b.textContent=n?`✏️ Apply ${n} rename(s)`:'✏️ Apply renames'; }
+
+// ── open PDF ───────────────────────────────────────────────
+async function fetchPdfBytes(id) {
+  const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`);
+  if (!res.ok) throw new Error('download HTTP ' + res.status);
+  return res.arrayBuffer();
+}
+async function openPdf(i) {
+  const r = rows[i]; const w = window.open('', '_blank');
+  try { if (w) w.document.write('<p style="font-family:sans-serif;padding:20px">Loading…</p>'); } catch(_){}
+  try {
+    const url = URL.createObjectURL(new Blob([await fetchPdfBytes(r.id)], { type:'application/pdf' }));
+    if (w) w.location = url; else window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  } catch(e) { toast('✗ ' + e.message); }
+}
+
+// ── Claude page-1 read ─────────────────────────────────────
+async function firstPageBase64(buf) {
+  const src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+  if (src.getPageCount() <= 1) return abToB64(buf);   // already one page
+  const out = await PDFLib.PDFDocument.create();
+  const [pg] = await out.copyPages(src, [0]);
+  out.addPage(pg);
+  return abToB64(await out.save());
+}
+async function readOne(i) {
+  const r = rows[i];
+  const anthKey = localStorage.getItem(ANTH_KEY_LS);
+  if (!anthKey) { toast('⚠ Set Anthropic key in ⚙ Connection'); return; }
+  r.status = 'reading…'; r._statusCls=''; render();
+  try {
+    const b64 = await firstPageBase64(await fetchPdfBytes(r.id));
+    const ext = await readWithClaude(b64, anthKey, r.cur);
+    if (ext.type && SLUG_BY_KEY[ext.type]) r.type = ext.type;
+    if (ext.frequency && FREQS.includes(ext.frequency)) r.freq = ext.frequency;
+    else r.freq = freqFromText(r.type, r.cur);
+    const iso = toISO(ext.inspectionDate); if (iso) r.date = iso;
+    if (ext.property) { const m = matchProperty(ext.property + ' ' + r.cur); if (m) r.propName = m.name; }
+    if (r.type === 'hydrant' && !r.unit) r.unit = hydrantUnit(r.cur);
+    r.status = '✓ read'; r._statusCls = 'ok';
+  } catch(e) { r.status = '✗ ' + e.message.slice(0,30); r._statusCls = 'err'; }
+  render();
+}
+async function readAll() {
+  if (!claudeEnabled()) { toast('Auto-read is OFF — turn it on in ⚙ Connection'); return; }
+  if (!localStorage.getItem(ANTH_KEY_LS)) { toast('⚠ Set Anthropic key first'); return; }
+  const todo = rows.filter(r => !r.renamed && !r.skip);
+  if (!todo.length) { toast('Nothing to read'); return; }
+  if (!confirm(`Read page 1 of ${todo.length} PDF(s) with Claude? (a few cents each on Haiku)`)) return;
+  document.getElementById('readall-btn').disabled = true;
+  for (let i=0;i<todo.length;i++){ setProgress(`Reading ${i+1}/${todo.length}…`); await readOne(rows.indexOf(todo[i])); }
+  setProgress('Done reading.', 'done');
+  document.getElementById('readall-btn').disabled = false;
+}
+async function readWithClaude(b64, anthKey, curName) {
+  const model = localStorage.getItem(ANTH_MODEL_LS) || 'claude-haiku-4-5-20251001';
+  const sys = "You read the FIRST PAGE of a fire-life-safety inspection document and extract fields. Return ONLY one JSON object, no prose, no code fences.";
+  const user = "Return JSON with EXACTLY these keys:\n{\n" +
+    '  "property": string,    // building name and/or service address\n' +
+    '  "type": string,        // ONE of: fire-alarm, sprinkler, extinguisher, exit-sign-lighting, hood, fire-pump, jockey-pump, backflow, standpipe, hydrant, internal-pipe, fdc-hydro, dry-pipe, deficiency, correction, other\n' +
+    '  "frequency": string,   // ONE of: Annual, Semi Annual, Quarterly, Monthly, 3-Year, 5-Year, or ""\n' +
+    '  "inspectionDate": string  // MM/DD/YYYY or ""\n}\n\n' +
+    `Current filename (a hint): ${curName || ''}\n` +
+    "A 'Deficiency Compliance Report' / re-inspection → deficiency; a 'Correction Notice' → correction; a fire hydrant flow/inspection → hydrant.";
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers:{ 'x-api-key':anthKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true', 'content-type':'application/json' },
+    body: JSON.stringify({ model, max_tokens: 500, system: sys, messages: [{ role:'user', content: [
+      { type:'document', source:{ type:'base64', media_type:'application/pdf', data: b64 } },
+      { type:'text', text: user }
+    ]}]})
+  });
+  if (!res.ok) throw new Error('Claude HTTP ' + res.status);
+  const txt = (await res.json()).content?.[0]?.text || '';
+  const cleaned = txt.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+  try { return JSON.parse(cleaned); } catch(_) { const m = cleaned.match(/\{[\s\S]*\}/); if (m) return JSON.parse(m[0]); throw new Error('bad JSON'); }
+}
+
+// ── apply renames ──────────────────────────────────────────
+async function applyRenames() {
+  const picked = rows.filter(r => r._checked && !r.renamed);
+  if (!picked.length) return;
+  for (const r of picked) {
+    if (!r.propName) { toast('⚠ Pick a property for every selected row'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) { toast('⚠ Enter a valid date (MM/DD/YYYY) for every selected row'); return; }
+  }
+  const btn = document.getElementById('apply-btn'); btn.disabled = true;
+  const usedNames = new Set(rows.map(r => (r.cur||'').toLowerCase()));
+  let okN = 0, errN = 0;
+  for (let i=0;i<picked.length;i++){
+    const r = picked[i];
+    let name = newName(r), base = name.replace(/\.pdf$/i,''), n = 2;
+    while (usedNames.has(name.toLowerCase())) { name = `${base}_${n++}.pdf`; }   // keep targets unique
+    usedNames.add(name.toLowerCase());
+    r.status = 'renaming…'; r._statusCls=''; render();
+    setProgress(`Renaming ${i+1}/${picked.length}…`);
+    try {
+      const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${r.id}?supportsAllDrives=true&fields=id,name`, 'PATCH', { name });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0,80));
+      r.cur = name; r.renamed = true; r.status = '✓ renamed'; r._statusCls = 'ok';
+      done[r.id] = { name, at: Date.now() }; saveDone();
+      okN++;
+    } catch(e) { r.status = '✗ ' + e.message.slice(0,40); r._statusCls = 'err'; errN++; }
+    render();
+  }
+  setProgress(`Renamed ${okN}${errN?`, ${errN} failed`:''}.`, errN ? 'err' : 'done');
+  toast(`✓ Renamed ${okN} file(s)`);
+  btn.disabled = false; refreshApply();
+}
+function saveDone(){ try { localStorage.setItem(DONE_LS, JSON.stringify(done)); } catch(_){} }
+
+// ── boot ───────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  try { done = JSON.parse(localStorage.getItem(DONE_LS) || '{}'); } catch(_) { done = {}; }
+  const k = localStorage.getItem('flips_api_key'), c = localStorage.getItem('flips_client_id');
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
+  const ak = localStorage.getItem(ANTH_KEY_LS); if (ak) document.getElementById('anth-key').value = ak;
+  const am = localStorage.getItem(ANTH_MODEL_LS); if (am) document.getElementById('anth-model').value = am;
+  const uc = localStorage.getItem(USE_CLAUDE_LS) !== '0'; document.getElementById('use-claude').checked = uc; document.getElementById('use-claude-lbl').textContent = uc ? 'On (paid)' : 'Off (free)';
+  if (!k || !c) { document.getElementById('conn-drawer').classList.add('open'); return; }
+  const cachedToken = localStorage.getItem('flips_access_token'), exp = parseInt(localStorage.getItem('flips_token_expiry') || '0');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: c, scope: SCOPES,
+      callback: (resp) => { if (resp.error) { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); return; } accessToken = resp.access_token; localStorage.setItem('flips_access_token', accessToken); localStorage.setItem('flips_token_expiry', Date.now()+55*60*1000); setStatus('✓ Connected','ok'); _scheduleTokenRefresh(); loadProperties(); },
+      error_callback: () => { setStatus('⚠ Session expired','err'); document.getElementById('conn-drawer').classList.add('open'); }
+    });
+  } catch(e) { setStatus('⚠ Session expired','err'); document.getElementById('conn-drawer').classList.add('open'); return; }
+  if (cachedToken && Date.now() < exp) { accessToken = cachedToken; setStatus('✓ Connected','ok'); _scheduleTokenRefresh(); loadProperties(); }
+  else { setStatus('⏳ Reconnecting…',''); tokenClient.requestAccessToken({ prompt: '' }); }
+});
+</script>
+</body>
+</html>
