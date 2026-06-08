@@ -338,9 +338,12 @@ async function loadProperties() {
     properties = [];
     for (let i = 1; i < data.length; i++) {
       const r = data[i];
-      const name = (iName>=0 ? r[iName] : '').trim();
+      // Collapse internal whitespace/newlines so the name survives the
+      // datalist round-trip (HTML attribute parsing normalizes whitespace,
+      // which otherwise breaks the exact propName === p.name match).
+      const name = (iName>=0 ? (r[iName]||'') : '').replace(/\s+/g,' ').trim();
       if (!name) continue;
-      const addr = (iAddr>=0 ? (r[iAddr]||'') : '').trim();
+      const addr = (iAddr>=0 ? (r[iAddr]||'') : '').replace(/\s+/g,' ').trim();
       properties.push({ name, addr, acct: (iAcct>=0?(r[iAcct]||''):'').trim(), toks: toks(name + ' ' + addr) });
     }
     properties.sort((a,b) => a.name.localeCompare(b.name));
@@ -634,7 +637,7 @@ function setField(i, k, v) { rows[i][k] = v; renderTable(); }
 // the canonical property name (case-insensitive) so buildFilename can match it;
 // an unmatched value is kept as-is and flagged red in renderTable.
 function setPropName(i, v) {
-  const typed = (v || '').trim();
+  const typed = (v || '').replace(/\s+/g,' ').trim();
   const exact = properties.find(p => p.name.toLowerCase() === typed.toLowerCase());
   rows[i].propName = exact ? exact.name : typed;
   renderTable();
