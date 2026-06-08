@@ -878,10 +878,21 @@ function displayToIso(str) {
   return '';
 }
 
-function sourceBadgeHtml(src) {
+// Pull a work order number out of the notes column (written as "WO #123" by index.html).
+function woNumFromNotes(notes) {
+  const m = String(notes || '').match(/WO\s*#?\s*([A-Za-z0-9-]+)/i);
+  return m ? m[1] : '';
+}
+
+function sourceBadgeHtml(src, notes) {
   if (!src) return '';
   const s = src.toLowerCase();
-  if (s.includes('work') || s === 'wo') return `<span class="src-badge src-wo" title="Updated via Work Order">WO</span>`;
+  if (s.includes('work') || s === 'wo') {
+    const wo = woNumFromNotes(notes);
+    return wo
+      ? `<span class="src-badge src-wo" title="Updated via Work Order #${escHtml(wo)}">WO #${escHtml(wo)}</span>`
+      : `<span class="src-badge src-wo" title="Updated via Work Order">WO</span>`;
+  }
   if (s.includes('insp'))               return `<span class="src-badge src-inspection" title="Updated via Inspection Report">Insp</span>`;
   if (s.includes('manual'))             return `<span class="src-badge src-manual" title="Manually edited">Manual</span>`;
   return `<span class="src-badge src-manual" title="Source: ${escHtml(src)}">${escHtml(src)}</span>`;
@@ -889,7 +900,7 @@ function sourceBadgeHtml(src) {
 
 function buildLastDoneCell(r) {
   const dateHtml = r.last ? escHtml(r.last) : '<span style="color:#aaa;">—</span>';
-  const badge = sourceBadgeHtml(r.source);
+  const badge = sourceBadgeHtml(r.source, r.notes);
   const pencil = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
   return `<td class="col-last" id="last-cell-${r._idx}" style="white-space:nowrap;">` +
     dateHtml + badge +

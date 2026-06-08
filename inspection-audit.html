@@ -127,6 +127,8 @@ table.ent tr:last-child td { border-bottom: none; }
 .rep-count { font-size: 0.68rem; font-weight: 700; color: #2e6da4; }
 .rep-maybe { color: #b8860b; }
 .rep-missing { color: #c62828; font-weight: 700; }
+.rep-wo { font-size: 0.66rem; color: #6d5200; margin-top: 2px; }
+.rep-wo b { color: #4d3a00; }
 .rep-external { color: #6b7280; font-style: italic; }
 .conf { font-size: 0.64rem; color: #999; margin-left: 4px; }
 
@@ -998,7 +1000,11 @@ function renderProp(p) {
       }).join('');
       if (!e.extra && !e.confident) rep += `<div class="conf">(likely match)</div>`;
     } else {
-      rep = `<span class="rep-missing">⚠ No report in Drive</span>`;
+      const wo = woNumFromNotes(e.notes);
+      const woTag = (wo && e.source && e.source.toLowerCase().includes('work'))
+        ? `<div class="rep-wo">from Work Order <b>#${escHtml(wo)}</b> — check the WO / work log for a sub's report</div>`
+        : '';
+      rep = `<span class="rep-missing">⚠ No report in Drive</span>${woTag}`;
     }
     const count = (e.reportList && e.reportList.length > 1) ? ` <span class="rep-count">×${e.reportList.length}</span>` : '';
     const typeCell = e.extra
@@ -1021,6 +1027,12 @@ function renderProp(p) {
 }
 
 function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
+
+// Pull a work order number out of the notes column (written as "WO #123" by index.html).
+function woNumFromNotes(notes) {
+  const m = String(notes || '').match(/WO\s*#?\s*([A-Za-z0-9-]+)/i);
+  return m ? m[1] : '';
+}
 
 // ── Email composition ──────────────────────────────────────
 const DRAFT_CAP    = 22 * 1024 * 1024;   // per-draft attachment cap, under Gmail's ~25 MB limit
