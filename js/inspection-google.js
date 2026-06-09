@@ -575,7 +575,7 @@ function buildInspectionForms() {
 function _resumeGenericFromDraft(draft) {
   overallStatus = '';
   overallStatusUserSet = false;
-  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
+  clearStatusButtonSelection();  // status buttons only — keep report-type selection intact
   // Restore banner + sys-forms from draft
   const sysKey = draft.sysKey;
   activeInspectionSystem = sysKey;
@@ -650,7 +650,7 @@ function _buildFreshGenericInspection() {
   if (typeof clearStep4State === 'function') clearStep4State();
   overallStatus = '';
   overallStatusUserSet = false;
-  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
+  clearStatusButtonSelection();  // status buttons only — keep report-type selection intact
   const rtEl = document.getElementById('report-type');
   // Kitchen hoods are inspected semi-annually by default (per NFPA 96 / company practice);
   // everything else defaults to Annual. User can still override on step 4.

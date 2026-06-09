@@ -123,6 +123,15 @@ function statusDeficiencyMismatch(status, deficCount) {
   return null;
 }
 
+// Remove the 'selected' state from ONLY the overall-status buttons
+// (compliant / deficient / impaired). The report-type buttons (annual / semi /
+// quarterly) also carry the .ost-btn class, so a blanket `.ost-btn` deselect would
+// wrongly clear the chosen report type and leave it looking unset on Sign & Export.
+function clearStatusButtonSelection() {
+  document.querySelectorAll('.ost-btn.compliant, .ost-btn.deficient, .ost-btn.impaired')
+    .forEach(b => b.classList.remove('selected'));
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { statusDeficiencyMismatch };
 }

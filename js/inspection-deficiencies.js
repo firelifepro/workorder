@@ -1134,10 +1134,13 @@ function jumpToItem(itemId, panelId) {
 function setOverallStatus(val, btn) {
   overallStatus = val;
   if (btn) overallStatusUserSet = true;
-  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
+  // Only clear the status buttons — NOT the report-type buttons (annual/semi),
+  // which share the .ost-btn class and would otherwise lose their selection here.
+  clearStatusButtonSelection();
   if (btn) btn.classList.add('selected');
   else {
-    document.querySelectorAll('.ost-btn').forEach(b => { if (b.textContent.includes(val)) b.classList.add('selected'); });
+    document.querySelectorAll('.ost-btn.compliant, .ost-btn.deficient, .ost-btn.impaired')
+      .forEach(b => { if (b.textContent.includes(val)) b.classList.add('selected'); });
   }
 }
 

@@ -334,9 +334,16 @@ window.addEventListener('load', () => {
     document.getElementById('conn-drawer').classList.add('open');
   }
 
-  // Init sig pad when step 4 is visited
+  // Init sig pad + re-sync the Report Type buttons whenever step 4 (Sign & Export)
+  // becomes visible. The report-type sync is decoupled from the nav functions so it
+  // holds regardless of how step 4 was reached (fresh, draft resume, tab click) —
+  // otherwise a resumed inspection could land on Sign & Export with neither
+  // Annual nor Semi-Annual visibly selected even though #report-type is set.
   const observer = new MutationObserver(() => {
-    if (document.getElementById('step-4').style.display !== 'none') { initSig(); initCustSig(); }
+    if (document.getElementById('step-4').style.display !== 'none') {
+      initSig(); initCustSig();
+      if (typeof syncStep4DateType === 'function') syncStep4DateType();
+    }
   });
   observer.observe(document.getElementById('step-4'), { attributes: true, attributeFilter: ['style'] });
 });

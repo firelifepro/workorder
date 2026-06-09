@@ -610,7 +610,7 @@ function clearSPInspectionState() {
   spDrainCount = 0;
   addSPDrainRow();
   overallStatus = '';
-  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
+  clearStatusButtonSelection();  // status buttons only — keep report-type selection intact
   document.getElementById('sp-report-type') && (document.getElementById('sp-report-type').value = 'Annual');
   document.getElementById('sp-rt-annual')?.classList.add('selected');
   document.getElementById('sp-rt-semi')?.classList.remove('selected');
@@ -766,15 +766,15 @@ function clearFAInspectionState() {
     const el = document.getElementById('step-fa-' + k);
     if (el) el.querySelectorAll('.fa-static-defic').forEach(d => d.remove());
   });
-  // Reset report type to Annual
+  // Reset report type to Annual (report type is chosen on the Sign & Export step)
   const rtInput = document.getElementById('report-type');
   if (rtInput) rtInput.value = 'Annual';
-  document.getElementById('fa-rt-annual')?.classList.add('selected');
-  document.getElementById('fa-rt-semi')?.classList.remove('selected');
-  // Reset overall status
+  document.getElementById('step4-rt-annual')?.classList.add('selected');
+  document.getElementById('step4-rt-semi')?.classList.remove('selected');
+  // Reset overall status — status buttons only, so the report-type selection stays
   overallStatus = '';
   overallStatusUserSet = false;
-  document.querySelectorAll('.ost-btn').forEach(b => b.classList.remove('selected'));
+  clearStatusButtonSelection();
   // Restore On-Site equipment defaults
   const onsiteDefaults = ['Fire Alarm Control Panel','Initiating Devices','Power Supplies','Graphic Maps','Notification Appliance Devices'];
   onsiteDefaults.forEach((val, i) => {
