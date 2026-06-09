@@ -17,16 +17,29 @@ function _scheduleTokenRefresh() {
   if (delay <= 0 || !tokenClient) return;
   setTimeout(() => {
     if (!tokenClient) return;
-    const savedCb = tokenClient.callback;
+    const savedCb    = tokenClient.callback;
+    const savedErrCb = tokenClient.error_callback;
+    const restore = () => { tokenClient.callback = savedCb; tokenClient.error_callback = savedErrCb; };
+    // A failed proactive refresh used to return silently, leaving a stale
+    // "Connected" pill and token — so a dropped connection went unnoticed until
+    // the next API call. Now we clear the session so the connection modal re-pops.
+    const fail = () => {
+      restore();
+      accessToken = null;
+      try { localStorage.removeItem('flips_access_token'); } catch(_) {}
+      try { localStorage.removeItem('flips_token_expiry'); } catch(_) {}
+      _updateConnStatus('err', '⚠ Session expired — reconnect');
+    };
     tokenClient.callback = (resp) => {
-      tokenClient.callback = savedCb;
-      if (resp.error) return;
+      if (resp.error) { fail(); return; }
+      restore();
       accessToken = resp.access_token;
       localStorage.setItem('flips_access_token', accessToken);
       localStorage.setItem('flips_token_expiry', Date.now() + 55 * 60 * 1000);
       _updateConnStatus('ok', '✓ Connected');
       _scheduleTokenRefresh();
     };
+    tokenClient.error_callback = () => fail();
     tokenClient.requestAccessToken({ prompt: '' });
   }, delay);
 }

@@ -159,7 +159,7 @@ async function clearDraftFromDrive(key) {
   }
 }
 
-function saveDraft() {
+function saveDraft(silent = false) {
   if (!activeInspectionSystem) return;
   // Any save resets the debounce window so we don't save again moments later.
   if (typeof cancelAutosave === 'function') cancelAutosave();
@@ -253,11 +253,16 @@ function saveDraft() {
   const key = draftKey();
   try {
     localStorage.setItem(key, JSON.stringify(draft));
-    if (!accessToken) {
-      toast('Draft saved locally — connect Google to sync to Drive');
-      document.getElementById('conn-drawer')?.classList.add('open');
-    } else {
-      toast('Draft saved');
+    _dirtySinceSave = false;
+    // Silent saves (the periodic backstop) don't toast or pop the drawer — the
+    // connection modal already handles surfacing a lost Google connection.
+    if (!silent) {
+      if (!accessToken) {
+        toast('Draft saved locally — connect Google to sync to Drive');
+        document.getElementById('conn-drawer')?.classList.add('open');
+      } else {
+        toast('Draft saved');
+      }
     }
   } catch(e) {
     toast('Save failed — storage full?');
@@ -271,7 +276,11 @@ function saveDraft() {
 // doesn't trigger a step/deficiency save is still captured. saveDraft() itself
 // no-ops if no system is active, so this is safe to schedule unconditionally.
 let _autosaveTimer = null;
+let _periodicAutosaveTimer = null;
+let _dirtySinceSave = false;        // set on any edit, cleared on every save
 const AUTOSAVE_DELAY_MS = 30000;
+const PERIODIC_AUTOSAVE_MS = 120000; // backstop: the debounce resets on every keystroke,
+                                     // so continuous editing could otherwise never save.
 
 function scheduleAutosave() {
   if (!activeInspectionSystem) return;
@@ -295,10 +304,18 @@ function installAutosave() {
       if (!t) return;
       // Only react to real form fields the user edits
       if (t.matches && t.matches('input:not([type=button]):not([type=submit]), textarea, select')) {
+        _dirtySinceSave = true;
         scheduleAutosave();
       }
     }, true);
   });
+  // Periodic backstop: every 2 min, silently persist if there are unsaved edits.
+  // Covers continuous editing where the debounce keeps getting pushed out.
+  if (!_periodicAutosaveTimer) {
+    _periodicAutosaveTimer = setInterval(() => {
+      if (activeInspectionSystem && _dirtySinceSave) saveDraft(true);
+    }, PERIODIC_AUTOSAVE_MS);
+  }
 }
 
 function loadDraft() {

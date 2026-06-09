@@ -169,10 +169,14 @@
   // ── Connection state ────────────────────────────────────────────────────────
 
   function _googleIsConnected() {
-    const pillId = _googlePillId();
-    if (pillId && _pillIsOk(pillId)) return true;
     const tok    = localStorage.getItem('flips_access_token');
     const expiry = Number(localStorage.getItem('flips_token_expiry')) || 0;
+    // A stored token whose expiry has already passed means the session is dead —
+    // don't be fooled by a stale "Connected" status pill that no API call has
+    // flipped yet (common on inspection pages that sit idle for a long time).
+    if (expiry && expiry <= Date.now()) return false;
+    const pillId = _googlePillId();
+    if (pillId && _pillIsOk(pillId)) return true;
     return !!(tok && expiry > Date.now());
   }
 
