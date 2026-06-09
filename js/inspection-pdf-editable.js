@@ -2011,12 +2011,13 @@ async function buildEditablePDFBytes() {
       page.drawText(title, { x: ML+4, y: ty(17,5), size: 9, font: hFont, color: white });
       curY += 18;
     };
-    // Sub-header (sky bar)
+    // Sub-header (sky bar) — advance leaves a few pts below the bar so the
+    // following row's label doesn't ride up into the header.
     const subHdr = (title) => {
-      checkPage(14);
+      checkPage(18);
       page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: sky });
       page.drawText(title, { x: ML+4, y: ty(13,4), size: 7.5, font: hFont, color: navy });
-      curY += 14;
+      curY += 18;
     };
 
     // Single editable text field (no label, no curY advance)
@@ -2155,7 +2156,7 @@ async function buildEditablePDFBytes() {
     curY += titleH + 1;
 
     // Info block: left=logo+company (315pt), right=report type+fields (225pt)
-    const iH = 88;
+    const iH = 106;
     const divX = ML + 315;
     const rcW = ML + PW - divX;
 
@@ -2238,11 +2239,11 @@ async function buildEditablePDFBytes() {
       ['DATE PERFORMED', data.inspection?.date || ''],
       ['INSPECTOR', data.inspection?.inspectorName || ''],
     ];
-    let jY = ry(iH) + iH - rtBoxH - 3;
+    let jY = ry(iH) + iH - rtBoxH - 4;
     jFields.forEach(([lbl, val]) => {
       jY -= 7;
       page.drawText(lbl, { x: divX+2, y: jY, size: 5.5, font: hFont, color: navy });
-      jY -= 10;
+      jY -= 13;  // 3pt gap between label baseline and box top (was 0 — felt cramped)
       page.drawRectangle({ x: divX, y: jY, width: rcW, height: 10, color: gold, borderColor: sky, borderWidth: 0.3 });
       const jf = form.createTextField(fid());
       jf.setText(val); jf.addToPage(page, { x: divX+1, y: jY+1, width: rcW-2, height: 8, font: rFont }); jf.setFontSize(7);

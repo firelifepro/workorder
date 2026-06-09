@@ -630,16 +630,9 @@
       <span style="font-size:.74rem;color:var(--slate);">Marks every unanswered item across all Fire Alarm steps PASS/Y and sets status <strong>COMPLIANT</strong> — for a clean inspection with no deficiencies. Fills blanks only; review before exporting.</span>
     </div>
 
-    <div class="card">
-      <div class="card-header"><span class="icon">📋</span><span>Report Type</span></div>
-      <div class="card-body">
-        <div class="overall-status-group">
-          <button class="ost-btn annual selected" id="fa-rt-annual" onclick="setFAReportType('Annual',this)">Annual<br><small style="font-weight:400;font-size:.7rem;">Full annual inspection</small></button>
-          <button class="ost-btn semi" id="fa-rt-semi" onclick="setFAReportType('Semi-Annual',this)">Semi Annual<br><small style="font-weight:400;font-size:.7rem;">6-month inspection</small></button>
-        </div>
-        <input type="hidden" id="report-type" value="Annual">
-      </div>
-    </div>
+    <!-- Report Type is chosen on the final Sign & Export step (step 4). Hidden field
+         keeps the value the rest of the code reads; defaults to Annual. -->
+    <input type="hidden" id="report-type" value="Annual">
 
     <div class="card">
       <div class="card-header"><span class="icon">🖥️</span><span>Main Fire Alarm Control Panel &amp; Monitoring Information</span></div>
