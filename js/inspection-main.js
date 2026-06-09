@@ -198,11 +198,19 @@ async function saveAndDownload() {
 // Warn if the overall status contradicts the deficiency list. Returns true to
 // proceed (consistent, or the user clicked OK), false to abort (clicked Cancel).
 function confirmStatusConsistency() {
-  let msg = null;
+  let status = '', deficCount = 0;
   try {
     const data = collectAllData();
-    msg = statusDeficiencyMismatch(data.overallStatus, (data.deficiencies || []).length);
+    status     = String(data.overallStatus || '').trim();
+    deficCount = (data.deficiencies || []).length;
   } catch(_) { return true; } // never block PDF generation on a collection error
+  // An overall status must be chosen before the report can be generated (hard stop).
+  if (!status) {
+    alert('⚠ Please choose an Overall System Status (Compliant, Deficient, or Impaired) before generating the report.');
+    document.querySelector('#step-4 .ost-btn.compliant')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  const msg = statusDeficiencyMismatch(status, deficCount);
   if (!msg) return true;
   return confirm('⚠ Status / deficiency mismatch\n\n' + msg +
     '\n\nClick OK to generate the PDF anyway, or Cancel to go back and review.');

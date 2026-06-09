@@ -37,7 +37,14 @@ function hospConfirmStatusConsistency() {
     const desc = tr.querySelector('td:nth-child(2) input')?.value?.trim();
     if (desc) count++;
   });
-  const msg = statusDeficiencyMismatch(H.overallStatus, count);
+  const status = String(H.overallStatus || '').trim();
+  // An overall status must be chosen before the report can be generated (hard stop).
+  if (!status) {
+    alert('⚠ Please choose an Overall System Status (Compliant, Deficient, or Impaired) before generating the report.');
+    document.querySelector('.ost-btn.compliant')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  const msg = statusDeficiencyMismatch(status, count);
   if (!msg) return true;
   return confirm('⚠ Status / deficiency mismatch\n\n' + msg +
     '\n\nClick OK to generate the PDF anyway, or Cancel to go back and review.');
