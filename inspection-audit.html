@@ -232,7 +232,7 @@ table.ent tr:last-child td { border-bottom: none; }
 
   <div id="notes" style="display:none;">
     <b>How to read this:</b> Each inspection on record (from the <b>Inspection History</b> sheet — the same data as the Inspection Schedule page) is matched to saved PDFs in <b>FLPS Software › FLPS Inspection Reports</b> by property + system. A system can have <b>several reports</b> (e.g. multiple kitchen hoods) — all are listed on that one record, with their dates.
-    A <span style="color:#c62828;font-weight:700;">missing</span> flag means there's a record but no PDF in Drive — locate or re-upload it.
+    A <span style="color:#c62828;font-weight:700;">missing</span> flag means there's a record but no PDF in Drive — locate or re-upload it. For missing rows we also point at the likely <b>🔎 Work Log line</b> (and the invoice it was billed under) to help you track the report down.
     A report tagged <i>not in inspection schedule</i> means the PDF exists but no inspection was ever logged for it — worth adding to the schedule.
     <b>Backflow</b> and <b>5-year</b> tests (FDC hydrostatic, internal pipe) are often done by outside vendors (Morrison / Martinez / Convergint) — import their PDFs via <a href="import-reports.html">Import External Reports</a> and they'll match here like any other report.
     <b>3- and 5-year</b> cycles only show a "next due" when a baseline date exists. Matches tagged <i>(likely)</i> are best-guess — open to confirm.
@@ -299,10 +299,11 @@ const HISTORY_SHEET_ID = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ';
 const HISTORY_TAB_NAME = 'Inspection History';
 const REPORTS_FOLDER_NAME = 'FLPS Inspection Reports';
 const REPORTS_FOLDER_ID   = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg'; // FLPS Software › FLPS Inspection Reports
+const WR_SHEET_ID         = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik'; // Work Requests / Work Log sheet
 // Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
 // draft with the report PDFs attached (it only creates drafts, never sends).
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
-const CACHE_KEY = 'flips_audit_cache_v7';  // bump when the cached data shape or matching logic changes
+const CACHE_KEY = 'flips_audit_cache_v8';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -519,6 +520,14 @@ async function loadAudit(forceRefresh = false) {
 
     attachEntries(props, entries);
     if (reportsLoaded) matchReports(props, reportFiles);
+
+    // For the still-missing reports, try to point at the Work Log line (and the
+    // invoice it was billed under) so they're easier to track down.
+    loadStatus('Cross-referencing the Work Log…');
+    try {
+      const wl = await loadWorkLog();
+      attachWorkLogMatches(props, wl);
+    } catch(e) { console.warn('[Audit] Work Log cross-ref failed:', e.message); }
 
     AUDIT = { props, reportsLoaded };
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: AUDIT })); } catch(_) {}
@@ -832,6 +841,66 @@ function matchReports(props, files) {
   props.forEach(p => { delete p._files; delete p._nameToks; delete p._addrToks; });
 }
 
+// ── Work Log cross-reference (only for missing reports) ────
+// The Work Log is the first tab of WR_SHEET_ID. Columns: A date req, C property,
+// D work requested, G date completed, H invoiced (QB invoice #).
+async function loadWorkLog() {
+  const metaRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}?fields=sheets.properties`);
+  if (!metaRes.ok) throw new Error('WR meta ' + metaRes.status);
+  const tab = (await metaRes.json()).sheets[0].properties;
+  const valRes = await googleFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(tab.title)}`);
+  if (!valRes.ok) throw new Error('WR values ' + valRes.status);
+  const values = (await valRes.json()).values || [];
+  if (!values.length) return { rows: [], gid: tab.sheetId };
+  const isHeader = values[0].some(c => /date request|work requested|property/i.test(c || ''));
+  const body = isHeader ? values.slice(1) : values;
+  const offset = isHeader ? 2 : 1;
+  const rows = body.map((r, i) => ({
+    rowNum: offset + i,
+    property: (r[2] || '').trim(),
+    workReq:  (r[3] || '').trim(),
+    dateComp: (r[6] || '').trim(),
+    dateReq:  (r[0] || '').trim(),
+    invoiced: (r[7] || '').trim(),
+    ptoks: tokens(r[2] || ''),
+  })).filter(r => r.property || r.workReq);
+  return { rows, gid: tab.sheetId };
+}
+
+// Attach a best-guess Work Log line (and the invoice it was billed under) to each
+// missing inspection record. Requires a good property match AND either the same
+// system or a nearby date — never property alone.
+function attachWorkLogMatches(props, wl) {
+  if (!wl || !wl.rows.length) return;
+  props.forEach(p => {
+    const ptoks = tokens(p.name);
+    if (!ptoks.length) return;
+    p.entries.forEach(e => {
+      if (e.external || e.extra || !e.missing) return;
+      const esys = sysFromType(e.type);
+      let best = null, bestScore = 0;
+      wl.rows.forEach(row => {
+        if (!row.ptoks.length) return;
+        const ov = ptoks.filter(t => row.ptoks.includes(t)).length / ptoks.length;
+        if (ov < 0.5) return;                              // property must match well
+        const sysMatch = !!esys && sysFromType(row.workReq) === esys;
+        const rd = parseSheetDate(stripTime(row.dateComp || row.dateReq || ''));
+        const days = (rd && e.dateObj) ? Math.abs(rd - e.dateObj) / 86400000 : Infinity;
+        if (!sysMatch && days > 200) return;               // need a system or date signal too
+        const score = ov + (sysMatch ? 0.6 : 0) + (days <= 21 ? 0.4 : days <= 75 ? 0.2 : days <= 200 ? 0.05 : 0);
+        if (score > bestScore) { bestScore = score; best = row; }
+      });
+      if (best && bestScore >= 0.85) {
+        e.workLog = {
+          rowNum: best.rowNum,
+          invoiced: best.invoiced || '',
+          link: `https://docs.google.com/spreadsheets/d/${WR_SHEET_ID}/edit#gid=${wl.gid}&range=A${best.rowNum}`,
+        };
+      }
+    });
+  });
+}
+
 // ── Filters / grouping ─────────────────────────────────────
 function populateTypeFilter() {
   const types = new Set();
@@ -1004,7 +1073,10 @@ function renderProp(p) {
       const woTag = (wo && e.source && e.source.toLowerCase().includes('work'))
         ? `<div class="rep-wo">from Work Order <b>#${escHtml(wo)}</b> — check the WO / work log for a sub's report</div>`
         : '';
-      rep = `<span class="rep-missing">⚠ No report in Drive</span>${woTag}`;
+      const wlTag = e.workLog
+        ? `<div class="rep-wo">🔎 likely <a href="${escAttr(e.workLog.link)}" target="_blank" rel="noopener">Work Log #${e.workLog.rowNum}</a>${e.workLog.invoiced ? ` · invoiced <b>${escHtml(e.workLog.invoiced)}</b>` : ''}</div>`
+        : '';
+      rep = `<span class="rep-missing">⚠ No report in Drive</span>${woTag}${wlTag}`;
     }
     const count = (e.reportList && e.reportList.length > 1) ? ` <span class="rep-count">×${e.reportList.length}</span>` : '';
     const typeCell = e.extra
