@@ -1375,7 +1375,10 @@ function goExtSummaryStep() {
   autoFillExtSvcFromUnits();
 
   document.getElementById('step-3').style.display = 'none';
+  document.getElementById('step-4').style.display = 'none';
   document.getElementById('step-generic-defic').style.display = 'none';
+  const prevDef = document.getElementById('step-generic-prevdefic');
+  if (prevDef) prevDef.style.display = 'none';
   document.getElementById('step-ext-summary').style.display = 'block';
 
   // Nav

@@ -24,14 +24,13 @@ function goStep(n) {
   if (activeInspectionSystem && !['fire-alarm','sprinkler'].includes(activeInspectionSystem)) {
     saveDraft();
   }
-  // Always hide generic defic step, ext summary, and prev defic when navigating numbered steps
-  const genDeficEl = document.getElementById('step-generic-defic');
-  if (genDeficEl) genDeficEl.style.display = 'none';
-  const extSummaryEl = document.getElementById('step-ext-summary');
-  if (extSummaryEl) extSummaryEl.style.display = 'none';
-  const genPrevDeficEl = document.getElementById('step-generic-prevdefic');
-  if (genPrevDeficEl) genPrevDeficEl.style.display = 'none';
-  document.getElementById('step-' + currentStep).style.display = 'none';
+  // Hide every step container explicitly. Don't rely on currentStep — the
+  // special-step navigators (goExtSummaryStep/goGenericDeficStep) don't update it,
+  // so a stale value could leave the previous step (e.g. Sign & Export) on screen.
+  ['step-1','step-2','step-3','step-4','step-generic-defic','step-ext-summary','step-generic-prevdefic'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
   document.getElementById('step-' + n).style.display = 'block';
   document.querySelectorAll('#step-nav .step-tab').forEach(t => {
     const s = parseInt(t.dataset.step);
@@ -69,7 +68,11 @@ function goStep(n) {
         const genericDefics = document.getElementById('generic-defic-tbody')?.querySelectorAll('tr').length || 0;
         setOverallStatus(genericDefics > 0 ? 'DEFICIENT' : 'COMPLIANT');
       }
-      document.getElementById('fa-notes-card').style.display = 'block';
+      // Extinguisher captures general notes on its own Inspect page
+      // (ext-notes-tbody, which the extinguisher PDF reads), so hide the
+      // redundant Sign & Export notes card for that system only.
+      document.getElementById('fa-notes-card').style.display =
+        (activeInspectionSystem === 'extinguisher') ? 'none' : 'block';
       document.getElementById('sp-notes-card').style.display = 'none';
     }
   }
@@ -721,6 +724,12 @@ function clearStep4State() {
   ['sig-name', 'sig-date', 'cust-sig-name', 'cust-sig-title', 'cust-sig-date', 'general-notes', 'overall-status-val'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
+  });
+  // Clear the Sign & Export "General Notes" tables so notes don't carry over from
+  // a previous inspection (previously only clearFAInspectionState reset fa-notes).
+  ['fa-notes-tbody', 'sp-notes-tbody'].forEach(id => {
+    const tb = document.getElementById(id);
+    if (tb) tb.innerHTML = '';
   });
 }
 
