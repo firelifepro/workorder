@@ -64,6 +64,9 @@ async function saveAndDownload() {
   }
   if (warnEl) warnEl.style.display = 'none';
 
+  // ── 1b. Overall status ↔ deficiency consistency check ────────────────────────
+  if (!confirmStatusConsistency()) return;
+
   // ── 2. Button state ─────────────────────────────────────────────────────────
   const btn = document.getElementById('save-download-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
@@ -192,7 +195,21 @@ async function saveAndDownload() {
 // ─────────────────────────────────────────────────────────────────────────────
 // PDF PREVIEW — local download only, no save/Drive/profile changes
 // ─────────────────────────────────────────────────────────────────────────────
+// Warn if the overall status contradicts the deficiency list. Returns true to
+// proceed (consistent, or the user clicked OK), false to abort (clicked Cancel).
+function confirmStatusConsistency() {
+  let msg = null;
+  try {
+    const data = collectAllData();
+    msg = statusDeficiencyMismatch(data.overallStatus, (data.deficiencies || []).length);
+  } catch(_) { return true; } // never block PDF generation on a collection error
+  if (!msg) return true;
+  return confirm('⚠ Status / deficiency mismatch\n\n' + msg +
+    '\n\nClick OK to generate the PDF anyway, or Cancel to go back and review.');
+}
+
 async function previewPDF() {
+  if (!confirmStatusConsistency()) return;
   const btn = document.getElementById('preview-pdf-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
   try {

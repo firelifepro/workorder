@@ -27,6 +27,22 @@ async function buildHospitalPDFBytes() {
   return await buildHospPDF(getPdfOpts());
 }
 
+// Warn if the overall status contradicts the deficiency list. Returns true to
+// proceed (consistent, or the user clicked OK), false to abort (clicked Cancel).
+function hospConfirmStatusConsistency() {
+  // Make sure the auto-detected deficiency rows reflect the current form state.
+  if (typeof rebuildHospDeficList === 'function') rebuildHospDeficList();
+  let count = 0;
+  document.querySelectorAll('#h-defic-tbody tr').forEach(tr => {
+    const desc = tr.querySelector('td:nth-child(2) input')?.value?.trim();
+    if (desc) count++;
+  });
+  const msg = statusDeficiencyMismatch(H.overallStatus, count);
+  if (!msg) return true;
+  return confirm('⚠ Status / deficiency mismatch\n\n' + msg +
+    '\n\nClick OK to generate the PDF anyway, or Cancel to go back and review.');
+}
+
 // ════════════════════════════════════════════════════════════════
 //  SAVE & DOWNLOAD — full flow: Drive JSON + Drive PDF + schedule
 // ════════════════════════════════════════════════════════════════
@@ -51,6 +67,9 @@ async function hospSaveAndDownload() {
     return;
   }
   if (sigWarn) sigWarn.classList.remove('visible');
+
+  // Overall status ↔ deficiency consistency check
+  if (!hospConfirmStatusConsistency()) return;
 
   const btn      = document.getElementById('h-save-download-btn');
   const statusEl = document.getElementById('h-pdf-status');
@@ -182,6 +201,7 @@ async function hospSaveAndDownload() {
 //  PDF PREVIEW — local download only, no save/Drive/profile changes
 // ════════════════════════════════════════════════════════════════
 async function hospPreviewPDF() {
+  if (!hospConfirmStatusConsistency()) return;
   const btn = document.getElementById('h-preview-pdf-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
   showPdfOverlay('Building PDF preview… this may take a minute');

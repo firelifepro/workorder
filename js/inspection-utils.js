@@ -100,3 +100,29 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 3200);
 }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERALL STATUS ↔ DEFICIENCY CONSISTENCY
+// Returns a human-readable warning string when the chosen overall status doesn't
+// match the number of deficiencies on the report, or null when they agree.
+// Only the two cases the user cares about are flagged:
+//   • COMPLIANT with one or more deficiencies
+//   • DEFICIENT with zero deficiencies
+// (IMPAIRED and an unset status are intentionally left alone.)
+// Pure function — shared by inspection.html and hospital-inspection.html, unit-tested.
+// ─────────────────────────────────────────────────────────────────────────────
+function statusDeficiencyMismatch(status, deficCount) {
+  const s = String(status || '').toUpperCase();
+  const n = Number(deficCount) || 0;
+  if (s === 'COMPLIANT' && n > 0) {
+    return `The overall status is COMPLIANT, but the deficiency list has ${n} item${n === 1 ? '' : 's'}.`;
+  }
+  if (s === 'DEFICIENT' && n === 0) {
+    return 'The overall status is DEFICIENT, but there are no deficiencies in the list.';
+  }
+  return null;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { statusDeficiencyMismatch };
+}

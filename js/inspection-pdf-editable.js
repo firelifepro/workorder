@@ -2496,7 +2496,7 @@ async function buildEditablePDFBytes() {
 
     // ── PAGE 9: Deficiency + Batteries + Notes + Signatures ───────────────────
     addPage();
-    secHdr('DEFICIENCY LIST & PROPOSED SOLUTIONS');
+    secHdr('DEFICIENCY LIST');
     const deficList = [];
     document.querySelectorAll('#fa-defic-tbody tr').forEach((r, i) => {
       deficList.push([String(i+1), r.querySelector('td:nth-child(2) input')?.value?.trim()||'', '']);
