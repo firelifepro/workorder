@@ -303,7 +303,7 @@ const WR_SHEET_ID         = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik'; // W
 // Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
 // draft with the report PDFs attached (it only creates drafts, never sends).
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
-const CACHE_KEY = 'flips_audit_cache_v8';  // bump when the cached data shape or matching logic changes
+const CACHE_KEY = 'flips_audit_cache_v9';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -894,7 +894,7 @@ function attachWorkLogMatches(props, wl) {
         e.workLog = {
           rowNum: best.rowNum,
           invoiced: best.invoiced || '',
-          link: `https://docs.google.com/spreadsheets/d/${WR_SHEET_ID}/edit#gid=${wl.gid}&range=A${best.rowNum}`,
+          link: `worklog.html?row=${best.rowNum}`,   // opens the HTML work log, scrolled to the row
         };
       }
     });

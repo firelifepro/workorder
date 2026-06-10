@@ -90,6 +90,8 @@
     tr.row-invoice { background: #fce7f3; }
     tr.row-waiting { background: #fefce8; }
     tr.row-paid    { background: #dcfce7; }
+    tr.row-flash td { animation: wlflash 4s ease-out 1; }
+    @keyframes wlflash { 0%, 12% { background: #ffe08a; } 100% { background: inherit; } }
 
     .td-rownum    { font-weight: 700; color: #6b7280; text-align: center; width: 44px; white-space: nowrap; font-size: 8pt; }
     .td-date      { white-space: nowrap; width: 84px; }
@@ -738,6 +740,7 @@ async function loadWorkLog() {
     logRows = parseLogRows(values, rowColors);
     renderTable();
     updateLayout();
+    focusDeepLinkRow();   // ?row=N from the audit page → scroll to + highlight
     toast('✓ Loaded ' + logRows.length + ' entries');
   } catch(e) {
     toast('⚠ Could not load: ' + e.message);
@@ -833,7 +836,7 @@ function renderTable() {
   }
 
   tbody.innerHTML = filtered.map(r => `
-    <tr class="${STATUS_ROW[r._status] || 'row-open'}" onclick="openModal(${r._rowNum})" title="Click to edit">
+    <tr id="wlrow-${r._rowNum}" class="${STATUS_ROW[r._status] || 'row-open'}" onclick="openModal(${r._rowNum})" title="Click to edit">
       <td class="td-rownum">${r._rowNum}</td>
       <td class="td-datecomp">${workCell(r.dateReq, 'dr' + r._rowNum)}</td>
       <td class="td-datecomp">${workCell(r.reqBy, 'rb' + r._rowNum)}</td>
@@ -856,6 +859,30 @@ function renderTable() {
 }
 
 function applyFilters() { renderTable(); }
+
+// Deep link from the audit page (worklog.html?row=N): scroll to + highlight that
+// row. If it's hidden by a default filter, fall back to the row-number search.
+let _deepRowDone = false;
+function focusDeepLinkRow() {
+  if (_deepRowDone) return;
+  const rn = parseInt(new URLSearchParams(location.search).get('row') || '', 10);
+  if (!rn) return;
+  _deepRowDone = true;
+  requestAnimationFrame(() => {
+    let el = document.getElementById('wlrow-' + rn);
+    if (!el) {                                   // filtered out → surface via row-search
+      const rs = document.getElementById('row-search');
+      if (rs) { rs.value = rn; renderTable(); el = document.getElementById('wlrow-' + rn); }
+    }
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('row-flash');
+      setTimeout(() => el && el.classList.remove('row-flash'), 4000);
+    } else {
+      toast('Row ' + rn + ' not found in the work log');
+    }
+  });
+}
 
 // ─────────────────────────────────────────────────────
 // VIEW TOGGLE (simple = large font, key columns only)
