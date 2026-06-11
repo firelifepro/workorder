@@ -148,6 +148,47 @@ export default {
       }
     }
 
+    // ── /api/fetch-report — host-locked proxy for Inspect Point reports ──
+    // import-inspectpoint.html follows the "Click here to view your invoice"
+    // link in Martinez/Inspect Point emails. That link (…inspectpoint.com/
+    // invoices/view_report?token=…) and the CloudFront PDFs it embeds can't be
+    // fetched directly from the browser (CORS). This proxies the GET server-side.
+    // Locked to inspectpoint.com + cloudfront.net so it can't be used as an open
+    // proxy. Returns the upstream bytes verbatim (HTML for the viewer page,
+    // application/pdf for the report) so the page can parse / upload them.
+    if (url.pathname === '/api/fetch-report' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); }
+      catch (e) { return corsResponse({ error: 'Invalid JSON body' }, 400, origin); }
+
+      const target = body.url;
+      if (!target) return corsResponse({ error: 'Missing url' }, 400, origin);
+      let tu;
+      try { tu = new URL(target); } catch (_) { return corsResponse({ error: 'Bad url' }, 400, origin); }
+      const host = tu.hostname.toLowerCase();
+      const hostOk = host === 'inspectpoint.com' || host.endsWith('.inspectpoint.com') || host.endsWith('.cloudfront.net');
+      if (tu.protocol !== 'https:' || !hostOk) {
+        return corsResponse({ error: 'Host not allowed' }, 403, origin);
+      }
+
+      try {
+        const upstream = await fetch(target, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (FLPS Report Fetcher)' },
+          redirect: 'follow',
+        });
+        const buf = await upstream.arrayBuffer();
+        return new Response(buf, {
+          status: upstream.status,
+          headers: {
+            'Content-Type': upstream.headers.get('content-type') || 'application/octet-stream',
+            ...(origin ? { 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin' } : {}),
+          },
+        });
+      } catch (err) {
+        return corsResponse({ error: 'Fetch failed', message: err.message }, 502, origin);
+      }
+    }
+
     // ── Static assets — pass everything else through ─────────────────
     return env.ASSETS.fetch(request);
   },
