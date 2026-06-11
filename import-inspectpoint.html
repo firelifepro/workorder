@@ -146,7 +146,7 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
 
 <div id="content">
   <div id="notes">
-    Pulls inspection <b>reports</b> out of <b>Inspect Point</b> invoice emails (Martinez Fire). Each email's "<i>Click here to view your invoice</i>" link opens an Inspect Point page that has the <b>Service Report</b> PDF(s) attached — this tool follows that link, grabs the report (not the invoice), reads it to guess <b>property / system / date</b>, and on your OK uploads it to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so it shows on the <a href="inspection-audit.html">audit page</a>. <b>Nothing is uploaded until you click Import.</b> <b>Tip:</b> click a row's <b>subject</b> to open the report PDF and verify before you set property/system/frequency/date. If one PDF covers <b>two tests</b>, click <b>⧉</b> to duplicate it and import under both systems. After importing, the email is tagged <b>InspectPoint_Imported</b> and the default search excludes that label.
+    Pulls inspection <b>reports</b> out of <b>Inspect Point</b> invoice emails (Martinez Fire). Each email's "<i>Click here to view your invoice</i>" link opens an Inspect Point page that has the <b>Service Report</b> PDF(s) attached — this tool follows that link, grabs the <b>date-named inspection report</b> (skipping the invoice and Martinez's generic "Service Report" summary, which isn't an inspection report), reads the date out of the attachment name (e.g. <code>822-2026-02-11</code> → 2026-02-11) and reads the PDF to guess <b>property / system</b>, and on your OK uploads it to <b>FLPS Software › FLPS Inspection Reports</b> named <code>EXT_…</code> so it shows on the <a href="inspection-audit.html">audit page</a>. <b>Nothing is uploaded until you click Import.</b> <b>Tip:</b> click a row's <b>subject</b> to open the report PDF and verify before you set property/system/frequency/date. If one PDF covers <b>two tests</b>, click <b>⧉</b> to duplicate it and import under both systems. After importing, the email is tagged <b>InspectPoint_Imported</b> and the default search excludes that label.
     <details id="cost-details" style="margin-top:8px;">
       <summary style="cursor:pointer;font-weight:600;color:#1a4d8f;">ⓘ How it works &amp; what it costs</summary>
       <div style="margin-top:8px;font-size:0.76rem;line-height:1.6;">
@@ -475,6 +475,30 @@ function toISO(d) {
   const iso = String(d).match(/(\d{4})-(\d{2})-(\d{2})/); if (iso) return iso[0];
   const dt = new Date(d); return isNaN(dt) ? '' : dt.toISOString().slice(0,10);
 }
+// Inspect Point names real reports with the inspection date, e.g. "822-2026-02-11"
+// (leading number is Martinez's job/site #) → 2026-02-11. Also handles
+// MM-DD-YYYY and YYYYMMDD with . _ - / separators. Returns '' if none.
+function dateFromLabel(name) {
+  const s = String(name || '');
+  const mk = (y, mo, d) => {
+    mo = String(mo).padStart(2, '0'); d = String(d).padStart(2, '0');
+    return (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31) ? `${y}-${mo}-${d}` : '';
+  };
+  let m = s.match(/(20\d{2})[._\-\/](\d{1,2})[._\-\/](\d{1,2})/);   // YYYY-MM-DD
+  if (m) return mk(m[1], m[2], m[3]);
+  m = s.match(/(\d{1,2})[._\-\/](\d{1,2})[._\-\/](20\d{2})/);       // MM-DD-YYYY
+  if (m) return mk(m[3], m[1], m[2]);
+  m = s.match(/(?:^|[^\d])(20\d{2})(\d{2})(\d{2})(?:[^\d]|$)/);     // YYYYMMDD
+  if (m) return mk(m[1], m[2], m[3]);
+  return '';
+}
+// An attachment labeled just "Service Report" (no date code) is Martinez's
+// service summary, NOT an NFPA inspection report — skip it. Matches the exact
+// generic label only (letters-only compare, so "Service Report (1)" counts too),
+// so a date-coded or otherwise-named report is always kept.
+function isGenericServiceReport(label) {
+  return (label || '').replace(/[^a-z]/gi, '').toLowerCase() === 'servicereport';
+}
 
 // ── Gmail search → follow links → build rows ───────────────
 async function runSearch() {
@@ -500,7 +524,7 @@ async function runSearch() {
     if (!msgs.length) { setProgress('No messages found.', 'done'); btn.disabled = false; return; }
     // Claude only runs when both a key is set AND the auto-read toggle is on.
     const anthKey = claudeEnabled() ? (localStorage.getItem(ANTH_KEY_LS) || '') : '';
-    let noLink = 0, noReport = 0, errs = 0;
+    let noLink = 0, noReport = 0, errs = 0, serviceSkipped = 0;
     for (let i = 0; i < msgs.length; i++) {
       setProgress(`Processing email ${i+1}/${msgs.length} — ${rows.length} report(s) found…`);
       try {
@@ -513,10 +537,15 @@ async function runSearch() {
         catch(e) { console.warn('viewer fetch', e); errs++; continue; }
         const reps = parseReportLinks(viewer);
         if (!reps.length) { noReport++; continue; }
-        for (const rep of reps) { await addRow(msgs[i].id, detail, rep, anthKey); renderTable(); }
+        for (const rep of reps) {
+          // Generic "Service Report" = not an inspection report — skip (no row, no Claude read).
+          if (isGenericServiceReport(rep.label)) { serviceSkipped++; continue; }
+          await addRow(msgs[i].id, detail, rep, anthKey); renderTable();
+        }
       } catch(e) { console.error('msg', msgs[i].id, e); errs++; }
     }
     const notes = [];
+    if (serviceSkipped) notes.push(`${serviceSkipped} service-report (skipped)`);
     if (noLink) notes.push(`${noLink} with no link`);
     if (noReport) notes.push(`${noReport} invoice-only (no report)`);
     if (errs) notes.push(`${errs} error(s)`);
@@ -562,7 +591,9 @@ async function addRow(msgId, detail, rep, anthKey) {
   const freq = (parsed.frequency && FREQ_KEYS.has(parsed.frequency)) ? parsed.frequency : guessFreq(sysKey, hintText);
   const propText = ((parsed.properties || []).join(' ') + ' ' + (parsed.property||'') + ' ' + detail._subject);
   const matched = matchProperty(propText || detail._subject);
-  const date = toISO(parsed.inspectionDate) || toISO(detail._date);
+  // Prefer the date Claude read from the PDF, then the date coded into the
+  // attachment label ("822-2026-02-11"), and only fall back to the email date.
+  const date = toISO(parsed.inspectionDate) || dateFromLabel(rep.label) || toISO(detail._date);
 
   const prev = done[pdfId];
   rows.push({
