@@ -154,7 +154,7 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
         <br><br>
         <b>Matching:</b> With <i>Auto-read</i> ON, Claude reads each report PDF and returns the <b>property</b>, <b>system</b> (sprinkler, FDC hydrostatic, internal pipe, backflow, …) and <b>inspection date</b>. The property is matched against your client list; the system + date drive the filename so the <a href="inspection-audit.html">audit page</a> slots it into the right row. Override any guess before importing. With <i>Auto-read</i> OFF, those fields come from the email only — free, but rougher.
         <br><br>
-        <b>Cost:</b> Only Claude costs money (Google + Drive + the proxy are free). Each report is read <b>once</b> and cached; handled emails are excluded from later searches, so you don't re-pay. Rough per-report estimate by model:
+        <b>Cost:</b> Only Claude costs money (Google + Drive + the proxy are free). To stay cheap and under the per-minute token limit, Claude reads only the <b>first few pages</b> of each report (where the property/date/system live) — not the photo pages. Each report is read <b>once</b> and cached; if Claude's rate limit is hit mid-run the page <b>waits and retries automatically</b> rather than failing. Handled emails are excluded from later searches, so you don't re-pay. Rough per-report estimate by model:
         <table style="border-collapse:collapse;margin-top:6px;font-size:0.74rem;">
           <tr style="text-align:left;"><th style="padding:2px 10px 2px 0;">Model</th><th style="padding:2px 10px;">Per report (3–8 pp)</th><th style="padding:2px 10px;">~15 reports (first run)</th></tr>
           <tr><td style="padding:2px 10px 2px 0;"><b>Haiku 4.5</b></td><td style="padding:2px 10px;">~$0.01–0.03</td><td style="padding:2px 10px;">~$0.15–0.45</td></tr>
@@ -194,9 +194,16 @@ input.date-in { border: 1px solid #ddd; border-radius: 4px; padding: 4px 6px; fo
 <div id="toast"></div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="js/flips-google-fetch.js"></script>
 <script>
 // ── Constants ──────────────────────────────────────────────
+// Claude reads only the first few pages (property / date / system summary live
+// up front; the photo pages are most of the bytes and would blow the per-minute
+// input-token rate limit). The FULL PDF is still what gets uploaded to Drive.
+const CLAUDE_MAX_PAGES   = 3;
+const CLAUDE_MAX_RETRIES = 6;   // 429 back-off attempts before giving up on a PDF
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const SHEET_ID          = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 const CLIENT_LIST_GID   = '1899870347';
 const REPORTS_FOLDER_ID = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg';   // FLPS Software › FLPS Inspection Reports
@@ -388,20 +395,34 @@ async function proxyFetch(targetUrl) {
   return res;
 }
 async function proxyFetchText(u) { return (await proxyFetch(u)).text(); }
-async function proxyFetchB64(u) {
+// Returns the validated PDF bytes (ArrayBuffer). Hard-verifies it's really a PDF:
+// if the Worker route isn't deployed, /api/fetch-report falls through to static
+// assets and returns HTML/404 — which would otherwise be sent to Claude as a
+// bogus "PDF". Magic-byte check gives a clear, actionable error instead.
+async function proxyFetchPdfBuf(u) {
   const res = await proxyFetch(u);
   const buf = await res.arrayBuffer();
-  // Hard-verify we actually got a PDF. If the Worker route isn't deployed,
-  // /api/fetch-report falls through to static assets and returns HTML/404 —
-  // which would otherwise be sent to Claude as a bogus "PDF". Magic-byte check
-  // gives a clear, actionable error instead.
   const b = new Uint8Array(buf);
   const magic = b.length >= 4 ? String.fromCharCode(b[0],b[1],b[2],b[3]) : '';
   if (magic !== '%PDF') {
     const ct = (res.headers.get('content-type') || '?').split(';')[0];
     throw new Error(`proxy returned ${ct} (${buf.byteLength}B), not a PDF — is /api/fetch-report deployed?`);
   }
-  return abToB64(buf);
+  return buf;
+}
+async function proxyFetchB64(u) { return abToB64(await proxyFetchPdfBuf(u)); }
+// Trim to the first n pages so Claude reads a fraction of the tokens (photo-heavy
+// reports otherwise blow the per-minute rate limit). Falls back to the full PDF
+// if pdf-lib can't parse it. Used ONLY for the Claude read, never for upload.
+async function firstPagesBase64(buf, n) {
+  try {
+    const src = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+    if (src.getPageCount() <= n) return abToB64(buf);
+    const out = await PDFLib.PDFDocument.create();
+    const pages = await out.copyPages(src, Array.from({ length: n }, (_, i) => i));
+    pages.forEach(p => out.addPage(p));
+    return abToB64(await out.save());
+  } catch(e) { console.warn('pdf trim failed, sending full PDF', e); return abToB64(buf); }
 }
 function abToB64(buf) {
   const bytes = new Uint8Array(buf); let bin = ''; const chunk = 0x8000;
@@ -595,8 +616,10 @@ async function addRow(msgId, detail, rep, anthKey) {
     parsed = {};
     if (anthKey) {
       try {
-        b64 = await proxyFetchB64(rep.url);
-        parsed = await readReportWithClaude(b64, anthKey, detail._subject, detail._from, rep.label);
+        const buf = await proxyFetchPdfBuf(rep.url);
+        b64 = abToB64(buf);                                       // FULL pdf — kept for the Drive upload
+        const claudeB64 = await firstPagesBase64(buf, CLAUDE_MAX_PAGES);   // trimmed — sent to Claude
+        parsed = await readReportWithClaude(claudeB64, anthKey, detail._subject, detail._from, rep.label);
         cache[pdfId] = { ...parsed }; saveCache();   // cache ONLY successful reads
       } catch(e) { console.warn('claude/proxy', e); parsed = { _err: e.message }; }   // not cached → retried next search
     }
@@ -642,14 +665,28 @@ async function readReportWithClaude(b64, anthKey, subject, from, filename) {
     '  "summary": string                // short note on what it is\n}\n\n' +
     `Email subject: ${subject||'(none)'}\nEmail from: ${from||''}\nAttachment label: ${filename||''}\n` +
     "For 5-year NFPA-25 work: 'internal pipe assessment' → internal-pipe; 'FDC hydrostatic' → fdc-hydro.";
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
-    body: JSON.stringify({ model, max_tokens: 700, system: sys, messages: [{ role:'user', content: [
-      { type:'document', source:{ type:'base64', media_type:'application/pdf', data: b64 } },
-      { type:'text', text: user }
-    ]}]})
-  });
+  const body = JSON.stringify({ model, max_tokens: 700, system: sys, messages: [{ role:'user', content: [
+    { type:'document', source:{ type:'base64', media_type:'application/pdf', data: b64 } },
+    { type:'text', text: user }
+  ]}]});
+  let res;
+  for (let attempt = 0; ; attempt++) {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
+      body
+    });
+    // 429 = org input-token-per-minute limit. Wait it out (honor Retry-After) and
+    // retry — this self-throttles the whole search so it doesn't fail the batch.
+    if (res.status === 429 && attempt < CLAUDE_MAX_RETRIES) {
+      const ra = parseInt(res.headers.get('retry-after'), 10);
+      const wait = (ra > 0 ? ra * 1000 : Math.min(60000, 3000 * Math.pow(2, attempt)));
+      setProgress(`⏳ Claude rate limit reached — waiting ${Math.round(wait/1000)}s, then retrying (attempt ${attempt+1}/${CLAUDE_MAX_RETRIES})…`);
+      await sleep(wait + 500);
+      continue;
+    }
+    break;
+  }
   if (!res.ok) throw new Error('Claude HTTP ' + res.status + ': ' + (await res.text()).slice(0,150));
   const txt = (await res.json()).content?.[0]?.text || '';
   const cleaned = txt.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
