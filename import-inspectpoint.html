@@ -389,7 +389,18 @@ async function proxyFetch(targetUrl) {
 }
 async function proxyFetchText(u) { return (await proxyFetch(u)).text(); }
 async function proxyFetchB64(u) {
-  const buf = await (await proxyFetch(u)).arrayBuffer();
+  const res = await proxyFetch(u);
+  const buf = await res.arrayBuffer();
+  // Hard-verify we actually got a PDF. If the Worker route isn't deployed,
+  // /api/fetch-report falls through to static assets and returns HTML/404 —
+  // which would otherwise be sent to Claude as a bogus "PDF". Magic-byte check
+  // gives a clear, actionable error instead.
+  const b = new Uint8Array(buf);
+  const magic = b.length >= 4 ? String.fromCharCode(b[0],b[1],b[2],b[3]) : '';
+  if (magic !== '%PDF') {
+    const ct = (res.headers.get('content-type') || '?').split(';')[0];
+    throw new Error(`proxy returned ${ct} (${buf.byteLength}B), not a PDF — is /api/fetch-report deployed?`);
+  }
   return abToB64(buf);
 }
 function abToB64(buf) {
@@ -548,6 +559,8 @@ async function runSearch() {
     if (serviceSkipped) notes.push(`${serviceSkipped} service-report (skipped)`);
     if (noLink) notes.push(`${noLink} with no link`);
     if (noReport) notes.push(`${noReport} invoice-only (no report)`);
+    const readFails = rows.filter(r => r.readErr).length;
+    if (readFails) notes.push(`⚠ ${readFails} PDF read(s) failed — hover the row's Status`);
     if (errs) notes.push(`${errs} error(s)`);
     setProgress(`Done. ${rows.length} report(s)${notes.length ? ' · ' + notes.join(', ') : ''}.`, 'done');
     refreshImportBtn();
@@ -572,17 +585,21 @@ async function addRow(msgId, detail, rep, anthKey) {
   const existing = rows.find(r => r.pdfId === pdfId);
   if (existing) { if (!existing.msgIds.includes(msgId)) existing.msgIds.push(msgId); return; }
 
+  // Re-read when there's no cached parse, OR the cached one is empty/errored —
+  // runs before the proxy was deployed (or with Auto-read off) could have left a
+  // poisoned `{}` / `{_err}` entry that would otherwise block a real read forever.
   let parsed = cache[pdfId];
+  const cacheUsable = parsed && !parsed._err && Object.keys(parsed).length > 0;
   let b64 = null;
-  if (!parsed) {
+  if (!cacheUsable) {
     parsed = {};
     if (anthKey) {
       try {
         b64 = await proxyFetchB64(rep.url);
         parsed = await readReportWithClaude(b64, anthKey, detail._subject, detail._from, rep.label);
-      } catch(e) { console.warn('claude/proxy', e); parsed = { _err: e.message }; }
+        cache[pdfId] = { ...parsed }; saveCache();   // cache ONLY successful reads
+      } catch(e) { console.warn('claude/proxy', e); parsed = { _err: e.message }; }   // not cached → retried next search
     }
-    cache[pdfId] = { ...parsed }; saveCache();
   }
 
   const hintText = (parsed.summary||'') + ' ' + (rep.label||'') + ' ' + detail._subject;
@@ -603,7 +620,9 @@ async function addRow(msgId, detail, rep, anthKey) {
     propName: matched ? matched.name : '',
     sysKey, freq, date,
     b64,
-    status: prev ? '✓ imported' : '', _statusCls: prev ? 'ok' : '',
+    readErr: parsed._err || '',
+    status: prev ? '✓ imported' : (parsed._err ? '⚠ read failed' : ''),
+    _statusCls: prev ? 'ok' : (parsed._err ? 'err' : ''),
     imported: !!prev, importedName: prev ? prev.filename : '',
   });
 }
@@ -672,7 +691,7 @@ function renderTable() {
       <td><select class="sys-sel" onchange="setField(${idx},'freq',this.value)">${freqOpts}</select></td>
       <td><input class="date-in" type="text" value="${escAttr(r.date)}" placeholder="MM/DD/YYYY" title="Type MM/DD/YYYY or YYYY-MM-DD — normalized when you click away" onchange="setDate(${idx}, this.value)"></td>
       <td><span class="fname">${escHtml(buildFilename(r))}</span></td>
-      <td><span class="row-status ${r._statusCls||''}" title="${escAttr(r.importedName||'')}">${r.imported ? '✓ imported' : (r.status||'')}</span> ${dupBtn}</td>
+      <td><span class="row-status ${r._statusCls||''}" title="${escAttr(r.importedName || r.readErr || '')}">${r.imported ? '✓ imported' : (r.status||'')}</span> ${dupBtn}</td>
     </tr>`;
   }).join('');
   refreshImportBtn();
