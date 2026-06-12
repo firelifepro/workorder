@@ -34,6 +34,18 @@ async function saveAndDownload() {
     return;
   }
 
+  // ── 0b. Property check — never save/export with an empty property ─────────────
+  // Mirrors the name resolution in collectAllData() (inspection-pdf.js).
+  const _propName = (document.getElementById('property-name')?.value || '').trim()
+    || (document.getElementById('property-select')?.value || '').trim();
+  if (!_propName) {
+    toast('⚠ Select a property before saving — the report needs a property set');
+    const _sel = document.getElementById('property-select');
+    _sel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    _sel?.focus();
+    return;
+  }
+
   // ── 1. Signature check — BOTH drawn signature AND printed name required ───────
   const warnEl = document.getElementById('sig-warning');
 
@@ -217,6 +229,15 @@ function confirmStatusConsistency() {
 }
 
 async function previewPDF() {
+  const _propName = (document.getElementById('property-name')?.value || '').trim()
+    || (document.getElementById('property-select')?.value || '').trim();
+  if (!_propName) {
+    toast('⚠ Select a property before previewing — the report needs a property set');
+    const _sel = document.getElementById('property-select');
+    _sel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    _sel?.focus();
+    return;
+  }
   if (!confirmStatusConsistency()) return;
   const btn = document.getElementById('preview-pdf-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }

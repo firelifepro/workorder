@@ -169,15 +169,25 @@ async function loadSheet(forceRefresh = false) {
 function buildDropdown() {
   const sel = document.getElementById('property-select');
   if (!sel) return;
+  // Preserve any in-progress selection across a rebuild. loadSheet() →
+  // buildDropdown() also runs on a mid-inspection reconnect (the OAuth popup
+  // doesn't reload the page, so the form data survives) — without this the
+  // dropdown reset to placeholder and _clearPropertyFields() wiped the property,
+  // and the inspection then saved/exported a PDF with an empty property.
+  const prevVal = sel.value;
   sel.innerHTML = '<option value="">— Select property —</option>';
   Object.keys(clientData).sort().forEach(name => {
     const o = document.createElement('option');
     o.value = name; o.textContent = name;
     sel.appendChild(o);
   });
-  // Dropdown rebuild always resets to placeholder — clear any browser-restored
-  // field values so they don't look like a real property selection.
-  if (!sel.value) _clearPropertyFields();
+  if (prevVal && Object.prototype.hasOwnProperty.call(clientData, prevVal)) {
+    sel.value = prevVal; // keep the active property selected
+  } else if (!sel.value) {
+    // No real prior selection — clear any browser-restored field values so they
+    // don't look like a real property selection.
+    _clearPropertyFields();
+  }
 }
 
 function _clearPropertyFields() {
