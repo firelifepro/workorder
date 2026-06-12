@@ -320,7 +320,7 @@ function filterTrackerPropDropdown(query) {
   const prevVal = sel.value;
   const names = Object.keys(clientData).sort();
   sel.innerHTML = '';
-  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
+  const matches = names.filter(n => propMatchesQuery(n, q));
   const ph = document.createElement('option');
   ph.value = '';
   ph.textContent = q ? `— ${matches.length} match${matches.length !== 1 ? 'es' : ''} —` : '— All properties —';

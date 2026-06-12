@@ -646,17 +646,19 @@ async function loadClientList(forceRefresh = false) {
     const headers = rows[0].map(h => h.trim().toLowerCase());
     const nameIdx = headers.findIndex(h => ['property name','property','site name','name'].some(k => h.includes(k)));
     const acctIdx = headers.findIndex(h => h.includes('acct') || h.includes('account'));
+    const addrIdx = headers.findIndex(h => h.includes('address') || h.includes(' addr'));
     const raw = {};
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const name = (nameIdx >= 0 ? r[nameIdx] : r[0] || '').trim();
       if (!name) continue;
       const acct = (acctIdx >= 0 ? r[acctIdx] : '').trim();
-      raw[name] = { acct };
+      const addr = (addrIdx >= 0 ? r[addrIdx] : '').trim();
+      raw[name] = { acct, addr };
     }
     // Store in same format as the work-order page so both share the session cache
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: raw })); } catch(_) {}
-    clientList = Object.entries(raw).map(([name, obj]) => ({ name, acct: obj.acct || '' }));
+    clientList = Object.entries(raw).map(([name, obj]) => ({ name, acct: obj.acct || '', addr: obj.addr || '' }));
     buildPropDropdown();
   } catch(e) {
     console.warn('[ClientList] Failed to load:', e.message);
@@ -667,8 +669,21 @@ async function loadClientList(forceRefresh = false) {
 function extractClientList(data) {
   return Object.entries(data).map(([name, obj]) => {
     const acctKey = Object.keys(obj).find(k => k.toLowerCase().includes('acct') || k.toLowerCase().includes('account'));
-    return { name, acct: (acctKey && obj[acctKey]) ? String(obj[acctKey]).trim() : '' };
+    const addrKey = Object.keys(obj).find(k => { const lk = k.toLowerCase(); return lk.includes('address') || lk.includes(' addr'); });
+    return {
+      name,
+      acct: (acctKey && obj[acctKey]) ? String(obj[acctKey]).trim() : '',
+      addr: (addrKey && obj[addrKey]) ? String(obj[addrKey]).trim() : '',
+    };
   }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Match a property by name OR service address, mirroring the worklog search.
+function propMatchesQuery(name, q) {
+  if (!q) return true;
+  if (name.toLowerCase().includes(q)) return true;
+  const c = clientList.find(c => c.name === name);
+  return !!(c && c.addr && c.addr.toLowerCase().includes(q));
 }
 
 // ── Property search dropdown ────────────────────────────────
@@ -692,7 +707,7 @@ function filterPropDropdown(query) {
   clear.style.display = q ? 'block' : 'none';
   const prevVal = sel.value;
   const names = clientList.length ? clientList.map(c => c.name) : [...new Set(allRows.map(r => r.property))].sort();
-  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
+  const matches = names.filter(n => propMatchesQuery(n, q));
   sel.innerHTML = '';
   const ph = document.createElement('option');
   ph.value = ''; ph.textContent = q ? `— ${matches.length} match${matches.length !== 1 ? 'es' : ''} —` : '— All properties —';
@@ -985,7 +1000,7 @@ function filterModalPropDropdown(query) {
   clear.style.display = q ? 'block' : 'none';
   const prevVal = sel.value;
   const names = clientList.map(c => c.name);
-  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
+  const matches = names.filter(n => propMatchesQuery(n, q));
   // Rebuild options
   sel.innerHTML = '';
   const ph = document.createElement('option');

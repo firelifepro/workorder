@@ -193,6 +193,17 @@ function buildDropdown() {
   clearPropertySearch();
 }
 
+// Match a property by name OR its service-address column, mirroring the
+// worklog search so e.g. a street number finds the building. clientData is
+// keyed by lowercased header, so we look up whichever column is the address.
+function propMatchesQuery(name, q) {
+  if (!q) return true;
+  if (name.toLowerCase().includes(q)) return true;
+  const d = clientData[name] || {};
+  const k = Object.keys(d).find(h => h.includes('address') || h.includes(' addr'));
+  return !!(k && String(d[k] || '').toLowerCase().includes(q));
+}
+
 function filterPropertyDropdown(query) {
   const sel   = document.getElementById('property-select');
   const clear = document.getElementById('prop-search-clear');
@@ -203,7 +214,7 @@ function filterPropertyDropdown(query) {
 
   sel.innerHTML = '';
   const names = Object.keys(clientData).sort();
-  const matches = names.filter(n => !q || n.toLowerCase().includes(q));
+  const matches = names.filter(n => propMatchesQuery(n, q));
   const placeholder = document.createElement('option');
   placeholder.value = '';
   placeholder.textContent = q ? `— ${matches.length} match${matches.length !== 1 ? 'es' : ''} —` : '— Select property —';
