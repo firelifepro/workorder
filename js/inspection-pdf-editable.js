@@ -448,7 +448,7 @@ async function buildExtinguisherPDFBytes() {
   gap(10);
   secHdr('OVERALL STATUS & SIGNATURES');
   dataRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', w: PW }]);
-  gap(6);
+  gap(12); // extra padding so the signature labels' ascenders clear the status box above
 
   const sigH = 40, sigW = PW / 2 - 6;
   page.drawText('INSPECTOR / OWNER SIGNATURE:', { x: ML, y: ty(sigH) + sigH + 2, size: 7, font: hFont, color: navy });
