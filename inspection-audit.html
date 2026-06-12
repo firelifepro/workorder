@@ -304,7 +304,7 @@ const WR_SHEET_ID         = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik'; // W
 // Read-only on Sheets/Drive; gmail.compose lets "Email reports" build a Gmail
 // draft with the report PDFs attached (it only creates drafts, never sends).
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.compose';
-const CACHE_KEY = 'flips_audit_cache_v9';  // bump when the cached data shape or matching logic changes
+const CACHE_KEY = 'flips_audit_cache_v10';  // bump when the cached data shape or matching logic changes
 const CACHE_TTL = 10 * 60 * 1000;
 
 let accessToken = null;
@@ -458,6 +458,20 @@ function sysFromFile(name) {
   return '';
 }
 function sysLabel(key) { return SYS_BY_KEY[key] ? SYS_BY_KEY[key].label : 'Other'; }
+// Pull the frequency out of a report filename's freq segment
+// (FLPS_{sys}_{freq}_{prop}..._{date}.pdf). Returns a canonical lowercase
+// frequency matching how history rows store it ('' if none found). Checked
+// semi-annual-first because "semi_annual" also contains "annual".
+function freqFromFile(name) {
+  const n = (name || '').toLowerCase();
+  if (/semi[_ -]?annual/.test(n))   return 'semi annual';
+  if (/\bannual\b/.test(n))         return 'annual';
+  if (/quarterly/.test(n))          return 'quarterly';
+  if (/monthly/.test(n))            return 'monthly';
+  if (/5[_ -]?year/.test(n))        return '5-year';
+  if (/3[_ -]?year/.test(n))        return '3-year';
+  return '';
+}
 function isBackflow(type) { return /backflow/i.test(type || ''); }
 // Pull the inspection date out of a report filename. System reports use
 // YYYY-MM-DD (e.g. ..._2026-05-20.pdf); hospital reports use YYYYMMDD (..._20260421.pdf).
@@ -697,6 +711,7 @@ async function loadReports() {
           ntoks: tokens(name),
           lname: name.toLowerCase(),
           sys: sysFromFile(name),
+          freq: freqFromFile(name),
           dateObj: parseFileDate(name) || (f.createdTime ? new Date(f.createdTime) : null),
           prop: null,            // assigned during matchReports
           used: false,
@@ -799,11 +814,19 @@ function matchReports(props, files) {
     p._files.forEach(f => {
       const list = entriesBySys[f.sys];
       if (list && list.length) {
-        // Attach to the closest-dated record of the same system.
-        let best = list[0], bd = Infinity;
+        // Attach to the same-system record, preferring one whose frequency
+        // matches the filename's freq segment, then breaking ties by closest
+        // date. Without the freq tiebreak, two same-system records on the same
+        // date (e.g. a Work Order "Annual" row + an inspection "Semi Annual"
+        // row) are both date-distance 0, so the report would land on whichever
+        // sorted first and the other would falsely show "missing".
+        let best = list[0], bestKey = [Infinity, Infinity];
         list.forEach(e => {
-          const d = (e.dateObj && f.dateObj) ? Math.abs(e.dateObj - f.dateObj) : Infinity;
-          if (d < bd) { bd = d; best = e; }
+          const freqMiss = (f.freq && e.freq && e.freq.toLowerCase() !== f.freq) ? 1 : 0;
+          const dateDist = (e.dateObj && f.dateObj) ? Math.abs(e.dateObj - f.dateObj) : Infinity;
+          if (freqMiss < bestKey[0] || (freqMiss === bestKey[0] && dateDist < bestKey[1])) {
+            bestKey = [freqMiss, dateDist]; best = e;
+          }
         });
         best._reports.push(f);
       } else {
