@@ -543,6 +543,8 @@ function startInspectionForSystem(sysKey) {
     pfStates:      last.pfStates      || {},
     deficiencies:  last.deficiencies  || [],
     extinguishers: last.extinguishers || [],
+    elUnits:       last.elUnits       || [],
+    esUnits:       last.esUnits       || [],
     devices:       last.devices       || null
   } : null;
 

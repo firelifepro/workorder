@@ -756,6 +756,8 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
     fieldData:      data.fieldData || {},
     pfStates:       data.pfStates || {},
     extinguishers:  data.extinguishers || [],
+    elUnits:        data.elUnits || [],
+    esUnits:        data.esUnits || [],
     devices:        sysKey === 'fire-alarm' ? collectFADeviceRows() : (data.devices || undefined),
     keySheet:       data.keySheet       || undefined,
     recurringMonths:data.recurringMonths || undefined,

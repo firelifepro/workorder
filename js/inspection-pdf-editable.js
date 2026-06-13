@@ -59,15 +59,17 @@ async function buildExtinguisherPDFBytes() {
   // ── PAGE 1: COVER ────────────────────────────────────────────────────────────
   addPage();
 
-  // Red title banner
+  // Red title banner — leave white space above it so printers (which clip the
+  // unprintable edge ~0.25") don't cut the top off the header.
+  const TOP_PAD = 18;
   const titleH = 22;
   const titleText = 'PORTABLE FIRE EXTINGUISHER INSPECTION REPORT';
-  page.drawRectangle({ x: 0, y: PH - titleH, width: W, height: titleH, color: FIRE_RED });
+  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: FIRE_RED });
   page.drawText(titleText, {
     x: W/2 - hFont.widthOfTextAtSize(titleText, 13)/2,
-    y: PH - titleH + 5, size: 13, font: hFont, color: white
+    y: PH - TOP_PAD - titleH + 5, size: 13, font: hFont, color: white
   });
-  curY = titleH + 6;
+  curY = TOP_PAD + titleH + 6;
 
   // Logo + company block
   const logoAreaH = 88;
