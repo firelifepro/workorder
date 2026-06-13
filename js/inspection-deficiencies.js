@@ -1180,6 +1180,9 @@ function fastTrackCompliant() {
   // are due) are intentionally LEFT BLANK — they're judgement calls the user
   // must make. Their containers are tagged `data-ft-skip="<label>"` in the HTML.
   const isSkipped = (btn) => !!btn.closest('[data-ft-skip]');
+  // Columns Fast Pass leaves blank silently (no reminder modal) — e.g. exit-sign
+  // 90-min/battery/arrows tests that aren't reliably performed each visit.
+  const isNoAuto = (btn) => !!btn.closest('[data-ft-noauto]');
   let filled = 0;
   const skipLabels = new Set();
 
@@ -1197,7 +1200,7 @@ function fastTrackCompliant() {
     // aux + on-site condition, hood Y rows + verif groups, exit-sign/lighting,
     // extinguisher units, device/sub-panel tables, and sprinkler overview.
     scope.querySelectorAll('.pf-btn.pass').forEach(btn => {
-      if (isSkipped(btn)) return;
+      if (isSkipped(btn) || isNoAuto(btn)) return;
       if (!hasSelection(btn.parentElement, '.pf-btn')) { btn.click(); filled++; }
     });
     // Y/N/NA groups → click Y. Covers FA pre/post checklists, sprinkler

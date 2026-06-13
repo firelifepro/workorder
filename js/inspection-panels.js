@@ -1850,7 +1850,13 @@ function buildExitSignLightingPanel() {
         <tbody id="el-tbody"></tbody>
       </table>
     </div>
-    <button class="add-row-btn" onclick="addELRow()">+ Add Emergency Lighting Unit</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button class="add-row-btn" onclick="addELRow()">+ Add Emergency Lighting Unit</button>
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;color:var(--slate);">
+        <input type="number" id="el-bulk-qty" min="1" max="200" placeholder="Qty" style="width:64px;padding:4px 6px;">
+        <button class="add-row-btn" onclick="bulkAddRows('el')">＋ Bulk add</button>
+      </span>
+    </div>
 
     ${sectionDiv('Exit Signs (NFPA 101 7.10)')}
     <div style="overflow-x:auto;">
@@ -1869,7 +1875,13 @@ function buildExitSignLightingPanel() {
         <tbody id="es-tbody"></tbody>
       </table>
     </div>
-    <button class="add-row-btn" onclick="addESRow()">+ Add Exit Sign</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button class="add-row-btn" onclick="addESRow()">+ Add Exit Sign</button>
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;color:var(--slate);">
+        <input type="number" id="es-bulk-qty" min="1" max="200" placeholder="Qty" style="width:64px;padding:4px 6px;">
+        <button class="add-row-btn" onclick="bulkAddRows('es')">＋ Bulk add</button>
+      </span>
+    </div>
 
     <div class="field-group" style="margin-top:12px;">
       <label>Exit Sign &amp; Lighting Notes</label>
@@ -1878,8 +1890,10 @@ function buildExitSignLightingPanel() {
   return makePanel('exit-sign-lighting', '🚪', 'Exit Sign & Emergency Lighting (NFPA 101)', body);
 }
 
-function _eslYNA(prefix, n) {
-  return `<div class="pf-group" style="gap:2px;">
+function _eslYNA(prefix, n, noAuto) {
+  // noAuto: these sub-columns (90-min, battery, arrows, batt-backup) are NOT
+  // auto-passed by Fast Pass — those tests aren't reliably done each visit.
+  return `<div class="pf-group"${noAuto ? ' data-ft-noauto="1"' : ''} style="gap:2px;">
     <button class="pf-btn pass" style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLSub(this,'${prefix}',${n},'PASS')">P</button>
     <button class="pf-btn fail" style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLSub(this,'${prefix}',${n},'FAIL')">F</button>
     <button class="pf-btn na"   style="padding:2px 5px;min-width:26px;font-size:.65rem;" onclick="setESLSub(this,'${prefix}',${n},'NA')">N/A</button>
@@ -1900,7 +1914,8 @@ function addELRow(p) {
   const n = elCount;
   p = p || {};
   const types = ['LED','Fluorescent','Incandescent','Other'];
-  const typeSel = types.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
+  const typeSel = `<option value=""${!p.type?' selected':''}>—</option>` +
+    types.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
   const tbody = document.getElementById('el-tbody');
   if (!tbody) return;
   const tr = document.createElement('tr');
@@ -1910,8 +1925,8 @@ function addELRow(p) {
     <td><input type="text" id="el-loc-${n}" value="${p.loc||''}" placeholder="Location / ID" style="width:100%;"></td>
     <td><select id="el-type-${n}" style="width:100%;">${typeSel}</select></td>
     <td>${_eslYNA('el-30s',n)}</td>
-    <td>${_eslYNA('el-90m',n)}</td>
-    <td>${_eslYNA('el-batt',n)}</td>
+    <td>${_eslYNA('el-90m',n,true)}</td>
+    <td>${_eslYNA('el-batt',n,true)}</td>
     <td>${_eslPF('el',n)}</td>
     <td><input type="text" id="el-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
     <td><button class="del-btn" onclick="removeELRow(${n})">✕</button></td>`;
@@ -1928,7 +1943,8 @@ function addESRow(p) {
   const n = esCount;
   p = p || {};
   const types = ['LED','Photoluminescent','Incandescent','Other'];
-  const typeSel = types.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
+  const typeSel = `<option value=""${!p.type?' selected':''}>—</option>` +
+    types.map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('');
   const tbody = document.getElementById('es-tbody');
   if (!tbody) return;
   const tr = document.createElement('tr');
@@ -1938,8 +1954,8 @@ function addESRow(p) {
     <td><input type="text" id="es-loc-${n}" value="${p.loc||''}" placeholder="Location / ID" style="width:100%;"></td>
     <td><select id="es-type-${n}" style="width:100%;">${typeSel}</select></td>
     <td>${_eslYNA('es-illum',n)}</td>
-    <td>${_eslYNA('es-arrows',n)}</td>
-    <td>${_eslYNA('es-batt',n)}</td>
+    <td>${_eslYNA('es-arrows',n,true)}</td>
+    <td>${_eslYNA('es-batt',n,true)}</td>
     <td>${_eslPF('es',n)}</td>
     <td><input type="text" id="es-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
     <td><button class="del-btn" onclick="removeESRow(${n})">✕</button></td>`;
@@ -1951,11 +1967,26 @@ function addESRow(p) {
   if (!p) saveDraft();
 }
 
+// Bulk-add N default rows in one click (typeStr: 'el' | 'es').
+function bulkAddRows(typeStr) {
+  const qtyEl = document.getElementById(typeStr + '-bulk-qty');
+  let qty = parseInt(qtyEl?.value, 10);
+  if (!Number.isFinite(qty) || qty < 1) { toast('⚠ Enter a quantity to bulk add.'); return; }
+  qty = Math.min(qty, 200);
+  const add = typeStr === 'el' ? addELRow : addESRow;
+  for (let i = 0; i < qty; i++) add({});  // pass {} so each row skips its own saveDraft
+  if (qtyEl) qtyEl.value = '';
+  if (typeof saveDraft === 'function') saveDraft();
+  toast(`Added ${qty} row${qty === 1 ? '' : 's'}.`);
+}
+
 function setESLSub(btn, prefix, n, val) {
+  // Clicking the already-selected button toggles it off (clears the value).
+  const already = btn.classList.contains('selected');
   btn.closest('.pf-group').querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
+  if (!already) btn.classList.add('selected');
   const inp = document.getElementById(prefix + '-' + n);
-  if (inp) inp.value = val;
+  if (inp) inp.value = already ? '' : val;
 }
 
 function setESLSubById(id, val) {
@@ -1971,11 +2002,14 @@ function setESLSubById(id, val) {
 }
 
 function setESLPF(btn, typeStr, n, val) {
+  // Clicking the already-selected button toggles it off (clears the value).
+  const already = btn.classList.contains('selected');
   btn.closest('.pf-group').querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
+  if (!already) btn.classList.add('selected');
   const inp = document.getElementById(typeStr + '-pf-' + n);
-  if (inp) inp.value = val;
-  _eslManageDefic(typeStr, n, val);
+  const newVal = already ? '' : val;
+  if (inp) inp.value = newVal;
+  _eslManageDefic(typeStr, n, newVal);
   _eslAutoStatus();
 }
 
