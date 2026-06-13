@@ -433,7 +433,7 @@ async function buildExtinguisherPDFBytes() {
   const noteRowCount = Math.max(allNotes.length, 3);
   for (let i = 0; i < noteRowCount; i++) {
     const ntxt = allNotes[i] || '';
-    const rh = pdfRowHeight(wrap(ntxt, 7, PW-30).length, { lineH: 9, pad: 4, min: 13 });
+    const rh = pdfRowHeight(wrap(ntxt, 7, PW-30).length, { lineH: 12, pad: 7, min: 18 });
     checkPage(rh + 1);
     page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
     page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: 7, font: hFont, color: blk });
@@ -669,14 +669,15 @@ async function buildSprinklerPDFBytes() {
   // ── PAGE 1: COVER ──────────────────────────────────────────────────────────
   addPage();
 
-  // Red title banner
+  // Red title banner — leave white space above it so printers don't clip the top.
+  const TOP_PAD = 18;
   const titleH = 22;
-  page.drawRectangle({ x: 0, y: PH - titleH, width: W, height: titleH, color: FIRE_RED });
+  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: FIRE_RED });
   page.drawText('FIRE SPRINKLER INSPECTION REPORT', {
     x: W/2 - hFont.widthOfTextAtSize('FIRE SPRINKLER INSPECTION REPORT', 14)/2,
-    y: PH - titleH + 5, size: 14, font: hFont, color: white
+    y: PH - TOP_PAD - titleH + 5, size: 14, font: hFont, color: white
   });
-  curY = titleH + 6;
+  curY = TOP_PAD + titleH + 6;
 
   // Logo + company block
   const logoAreaH = 88;
@@ -1389,14 +1390,15 @@ async function buildGenericSystemPDFBytes() {
   // ── PAGE 1: HEADER ──────────────────────────────────────────────────────────
   addPage();
 
-  // Red title banner
+  // Red title banner — leave white space above it so printers don't clip the top.
+  const TOP_PAD = 18;
   const titleText = SYS_TITLE[sys] || (meta.label.toUpperCase() + ' INSPECTION REPORT');
-  page.drawRectangle({ x: 0, y: PH - 22, width: W, height: 22, color: FIRE_RED });
+  page.drawRectangle({ x: 0, y: PH - TOP_PAD - 22, width: W, height: 22, color: FIRE_RED });
   page.drawText(titleText, {
     x: W/2 - hFont.widthOfTextAtSize(titleText, 12)/2,
-    y: PH - 22 + 5, size: 12, font: hFont, color: white
+    y: PH - TOP_PAD - 22 + 5, size: 12, font: hFont, color: white
   });
-  curY = 22 + 6;
+  curY = TOP_PAD + 22 + 6;
 
   // Logo + company block  (5 fields × 21pt + 4pt top pad = 109; use 112 for breathing room)
   const logoAreaH = 112;
@@ -1765,13 +1767,15 @@ async function buildExitSignLightingPDFBytes() {
 
   // ── HEADER (same logo pattern as other PDFs) ─────────────────────────────
   addPage();
+  // Leave white space above the banner so printers don't clip the top edge.
+  const TOP_PAD = 18;
   const titleText = 'EXIT SIGN & EMERGENCY LIGHTING INSPECTION REPORT';
-  page.drawRectangle({ x: 0, y: PH - 22, width: W, height: 22, color: FIRE_RED });
+  page.drawRectangle({ x: 0, y: PH - TOP_PAD - 22, width: W, height: 22, color: FIRE_RED });
   page.drawText(titleText, {
     x: W/2 - hFont.widthOfTextAtSize(titleText, 11)/2,
-    y: PH - 22 + 5, size: 11, font: hFont, color: white
+    y: PH - TOP_PAD - 22 + 5, size: 11, font: hFont, color: white
   });
-  curY = 22 + 6;
+  curY = TOP_PAD + 22 + 6;
 
   const logoAreaH = 84;
   const logoX = ML, logoW = 88;
