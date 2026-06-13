@@ -362,32 +362,33 @@ async function buildExtinguisherPDFBytes() {
       curY += 18;
       gap(4);
     }
+  }
 
-    // QA questions
-    if (data.extQA && data.extQA.some(q => q.ans)) {
-      secHdr('INSPECTION VERIFICATION QUESTIONS');
-      const qaLW = 460, qaAW = 80;
-      checkPage(13);
-      page.drawRectangle({ x: ML,      y: ry(13), width: qaLW, height: 13, color: navy });
-      page.drawText('QUESTION', { x: ML+2, y: ty(13,4), size: 6, font: hFont, color: white });
-      page.drawRectangle({ x: ML+qaLW, y: ry(13), width: qaAW, height: 13, color: navy });
-      page.drawText('ANSWER', { x: ML+qaLW+4, y: ty(13,4), size: 6, font: hFont, color: white });
-      curY += 14;
-      (data.extQA || []).forEach(qa => {
-        const rowH = qa.note ? 22 : 13;
-        checkPage(rowH + 1);
-        page.drawRectangle({ x: ML, y: ry(rowH), width: qaLW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
-        wrap(qa.q, 6, qaLW - 4).forEach((ln, li) => {
-          page.drawText(ln, { x: ML+2, y: ry(rowH) + rowH - 6 - li*7, size: 6, font: rFont, color: blk });
-        });
-        page.drawRectangle({ x: ML+qaLW, y: ry(rowH), width: qaAW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
-        const af = form.createTextField(fid());
-        const ansText = (qa.ans || '') + (qa.note ? ' – ' + qa.note : '');
-        af.setText(ansText); af.addToPage(page, { x: ML+qaLW+1, y: ry(rowH)+1, width: qaAW-2, height: rowH-2, font: rFont }); af.setFontSize(6);
-        curY += rowH + 1;
+  // QA questions — rendered independently of the services-due summary so a clean
+  // inspection (no services due) still includes the verification questions
+  if (data.extQA && data.extQA.some(q => q.ans)) {
+    secHdr('INSPECTION VERIFICATION QUESTIONS');
+    const qaLW = 460, qaAW = 80;
+    checkPage(13);
+    page.drawRectangle({ x: ML,      y: ry(13), width: qaLW, height: 13, color: navy });
+    page.drawText('QUESTION', { x: ML+2, y: ty(13,4), size: 6, font: hFont, color: white });
+    page.drawRectangle({ x: ML+qaLW, y: ry(13), width: qaAW, height: 13, color: navy });
+    page.drawText('ANSWER', { x: ML+qaLW+4, y: ty(13,4), size: 6, font: hFont, color: white });
+    curY += 14;
+    (data.extQA || []).forEach(qa => {
+      const rowH = qa.note ? 22 : 13;
+      checkPage(rowH + 1);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: qaLW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
+      wrap(qa.q, 6, qaLW - 4).forEach((ln, li) => {
+        page.drawText(ln, { x: ML+2, y: ry(rowH) + rowH - 6 - li*7, size: 6, font: rFont, color: blk });
       });
-      gap(8);
-    }
+      page.drawRectangle({ x: ML+qaLW, y: ry(rowH), width: qaAW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
+      const af = form.createTextField(fid());
+      const ansText = (qa.ans || '') + (qa.note ? ' – ' + qa.note : '');
+      af.setText(ansText); af.addToPage(page, { x: ML+qaLW+1, y: ry(rowH)+1, width: qaAW-2, height: rowH-2, font: rFont }); af.setFontSize(6);
+      curY += rowH + 1;
+    });
+    gap(8);
   }
 
   // ── DEFICIENCY LIST ──────────────────────────────────────────────────────────
