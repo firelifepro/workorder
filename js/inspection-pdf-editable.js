@@ -1830,11 +1830,11 @@ async function buildExitSignLightingPDFBytes() {
   let rfY2 = ry(logoAreaH) + logoAreaH - 8;
   rtFields2.forEach(f => {
     page.drawText(f.label + ':', { x: rtX+3, y: rfY2, size: 5.5, font: hFont, color: slate });
-    rfY2 -= 5;
-    page.drawRectangle({ x: rtX+2, y: rfY2-2, width: rtW-4, height: 9, color: gold, borderColor: sky, borderWidth: 0.3 });
+    // gold box sits 2pt below the label baseline so the label isn't clipped
+    page.drawRectangle({ x: rtX+2, y: rfY2-11, width: rtW-4, height: 9, color: gold, borderColor: sky, borderWidth: 0.3 });
     const tf = form.createTextField(fid());
-    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY2-1, width: rtW-6, height: 7, font: rFont }); tf.setFontSize(7);
-    rfY2 -= 11;
+    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY2-10, width: rtW-6, height: 7, font: rFont }); tf.setFontSize(7);
+    rfY2 -= 15;
   });
   curY += logoAreaH + 4;
 
@@ -1868,17 +1868,19 @@ async function buildExitSignLightingPDFBytes() {
   // Deficiencies
   if (data.deficiencies.length > 0) {
     secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
+    gap(2);
     data.deficiencies.forEach(d => {
-      checkPage(14);
       const text = d.item + (d.description ? ': ' + d.description : '');
-      const lines = wrap(text, 8, PW - 16);
-      const rh = lines.length * 11 + 4;
-      page.drawRectangle({ x: ML, y: ry(rh), width: PW, height: rh, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
-      page.drawText('\u2022', { x: ML+4, y: ty(rh, rh/2+3), size: 8, font: hFont, color: red });
-      lines.forEach((line, li) => {
-        page.drawText(line, { x: ML+12, y: ty(rh, rh-4-li*11), size: 8, font: li===0?hFont:rFont, color: red });
-      });
-      curY += rh + 3;
+      const rowH = pdfRowHeight(wrap(text, 7.5, PW-18).length, { lineH: 10, pad: 4, min: 13 });
+      checkPage(rowH + 2);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: 12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+      page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: 8, font: hFont, color: red });
+      page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+      const dff = form.createTextField(fid());
+      dff.setText(text); dff.enableMultiline();
+      dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
+      dff.setFontSize(7.5);
+      curY += rowH + 2;
     });
     gap(4);
   }
@@ -1953,6 +1955,7 @@ async function buildExitSignLightingPDFBytes() {
   // Signature
   checkPage(50);
   secHdr('INSPECTOR CERTIFICATION');
+  gap(3);
   const sigName2 = data.signature?.name || '';
   const sigDate2 = data.signature?.date || '';
   const halfW2 = PW / 2 - 4;
