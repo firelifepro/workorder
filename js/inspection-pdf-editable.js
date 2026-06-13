@@ -1833,14 +1833,15 @@ async function buildExitSignLightingPDFBytes() {
     { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
     { label: 'NFPA REF.',    val: data.inspection.nfpaRef || 'NFPA 101' },
   ];
-  let rfY2 = ry(logoAreaH) + logoAreaH - 8;
+  let rfY2 = ry(logoAreaH) + logoAreaH - 7;
   rtFields2.forEach(f => {
     page.drawText(f.label + ':', { x: rtX+3, y: rfY2, size: 5.5, font: hFont, color: slate });
-    // gold box sits 2pt below the label baseline so the label isn't clipped
-    page.drawRectangle({ x: rtX+2, y: rfY2-11, width: rtW-4, height: 9, color: gold, borderColor: sky, borderWidth: 0.3 });
+    // gold box sits 2pt below the label baseline (top fixed) and grows downward so
+    // the value text has more vertical room and isn't clipped at the descenders
+    page.drawRectangle({ x: rtX+2, y: rfY2-12, width: rtW-4, height: 10, color: gold, borderColor: sky, borderWidth: 0.3 });
     const tf = form.createTextField(fid());
-    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY2-10, width: rtW-6, height: 7, font: rFont }); tf.setFontSize(7);
-    rfY2 -= 15;
+    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY2-11, width: rtW-6, height: 8, font: rFont }); tf.setFontSize(7);
+    rfY2 -= 16;
   });
   curY += logoAreaH + 4;
 
@@ -1959,22 +1960,41 @@ async function buildExitSignLightingPDFBytes() {
   }
 
   // Signature
-  checkPage(50);
+  checkPage(80);
   secHdr('INSPECTOR CERTIFICATION');
   gap(3);
-  const sigName2 = data.signature?.name || '';
-  const sigDate2 = data.signature?.date || '';
+  const sigName2 = data.signature?.name || data.inspection?.inspectorName || '';
+  const sigDate2 = data.signature?.date || data.inspection?.date || '';
   const halfW2 = PW / 2 - 4;
-  page.drawText('Inspector Signature:', { x: ML+2, y: ty(8,5), size: 6.5, font: hFont, color: navy });
-  page.drawText('Date:', { x: ML+halfW2+10, y: ty(8,5), size: 6.5, font: hFont, color: navy });
-  curY += 8;
-  page.drawRectangle({ x: ML, y: ry(20), width: halfW2, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
+
+  // Drawn signature (matches sprinkler/other reports) — embed the sig-canvas PNG
+  const eslSigH = 40;
+  page.drawText('INSPECTOR SIGNATURE:', { x: ML+2, y: ry(0) + 2, size: 7, font: hFont, color: navy });
+  gap(11);
+  page.drawRectangle({ x: ML, y: ry(eslSigH), width: PW, height: eslSigH, color: gold, borderColor: sky, borderWidth: 0.5 });
+  if (sigHasData) {
+    try {
+      const sc  = document.getElementById('sig-canvas');
+      const b64 = sc.toDataURL('image/png').split(',')[1];
+      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+      const sImg = await pdfDoc.embedPng(ab);
+      const sDims = sImg.scaleToFit(PW - 8, eslSigH - 8);
+      page.drawImage(sImg, { x: ML + 4, y: ry(eslSigH) + 4, width: sDims.width, height: sDims.height });
+    } catch(_) {}
+  }
+  curY += eslSigH + 6;
+
+  // Printed name + date row below the signature
+  page.drawText('INSPECTOR PRINT NAME:', { x: ML+2, y: ry(0) + 2, size: 6.5, font: hFont, color: navy });
+  page.drawText('DATE:', { x: ML+halfW2+10, y: ry(0) + 2, size: 6.5, font: hFont, color: navy });
+  gap(10);
+  page.drawRectangle({ x: ML, y: ry(18), width: halfW2, height: 18, color: gold, borderColor: sky, borderWidth: 0.5 });
   const sf2 = form.createTextField(fid());
-  sf2.setText(sigName2); sf2.addToPage(page, { x: ML+2, y: ry(20)+2, width: halfW2-4, height: 16, font: rFont }); sf2.setFontSize(9);
-  page.drawRectangle({ x: ML+halfW2+8, y: ry(20), width: halfW2, height: 20, color: gold, borderColor: sky, borderWidth: 0.5 });
+  sf2.setText(sigName2); sf2.addToPage(page, { x: ML+2, y: ry(18)+2, width: halfW2-4, height: 14, font: rFont }); sf2.setFontSize(9);
+  page.drawRectangle({ x: ML+halfW2+8, y: ry(18), width: halfW2, height: 18, color: gold, borderColor: sky, borderWidth: 0.5 });
   const df2 = form.createTextField(fid());
-  df2.setText(sigDate2); df2.addToPage(page, { x: ML+halfW2+10, y: ry(20)+2, width: halfW2-4, height: 16, font: rFont }); df2.setFontSize(9);
-  curY += 24;
+  df2.setText(sigDate2); df2.addToPage(page, { x: ML+halfW2+10, y: ry(18)+2, width: halfW2-4, height: 14, font: rFont }); df2.setFontSize(9);
+  curY += 22;
 
   return await pdfDoc.save();
 }
