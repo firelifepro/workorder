@@ -4501,22 +4501,51 @@ function startNewHospInspection() {
 // ════════════════════════════════════════════════════════════════
 //  DRAFT MODAL — shown on page load if draft exists
 // ════════════════════════════════════════════════════════════════
-function checkForDraft() {
+// Full Drive-sourced draft (with photos) pending a resume — set only when the
+// local copy was missing and we recovered the draft from the FLPS Drafts folder
+// (e.g. after the 2-day local purge wiped it). Cleared once consumed.
+let _pendingDriveDraft = null;
+
+async function checkForDraft() {
+  _pendingDriveDraft = null;
+  let raw = null;
+  try { raw = localStorage.getItem(hospDraftKey()); } catch(_) {}
+
+  // No local draft — fall back to the Drive backup so a purged/long-running job
+  // (the hospital local copy can be cleared after 30 days, or by clearing site
+  // data) can still be resumed. Mirrors the regular inspection page's flow.
+  if (!raw && accessToken && typeof loadDraftFromDrive === 'function') {
+    try {
+      const driveDraft = await loadDraftFromDrive(hospDraftKey());
+      if (driveDraft && driveDraft.fields) {
+        _pendingDriveDraft = driveDraft;
+        // Stash a photo-stripped copy into localStorage so the existing resume
+        // path (loadDraft → reads localStorage) works unchanged; photos are
+        // restored separately from _pendingDriveDraft after resume.
+        try {
+          const slim = Object.assign({}, driveDraft, { photos: [] });
+          localStorage.setItem(hospDraftKey(), JSON.stringify(slim));
+        } catch(_) {}
+        raw = JSON.stringify(driveDraft);
+      }
+    } catch(_) {}
+  }
+
+  if (!raw) return;
   try {
-    const raw = localStorage.getItem(hospDraftKey());
-    if (!raw) return;
     const state = JSON.parse(raw);
-    const age = Math.round((Date.now() - state.ts) / 60000);
+    const savedMs = state.ts || new Date(state.savedAt || 0).getTime() || Date.now();
+    const age = Math.round((Date.now() - savedMs) / 60000);
     const ageStr = age < 60 ? `${age} min ago` : `${Math.round(age/60)} hr ago`;
     const prop = state.fields['property-name'] || 'Unknown property';
-    showDraftModal(prop, ageStr);
+    showDraftModal(prop, ageStr, !!_pendingDriveDraft);
   } catch(e) {}
 }
 
-function showDraftModal(prop, ageStr) {
+function showDraftModal(prop, ageStr, fromDrive) {
   const overlay = document.getElementById('draft-modal-overlay');
   document.getElementById('draft-modal-info').textContent =
-    `A saved draft for "${prop}" was found (${ageStr}). Would you like to resume?`;
+    `A saved draft for "${prop}" was found (${ageStr})${fromDrive ? ', recovered from Drive,' : ''}. Would you like to resume?`;
   document.getElementById('draft-modal-main').style.display = 'block';
   document.getElementById('draft-modal-confirm').style.display = 'none';
   overlay.style.display = 'flex';
@@ -4578,7 +4607,29 @@ function _draftModalResume() {
   // Re-apply FAIL row visuals and regenerate deficiency list from restored device selects
   restoreFailVisuals();
   rebuildHospDeficList();
-  showToast('Draft restored');
+  // When recovered from Drive, the draft carries the photos that localStorage
+  // drops — restore them into the grid (loadDraft cleared it).
+  if (_pendingDriveDraft?.photos?.length) {
+    const grid = document.getElementById('h-photo-grid');
+    if (grid) {
+      _pendingDriveDraft.photos.forEach(p => {
+        const src = p.src || p.dataUrl;
+        if (!src) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'photo-thumb';
+        wrap.innerHTML = `<img src="${src}">
+          <textarea placeholder="Caption…" rows="2"></textarea>
+          <button class="photo-del" onclick="this.closest('.photo-thumb').remove();updatePhotoCount()">✕</button>`;
+        wrap.querySelector('img')._data = src;
+        wrap.querySelector('textarea').value = p.caption || p.note || '';
+        grid.appendChild(wrap);
+      });
+      updatePhotoCount();
+    }
+  }
+  const recovered = !!_pendingDriveDraft;
+  _pendingDriveDraft = null;
+  showToast(recovered ? 'Draft recovered from Drive' : 'Draft restored');
 }
 
 // ─── One-time fix: remove consecutive duplicate rows from every device tbody ───
@@ -4667,6 +4718,7 @@ function _draftModalConfirmAction() {
   document.getElementById('draft-modal-overlay').style.display = 'none';
   if (action === 'discard') discardDraft();
   // 'fresh' just closes without loading
+  _pendingDriveDraft = null; // drop the recovered-from-Drive draft either way
 }
 
 function _draftModalHideConfirm() {
@@ -4717,6 +4769,11 @@ function ensureDraftModal() {
 //  INIT — runs on DOMContentLoaded
 // ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+  // Sweep stale local drafts (regular drafts: 2 days; hospital: 30 days — see
+  // purgeStaleDrafts). Safe here because this page's own draft uses the long
+  // hospital TTL, so an in-progress hospital job won't be purged mid-inspection.
+  try { if (typeof purgeStaleDrafts === 'function') purgeStaleDrafts(); } catch(_) {}
+
   // Default dates
   const today = new Date().toISOString().split('T')[0];
   ['insp-date','h-sig-date','h-cust-sig-date'].forEach(id => {

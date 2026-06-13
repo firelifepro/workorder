@@ -343,21 +343,30 @@ function loadDraft() {
   try { return JSON.parse(localStorage.getItem(draftKey())); } catch(e) { return null; }
 }
 
-// Purge stale local drafts to keep localStorage from filling up. Removes any
-// `flips_draft_*` entry older than DRAFT_TTL_DAYS by its savedAt timestamp.
-// Local-only — the Drive backup (FLPS Drafts folder) is untouched, so an old
-// draft can still be recovered from Drive when its property/system is reopened.
+// Purge stale local drafts to keep localStorage from filling up. The bloat
+// comes from REGULAR inspection drafts, which embed base64 photos — those get a
+// short TTL. HOSPITAL drafts store no photos locally and are long-running jobs
+// (can span weeks), and the hospital page only resumes from localStorage (no
+// Drive fallback in checkForDraft), so purging one mid-job would lose it from
+// the UI. Hospital keys therefore get a much longer TTL.
 const DRAFT_TTL_DAYS = 2;
+const HOSPITAL_DRAFT_TTL_DAYS = 30;
 function purgeStaleDrafts() {
-  const cutoff = Date.now() - DRAFT_TTL_DAYS * 24 * 60 * 60 * 1000;
+  const now = Date.now();
   let removed = 0;
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const key = localStorage.key(i);
     if (!key || !key.startsWith('flips_draft_')) continue;
+    const ttlDays = key.endsWith('_hospital') ? HOSPITAL_DRAFT_TTL_DAYS : DRAFT_TTL_DAYS;
     let savedAt = 0;
-    try { savedAt = new Date(JSON.parse(localStorage.getItem(key))?.savedAt || 0).getTime(); } catch(_) {}
-    // Drop entries older than the cutoff, plus any unparseable/timestamp-less junk.
-    if (!savedAt || savedAt < cutoff) { localStorage.removeItem(key); removed++; }
+    try {
+      const d = JSON.parse(localStorage.getItem(key));
+      savedAt = new Date(d?.savedAt || d?.ts || 0).getTime();  // hospital uses ts
+    } catch(_) {}
+    // Drop entries older than their TTL, plus any unparseable/timestamp-less junk.
+    if (!savedAt || savedAt < now - ttlDays * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(key); removed++;
+    }
   }
   return removed;
 }
