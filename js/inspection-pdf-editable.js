@@ -2660,18 +2660,20 @@ async function buildHoodPDFBytes() {
   const propName = data.property?.name || '';
   const inspDate = data.inspection?.date || '';
 
+  // Pad below the top edge so printers don't clip the running header bar.
+  const HDR_PAD = 10;
   const drawPageHeader = () => {
-    page.drawRectangle({ x: 0, y: PH - 20, width: W, height: 20, color: navy });
-    page.drawText(propName, { x: ML, y: PH - 14, size: 8, font: hFont, color: white });
+    page.drawRectangle({ x: 0, y: PH - HDR_PAD - 20, width: W, height: 20, color: navy });
+    page.drawText(propName, { x: ML, y: PH - HDR_PAD - 14, size: 8, font: hFont, color: white });
     const dtW = hFont.widthOfTextAtSize(inspDate, 8);
-    page.drawText(inspDate, { x: W - ML - dtW, y: PH - 14, size: 8, font: hFont, color: white });
+    page.drawText(inspDate, { x: W - ML - dtW, y: PH - HDR_PAD - 14, size: 8, font: hFont, color: white });
   };
 
   const addPage = () => {
     page = pdfDoc.addPage([W, PH]);
     _pageCount++;
     curY = MT;
-    if (_pageCount > 1) { drawPageHeader(); curY = 28; }
+    if (_pageCount > 1) { drawPageHeader(); curY = 28 + HDR_PAD; }
   };
   const ry = (h) => PH - curY - h;
   const ty = (h, a = 3) => PH - curY - h + a;
