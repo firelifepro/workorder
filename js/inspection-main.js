@@ -300,6 +300,11 @@ function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&
 // ON LOAD
 // ─────────────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
+  // Clear out local drafts older than 2 days so base64 photos don't fill
+  // localStorage (the Drive backup keeps them recoverable). Runs before any
+  // draft-resume prompt so stale entries are gone first.
+  try { if (typeof purgeStaleDrafts === 'function') purgeStaleDrafts(); } catch(_) {}
+
   const k = localStorage.getItem('flips_api_key');
   const c = localStorage.getItem('flips_client_id');
   if (k) document.getElementById('api-key').value = k;

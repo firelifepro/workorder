@@ -251,12 +251,33 @@ function saveDraft(silent = false) {
     hoodApplianceCounts: Object.assign({}, _hoodApplianceCounts),
   };
   const key = draftKey();
+  let savedLocally = false, photosDropped = false;
   try {
     localStorage.setItem(key, JSON.stringify(draft));
+    savedLocally = true;
+  } catch(e) {
+    // localStorage caps at ~5MB — base64 photos/signatures are the heavy part.
+    // They're also backed up to Drive (full draft below), so on a quota error
+    // retry with a slimmed local copy so at least the form data persists.
+    try {
+      const slim = Object.assign({}, draft, { photos: [], sigData: null, custSigData: null });
+      localStorage.setItem(key, JSON.stringify(slim));
+      savedLocally = true;
+      photosDropped = true;
+    } catch(_) { /* still too big — fall through to error toast */ }
+  }
+  if (savedLocally) {
     _dirtySinceSave = false;
     // Silent saves (the periodic backstop) don't toast or pop the drawer — the
     // connection modal already handles surfacing a lost Google connection.
-    if (!silent) {
+    if (photosDropped) {
+      // Surface this even on silent saves — the user should know photos aren't
+      // in the local backup (they still go to Drive if connected).
+      toast(accessToken
+        ? '⚠ Storage full — saved locally without photos (photos still sync to Drive)'
+        : '⚠ Storage full — saved locally without photos. Connect Google to back up photos to Drive.');
+      if (!accessToken) document.getElementById('conn-drawer')?.classList.add('open');
+    } else if (!silent) {
       if (!accessToken) {
         toast('Draft saved locally — connect Google to sync to Drive');
         document.getElementById('conn-drawer')?.classList.add('open');
@@ -264,7 +285,7 @@ function saveDraft(silent = false) {
         toast('Draft saved');
       }
     }
-  } catch(e) {
+  } else {
     toast('Save failed — storage full?');
   }
   // Background Drive backup — does not block the UI
@@ -320,6 +341,25 @@ function installAutosave() {
 
 function loadDraft() {
   try { return JSON.parse(localStorage.getItem(draftKey())); } catch(e) { return null; }
+}
+
+// Purge stale local drafts to keep localStorage from filling up. Removes any
+// `flips_draft_*` entry older than DRAFT_TTL_DAYS by its savedAt timestamp.
+// Local-only — the Drive backup (FLPS Drafts folder) is untouched, so an old
+// draft can still be recovered from Drive when its property/system is reopened.
+const DRAFT_TTL_DAYS = 2;
+function purgeStaleDrafts() {
+  const cutoff = Date.now() - DRAFT_TTL_DAYS * 24 * 60 * 60 * 1000;
+  let removed = 0;
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('flips_draft_')) continue;
+    let savedAt = 0;
+    try { savedAt = new Date(JSON.parse(localStorage.getItem(key))?.savedAt || 0).getTime(); } catch(_) {}
+    // Drop entries older than the cutoff, plus any unparseable/timestamp-less junk.
+    if (!savedAt || savedAt < cutoff) { localStorage.removeItem(key); removed++; }
+  }
+  return removed;
 }
 
 function clearDraft() {
