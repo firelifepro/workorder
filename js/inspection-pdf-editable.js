@@ -450,6 +450,7 @@ async function buildExtinguisherPDFBytes() {
   checkPage(120);
   gap(10);
   secHdr('OVERALL STATUS & SIGNATURES');
+  gap(3); // small padding so the status row's label clears the header bar above
   dataRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', w: PW }]);
   gap(12); // extra padding so the signature labels' ascenders clear the status box above
 
@@ -1961,9 +1962,9 @@ async function buildExitSignLightingPDFBytes() {
   }
 
   // Signature
-  checkPage(80);
+  checkPage(88);
   secHdr('INSPECTOR CERTIFICATION');
-  gap(3);
+  gap(8); // clear the header bar before the INSPECTOR SIGNATURE label below
   const sigName2 = data.signature?.name || data.inspection?.inspectorName || '';
   const sigDate2 = data.signature?.date || data.inspection?.date || '';
   const halfW2 = PW / 2 - 4;
