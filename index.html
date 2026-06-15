@@ -1269,13 +1269,37 @@ async function validateWorkLogLineNum(lineNum) {
 }
 
 async function checkDuplicateWOLineNum(lineNum) {
+  const byId = new Map();
+  // 1) Primary: appProperties index. Reliable but eventually-consistent —
+  //    a WO saved seconds ago may not be indexed yet, so this can miss.
   try {
     const q = encodeURIComponent(`appProperties has { key='flips_line_num' and value='${lineNum}'} and trashed=false`);
     const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
-    if (!res.ok) return [];
-    const { files = [] } = await res.json();
-    return files;
-  } catch(_) { return []; }
+    if (res.ok) {
+      const { files = [] } = await res.json();
+      files.forEach(f => byId.set(f.id, f));
+    }
+  } catch(_) {}
+
+  // 2) Fallback: filename match in "2 - Ready to Invoice". The filename
+  //    ("Line 286 - …") exists the instant the file is created, so this
+  //    catches just-saved duplicates the appProperty index hasn't picked up.
+  try {
+    const folderId = await findTargetFolder('2 - Ready to Invoice');
+    if (folderId) {
+      const q = encodeURIComponent(`'${folderId}' in parents and trashed=false and name contains 'Line ${lineNum}'`);
+      const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=100`);
+      if (res.ok) {
+        const { files = [] } = await res.json();
+        // Drive `name contains` is loose (prefix-ish) — confirm precisely so
+        // "Line 286" doesn't match "Line 2860".
+        const re = new RegExp(`^Line\\s+${lineNum}\\s*-`, 'i');
+        files.filter(f => re.test((f.name || '').trim())).forEach(f => byId.set(f.id, f));
+      }
+    }
+  } catch(_) {}
+
+  return Array.from(byId.values());
 }
 
 function showDuplicateWOModal(lineNum, existingName) {
@@ -1624,6 +1648,19 @@ async function createDoc() {
 
     if (data['LINE #'] && !editModeFileId) {
       updateWorkLogRowToInvoice(data['LINE #']).catch(e => console.warn('[WO] worklog status update:', e.message));
+    }
+
+    // After a successful NEW work-order save, switch the form into edit mode
+    // for the file we just created. A corrective re-save (e.g. fixing the
+    // service address) then UPDATES this file instead of creating a second
+    // duplicate WO for the same line #. Must run AFTER the new-WO-only blocks
+    // above (folder move, worklog update, "Saved" toast), which key off
+    // !editModeFileId.
+    if (!editModeFileId && isJsonSave) {
+      editModeFileId   = newId;
+      editModeFileType = 'json';
+      const subBtn = document.getElementById('submit-btn');
+      if (subBtn) { const s = subBtn.querySelector('span'); if (s) s.textContent = '💾 Update Work Order'; }
     }
 
   } catch(e) {
