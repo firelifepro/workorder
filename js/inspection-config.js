@@ -6,7 +6,11 @@ const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 // Inspection pages append directly to the Inspection History tab (see js/flips-history.js)
 // after the report PDF saves, so we need write scope on Sheets.
 const SHEET_GID = '1899870347';
-const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive';
+// gmail.send lets the inspection pages email the completed report PDF to the
+// property owner (js/inspection-email.js). Adding a scope means tokens issued
+// before this change lack it — the first send 403s and the error tells the user
+// to reconnect, after which Google's consent screen includes "send email".
+const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.send';
 
 let accessToken = null;
 let tokenClient = null;

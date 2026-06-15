@@ -593,6 +593,10 @@
           Saves inspection data to <strong>FLPS Inspection History</strong>, updates the <strong>property profile</strong>, saves the PDF to <strong>FLPS Inspection Reports</strong>, and downloads the PDF to this device for upload to <strong>The Compliance Engine (Brycer)</strong>.
         </p>
         <div id="sig-warning" class="sig-warning"></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.84rem;color:var(--navy);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="email-owner-toggle" checked style="width:16px;height:16px;cursor:pointer;">
+          ✉ Email a copy of the report to the property owner
+        </label>
         <div class="btn-row">
           <button class="btn-primary fire" id="save-download-btn" onclick="saveAndDownload()">📄 Save &amp; Download PDF</button>
           <button class="btn-secondary" id="preview-pdf-btn" onclick="previewPDF()" title="Generates and downloads a local PDF preview. Does NOT save to Drive, update the property profile, or close the inspection.">👁 Preview PDF</button>
@@ -1356,6 +1360,7 @@
 <script src="js/inspection-utils.js"></script>
 <script src="js/inspection-nav.js"></script>
 <script src="js/inspection-google.js"></script>
+<script src="js/inspection-email.js"></script>
 <script src="js/inspection-panels.js"></script>
 <script src="js/inspection-deficiencies.js"></script>
 <script src="js/inspection-drafts.js"></script>

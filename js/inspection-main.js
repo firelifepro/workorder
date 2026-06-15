@@ -191,6 +191,18 @@ async function saveAndDownload() {
     // ── 6b. Update inspection schedule (non-blocking) ─────────────────────────
     updateInspectionSchedule(data).catch(e => console.warn('[Schedule] Exception:', e.message));
 
+    // ── 6c. Offer to email the report to the property owner (toggle, on by default).
+    // Read recipient from the DOM before clearDraft so the field is still populated.
+    maybeEmailInspectionReport({
+      toggleId:     'email-owner-toggle',
+      pdfBytes, filename,
+      recipient:    (document.getElementById('property-contact-email')?.value || '').trim(),
+      propertyName: data.property.name,
+      contactName:  data.property.contact,
+      systemLabel:  (typeof SYS_META !== 'undefined' && SYS_META[activeInspectionSystem]?.label) || '',
+      date:         data.inspection.date || dateSlug,
+    });
+
     // ── 7. Clear the draft — inspection is complete ────────────────────────────
     clearDraft();
     document.getElementById('new-insp-btn-wrap').style.display = 'block';

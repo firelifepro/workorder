@@ -190,6 +190,18 @@ async function hospSaveAndDownload() {
     };
     updateInspectionSchedule(schedData).catch(e => console.warn('[Schedule] Exception:', e.message));
 
+    // Offer to email the report to the property owner (toggle, on by default).
+    // Read recipient from the DOM before discardDraft.
+    maybeEmailInspectionReport({
+      toggleId:     'h-email-owner-toggle',
+      pdfBytes, filename,
+      recipient:    (document.getElementById('primary-email')?.value || '').trim(),
+      propertyName: propName,
+      contactName:  (document.getElementById('primary-name')?.value || '').trim(),
+      systemLabel:  (typeof SYS_META !== 'undefined' && SYS_META['hospital']?.label) || 'Hospital',
+      date:         dateStr,
+    });
+
     discardDraft();
     document.getElementById('h-new-insp-btn-wrap').style.display = 'block';
 
