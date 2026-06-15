@@ -116,7 +116,7 @@
     div.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10001;align-items:center;justify-content:center;padding:16px;';
     div.innerHTML = `
       <div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit;">
-        <h2 style="margin:0 0 4px;font-size:1.15rem;color:#0f172a;">✉ Email report to property owner</h2>
+        <h2 style="margin:0 0 4px;font-size:1.15rem;color:#0f172a;">📧 Email report to property owner</h2>
         <div style="font-size:0.8rem;color:#555;margin-bottom:14px;">Sends the inspection PDF to the recipient below. Edit anything before sending.</div>
         <label style="${lbl}">To</label>
         <input id="insp-email-to" type="email" style="${inp}">
