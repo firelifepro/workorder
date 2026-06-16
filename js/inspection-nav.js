@@ -57,9 +57,9 @@ function goStep(n) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (n === 3) updateDeficiencySummary();
   if (n === 4) {
-    const todayStr = todayMT();
-    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
-    if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
+    const sigDate = sigDefaultDate();
+    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = sigDate;
+    if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = sigDate;
     syncStep4DateType();
     updateDeficiencySummary();
     // Auto-suggest status for generic/extinguisher (FA/SP have their own logic)
@@ -124,9 +124,9 @@ function goFAStep(key) {
     document.getElementById('fa-notes-card').style.display = 'block';
     document.getElementById('sp-notes-card').style.display = 'none';
 
-    const todayStr = todayMT();
-    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
-    if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
+    const sigDate = sigDefaultDate();
+    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = sigDate;
+    if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = sigDate;
     syncStep4DateType();
     updateDeficiencySummary();
     const faDeficRows = document.getElementById('fa-defic-tbody')?.querySelectorAll('tr').length || 0;
@@ -343,9 +343,9 @@ function goSPStep(key) {
     document.getElementById('step-4').style.display = 'block';
     document.getElementById('fa-notes-card').style.display = 'none';
     document.getElementById('sp-notes-card').style.display = 'block';
-    const todayStr = todayMT();
-    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = todayStr;
-    if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = todayStr;
+    const sigDate = sigDefaultDate();
+    if (!document.getElementById('sig-date').value) document.getElementById('sig-date').value = sigDate;
+    if (!document.getElementById('cust-sig-date').value) document.getElementById('cust-sig-date').value = sigDate;
     syncStep4DateType();
     updateSPDeficiencySummary();
     const spDeficRows = document.getElementById('sp-defic-tbody')?.querySelectorAll('tr').length || 0;
@@ -498,7 +498,9 @@ function goGenericDeficStep() {
 
   // For systems using PASS/FAIL (not hood Y/N/N/A, not extinguisher): rebuild from FAIL rows.
   // Hood uses Y/N/N/A with manual deficiency entry — never rebuild, preserve existing rows.
-  const usesPF = activeInspectionSystem !== 'extinguisher' && activeInspectionSystem !== 'hood';
+  // Exit Sign & Lighting writes its deficiencies into generic-defic-tbody directly
+  // (it has no `.inspect-row` items), so rebuilding would wipe them — preserve instead.
+  const usesPF = !['extinguisher', 'hood', 'exit-sign-lighting'].includes(activeInspectionSystem);
   if (usesPF) {
     genericDeficCount = 0;
     const tbody = document.getElementById('generic-defic-tbody');
@@ -781,6 +783,22 @@ function clearFAInspectionState() {
     const el = document.getElementById('fa-onsite-eq-' + (i + 1));
     if (el) el.value = val;
   });
+}
+
+// Date the signatures should default to: the inspection date if set, else today.
+function sigDefaultDate() {
+  return document.getElementById('insp-date')?.value || todayMT();
+}
+
+// Push the inspection date into both signature date fields. Called when the
+// inspector changes the Date of Inspection so the signature date follows it
+// instead of being stuck on whatever it defaulted to (previously today's date).
+function syncSigDatesToInspection() {
+  const d = sigDefaultDate();
+  const sig = document.getElementById('sig-date');
+  const cust = document.getElementById('cust-sig-date');
+  if (sig) sig.value = d;
+  if (cust) cust.value = d;
 }
 
 function syncStep4DateType() {

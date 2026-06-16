@@ -208,7 +208,7 @@
           </div>
           <div class="field-group">
             <label>Date of Inspection</label>
-            <input type="date" id="insp-date">
+            <input type="date" id="insp-date" oninput="document.getElementById('step4-insp-date').value=this.value;syncSigDatesToInspection()">
           </div>
           <div class="field-group">
             <label>Inspector Name</label>
@@ -480,7 +480,7 @@
         <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;">
           <div class="field-group" style="flex:0 0 auto;">
             <label>Date of Inspection</label>
-            <input type="date" id="step4-insp-date" oninput="document.getElementById('insp-date').value=this.value">
+            <input type="date" id="step4-insp-date" oninput="document.getElementById('insp-date').value=this.value;syncSigDatesToInspection()">
           </div>
           <div style="flex:1 1 auto;">
             <div style="font-size:0.78rem;font-weight:600;color:var(--slate);margin-bottom:6px;">Report Type</div>

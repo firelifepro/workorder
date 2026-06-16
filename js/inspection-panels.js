@@ -1928,7 +1928,7 @@ function addELRow(p) {
     <td>${_eslYNA('el-90m',n,true)}</td>
     <td>${_eslYNA('el-batt',n,true)}</td>
     <td>${_eslPF('el',n)}</td>
-    <td><input type="text" id="el-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
+    <td><input type="text" id="el-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;" oninput="_eslManageDefic('el',${n})"></td>
     <td><button class="del-btn" onclick="removeELRow(${n})">✕</button></td>`;
   tbody.appendChild(tr);
   if (p.pf30s)    setESLSubById('el-30s-' + n, p.pf30s);
@@ -1957,7 +1957,7 @@ function addESRow(p) {
     <td>${_eslYNA('es-arrows',n,true)}</td>
     <td>${_eslYNA('es-batt',n,true)}</td>
     <td>${_eslPF('es',n)}</td>
-    <td><input type="text" id="es-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;"></td>
+    <td><input type="text" id="es-comments-${n}" value="${p.comments||''}" placeholder="Comments" style="width:100%;" oninput="_eslManageDefic('es',${n})"></td>
     <td><button class="del-btn" onclick="removeESRow(${n})">✕</button></td>`;
   tbody.appendChild(tr);
   if (p.pfIllum)  setESLSubById('es-illum-' + n, p.pfIllum);
@@ -1987,6 +1987,11 @@ function setESLSub(btn, prefix, n, val) {
   if (!already) btn.classList.add('selected');
   const inp = document.getElementById(prefix + '-' + n);
   if (inp) inp.value = already ? '' : val;
+  // A FAIL on any sub-test (30-sec/90-min/battery/illuminated/arrows) makes the
+  // unit deficient too — re-evaluate so it shows up on the deficiency step.
+  const typeStr = prefix.startsWith('es') ? 'es' : 'el';
+  _eslManageDefic(typeStr, n);
+  _eslAutoStatus();
 }
 
 function setESLSubById(id, val) {
@@ -1999,6 +2004,8 @@ function setESLSubById(id, val) {
     b.classList.toggle('selected', bval === val);
   });
   inp.value = val;
+  const m = id.match(/^(el|es)-.+-(\d+)$/);
+  if (m) _eslManageDefic(m[1], +m[2]);
 }
 
 function setESLPF(btn, typeStr, n, val) {
@@ -2009,7 +2016,7 @@ function setESLPF(btn, typeStr, n, val) {
   const inp = document.getElementById(typeStr + '-pf-' + n);
   const newVal = already ? '' : val;
   if (inp) inp.value = newVal;
-  _eslManageDefic(typeStr, n, newVal);
+  _eslManageDefic(typeStr, n);
   _eslAutoStatus();
 }
 
@@ -2024,25 +2031,57 @@ function setESLPFById(typeStr, n, val) {
     });
   }
   inp.value = val;
-  _eslManageDefic(typeStr, n, val);
+  _eslManageDefic(typeStr, n);
 }
 
-function _eslManageDefic(typeStr, n, val) {
-  const deficId = typeStr + '-pf-defic-' + n;
-  const locEl = document.getElementById(typeStr + '-loc-' + n);
-  const loc = locEl?.value?.trim() || '';
-  const unitLabel = (typeStr === 'el' ? 'Emergency Light' : 'Exit Sign') + (loc ? ' - ' + loc : '') + ' (Unit #' + n + ')';
+// Sub-test columns for a unit type, paired with the label shown in the auto note.
+function _eslSubCols(typeStr) {
+  return typeStr === 'el'
+    ? [['el-30s', '30-Sec'], ['el-90m', '90-Min'], ['el-batt', 'Battery']]
+    : [['es-illum', 'Illuminated'], ['es-arrows', 'Arrows'], ['es-batt', 'Battery Backup']];
+}
+
+// A unit is deficient if its Pass/Fail column is FAIL OR any sub-test is FAIL.
+function _eslUnitFailed(typeStr, n) {
+  if (document.getElementById(typeStr + '-pf-' + n)?.value === 'FAIL') return true;
+  return _eslSubCols(typeStr).some(([p]) => document.getElementById(p + '-' + n)?.value === 'FAIL');
+}
+
+// Auto-text for the deficiency note: which sub-tests failed + the row comment.
+function _eslDeficNote(typeStr, n) {
+  const failed = _eslSubCols(typeStr)
+    .filter(([p]) => document.getElementById(p + '-' + n)?.value === 'FAIL')
+    .map(([, lbl]) => lbl);
+  const comment = document.getElementById(typeStr + '-comments-' + n)?.value?.trim() || '';
+  const parts = [];
+  if (failed.length) parts.push('Failed ' + failed.join(', ') + ' test' + (failed.length > 1 ? 's' : ''));
+  if (comment) parts.push(comment);
+  return parts.join(' — ');
+}
+
+function _eslManageDefic(typeStr, n) {
   const tbody = document.getElementById('generic-defic-tbody');
   if (!tbody) return;
+  const deficId = typeStr + '-pf-defic-' + n;
   const existing = document.getElementById(deficId);
-  if (val === 'FAIL') {
+  if (_eslUnitFailed(typeStr, n)) {
+    const loc = document.getElementById(typeStr + '-loc-' + n)?.value?.trim() || '';
+    const unitLabel = (typeStr === 'el' ? 'Emergency Light' : 'Exit Sign') + (loc ? ' - ' + loc : '') + ' (Unit #' + n + ')';
+    const note = _eslDeficNote(typeStr, n);
     if (!existing) {
       const row = document.createElement('tr');
       row.id = deficId;
-      row.innerHTML = `<td style="white-space:nowrap;font-size:.78rem;padding:4px 6px;">${unitLabel}</td>
-        <td style="padding:4px 6px;"><input type="text" id="${deficId}-txt" placeholder="Deficiency note…" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></td>
+      // data-esl-auto tracks whether the note is still auto-generated; once the
+      // inspector edits it by hand we stop overwriting it from tests/comment.
+      row.innerHTML = `<td style="white-space:nowrap;font-size:.78rem;padding:4px 6px;">${escHtml(unitLabel)}</td>
+        <td style="padding:4px 6px;"><input type="text" id="${deficId}-txt" value="${escHtml(note)}" data-esl-auto="1" oninput="this.dataset.eslAuto='0'" placeholder="Deficiency note…" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></td>
         <td style="padding:4px 6px;"><button class="del-btn" onclick="document.getElementById('${deficId}').remove();_eslAutoStatus();">✕</button></td>`;
       tbody.appendChild(row);
+    } else {
+      const labelCell = existing.querySelector('td:first-child');
+      if (labelCell) labelCell.textContent = unitLabel;
+      const txt = document.getElementById(deficId + '-txt');
+      if (txt && txt.dataset.eslAuto !== '0') txt.value = note;
     }
   } else {
     if (existing) existing.remove();
