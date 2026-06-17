@@ -499,7 +499,7 @@ function renderInspectionStartCards() {
         : '';
       const deficCount = (last.deficiencies || []).length;
       const deficHtml = deficCount > 0
-        ? `<span style="font-size:0.72rem;color:var(--red);font-weight:600;"> · ⚠ ${deficCount} prior deficiencie${deficCount !== 1 ? 's' : ''}</span>`
+        ? `<span style="font-size:0.72rem;color:var(--red);font-weight:600;"> · ⚠ ${deficCount} prior ${deficCount === 1 ? 'deficiency' : 'deficiencies'}</span>`
         : `<span style="font-size:0.72rem;color:var(--green);"> · ✓ No deficiencies</span>`;
       prevHtml = `<div style="font-size:0.75rem;color:var(--slate);margin-top:3px;">
         Last: <strong>${last.date || '—'}</strong> · ${last.inspector || '—'} · ${last.reportType || '—'} ${statusPill}${deficHtml}

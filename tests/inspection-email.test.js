@@ -34,7 +34,7 @@ test('compliant body states the overall status and includes the job location, sy
   });
   assert.ok(body.includes('completed Fire Extinguishers Annual inspection report for Strip Plaza - 3985 Tennyson, dated 2026-05-07.'));
   assert.ok(body.includes('Job Location: 3985 Tennyson St, Denver'));
-  assert.ok(body.includes('overall status of Compliant'));
+  assert.ok(body.includes('The report has an overall status of Compliant'));
   assert.ok(!/Deficiencies/i.test(body));
   assert.ok(subject.includes('Fire Extinguishers Annual'));
 });
@@ -45,13 +45,12 @@ test('deficient body lists the deficiencies and invites scheduling repairs', () 
     overallStatus: 'DEFICIENT',
     deficiencies: [{ item: 'Extinguisher #3 - Lobby', description: 'Recharge required' }, 'Exit Sign - Stairwell B (Unit #2)'],
   });
-  assert.ok(body.includes('listed at the top of the report as follows:'));
+  assert.ok(body.includes('The report has an overall status of Deficient with Deficiencies listed at the top of the report as follows:'));
   assert.ok(body.includes('     1. Extinguisher #3 - Lobby: Recharge required'));
   assert.ok(body.includes('     2. Exit Sign - Stairwell B (Unit #2)'));
   // Blank line between the last deficiency and the "reach out" line.
   assert.ok(body.includes('(Unit #2)\n\nPlease reach out'));
   assert.ok(body.includes('schedule repairs'));
-  assert.ok(!/overall status of/i.test(body));
 });
 
 // ── buildInspectionMime ─────────────────────────────────────────────────────

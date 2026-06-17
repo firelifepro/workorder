@@ -90,12 +90,13 @@
     if (serviceAddress && serviceAddress.trim()) lines.push(`Job Location: ${serviceAddress.trim()}`);
 
     if (defics.length > 0) {
-      lines.push('This report is currently showing Deficiencies which are listed at the top of the report as follows:');
+      const deficStatus = status ? statusTitle : 'Deficient';
+      lines.push(`The report has an overall status of ${deficStatus} with Deficiencies listed at the top of the report as follows:`);
       defics.forEach((d, i) => lines.push(`     ${i + 1}. ${d}`));
       lines.push('');
       lines.push('Please reach out if you would like to discuss and schedule repairs.');
     } else {
-      lines.push(`The report is currently showing an overall status of ${statusTitle}`);
+      lines.push(`The report has an overall status of ${statusTitle}`);
     }
 
     lines.push('', 'Thank you,', 'Fire Life Protection Systems');
