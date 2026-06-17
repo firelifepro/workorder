@@ -1197,6 +1197,7 @@ function setExtPF(btn, n, val) {
   }
 
   updateExtStats();
+  refreshAutoStatus();
 }
 
 function removeExtUnitDefic(deficId, n) {
@@ -1214,6 +1215,7 @@ function removeExtUnitDefic(deficId, n) {
   if (hidden) hidden.value = '';
   document.querySelector(`#ext-action-row-${n} .pf-group`)?.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
   updateExtStats();
+  refreshAutoStatus();
 }
 
 function toggleExtYN(n, field) {
@@ -1245,6 +1247,7 @@ function toggleExtYN(n, field) {
       }
     }
   }
+  refreshAutoStatus();
 }
 
 function removeExtYNDefic(deficId, n, field) {
@@ -1253,6 +1256,7 @@ function removeExtYNDefic(deficId, n, field) {
   const inp = document.getElementById('u-' + field + '-' + n);
   if (btn) { btn.classList.remove('active'); btn.textContent = '—'; }
   if (inp) inp.value = '';
+  refreshAutoStatus();
 }
 
 function extUpdateCabState(n) {
@@ -1303,6 +1307,7 @@ function toggleExtCab(n, item) {
       }
     }
   }
+  refreshAutoStatus();
 }
 
 function removeExtCabDefic(deficId, n, item) {
@@ -1311,6 +1316,7 @@ function removeExtCabDefic(deficId, n, item) {
   const inp = document.getElementById('u-cab-' + item + '-' + n);
   if (btn) btn.classList.remove('active');
   if (inp) inp.value = '';
+  refreshAutoStatus();
 }
 
 function toggleExtNote(n) {
@@ -1335,6 +1341,7 @@ function removeExtUnit(n) {
   document.getElementById('ext-defic-row-' + n)?.remove();
   document.getElementById('ext-note-row-' + n)?.remove();
   updateExtStats();
+  refreshAutoStatus();
 }
 
 function updateExtStats() {
@@ -1468,6 +1475,7 @@ function setExtQA(btn, i, val) {
     if (noteInp) { noteInp.style.display = 'none'; noteInp.value = ''; }
     document.getElementById(deficId)?.remove();
   }
+  refreshAutoStatus();
 }
 
 function removeExtQADefic(deficId, i) {
@@ -1477,6 +1485,7 @@ function removeExtQADefic(deficId, i) {
   const noteInp = document.getElementById('ext-qa-note-' + i);
   if (noteInp) { noteInp.style.display = 'none'; noteInp.value = ''; }
   document.querySelector(`#ext-qa-row-${i} .yna-btn`)?.closest('td')?.querySelectorAll('.yna-btn').forEach(b => b.classList.remove('selected'));
+  refreshAutoStatus();
 }
 
 function calcExtTotalSvc() {
@@ -2089,11 +2098,7 @@ function _eslManageDefic(typeStr, n) {
 }
 
 function _eslAutoStatus() {
-  if (!overallStatusUserSet) {
-    const tbody = document.getElementById('generic-defic-tbody');
-    const defics = tbody ? tbody.querySelectorAll('tr').length : 0;
-    setOverallStatus(defics > 0 ? 'DEFICIENT' : 'COMPLIANT');
-  }
+  refreshAutoStatus();
 }
 
 function removeELRow(n) {

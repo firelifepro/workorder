@@ -1144,6 +1144,26 @@ function setOverallStatus(val, btn) {
   }
 }
 
+// Re-evaluate overall status when deficiencies are added/removed during a
+// table-driven inspection (Exit Sign & Lighting, Extinguisher — both write
+// their deficiencies into #generic-defic-tbody). A failure must never leave the
+// report COMPLIANT, so adding a deficiency forces DEFICIENT even when the status
+// was previously locked (e.g. by Fast Track's "all pass"). Once forced, the lock
+// is cleared so clearing the last deficiency can auto-return to COMPLIANT. A
+// manual DEFICIENT or IMPAIRED choice is always preserved.
+function refreshAutoStatus() {
+  const tbody = document.getElementById('generic-defic-tbody');
+  const count = tbody ? tbody.querySelectorAll('tr').length : 0;
+  if (count > 0) {
+    if (overallStatus === 'COMPLIANT' || overallStatus === '') {
+      setOverallStatus('DEFICIENT');
+      overallStatusUserSet = false;
+    }
+  } else if (!overallStatusUserSet) {
+    setOverallStatus('COMPLIANT');
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FAST TRACK — "easy button" for a clean inspection with no deficiencies.
 // Marks every still-unanswered item PASS / Y (and UL300 = YES, grease = LOW for
