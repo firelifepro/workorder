@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250" role="img" aria-label="Mickey ice cream bar">
+  <defs>
+    <!-- White = keep, black = punch out. The black circle is the bite in the right ear. -->
+    <mask id="mh-bite">
+      <rect x="0" y="0" width="200" height="250" fill="#fff"/>
+      <circle cx="162" cy="36" r="25" fill="#000"/>
+    </mask>
+  </defs>
+
+  <!-- Wooden stick (drawn first so the head covers its top) -->
+  <rect x="91" y="148" width="18" height="92" rx="9" fill="#e3b676"/>
+  <rect x="91" y="148" width="6"  height="92" rx="3" fill="#f0cd9a"/>
+
+  <!-- Chocolate Mickey head with a bite taken out of the right ear -->
+  <g fill="#3d2415" mask="url(#mh-bite)">
+    <circle cx="60"  cy="58"  r="33"/>  <!-- left ear -->
+    <circle cx="140" cy="58"  r="33"/>  <!-- right ear -->
+    <circle cx="100" cy="112" r="60"/>  <!-- head -->
+  </g>
+</svg>
