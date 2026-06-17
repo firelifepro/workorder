@@ -1344,12 +1344,20 @@ function abToB64(buf) {
 // Build an RFC 2822 multipart/mixed message, base64url-encoded for Gmail's
 // drafts.create `raw` field. Both the text body and the PDFs are base64 so any
 // UTF-8 in the message (—, •, accented names) survives intact.
+// Email headers must be ASCII; non-ASCII (em dash, accented names) needs RFC 2047
+// encoding or clients show mojibake (e.g. "—" → "Ã¢Â€Â"). ASCII passes through.
+function encodeHeaderWord(s) {
+  s = s || '';
+  if (/^[\x00-\x7F]*$/.test(s)) return s;
+  return '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(s))) + '?=';
+}
+
 function buildMimeDraft(to, cc, subject, body, attachments) {
   const boundary = 'flips_audit_' + Date.now();
   const L = [];
   if (to) L.push(`To: ${to}`);
   if (cc) L.push(`Cc: ${cc}`);
-  L.push(`Subject: ${subject}`);
+  L.push(`Subject: ${encodeHeaderWord(subject)}`);
   L.push('MIME-Version: 1.0');
   L.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
   L.push('');

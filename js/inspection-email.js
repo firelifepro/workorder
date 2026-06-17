@@ -18,12 +18,21 @@
   // Build an RFC-2822 multipart/mixed message, base64url-encoded for Gmail's
   // messages.send `raw` field. Body + PDFs are base64 so any UTF-8 (—, •,
   // accented names) survives intact. Mirrors inspection-audit.html buildMimeDraft.
+  // Email headers must be ASCII. Non-ASCII (em dash, accented names) has to be
+  // RFC 2047 encoded or clients show mojibake (e.g. "—" → "Ã¢Â€Â"). Pure-ASCII
+  // values are returned unchanged.
+  function encodeHeaderWord(s) {
+    s = s || '';
+    if (/^[\x00-\x7F]*$/.test(s)) return s;
+    return '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(s))) + '?=';
+  }
+
   function buildInspectionMime(to, cc, subject, body, attachments) {
     const boundary = 'flips_insp_' + Date.now();
     const L = [];
     if (to) L.push(`To: ${to}`);
     if (cc) L.push(`Cc: ${cc}`);
-    L.push(`Subject: ${subject}`);
+    L.push(`Subject: ${encodeHeaderWord(subject)}`);
     L.push('MIME-Version: 1.0');
     L.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
     L.push('');

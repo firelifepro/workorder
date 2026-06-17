@@ -75,6 +75,18 @@ test('Cc header is omitted when no cc is given', () => {
   assert.ok(!decodeRaw(raw).includes('Cc:'));
 });
 
+test('non-ASCII subject (em dash) is RFC 2047 encoded, not raw UTF-8', () => {
+  const subject = 'FLPS Inspection Report — Café Plaza — Exit Sign (2026-05-01)';
+  const msg = decodeRaw(buildInspectionMime('a@b.com', '', subject, 'B', []));
+  // Header carries an encoded-word, and the raw "—"/"é" bytes are NOT in the header.
+  const subjLine = msg.split('\r\n').find(l => l.startsWith('Subject:'));
+  assert.ok(subjLine.startsWith('Subject: =?UTF-8?B?'));
+  assert.ok(!subjLine.includes('—') && !subjLine.includes('é'));
+  // And it round-trips back to the original subject.
+  const b64 = subjLine.match(/=\?UTF-8\?B\?(.*)\?=/)[1];
+  assert.strictEqual(Buffer.from(b64, 'base64').toString('utf8'), subject);
+});
+
 test('raw is base64url (no +, /, or = padding)', () => {
   const raw = buildInspectionMime('a@b.com', '', 'S', 'B', []);
   assert.ok(!/[+/=]/.test(raw));
