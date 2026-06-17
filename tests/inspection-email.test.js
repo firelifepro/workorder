@@ -45,9 +45,11 @@ test('deficient body lists the deficiencies and invites scheduling repairs', () 
     overallStatus: 'DEFICIENT',
     deficiencies: [{ item: 'Extinguisher #3 - Lobby', description: 'Recharge required' }, 'Exit Sign - Stairwell B (Unit #2)'],
   });
-  assert.ok(body.includes('listed at the top of the report as'));
-  assert.ok(body.includes('1. Extinguisher #3 - Lobby: Recharge required'));
-  assert.ok(body.includes('2. Exit Sign - Stairwell B (Unit #2)'));
+  assert.ok(body.includes('listed at the top of the report as follows:'));
+  assert.ok(body.includes('     1. Extinguisher #3 - Lobby: Recharge required'));
+  assert.ok(body.includes('     2. Exit Sign - Stairwell B (Unit #2)'));
+  // Blank line between the last deficiency and the "reach out" line.
+  assert.ok(body.includes('(Unit #2)\n\nPlease reach out'));
   assert.ok(body.includes('schedule repairs'));
   assert.ok(!/overall status of/i.test(body));
 });
