@@ -685,6 +685,17 @@ function _rebuildHoodListFromDOM() {
 
 function _buildFreshGenericInspection() {
   if (typeof clearStep4State === 'function') clearStep4State();
+  // CRITICAL: wipe the shared deficiency list from any PRIOR inspection before
+  // starting a new one. ESL / extinguisher / hood write straight into
+  // #generic-defic-tbody (with deterministic row ids) and are excluded from the
+  // rebuild in goGenericDeficStep, so without this an old deficiency could carry
+  // into a new report — even one for a different property/manager. The resume
+  // path (_resumeGenericFromDraft) does NOT call this, so saved drafts are safe.
+  const _gd = document.getElementById('generic-defic-tbody');
+  if (_gd) _gd.innerHTML = '';
+  genericDeficCount = 0;
+  extDeficCount = 0;
+  extQADeficCount = 0;
   overallStatus = '';
   overallStatusUserSet = false;
   clearStatusButtonSelection();  // status buttons only — keep report-type selection intact
