@@ -276,6 +276,8 @@ table.ent tr:last-child td { border-bottom: none; }
     <h2 id="email-title">Email reports</h2>
     <div class="sub">Creates a <b>Gmail draft</b> with the report PDFs <b>attached</b> (in your Drafts — review before sending). Edit the message below first if you like.</div>
     <div id="email-to"></div>
+    <label for="email-cc" style="display:block;font-size:0.74rem;font-weight:600;color:#555;margin-bottom:3px;">Cc <span style="font-weight:400;color:#999;">(comma-separated, optional)</span></label>
+    <input id="email-cc" type="text" style="width:100%;font-size:0.8rem;padding:7px 9px;border:1px solid #ddd;border-radius:6px;margin-bottom:10px;font-family:inherit;box-sizing:border-box;">
     <textarea id="email-body" spellcheck="false"></textarea>
     <div id="attach-summary" style="font-size:0.74rem;color:#555;margin-top:8px;"></div>
     <div class="modal-actions">
@@ -310,7 +312,7 @@ const CACHE_TTL = 10 * 60 * 1000;
 let accessToken = null;
 let tokenClient = null;
 let AUDIT = { props: [], reportsLoaded: false };
-let emailCtx = { to: '', subject: '', body: '' };
+let emailCtx = { to: '', cc: '', subject: '', body: '' };
 
 // ── Nav / drawer ───────────────────────────────────────────
 function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
@@ -952,7 +954,9 @@ function groupKeyFor(p, mode) {
     if (p.billingAddr)  return { key: 'ba:' + p.billingAddr.toLowerCase(), label: p.billingAddr, email: '' };
     return { key: 'none', label: '— No billing info —', email: '' };
   }
-  if (p.mgrName) return { key: 'mn:' + p.mgrName.toLowerCase(), label: p.mgrName, email: p.mgrEmail };
+  // Property Manager mode: prefer the manager's email (parsed from the Property
+  // Manager Contact Info cell); only fall back to the billing email as a last resort.
+  if (p.mgrName) return { key: 'mn:' + p.mgrName.toLowerCase(), label: p.mgrName, email: p.mgrEmail || p.billingEmail };
   if (p.mgrEmail) return { key: 'me:' + p.mgrEmail.toLowerCase(), label: p.mgrEmail, email: p.mgrEmail };
   if (p.orphan) return { key: 'orphan', label: '— Not in client master —', email: '' };
   return { key: 'unassigned', label: '— No property manager —', email: '' };
@@ -1173,11 +1177,13 @@ function openEmailModal(groupKey) {
 
   emailCtx = {
     to: g.email || '',
+    cc: '',
     subject: `FLPS Inspection Reports — ${g.label}`,
     body, attachments, label: g.label,
     props, mgrName: props[0].mgrName || '',
   };
 
+  document.getElementById('email-cc').value = '';
   document.getElementById('email-title').textContent = 'Email reports — ' + g.label;
   document.getElementById('email-to').innerHTML = g.email
     ? `To: <b>${escHtml(g.email)}</b>`
@@ -1208,7 +1214,9 @@ function copyEmailBody() {
 }
 function openMailto() {
   const body = document.getElementById('email-body').value;
-  const base = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}`;
+  const cc = (document.getElementById('email-cc').value || '').trim();
+  let base = `mailto:${encodeURIComponent(emailCtx.to)}?subject=${encodeURIComponent(emailCtx.subject)}`;
+  if (cc) base += `&cc=${encodeURIComponent(cc)}`;
   const url = `${base}&body=${encodeURIComponent(body)}`;
   window.location.href = url.length > 1900 ? base : url;
 }
@@ -1218,6 +1226,7 @@ async function createGroupDraft() {
   const btn = document.getElementById('draft-btn');
   const orig = btn.textContent;
   if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  emailCtx.cc = (document.getElementById('email-cc').value || '').trim();
   const atts = (emailCtx.attachments || []);
   if (!atts.length) { toast('No report PDFs to attach'); return; }
   btn.disabled = true;
@@ -1248,7 +1257,7 @@ async function createGroupDraft() {
     if (!included.length) { toast('✗ Reports too large to attach'); return; }
     let body = document.getElementById('email-body').value;
     if (omitted.length) body += omittedNote(omitted);
-    const res = await googleFetch(DRAFTS_URL, 'POST', { message: { raw: buildMimeDraft(emailCtx.to, emailCtx.subject, body, included) } });
+    const res = await googleFetch(DRAFTS_URL, 'POST', { message: { raw: buildMimeDraft(emailCtx.to, emailCtx.cc, emailCtx.subject, body, included) } });
     if (!res.ok) { await handleDraftErr(res); return; }
     toast(`✓ Draft created with ${included.length} report${included.length>1?'s':''} attached — opening Gmail`);
     window.open(GMAIL_DRAFTS, '_blank');
@@ -1282,7 +1291,7 @@ async function createPerBuildingDrafts(fetched, failed, btn) {
     let body = baseBody;
     if (omitted.length) body += omittedNote(omitted);
     const subject = `FLPS Inspection Reports — ${bldg}`;
-    const res = await googleFetch(DRAFTS_URL, 'POST', { message: { raw: buildMimeDraft(emailCtx.to, subject, body, included) } });
+    const res = await googleFetch(DRAFTS_URL, 'POST', { message: { raw: buildMimeDraft(emailCtx.to, emailCtx.cc, subject, body, included) } });
     if (res.ok) made++; else { errs++; if (!firstErr) firstErr = res; }
   }
   if (firstErr && made === 0) { await handleDraftErr(firstErr); return; }
@@ -1335,10 +1344,11 @@ function abToB64(buf) {
 // Build an RFC 2822 multipart/mixed message, base64url-encoded for Gmail's
 // drafts.create `raw` field. Both the text body and the PDFs are base64 so any
 // UTF-8 in the message (—, •, accented names) survives intact.
-function buildMimeDraft(to, subject, body, attachments) {
+function buildMimeDraft(to, cc, subject, body, attachments) {
   const boundary = 'flips_audit_' + Date.now();
   const L = [];
   if (to) L.push(`To: ${to}`);
+  if (cc) L.push(`Cc: ${cc}`);
   L.push(`Subject: ${subject}`);
   L.push('MIME-Version: 1.0');
   L.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);

@@ -18,10 +18,11 @@
   // Build an RFC-2822 multipart/mixed message, base64url-encoded for Gmail's
   // messages.send `raw` field. Body + PDFs are base64 so any UTF-8 (—, •,
   // accented names) survives intact. Mirrors inspection-audit.html buildMimeDraft.
-  function buildInspectionMime(to, subject, body, attachments) {
+  function buildInspectionMime(to, cc, subject, body, attachments) {
     const boundary = 'flips_insp_' + Date.now();
     const L = [];
     if (to) L.push(`To: ${to}`);
+    if (cc) L.push(`Cc: ${cc}`);
     L.push(`Subject: ${subject}`);
     L.push('MIME-Version: 1.0');
     L.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
@@ -82,9 +83,9 @@
   }
 
   // POST to Gmail messages.send. Throws with a user-friendly message on failure.
-  async function sendInspectionEmail({ to, subject, body, pdfBase64, filename }) {
+  async function sendInspectionEmail({ to, cc, subject, body, pdfBase64, filename }) {
     const atts = pdfBase64 ? [{ name: filename || 'report.pdf', b64: pdfBase64 }] : [];
-    const res = await googleFetch(SEND_URL, 'POST', { raw: buildInspectionMime(to, subject, body, atts) });
+    const res = await googleFetch(SEND_URL, 'POST', { raw: buildInspectionMime(to, cc, subject, body, atts) });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
       if (/insufficient|ACCESS_TOKEN_SCOPE|PERMISSION_DENIED|scope/i.test(txt)) {
@@ -120,6 +121,8 @@
         <div style="font-size:0.8rem;color:#555;margin-bottom:14px;">Sends the inspection PDF to the recipient below. Edit anything before sending.</div>
         <label style="${lbl}">To</label>
         <input id="insp-email-to" type="email" style="${inp}">
+        <label style="${lbl}">Cc <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;">(comma-separated, optional)</span></label>
+        <input id="insp-email-cc" type="text" style="${inp}">
         <label style="${lbl}">Subject</label>
         <input id="insp-email-subject" type="text" style="${inp}">
         <label style="${lbl}">Message</label>
@@ -148,13 +151,14 @@
     const statusEl = document.getElementById('insp-email-status');
     const to = document.getElementById('insp-email-to').value.trim();
     if (!to) { statusEl.style.color = '#b45309'; statusEl.textContent = '⚠ Enter a recipient email address.'; return; }
+    const cc = document.getElementById('insp-email-cc').value.trim();
     const subject = document.getElementById('insp-email-subject').value;
     const body = document.getElementById('insp-email-body').value;
     const orig = btn.textContent;
     btn.disabled = true; btn.textContent = '⏳ Sending…';
     statusEl.style.color = '#475569'; statusEl.textContent = 'Sending…';
     try {
-      await sendInspectionEmail({ to, subject, body, pdfBase64: _ctx && _ctx.pdfBase64, filename: _ctx && _ctx.filename });
+      await sendInspectionEmail({ to, cc, subject, body, pdfBase64: _ctx && _ctx.pdfBase64, filename: _ctx && _ctx.filename });
       statusEl.style.color = '#16a34a'; statusEl.textContent = '✓ Sent to ' + to;
       _toast('✓ Report emailed to ' + to);
       setTimeout(closeModal, 900);
@@ -165,10 +169,11 @@
     }
   }
 
-  function openInspectionEmailModal({ to, subject, body, pdfBase64, filename }) {
+  function openInspectionEmailModal({ to, cc, subject, body, pdfBase64, filename }) {
     ensureModal();
     _ctx = { pdfBase64, filename };
     document.getElementById('insp-email-to').value = to || '';
+    document.getElementById('insp-email-cc').value = cc || '';
     document.getElementById('insp-email-subject').value = subject || '';
     document.getElementById('insp-email-body').value = body || '';
     document.getElementById('insp-email-attach').textContent = filename ? '📎 ' + filename : '';

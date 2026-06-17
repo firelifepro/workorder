@@ -290,9 +290,9 @@ function onPropertySelect() {
     pnEl.value = pnLines[0].trim() || propName;
   }
   fill('property-contact-name', 'property manager','contact name');
-  fill('property-contact-email', 'contact email','email','e-mail');
 
-  // Phone: try dedicated phone column first, then parse from combined contact info cell
+  // Phone + email: try dedicated columns / the combined Property Manager Contact
+  // Info cell first; the Billing Email is only a last resort for the recipient.
   const rePhone2 = /\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/;
   const reEmail2 = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
   const keys2 = Object.keys(d);
@@ -307,6 +307,20 @@ function onPropertySelect() {
   const resolvedPhone2 = rawPhone2 || phoneFromCell2;
   const phEl2 = document.getElementById('property-contact-phone');
   if (phEl2) phEl2.value = resolvedPhone2;
+
+  // Email resolution order: Property Manager Contact Info cell → dedicated contact
+  // email column → billing email (last resort only).
+  const emailFromCell2 = rawCombined2 ? (rawCombined2.match(reEmail2) || [])[0] || '' : '';
+  const emailKey2 = keys2.find(h =>
+    ['contact email','e-mail','email address','email'].some(k => h.includes(k))
+    && !h.includes('billing') && !h.includes('sub') && !h.includes('info')
+  );
+  const billingEmailKey2 = keys2.find(h => h.includes('billing') && (h.includes('email') || h.includes('e-mail')));
+  const resolvedEmail2 = emailFromCell2
+    || (emailKey2 ? (d[emailKey2] || '').trim() : '')
+    || (billingEmailKey2 ? (d[billingEmailKey2] || '').trim() : '');
+  const emEl2 = document.getElementById('property-contact-email');
+  if (emEl2) emEl2.value = resolvedEmail2;
   _updatePropertyBadge(propName);
 
   // Extract FLPS account number for stable Drive profile lookup

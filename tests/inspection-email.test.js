@@ -28,11 +28,12 @@ test('body falls back to a generic greeting with no contact', () => {
 
 // ── buildInspectionMime ─────────────────────────────────────────────────────
 
-test('mime contains To, Subject, the body text, and the attachment filename', () => {
-  const raw = buildInspectionMime('owner@example.com', 'Test Subject', 'Hello body — café',
+test('mime contains To, Cc, Subject, the body text, and the attachment filename', () => {
+  const raw = buildInspectionMime('owner@example.com', 'cc1@example.com, cc2@example.com', 'Test Subject', 'Hello body — café',
     [{ name: 'FLPS_sprinkler_Acme_2026-06-15.pdf', b64: 'JVBERi0xLjQ=' }]);
   const msg = decodeRaw(raw);
   assert.ok(msg.includes('To: owner@example.com'));
+  assert.ok(msg.includes('Cc: cc1@example.com, cc2@example.com'));
   assert.ok(msg.includes('Subject: Test Subject'));
   assert.ok(msg.includes('multipart/mixed'));
   assert.ok(msg.includes('filename="FLPS_sprinkler_Acme_2026-06-15.pdf"'));
@@ -41,7 +42,12 @@ test('mime contains To, Subject, the body text, and the attachment filename', ()
   assert.ok(msg.includes(bodyB64));
 });
 
+test('Cc header is omitted when no cc is given', () => {
+  const raw = buildInspectionMime('owner@example.com', '', 'S', 'B', []);
+  assert.ok(!decodeRaw(raw).includes('Cc:'));
+});
+
 test('raw is base64url (no +, /, or = padding)', () => {
-  const raw = buildInspectionMime('a@b.com', 'S', 'B', []);
+  const raw = buildInspectionMime('a@b.com', '', 'S', 'B', []);
   assert.ok(!/[+/=]/.test(raw));
 });
