@@ -1327,7 +1327,7 @@ function initSig() {
     return { x: (src.clientX - r.left) * scaleX, y: (src.clientY - r.top) * scaleY };
   };
   canvas.addEventListener('pointerdown', e => {
-    sigDrawing = true; const p = getPos(e);
+    sigDrawing = true; sigIsAuto = false; const p = getPos(e);
     sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); e.preventDefault();
   });
   canvas.addEventListener('pointermove', e => {
@@ -1337,7 +1337,16 @@ function initSig() {
   canvas.addEventListener('pointerup', () => sigDrawing = false);
   canvas.addEventListener('pointerleave', () => sigDrawing = false);
 }
-function clearSig() { if (sigCtx) sigCtx.clearRect(0,0,500,100); sigHasData = false; }
+function clearSig() { if (sigCtx) sigCtx.clearRect(0,0,500,100); sigHasData = false; sigIsAuto = false; }
+
+// Display name for the drawn signature: the printed name minus any credential.
+// Drops anything after the first comma (e.g. ", F.P.E.") and also strips a
+// trailing F.P.E. that was typed without a comma — the signature never shows it.
+function sigDisplayName(rawName) {
+  let name = (rawName || 'Alan Antonio').split(',')[0].trim();
+  name = name.replace(/\s+F\.?\s*P\.?\s*E\.?$/i, '').trim();
+  return name || 'Alan Antonio';
+}
 
 function autoSign() {
   initSig();
@@ -1346,7 +1355,7 @@ function autoSign() {
   sigCtx.clearRect(0, 0, canvas.width, canvas.height);
 
   const rawName = (document.getElementById('sig-name') || {}).value || 'Alan Antonio';
-  const sigName = rawName.split(',')[0].trim();
+  const sigName = sigDisplayName(rawName);
   const drawSig = () => {
     sigCtx.save();
     sigCtx.translate(18, 72);
@@ -1356,10 +1365,18 @@ function autoSign() {
     sigCtx.fillText(sigName, 0, 0);
     sigCtx.restore();
     sigHasData = true;
+    sigIsAuto = true;
   };
 
   // Use document.fonts.load() for the specific variant — more reliable than .ready for canvas
   (document.fonts ? document.fonts.load('700 52px "Dancing Script"') : Promise.resolve()).then(drawSig);
+}
+
+// Keep an auto-generated signature in sync with the printed name. A hand-drawn
+// signature is left untouched (sigIsAuto is cleared the moment the inspector
+// draws), so this only re-renders when the current signature came from autoSign.
+function onSigNameChange() {
+  if (sigIsAuto) autoSign();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

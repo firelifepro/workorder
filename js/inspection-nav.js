@@ -723,10 +723,14 @@ function clearStep4State() {
   renderPhotoGrid();
   if (typeof clearSig === 'function') clearSig();
   if (typeof clearCustSig === 'function') clearCustSig();
-  ['sig-name', 'sig-date', 'cust-sig-name', 'cust-sig-title', 'cust-sig-date', 'general-notes', 'overall-status-val'].forEach(id => {
+  ['sig-date', 'cust-sig-name', 'cust-sig-title', 'cust-sig-date', 'general-notes', 'overall-status-val'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  // Inspector print name defaults back to the standard signer (not blank) so a
+  // fresh inspection starts pre-filled, matching the page's initial HTML value.
+  const sigNameEl = document.getElementById('sig-name');
+  if (sigNameEl) sigNameEl.value = 'Alan Antonio, F.P.E.';
   // Clear the Sign & Export "General Notes" tables so notes don't carry over from
   // a previous inspection (previously only clearFAInspectionState reset fa-notes).
   ['fa-notes-tbody', 'sp-notes-tbody'].forEach(id => {

@@ -34,6 +34,7 @@ let reportTypeUserSet = false; // true once the user manually picks a report typ
 let sigDrawing = false;
 let sigCtx = null;
 let sigHasData = false;
+let sigIsAuto = false;     // true while the on-canvas signature was drawn by autoSign()
 let activeHoodList = [];   // [{id, identifier, excluded}]
 let _hoodCardCount = 0;
 let _hoodApplianceCounts = {}; // {hoodId: highestApplianceId}
