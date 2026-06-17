@@ -26,6 +26,32 @@ test('body falls back to a generic greeting with no contact', () => {
   assert.ok(body.startsWith('Hello,'));
 });
 
+test('compliant body states the overall status and includes the job location, system + frequency', () => {
+  const { body, subject } = defaultInspectionEmail({
+    propertyName: 'Strip Plaza - 3985 Tennyson', contactName: 'Mike Jones',
+    systemLabel: 'Fire Extinguishers', frequency: 'Annual', date: '2026-05-07',
+    serviceAddress: '3985 Tennyson St, Denver', overallStatus: 'COMPLIANT', deficiencies: [],
+  });
+  assert.ok(body.includes('completed Fire Extinguishers Annual inspection report for Strip Plaza - 3985 Tennyson, dated 2026-05-07.'));
+  assert.ok(body.includes('Job Location: 3985 Tennyson St, Denver'));
+  assert.ok(body.includes('overall status of Compliant'));
+  assert.ok(!/Deficiencies/i.test(body));
+  assert.ok(subject.includes('Fire Extinguishers Annual'));
+});
+
+test('deficient body lists the deficiencies and invites scheduling repairs', () => {
+  const { body } = defaultInspectionEmail({
+    propertyName: 'Acme', contactName: 'Mike', systemLabel: 'Fire Extinguishers', frequency: 'Annual',
+    overallStatus: 'DEFICIENT',
+    deficiencies: [{ item: 'Extinguisher #3 - Lobby', description: 'Recharge required' }, 'Exit Sign - Stairwell B (Unit #2)'],
+  });
+  assert.ok(body.includes('listed at the top of the report as'));
+  assert.ok(body.includes('1. Extinguisher #3 - Lobby: Recharge required'));
+  assert.ok(body.includes('2. Exit Sign - Stairwell B (Unit #2)'));
+  assert.ok(body.includes('schedule repairs'));
+  assert.ok(!/overall status of/i.test(body));
+});
+
 // ── buildInspectionMime ─────────────────────────────────────────────────────
 
 test('mime contains To, Cc, Subject, the body text, and the attachment filename', () => {

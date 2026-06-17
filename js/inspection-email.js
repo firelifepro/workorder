@@ -51,26 +51,45 @@
   }
 
   // Default subject + body for a single completed inspection report.
-  function defaultInspectionEmail({ propertyName, contactName, systemLabel, date } = {}) {
+  // The body adapts to the result: a compliant report states the overall status,
+  // while a deficient one lists the deficiencies (mirroring the top of the report)
+  // and invites the owner to schedule repairs.
+  function defaultInspectionEmail({ propertyName, contactName, systemLabel, date, serviceAddress, overallStatus, frequency, deficiencies } = {}) {
     const prop = (propertyName || '').trim() || 'your property';
     const first = (contactName || '').trim().split(/\s+/)[0];
     const greeting = first ? `Hi ${first},` : 'Hello,';
-    const sys = (systemLabel || '').trim() || 'fire & life-safety';
+    // "Fire Extinguishers Annual" = system label + frequency
+    const sysParts = [(systemLabel || '').trim(), (frequency || '').trim()].filter(Boolean);
+    const sys = sysParts.join(' ') || 'fire & life-safety';
+    const status = (overallStatus || '').trim();
+    const statusTitle = status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : 'Compliant';
+    // Normalize the deficiency list to plain strings (handles {item, description} or raw strings).
+    const defics = (deficiencies || [])
+      .map(d => (typeof d === 'string' ? d : ((d && d.item) || '') + (d && d.description ? ': ' + d.description : '')))
+      .map(s => s.trim())
+      .filter(Boolean);
+
     const subject = `FLPS Inspection Report — ${(propertyName || '').trim() || 'Your Property'}`
-      + (systemLabel ? ` — ${systemLabel}` : '')
+      + (sysParts.length ? ` — ${sysParts.join(' ')}` : '')
       + (date ? ` (${date})` : '');
-    const body = [
+
+    const lines = [
       greeting,
       '',
-      `Attached is the completed ${sys} inspection report for ${prop}${date ? `, dated ${date}` : ''}.`,
-      '',
-      'Please keep this report on file for your records and for any authority-having-jurisdiction (AHJ) requests. '
-        + 'If you have any questions, or would like to schedule corrective work for any noted deficiencies, just reply to this email.',
-      '',
-      'Thank you,',
-      'Fire Life Protection Systems',
-    ].join('\n');
-    return { subject, body };
+      `Please find attached the completed ${sys} inspection report for ${prop}${date ? `, dated ${date}` : ''}.`,
+    ];
+    if (serviceAddress && serviceAddress.trim()) lines.push(`Job Location: ${serviceAddress.trim()}`);
+
+    if (defics.length > 0) {
+      lines.push('This report is currently showing Deficiencies which are listed at the top of the report as:');
+      defics.forEach((d, i) => lines.push(`${i + 1}. ${d}`));
+      lines.push('Please reach out if you would like to discuss and schedule repairs.');
+    } else {
+      lines.push(`The report is currently showing an overall status of ${statusTitle}`);
+    }
+
+    lines.push('', 'Thank you,', 'Fire Life Protection Systems');
+    return { subject, body: lines.join('\n') };
   }
 
   // Convert in-memory PDF bytes (Uint8Array | ArrayBuffer) to base64.
@@ -191,10 +210,14 @@
       if (tgl && !tgl.checked) return;                 // user opted out
       if (typeof accessToken !== 'undefined' && !accessToken) return; // not connected → skip silently
       const { subject, body } = defaultInspectionEmail({
-        propertyName: opts.propertyName,
-        contactName:  opts.contactName,
-        systemLabel:  opts.systemLabel,
-        date:         opts.date,
+        propertyName:   opts.propertyName,
+        contactName:    opts.contactName,
+        systemLabel:    opts.systemLabel,
+        date:           opts.date,
+        serviceAddress: opts.serviceAddress,
+        overallStatus:  opts.overallStatus,
+        frequency:      opts.frequency,
+        deficiencies:   opts.deficiencies,
       });
       const pdfBase64 = opts.pdfBytes ? pdfBytesToBase64(opts.pdfBytes) : '';
       openInspectionEmailModal({ to: opts.recipient || '', subject, body, pdfBase64, filename: opts.filename });

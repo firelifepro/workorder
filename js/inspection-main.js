@@ -194,13 +194,17 @@ async function saveAndDownload() {
     // ── 6c. Offer to email the report to the property owner (toggle, on by default).
     // Read recipient from the DOM before clearDraft so the field is still populated.
     maybeEmailInspectionReport({
-      toggleId:     'email-owner-toggle',
+      toggleId:       'email-owner-toggle',
       pdfBytes, filename,
-      recipient:    (document.getElementById('property-contact-email')?.value || '').trim(),
-      propertyName: data.property.name,
-      contactName:  data.property.contact,
-      systemLabel:  (typeof SYS_META !== 'undefined' && SYS_META[activeInspectionSystem]?.label) || '',
-      date:         data.inspection.date || dateSlug,
+      recipient:      (document.getElementById('property-contact-email')?.value || '').trim(),
+      propertyName:   data.property.name,
+      contactName:    data.property.contact,
+      systemLabel:    (typeof SYS_META !== 'undefined' && SYS_META[activeInspectionSystem]?.label) || '',
+      date:           data.inspection.date || dateSlug,
+      serviceAddress: data.property.address,
+      overallStatus:  data.overallStatus,
+      frequency:      (typeof inspectionFrequency === 'function' ? inspectionFrequency(data) : ''),
+      deficiencies:   data.deficiencies,
     });
 
     // ── 7. Clear the draft — inspection is complete ────────────────────────────
