@@ -18,8 +18,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FLIPS_CONTRACTORS = {
-  deo: {
-    label: 'Deo — Contractor Sandbox',
+  contractor_1: {
+    label: 'Contractor 1 — Sandbox',
     // Sandbox "Contractor_Clients_Master" sheet (4 properties, same column
     // layout as the main property list) — drives the property dropdown +
     // autofill. NOTE: in contractor mode this never falls back to the real
