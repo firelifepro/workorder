@@ -26,10 +26,10 @@ const FLIPS_CONTRACTORS = {
     // property list; null here would mean "no sheet", not "use the default".
     sheetId: '1Yk_C1DXboyLwUhHpuJpAK2C_945rH2Q-DfhRjbUB5kE',
     sheetGid: '1899870347',
-    // Optional sandbox "Contractor Inspection History" sheet. null = skip
-    // history/schedule writes entirely (saveAndDownload won't 403 on a sheet the
-    // sandbox account can't reach). Records still save as PDF + JSON to Drive.
-    historySheetId: null,
+    // Sandbox copy of the Inspection History sheet. The append targets the tab
+    // literally named "Inspection History" (HISTORY_TAB in js/flips-history.js),
+    // so that tab must exist in this sheet. null = skip history writes.
+    historySheetId: '1eZgGFj7T7wtWFJOrHGs0nUryGX_xhilJ9GWAeW_hkBI',
     // Pinned to the "FLPS Contractor" Shared Drive (signed in as
     // Contractor_1@firelifeprotectionsystems.com). Every inspection PDF / JSON /
     // property profile is created inside this drive and nowhere else.
