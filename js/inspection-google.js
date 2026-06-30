@@ -488,7 +488,7 @@ function renderInspectionStartCards() {
   card.style.display = 'block';
 
   const lastBySystem = (_propertyProfile && _propertyProfile.lastInspBySystem) || {};
-  const SYS_ORDER = ['fire-alarm','sprinkler','extinguisher','hood','exit-sign-lighting','fire-pump','standpipe','hydrant','bda','smoke-control','gas-detection','special-suppression','backflow','hospital'];
+  const SYS_ORDER = ['fire-alarm','sprinkler','extinguisher','hood','exit-sign-lighting','fire-pump','standpipe','hydrant','bda','smoke-control','fire-smoke-damper','gas-detection','special-suppression','backflow','hospital'];
   const ordered = SYS_ORDER.filter(k => activeSystems.has(k));
 
   grid.innerHTML = '';
