@@ -1229,6 +1229,7 @@ async function buildGenericSystemPDFBytes() {
     'hydrant':             'PRIVATE HYDRANT INSPECTION REPORT',
     'bda':                 'BDA / EMERGENCY RADIO INSPECTION REPORT',
     'smoke-control':       'SMOKE CONTROL SYSTEM INSPECTION REPORT',
+    'fire-smoke-damper':   'FIRE & SMOKE DAMPER INSPECTION REPORT',
     'gas-detection':       'GAS DETECTION SYSTEM INSPECTION REPORT',
     'special-suppression': 'SPECIAL SUPPRESSION SYSTEM INSPECTION REPORT',
     'backflow':            'BACKFLOW PREVENTION DEVICE TEST REPORT',
@@ -1236,6 +1237,7 @@ async function buildGenericSystemPDFBytes() {
   const NFPA_REF = {
     'fire-pump':'NFPA 25 Ch. 8','standpipe':'NFPA 25 Ch. 6','hood':'NFPA 17A',
     'hydrant':'NFPA 25 Ch. 7','bda':'NFPA 72 Ch. 24','smoke-control':'NFPA 92',
+    'fire-smoke-damper':'NFPA 80 Ch.19 / NFPA 105',
     'gas-detection':'NFPA 72','special-suppression':'NFPA 2001 / 11 / 17','backflow':'AWWA',
   };
 
@@ -1298,6 +1300,15 @@ async function buildGenericSystemPDFBytes() {
       { title: 'SYSTEM CONFIGURATION', rows: [
         [{label:'System Type',id:'sc-type',w:180},{label:'# Smoke Zones',id:'sc-zones',w:180},{label:'Year Installed',id:'sc-year',w:180}],
         [{label:'# Supply/Exhaust Fans',id:'sc-fans',w:180},{label:'# Smoke/Fire Dampers',id:'sc-dampers',w:180},{label:'Measured ΔP (in. w.g.)',id:'sc-pressure-val',w:180}],
+      ]},
+    ]},
+    'fire-smoke-damper': { sections: [
+      { title: 'DAMPER INVENTORY', rows: [
+        [{label:'# Fire Dampers',id:'fsd-count-fire',w:180},{label:'# Smoke Dampers',id:'fsd-count-smoke',w:180},{label:'# Combination Fire/Smoke',id:'fsd-count-combo',w:180}],
+        [{label:'# Ceiling Radiation Dampers',id:'fsd-count-ceiling',w:180},{label:'Total Dampers',id:'fsd-count-total',w:180},{label:'# Dampers Tested',id:'fsd-count-tested',w:180}],
+      ]},
+      { title: 'TEST CYCLE', rows: [
+        [{label:'Test Interval',id:'fsd-interval',w:180},{label:'Last Test Date',id:'fsd-last-test',w:180},{label:'Next Test Due',id:'fsd-next-due',w:180}],
       ]},
     ]},
     'gas-detection': { sections: [
@@ -1366,6 +1377,12 @@ async function buildGenericSystemPDFBytes() {
       { title: 'DAMPERS',                 ids: ['sc-dampers-op','sc-fire-dampers','sc-damper-access'] },
       { title: 'CONTROLS & INTEGRATION',  ids: ['sc-control-panel','sc-fa-integration','sc-override','sc-detector-input'] },
     ],
+    'fire-smoke-damper': [
+      { title: 'ACCESS & PHYSICAL CONDITION', ids: ['fsd-access','fsd-clear','fsd-frame','fsd-link','fsd-mounting'] },
+      { title: 'OPERATIONAL (DROP) TEST',     ids: ['fsd-close','fsd-latch','fsd-dynamic','fsd-reopen'] },
+      { title: 'SMOKE & CONTROL INTEGRATION', ids: ['fsd-actuator','fsd-detector','fsd-hvac'] },
+      { title: 'DOCUMENTATION',               ids: ['fsd-label','fsd-records'] },
+    ],
     'gas-detection': [
       { title: 'SENSOR TESTING',     ids: ['gd-sensor-test','gd-alarm-test','gd-gas-shutoff','gd-ventilation'] },
       { title: 'ELECTRONICS & POWER', ids: ['gd-power','gd-backup','gd-control-panel','gd-fa-integration'] },
@@ -1385,7 +1402,7 @@ async function buildGenericSystemPDFBytes() {
   };
   const NOTES_ID = {
     'standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
-    'bda':'bda-notes','smoke-control':'sc-notes','gas-detection':'gd-notes',
+    'bda':'bda-notes','smoke-control':'sc-notes','fire-smoke-damper':'fsd-notes','gas-detection':'gd-notes',
     'special-suppression':'ss-notes','backflow':'bf-notes',
   };
 

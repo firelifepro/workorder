@@ -1683,6 +1683,63 @@ function buildSmokeControlPanel() {
   return makePanel('smoke-control', '💨', 'Smoke Control System (NFPA 92)', body);
 }
 
+function buildFireSmokeDamperPanel() {
+  // Fire / smoke / combination fire-smoke / ceiling radiation dampers.
+  // Operational (drop) testing per NFPA 80 Ch.19 (fire dampers) and NFPA 105
+  // Ch.6 (smoke dampers): 1 yr after install, then every 4 yrs — 6 yrs in
+  // hospitals. (NOT NFPA 86/87/96 — those cover ovens, fluid heaters, and
+  // commercial cooking hoods respectively.)
+  const body = `
+    ${sectionDiv('Damper Inventory')}
+    ${dataRow(
+      {id:'fsd-count-fire',   label:'# Fire Dampers', type:'number'},
+      {id:'fsd-count-smoke',  label:'# Smoke Dampers', type:'number'},
+      {id:'fsd-count-combo',  label:'# Combination Fire/Smoke', type:'number'}
+    )}
+    ${dataRow(
+      {id:'fsd-count-ceiling',label:'# Ceiling Radiation Dampers', type:'number'},
+      {id:'fsd-count-total',  label:'Total Dampers', type:'number'},
+      {id:'fsd-count-tested', label:'# Dampers Tested This Cycle', type:'number'}
+    )}
+
+    ${sectionDiv('Test Cycle')}
+    <div class="data-row cols-3">
+      <div class="data-field"><label>Test Interval</label>
+        <select id="fsd-interval"><option>Every 4 Years (Standard)</option><option>Every 6 Years (Hospital)</option><option>1 Year After Install</option></select>
+      </div>
+      <div class="data-field"><label>Last Test Date</label><input type="date" id="fsd-last-test"></div>
+      <div class="data-field"><label>Next Test Due</label><input type="date" id="fsd-next-due"></div>
+    </div>
+
+    ${sectionDiv('Access & Physical Condition')}
+    ${makeRow('fsd-access','Access Doors / Panels Present & Operable','Every damper reachable for inspection — NFPA 80 19.4.1.2')}
+    ${makeRow('fsd-clear','Damper Free of Obstructions','No debris, rust, or material blocking blade travel')}
+    ${makeRow('fsd-frame','Frame, Sleeve & Blades Undamaged','No corrosion, warping, or paint binding the assembly')}
+    ${makeRow('fsd-link','Fusible Links Correct & Unpainted','Correct temp rating; not painted or coated (fire dampers)')}
+    ${makeRow('fsd-mounting','Sleeve & Mounting Secure','Retaining angles intact; properly anchored in barrier')}
+
+    ${sectionDiv('Operational (Drop) Test')}
+    ${makeRow('fsd-close','Damper Fully Closes','Drop test — blades travel to full closed position')}
+    ${makeRow('fsd-latch','Closure Latches / Holds Closed','Spring or actuator holds damper fully closed')}
+    ${makeRow('fsd-dynamic','Closes Against Airflow (Dynamic)','Dynamic-rated dampers close with fans running')}
+    ${makeRow('fsd-reopen','Reopens & Resets','Damper returns to open and re-latches after test')}
+
+    ${sectionDiv('Smoke & Control Integration')}
+    ${makeRow('fsd-actuator','Actuator Operation (Electric / Pneumatic)','Actuator drives smoke / combo damper fully closed')}
+    ${makeRow('fsd-detector','Closes on Smoke Detection / FA Signal','Duct detector or fire-alarm command closes damper')}
+    ${makeRow('fsd-hvac','HVAC / Smoke-Control Interlock','Air-handler shutdown / smoke-control sequence verified')}
+
+    ${sectionDiv('Documentation')}
+    ${makeRow('fsd-label','Dampers Labeled / Tagged','Each damper identified; service tag updated')}
+    ${makeRow('fsd-records','Test Records Maintained','Prior test documentation on file — NFPA 80 19.5')}
+
+    <div class="field-group" style="margin-top:8px;">
+      <label>Fire &amp; Smoke Damper Notes</label>
+      <textarea id="fsd-notes" rows="3" placeholder="Per-damper findings, tag #s, locations, repairs needed…"></textarea>
+    </div>`;
+  return makePanel('fire-smoke-damper', '🌀', 'Fire & Smoke Dampers (NFPA 80 Ch.19 / NFPA 105 Ch.6)', body);
+}
+
 function buildGasDetectionPanel() {
   const body = `
     ${sectionDiv('System Information')}

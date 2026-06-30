@@ -56,6 +56,7 @@ const SYS_META = {
   'hydrant':             { label: 'Private Hydrants',       icon: '🔴' },
   'bda':                 { label: 'BDA / Emergency Radio',  icon: '📡' },
   'smoke-control':       { label: 'Smoke Control',          icon: '💨' },
+  'fire-smoke-damper':   { label: 'Fire & Smoke Dampers',   icon: '🌀' },
   'gas-detection':       { label: 'Gas Detection',          icon: '⚗️' },
   'special-suppression': { label: 'Special Suppression',    icon: '🧪' },
   'backflow':            { label: 'Backflow Prevention',    icon: '🔁' },

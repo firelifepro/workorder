@@ -720,6 +720,7 @@ function _buildFreshGenericInspection() {
     'hydrant':             buildHydrantPanel,
     'bda':                 buildBDAPanel,
     'smoke-control':       buildSmokeControlPanel,
+    'fire-smoke-damper':   buildFireSmokeDamperPanel,
     'gas-detection':       buildGasDetectionPanel,
     'special-suppression': buildSpecialSuppressionPanel,
     'backflow':            buildBackflowPanel,

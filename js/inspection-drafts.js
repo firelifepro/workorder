@@ -89,7 +89,7 @@ async function saveDraftToDrive(draft, key) {
     const rawPropName = document.getElementById('property-select')?.value || '';
     const propDisplay = rawPropName.split(/\r\n|\r|\n/)[0].replace(/[^a-zA-Z0-9 ]/g, ' ').trim().slice(0, 50);
     const propSlugHR  = propDisplay.replace(/\s+/g, '_') || _currentPropertyAcct || 'Unknown';
-    const sysLabel    = { 'fire-alarm':'FireAlarm','sprinkler':'Sprinkler','fire-pump':'FirePump','hood':'Hood','extinguisher':'Extinguisher','backflow':'Backflow','standpipe':'Standpipe','hydrant':'Hydrant','bda':'BDA','smoke-control':'SmokeControl','gas-detection':'GasDetection','special-suppression':'SpecialSuppression' }[sysKey] || sysKey;
+    const sysLabel    = { 'fire-alarm':'FireAlarm','sprinkler':'Sprinkler','fire-pump':'FirePump','hood':'Hood','extinguisher':'Extinguisher','backflow':'Backflow','standpipe':'Standpipe','hydrant':'Hydrant','bda':'BDA','smoke-control':'SmokeControl','fire-smoke-damper':'FireSmokeDamper','gas-detection':'GasDetection','special-suppression':'SpecialSuppression' }[sysKey] || sysKey;
     const datePart    = (draft.savedAt || '').slice(0, 10);
     const fileName    = `FLPS_Draft_${propSlugHR}_${sysLabel}_${datePart}.json`;
     const content     = JSON.stringify(draft, null, 2);
