@@ -1,11 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
-const SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+// Contractor mode (js/flips-contractor-config.js, loaded first) reroutes the
+// property dropdown to a sandbox sheet. Defaults below are the live property
+// list and apply to inspection.html / hospital-inspection.html as before.
+const _FLIPS_C = (typeof window !== 'undefined' && window.FLIPS_CONTRACTOR) || null;
+const SHEET_ID  = _FLIPS_C?.sheetId  || '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 
 // Inspection pages append directly to the Inspection History tab (see js/flips-history.js)
 // after the report PDF saves, so we need write scope on Sheets.
-const SHEET_GID = '1899870347';
+const SHEET_GID = _FLIPS_C?.sheetGid || '1899870347';
 // gmail.send lets the inspection pages email the completed report PDF to the
 // property owner (js/inspection-email.js). Adding a scope means tokens issued
 // before this change lack it — the first send 403s and the error tells the user

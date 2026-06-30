@@ -122,7 +122,9 @@ async function googleFetch(url, method = 'GET', body = null) {
 // LOAD CLIENT SHEET
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadSheet(forceRefresh = false) {
-  const CACHE_KEY = 'flips_client_cache';
+  // Namespace the cache per contractor so a sandbox property list can't leak
+  // into the normal inspection page (or vice-versa) in the same browser.
+  const CACHE_KEY = 'flips_client_cache' + (_FLIPS_C ? '_' + (_FLIPS_C.label || 'contractor') : '');
   const CACHE_TTL = 30 * 60 * 1000;
   if (!forceRefresh) {
     try {

@@ -1356,6 +1356,8 @@
 
 <script src="https://accounts.google.com/gsi/client"></script>
 <!-- JS modules (extracted from inline script) -->
+<!-- Contractor sandbox routing (null in normal mode — no behavior change). Must load before inspection-config.js. -->
+<script src="js/flips-contractor-config.js"></script>
 <script src="js/inspection-config.js"></script>
 <script src="js/inspection-utils.js"></script>
 <script src="js/inspection-nav.js"></script>
@@ -1372,5 +1374,23 @@
 <script src="js/inspection-main.js"></script>
 <script>window.FLIPS_MODAL_CONFIG = { requiresQB: false };</script>
 <script src="js/flips-conn-modal.js"></script>
+<script>
+// Contractor sandbox mode: when ?contractor=<slug> resolves a config, hide the
+// in-app nav (cosmetic — security is Google sharing) and show a clear banner so
+// it's obvious which sandbox the work is saving into.
+(function () {
+  const c = window.FLIPS_CONTRACTOR;
+  if (!c) return;
+  const nav = document.querySelector('.nav-hamburger');
+  if (nav) nav.style.display = 'none';
+  document.title = 'Contractor Inspection — ' + (c.label || '');
+  const banner = document.createElement('div');
+  banner.textContent = '🔒 CONTRACTOR SANDBOX — ' + (c.label || 'isolated') +
+    ' · saves only to this contractor\'s Drive';
+  banner.style.cssText = 'background:#92400e;color:#fff;font-size:0.78rem;font-weight:700;' +
+    'text-align:center;padding:5px 10px;letter-spacing:0.02em;';
+  document.body.insertBefore(banner, document.body.firstChild);
+})();
+</script>
 </body>
 </html>

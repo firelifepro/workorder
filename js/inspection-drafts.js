@@ -520,6 +520,12 @@ async function getSharedDriveId() {
 let _flpsRootId = null;
 async function getFlpsRootFolderId() {
   if (_flpsRootId) return _flpsRootId;
+  // Contractor mode: pin the sandbox root when configured so every FLPS Software
+  // subfolder is created inside it deterministically. When rootFolderId is null
+  // the default discovery already resolves to the single Shared Drive the
+  // sandbox account can see (getSharedDriveId picks drives[0]).
+  const _c = (typeof window !== 'undefined' && window.FLIPS_CONTRACTOR) || null;
+  if (_c && _c.rootFolderId) { _flpsRootId = _c.rootFolderId; return _flpsRootId; }
   _flpsRootId = await findOrCreateFolder('FLPS Software');
   return _flpsRootId;
 }

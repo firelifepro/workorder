@@ -11,6 +11,16 @@
 const HISTORY_SHEET_ID = '1XnkPKUNpBOZhqISF0hp5qeEg4mMzL3371f6E553XnuQ';
 const HISTORY_TAB      = 'Inspection History';
 
+// Contractor mode (js/flips-contractor-config.js) reroutes history writes to a
+// sandbox sheet, or skips them when historySheetId is null. Returns null when
+// the active contractor opts out of history, so callers can no-op instead of
+// 403-ing on a sheet the sandbox account can't reach. Normal mode → default.
+function _historySheetId() {
+  const c = (typeof window !== 'undefined' && window.FLIPS_CONTRACTOR) || null;
+  if (c) return c.historySheetId || null; // explicit sandbox id, or null = skip
+  return HISTORY_SHEET_ID;
+}
+
 // Format YYYY-MM-DD → M/D/YYYY so Sheets renders without a time component.
 function _fmtHistoryDate(isoStr) {
   if (!isoStr) return '';
@@ -34,6 +44,9 @@ function _addressFor(propertyName) {
 async function appendInspectionHistory(updates) {
   if (!updates || !updates.length) return { appended: 0 };
 
+  const sheetId = _historySheetId();
+  if (!sheetId) return { appended: 0, skipped: true }; // contractor opted out of history
+
   const values = updates.map(u => [
     u.propertyName || '',
     u.acctNum      || '',
@@ -45,7 +58,7 @@ async function appendInspectionHistory(updates) {
     u.notes     || '',
   ]);
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${HISTORY_SHEET_ID}` +
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}` +
               `/values/${encodeURIComponent(HISTORY_TAB)}:append` +
               `?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
 
@@ -68,9 +81,12 @@ async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionT
     throw new Error('deleteInspectionHistoryEntries: need (acctNum or propertyName) and inspectionType');
   }
 
+  const sheetId = _historySheetId();
+  if (!sheetId) return { deleted: 0, skipped: true }; // contractor opted out of history
+
   // 1. Resolve the tab's numeric sheetId (needed for batchUpdate deleteDimension).
   const metaRes = await googleFetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${HISTORY_SHEET_ID}?fields=sheets.properties`
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`
   );
   if (!metaRes.ok) throw new Error('Sheet meta error ' + metaRes.status);
   const meta = await metaRes.json();
@@ -80,7 +96,7 @@ async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionT
 
   // 2. Read all values to find matching row indices.
   const valRes = await googleFetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${HISTORY_SHEET_ID}` +
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}` +
     `/values/${encodeURIComponent(HISTORY_TAB)}`
   );
   if (!valRes.ok) throw new Error('Sheet read error ' + valRes.status);
@@ -122,7 +138,7 @@ async function deleteInspectionHistoryEntries(acctNum, propertyName, inspectionT
     }));
 
   const batchRes = await googleFetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${HISTORY_SHEET_ID}:batchUpdate`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
     'POST',
     { requests }
   );

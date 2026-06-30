@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contractor Inspection — FLPS</title>
+<!--
+  Dedicated entry point for outside contractors. This is just a friendly URL:
+  it forwards to the contractor-aware inspection.html with the contractor slug,
+  which reroutes all reads/writes to that contractor's sandbox (see
+  js/flips-contractor-config.js) and trims the nav.
+
+  REMINDER: the real security boundary is Google Drive/Sheets sharing, NOT this
+  page. The contractor must sign in with a dedicated Google account that can see
+  only their sandbox Shared Drive + property/history sheets (see plan Part A).
+
+  Open as:  inspection-contractor.html?contractor=deo
+  Default (no param) → deo.
+-->
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; background:#0f172a; color:#e2e8f0;
+         display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+  .msg { text-align:center; font-size:0.95rem; opacity:0.85; }
+</style>
+</head>
+<body>
+<div class="msg">🔒 Loading contractor sandbox…</div>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const slug = params.get('contractor') || 'deo';
+  location.replace('inspection.html?contractor=' + encodeURIComponent(slug));
+})();
+</script>
+</body>
+</html>
