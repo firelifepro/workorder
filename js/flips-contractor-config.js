@@ -20,17 +20,20 @@
 const FLIPS_CONTRACTORS = {
   deo: {
     label: 'Deo — Contractor Sandbox',
-    // Sandbox "Contractor Properties" sheet (same column layout as the main
-    // property list). Drives the inspection page's property dropdown + autofill.
-    sheetId: 'REPLACE_WITH_CONTRACTOR_PROPERTIES_SHEET_ID',
-    sheetGid: '0',
-    // Sandbox "Contractor Inspection History" sheet. Set to null to skip history
-    // writes entirely (saveAndDownload won't error if history isn't shared).
-    historySheetId: 'REPLACE_WITH_CONTRACTOR_HISTORY_SHEET_ID',
-    // null = let getFlpsRootFolderId() auto-pick the single Shared Drive the
-    // sandbox account can see. Pin a folder id here only if the account can see
-    // more than one Shared Drive and routing must be deterministic.
-    rootFolderId: null,
+    // Sandbox "Contractor_Clients_Master" sheet (4 properties, same column
+    // layout as the main property list) — drives the property dropdown +
+    // autofill. NOTE: in contractor mode this never falls back to the real
+    // property list; null here would mean "no sheet", not "use the default".
+    sheetId: '1Yk_C1DXboyLwUhHpuJpAK2C_945rH2Q-DfhRjbUB5kE',
+    sheetGid: '1899870347',
+    // Optional sandbox "Contractor Inspection History" sheet. null = skip
+    // history/schedule writes entirely (saveAndDownload won't 403 on a sheet the
+    // sandbox account can't reach). Records still save as PDF + JSON to Drive.
+    historySheetId: null,
+    // Pinned to the "FLPS Contractor" Shared Drive (signed in as
+    // Contractor_1@firelifeprotectionsystems.com). Every inspection PDF / JSON /
+    // property profile is created inside this drive and nowhere else.
+    rootFolderId: '0APieefnMyrJuUk9PVA',
   },
 };
 

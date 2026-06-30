@@ -122,6 +122,9 @@ async function googleFetch(url, method = 'GET', body = null) {
 // LOAD CLIENT SHEET
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadSheet(forceRefresh = false) {
+  // Contractor sandbox with no property sheet: skip the load (manual property
+  // entry only) so we don't fetch an empty id or touch the real property list.
+  if (!SHEET_ID) { clientData = {}; buildDropdown(); return; }
   // Namespace the cache per contractor so a sandbox property list can't leak
   // into the normal inspection page (or vice-versa) in the same browser.
   const CACHE_KEY = 'flips_client_cache' + (_FLIPS_C ? '_' + (_FLIPS_C.label || 'contractor') : '');
