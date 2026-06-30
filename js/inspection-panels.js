@@ -1835,7 +1835,7 @@ function buildSpecialSuppressionPanel() {
       <label>Special Suppression Notes</label>
       <textarea id="ss-notes" rows="3"></textarea>
     </div>`;
-  return makePanel('special-suppression', '🧪', 'Special Suppression System (NFPA 2001 / 11 / 17)', body);
+  return makePanel('special-suppression', '🧪', 'Special Suppression System (NFPA 2001 / 12 / 17)', body);
 }
 
 function buildBackflowPanel() {
@@ -1886,7 +1886,7 @@ function buildBackflowPanel() {
       <label>Backflow Preventer Notes</label>
       <textarea id="bf-notes" rows="3"></textarea>
     </div>`;
-  return makePanel('backflow', '🔁', 'Backflow Prevention Device (AWWA / Local Code)', body);
+  return makePanel('backflow', '🔁', 'Backflow Prevention Device (NFPA 25 13.6 / AWWA)', body);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

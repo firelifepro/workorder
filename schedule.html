@@ -362,6 +362,7 @@ thead th.col-del:hover { background:#1a1a2e; }
         <option>Fire Pump Inspection</option>
         <option>Jockey Pump Inspection</option>
         <option>Annual Backflow Prevention Test</option>
+        <option>Fire &amp; Smoke Damper Inspection</option>
         <option>5-Year Internal Pipe Inspection</option>
         <option>5-Year FDC Hydrostatic Test</option>
         <option>3-Year Dry Pipe Test</option>
@@ -375,7 +376,9 @@ thead th.col-del:hover { background:#1a1a2e; }
         <option value="Quarterly">Quarterly</option>
         <option value="Monthly">Monthly</option>
         <option value="3-Year">3-Year</option>
+        <option value="4-Year">4-Year</option>
         <option value="5-Year">5-Year</option>
+        <option value="6-Year">6-Year</option>
       </select>
     </div>
     <div class="modal-field">
@@ -581,7 +584,7 @@ async function loadSchedule(forceRefresh = false) {
 function addFreqMonths(date, freq) {
   const d = new Date(date);
   const f = (freq || 'annual').trim().toLowerCase();
-  const map = { 'monthly': 1, 'quarterly': 3, 'semi annual': 6, 'annual': 12, '3-year': 36, '5-year': 60 };
+  const map = { 'monthly': 1, 'quarterly': 3, 'semi annual': 6, 'annual': 12, '3-year': 36, '4-year': 48, '5-year': 60, '6-year': 72 };
   d.setMonth(d.getMonth() + (map[f] || 12));
   return d;
 }

@@ -1238,7 +1238,7 @@ async function buildGenericSystemPDFBytes() {
     'fire-pump':'NFPA 25 Ch. 8','standpipe':'NFPA 25 Ch. 6','hood':'NFPA 17A',
     'hydrant':'NFPA 25 Ch. 7','bda':'NFPA 72 Ch. 24','smoke-control':'NFPA 92',
     'fire-smoke-damper':'NFPA 80 Ch.19 / NFPA 105',
-    'gas-detection':'NFPA 72','special-suppression':'NFPA 2001 / 11 / 17','backflow':'AWWA',
+    'gas-detection':'NFPA 72','special-suppression':'NFPA 2001 / 12 / 17','backflow':'NFPA 25 13.6 / AWWA',
   };
 
   // System data fields (ids → labels)
@@ -2830,7 +2830,7 @@ async function buildHoodPDFBytes() {
     ['DATE PERFORMED', data.inspection?.date || ''],
     ['INSPECTOR',      data.inspection?.inspectorName || ''],
     ['LICENSE / CERT', data.inspection?.inspectorCert || ''],
-    ['NFPA REFERENCE', 'NFPA 96'],
+    ['NFPA REFERENCE', 'NFPA 96 / 17A'],
   ];
   let jY = ry(iH) + iH - rtBoxH - 3;
   jFields.forEach(([lbl, val]) => {

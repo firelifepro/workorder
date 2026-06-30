@@ -14,6 +14,7 @@ const INSP_SYS_TYPE_MAP = {
   'hood':               'Hood Inspection',
   'fire-pump':          'Fire Pump Inspection',
   'backflow':           'Annual Backflow Prevention Test',
+  'fire-smoke-damper':  'Fire & Smoke Damper Inspection',
   'hospital':           'Hospital TJC/CMS Inspection',
 };
 
@@ -31,6 +32,16 @@ const INSP_FREQ_MAP = {
 function inspectionFrequency(data) {
   const sysKey = (data && data.inspectionSystem) ||
     (typeof activeInspectionSystem !== 'undefined' ? activeInspectionSystem : '') || '';
+  // Fire/smoke dampers run on a multi-year cycle (NFPA 80 19.4 / NFPA 105 6.5):
+  // 1 yr after install, then every 4 yrs — 6 yrs in hospitals. The inspector
+  // picks this on the "Test Interval" field, so derive the schedule frequency
+  // from it rather than the Annual/Semi-Annual report-type buttons.
+  if (sysKey === 'fire-smoke-damper') {
+    const iv = ((data && data.fieldData && data.fieldData['fsd-interval']) || '').toLowerCase();
+    if (iv.includes('6 year') || iv.includes('hospital')) return '6-Year';
+    if (iv.includes('1 year')  || iv.includes('install'))  return 'Annual';
+    return '4-Year';
+  }
   const rawFreq = sysKey === 'sprinkler'
     ? ((data && data.fieldData && data.fieldData['sp-report-type']) || 'Annual').toLowerCase()
     : ((data && data.inspection && data.inspection.reportType) || 'Annual').toLowerCase();
