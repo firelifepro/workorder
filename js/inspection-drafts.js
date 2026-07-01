@@ -404,6 +404,11 @@ function restoreDraft(draft) {
   } else if (activeInspectionSystem === 'hood') {
     _rebuildHoodListFromDOM();
   }
+  // Damper cards come back inside sysFormsHTML — recover the id counter + inventory
+  if (activeInspectionSystem === 'fire-smoke-damper') {
+    if (typeof _rebuildDamperCountFromDOM === 'function') _rebuildDamperCountFromDOM();
+    if (typeof recalcDamperInventory === 'function') recalcDamperInventory();
+  }
   // Restore step-4 fields
   Object.entries(draft.step4Fields || {}).forEach(([id, val]) => {
     const el = document.getElementById(id);
@@ -765,6 +770,7 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
     elUnits:        data.elUnits || [],
     esUnits:        data.esUnits || [],
     devices:        sysKey === 'fire-alarm' ? collectFADeviceRows() : (data.devices || undefined),
+    dampers:        (data.dampers && data.dampers.length) ? data.dampers : undefined,
     keySheet:       data.keySheet       || undefined,
     recurringMonths:data.recurringMonths || undefined,
   };

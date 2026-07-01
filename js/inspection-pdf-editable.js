@@ -1302,15 +1302,6 @@ async function buildGenericSystemPDFBytes() {
         [{label:'# Supply/Exhaust Fans',id:'sc-fans',w:180},{label:'# Smoke/Fire Dampers',id:'sc-dampers',w:180},{label:'Measured ΔP (in. w.g.)',id:'sc-pressure-val',w:180}],
       ]},
     ]},
-    'fire-smoke-damper': { sections: [
-      { title: 'DAMPER INVENTORY', rows: [
-        [{label:'# Fire Dampers',id:'fsd-count-fire',w:180},{label:'# Smoke Dampers',id:'fsd-count-smoke',w:180},{label:'# Combination Fire/Smoke',id:'fsd-count-combo',w:180}],
-        [{label:'# Ceiling Radiation Dampers',id:'fsd-count-ceiling',w:180},{label:'Total Dampers',id:'fsd-count-total',w:180},{label:'# Dampers Tested',id:'fsd-count-tested',w:180}],
-      ]},
-      { title: 'TEST CYCLE', rows: [
-        [{label:'Test Interval',id:'fsd-interval',w:180},{label:'Last Test Date',id:'fsd-last-test',w:180},{label:'Next Test Due',id:'fsd-next-due',w:180}],
-      ]},
-    ]},
     'gas-detection': { sections: [
       { title: 'SYSTEM INFORMATION', rows: [
         [{label:'Manufacturer',id:'gd-mfr',w:180},{label:'Model',id:'gd-model',w:180},{label:'Gas Type Monitored',id:'gd-gas-type',w:180}],
@@ -1376,12 +1367,6 @@ async function buildGenericSystemPDFBytes() {
       { title: 'FAN & EQUIPMENT TESTING', ids: ['sc-fans-op','sc-cfm','sc-pressure'] },
       { title: 'DAMPERS',                 ids: ['sc-dampers-op','sc-fire-dampers','sc-damper-access'] },
       { title: 'CONTROLS & INTEGRATION',  ids: ['sc-control-panel','sc-fa-integration','sc-override','sc-detector-input'] },
-    ],
-    'fire-smoke-damper': [
-      { title: 'ACCESS & PHYSICAL CONDITION', ids: ['fsd-access','fsd-clear','fsd-frame','fsd-link','fsd-mounting'] },
-      { title: 'OPERATIONAL (DROP) TEST',     ids: ['fsd-close','fsd-latch','fsd-dynamic','fsd-reopen'] },
-      { title: 'SMOKE & CONTROL INTEGRATION', ids: ['fsd-actuator','fsd-detector','fsd-hvac'] },
-      { title: 'DOCUMENTATION',               ids: ['fsd-label','fsd-records'] },
     ],
     'gas-detection': [
       { title: 'SENSOR TESTING',     ids: ['gd-sensor-test','gd-alarm-test','gd-gas-shutoff','gd-ventilation'] },
@@ -1532,6 +1517,94 @@ async function buildGenericSystemPDFBytes() {
   page.drawText(stVal || 'PENDING', { x: ML+130, y: ty(18,6), size: 9.5, font: hFont, color: white });
   curY += 18;
   gap(6);
+
+  // ── FIRE & SMOKE DAMPERS: test cycle + auto inventory + per-damper table ──────
+  // (SYS_FIELDS / SYS_ITEMS_SECTIONED have no 'fire-smoke-damper' entry, so the
+  // generic system-info + checklist blocks below skip; deficiencies/notes/photos/
+  // signatures still render from the shared code that follows.)
+  if (sys === 'fire-smoke-damper') {
+    const gv = id => (document.getElementById(id)?.value || '').trim();
+
+    secHdr('TEST CYCLE');
+    gap(4);
+    dataRow([
+      { label: 'Test Interval',  val: gv('fsd-interval'),  w: 180 },
+      { label: 'Last Test Date', val: gv('fsd-last-test'), w: 180 },
+      { label: 'Next Test Due',  val: gv('fsd-next-due'),  w: 180 },
+    ]);
+    gap(4);
+
+    secHdr('DAMPER INVENTORY');
+    gap(4);
+    dataRow([
+      { label: '# Smoke',        val: gv('dmp-inv-smoke')    || '0', w: 108 },
+      { label: '# Fire',         val: gv('dmp-inv-fire')     || '0', w: 108 },
+      { label: '# Comb. F/S',    val: gv('dmp-inv-combo')    || '0', w: 108 },
+      { label: '# Ceiling Rad.', val: gv('dmp-inv-ceiling')  || '0', w: 108 },
+      { label: '# Corridor',     val: gv('dmp-inv-corridor') || '0', w: 108 },
+    ]);
+    dataRow([
+      { label: 'Total Dampers',       val: gv('dmp-inv-total')  || '0', w: 270 },
+      { label: '# Tested This Cycle', val: gv('dmp-inv-tested') || '0', w: 270 },
+    ]);
+    gap(6);
+
+    const dCards = document.querySelectorAll('#damper-cards-container .damper-card');
+    secHdr('DAMPER TEST RESULTS — ' + dCards.length + ' DAMPER(S)');
+    gap(2);
+
+    // Table header
+    const DCOLS = [ { t: '#', w: 22 }, { t: 'ADDRESS / ID', w: 118 }, { t: 'TYPE', w: 132 }, { t: 'LOCATION', w: 208 }, { t: 'RESULT', w: 60 } ];
+    const drawDamperHeader = () => {
+      checkPage(14);
+      let hx = ML;
+      page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: sky });
+      DCOLS.forEach(c => { page.drawText(c.t, { x: hx + 3, y: ty(13, 4), size: 6.5, font: hFont, color: navy }); hx += c.w; });
+      curY += 14;
+    };
+    drawDamperHeader();
+
+    let di = 0;
+    dCards.forEach(card => {
+      di++;
+      const id   = card.dataset.damperId;
+      const addr = gv('dmp-addr-' + id);
+      const type = document.getElementById('dmp-type-' + id)?.value || '';
+      const loc  = gv('dmp-loc-' + id);
+      const res  = document.getElementById('dmp-result-' + id)?.value || '';
+      const note = gv('dmp-note-' + id);
+
+      const addrLines = wrap(addr, 7, DCOLS[1].w - 6);
+      const typeLines = wrap(type, 7, DCOLS[2].w - 6);
+      const locLines  = wrap(loc,  7, DCOLS[3].w - 6);
+      const nLines    = note ? wrap('Note: ' + note, 6.5, PW - 30) : [];
+      const rowH  = Math.max(13, Math.max(addrLines.length, typeLines.length, locLines.length) * 8 + 4);
+      const noteH = note ? Math.max(11, nLines.length * 8 + 2) : 0;
+      checkPage(rowH + noteH + 2);
+
+      const bg = res === 'PASS' ? rgb(0.94, 0.99, 0.95) : res === 'FAIL' ? rgb(0.99, 0.93, 0.93) : white;
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
+      let cx = ML;
+      const cell = (lines) => {
+        lines.forEach((ln, li) => page.drawText(ln, { x: cx + 3, y: ry(rowH) + rowH - 8 - li * 8, size: 7, font: rFont, color: navy }));
+      };
+      cell([String(di)]);            cx += DCOLS[0].w;
+      cell(addrLines.length ? addrLines : ['']); cx += DCOLS[1].w;
+      cell(typeLines.length ? typeLines : ['']); cx += DCOLS[2].w;
+      cell(locLines.length  ? locLines  : ['']); cx += DCOLS[3].w;
+      const rColor = res === 'PASS' ? green : res === 'FAIL' ? red : slate;
+      page.drawText(res || '—', { x: cx + 3, y: ry(rowH) + rowH - 8, size: 7, font: hFont, color: rColor });
+      curY += rowH;
+
+      if (note) {
+        page.drawRectangle({ x: ML + DCOLS[0].w, y: ry(noteH), width: PW - DCOLS[0].w, height: noteH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.2 });
+        nLines.forEach((ln, li) => page.drawText(ln, { x: ML + DCOLS[0].w + 3, y: ry(noteH) + noteH - 8 - li * 8, size: 6.5, font: rFont, color: slate }));
+        curY += noteH;
+      }
+      curY += 1;
+    });
+    gap(6);
+  }
 
   // System info fields
   const sysFields = SYS_FIELDS[sys];

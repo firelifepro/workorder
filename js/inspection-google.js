@@ -564,6 +564,7 @@ function startInspectionForSystem(sysKey) {
     extinguishers: last.extinguishers || [],
     elUnits:       last.elUnits       || [],
     esUnits:       last.esUnits       || [],
+    dampers:       last.dampers       || [],
     devices:       last.devices       || null
   } : null;
 
@@ -733,6 +734,7 @@ function _buildFreshGenericInspection() {
   // System-specific panel initialization (dynamic tables, checklists)
   if (activeInspectionSystem === 'fire-alarm') initFireAlarmPanel();
   if (activeInspectionSystem === 'hood') initHoodPanel();
+  if (activeInspectionSystem === 'fire-smoke-damper') initDamperPanel();
 
   // Show active system banner in step 3
   const meta = SYS_META[activeInspectionSystem] || { label: activeInspectionSystem, icon: '⚙️' };

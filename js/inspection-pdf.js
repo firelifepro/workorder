@@ -160,6 +160,29 @@ function collectAllData() {
     });
   }
 
+  // Fire/smoke dampers — one record per damper card. Failed dampers also feed the
+  // shared deficiency list so overall-status checks and the PDF pick them up.
+  const dampers = [];
+  if (activeInspectionSystem === 'fire-smoke-damper') {
+    document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
+      const id = card.dataset.damperId;
+      const d = {
+        address:  v('dmp-addr-' + id),
+        type:     document.getElementById('dmp-type-' + id)?.value || '',
+        location: v('dmp-loc-' + id),
+        result:   document.getElementById('dmp-result-' + id)?.value || '',
+        note:     v('dmp-note-' + id),
+      };
+      dampers.push(d);
+      if (d.result === 'FAIL') {
+        deficiencies.push({
+          item: `Damper ${d.address || '(unlabeled)'} — ${d.type || 'Damper'}${d.location ? ' @ ' + d.location : ''}`,
+          description: d.note || 'Failed operational / drop test',
+        });
+      }
+    });
+  }
+
   return {
     meta: { generatedAt: new Date().toISOString(), version: '3.0' },
     property: {
@@ -183,6 +206,7 @@ function collectAllData() {
     },
     inspectionSystem: activeInspectionSystem,
     hoodIdentifiers: activeHoodList ? activeHoodList.map(h => h.identifier) : [],
+    dampers,
     systems:      activeInspectionSystem ? [activeInspectionSystem] : [...activeSystems],
     overallStatus,
     generalNotes: v('general-notes'),
@@ -251,6 +275,9 @@ function restorePanelFields(data) {
   const skip = new Set(['insp-date', 'report-type']);
   Object.entries(data.fieldData).forEach(([id, val]) => {
     if (skip.has(id)) return;
+    // Damper cards are rebuilt from the structured `dampers` array (with fresh
+    // results) by initDamperPanel — don't let stale per-card fieldData clobber them.
+    if (id.startsWith('dmp-')) return;
     const el = document.getElementById(id);
     if (el && el.type !== 'button' && !el.closest('#step-1')) {
       // For selects restore by value

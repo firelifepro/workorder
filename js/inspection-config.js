@@ -45,6 +45,7 @@ let sigIsAuto = false;     // true while the on-canvas signature was drawn by au
 let activeHoodList = [];   // [{id, identifier, excluded}]
 let _hoodCardCount = 0;
 let _hoodApplianceCounts = {}; // {hoodId: highestApplianceId}
+let _damperCardCount = 0;  // fire/smoke damper cards — DOM-driven, this is just the id counter
 
 const SYS_META = {
   'fire-alarm':          { label: 'Fire Alarm',              icon: '🔔' },

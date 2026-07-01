@@ -1683,24 +1683,20 @@ function buildSmokeControlPanel() {
   return makePanel('smoke-control', '💨', 'Smoke Control System (NFPA 92)', body);
 }
 
+// ─── FIRE & SMOKE DAMPERS ─────────────────────────────────────────────────────
+// Each damper is inspected independently on its own card (add/remove like hoods).
+// Operational (drop) testing per NFPA 80 Ch.19 (fire dampers) and NFPA 105 Ch.6
+// (smoke dampers): 1 yr after install, then every 4 yrs — 6 yrs in hospitals.
+// (NOT NFPA 86/87/96 — those cover ovens, fluid heaters, and cooking hoods.)
+// Smoke is the default type. Cards are DOM-driven; _damperCardCount only mints ids.
+const DAMPER_TYPES = ['Smoke', 'Fire', 'Combination Fire/Smoke', 'Ceiling Radiation', 'Corridor'];
+const _dmpEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
 function buildFireSmokeDamperPanel() {
-  // Fire / smoke / combination fire-smoke / ceiling radiation dampers.
-  // Operational (drop) testing per NFPA 80 Ch.19 (fire dampers) and NFPA 105
-  // Ch.6 (smoke dampers): 1 yr after install, then every 4 yrs — 6 yrs in
-  // hospitals. (NOT NFPA 86/87/96 — those cover ovens, fluid heaters, and
-  // commercial cooking hoods respectively.)
-  const body = `
-    ${sectionDiv('Damper Inventory')}
-    ${dataRow(
-      {id:'fsd-count-fire',   label:'# Fire Dampers', type:'number'},
-      {id:'fsd-count-smoke',  label:'# Smoke Dampers', type:'number'},
-      {id:'fsd-count-combo',  label:'# Combination Fire/Smoke', type:'number'}
-    )}
-    ${dataRow(
-      {id:'fsd-count-ceiling',label:'# Ceiling Radiation Dampers', type:'number'},
-      {id:'fsd-count-total',  label:'Total Dampers', type:'number'},
-      {id:'fsd-count-tested', label:'# Dampers Tested This Cycle', type:'number'}
-    )}
+  const div = document.createElement('div');
+  div.id = 'damper-section';
+  div.innerHTML = `
+    <div style="font-size:0.82rem;font-weight:700;color:var(--navy);margin-bottom:10px;">🌀 Fire &amp; Smoke Dampers (NFPA 80 Ch.19 / NFPA 105 Ch.6) — operational drop test</div>
 
     ${sectionDiv('Test Cycle')}
     <div class="data-row cols-3">
@@ -1711,33 +1707,174 @@ function buildFireSmokeDamperPanel() {
       <div class="data-field"><label>Next Test Due</label><input type="date" id="fsd-next-due"></div>
     </div>
 
-    ${sectionDiv('Access & Physical Condition')}
-    ${makeRow('fsd-access','Access Doors / Panels Present & Operable','Every damper reachable for inspection — NFPA 80 19.4.1.2')}
-    ${makeRow('fsd-clear','Damper Free of Obstructions','No debris, rust, or material blocking blade travel')}
-    ${makeRow('fsd-frame','Frame, Sleeve & Blades Undamaged','No corrosion, warping, or paint binding the assembly')}
-    ${makeRow('fsd-link','Fusible Links Correct & Unpainted','Correct temp rating; not painted or coated (fire dampers)')}
-    ${makeRow('fsd-mounting','Sleeve & Mounting Secure','Retaining angles intact; properly anchored in barrier')}
+    ${sectionDiv('Dampers — inspect each independently')}
+    <p style="font-size:0.78rem;color:var(--slate);margin:0 0 8px;">Add every damper at this property. The address auto-increments from the previous damper (e.g. ADR-11-1 → ADR-11-2) — edit it if the guess is wrong. Dampers are saved per property, so next inspection they pre-load ready to test.</p>
+    <div id="damper-cards-container"></div>
+    <button class="add-row-btn" onclick="addDamperCard()" style="white-space:nowrap;margin-top:8px;">+ Add Damper</button>
 
-    ${sectionDiv('Operational (Drop) Test')}
-    ${makeRow('fsd-close','Damper Fully Closes','Drop test — blades travel to full closed position')}
-    ${makeRow('fsd-latch','Closure Latches / Holds Closed','Spring or actuator holds damper fully closed')}
-    ${makeRow('fsd-dynamic','Closes Against Airflow (Dynamic)','Dynamic-rated dampers close with fans running')}
-    ${makeRow('fsd-reopen','Reopens & Resets','Damper returns to open and re-latches after test')}
+    ${sectionDiv('Damper Inventory (auto — from cards above)')}
+    <div class="data-row cols-3">
+      <div class="data-field"><label># Smoke</label><input type="text" id="dmp-inv-smoke" readonly></div>
+      <div class="data-field"><label># Fire</label><input type="text" id="dmp-inv-fire" readonly></div>
+      <div class="data-field"><label># Combination F/S</label><input type="text" id="dmp-inv-combo" readonly></div>
+    </div>
+    <div class="data-row cols-3">
+      <div class="data-field"><label># Ceiling Radiation</label><input type="text" id="dmp-inv-ceiling" readonly></div>
+      <div class="data-field"><label># Corridor</label><input type="text" id="dmp-inv-corridor" readonly></div>
+      <div class="data-field"><label>Total Dampers</label><input type="text" id="dmp-inv-total" readonly></div>
+    </div>
+    <div class="data-row cols-2">
+      <div class="data-field"><label># Tested This Cycle</label><input type="text" id="dmp-inv-tested" readonly></div>
+    </div>
 
-    ${sectionDiv('Smoke & Control Integration')}
-    ${makeRow('fsd-actuator','Actuator Operation (Electric / Pneumatic)','Actuator drives smoke / combo damper fully closed')}
-    ${makeRow('fsd-detector','Closes on Smoke Detection / FA Signal','Duct detector or fire-alarm command closes damper')}
-    ${makeRow('fsd-hvac','HVAC / Smoke-Control Interlock','Air-handler shutdown / smoke-control sequence verified')}
-
-    ${sectionDiv('Documentation')}
-    ${makeRow('fsd-label','Dampers Labeled / Tagged','Each damper identified; service tag updated')}
-    ${makeRow('fsd-records','Test Records Maintained','Prior test documentation on file — NFPA 80 19.5')}
-
-    <div class="field-group" style="margin-top:8px;">
-      <label>Fire &amp; Smoke Damper Notes</label>
-      <textarea id="fsd-notes" rows="3" placeholder="Per-damper findings, tag #s, locations, repairs needed…"></textarea>
+    <div class="field-group" style="margin-top:10px;">
+      <label>General Fire &amp; Smoke Damper Notes</label>
+      <textarea id="fsd-notes" rows="3" placeholder="Access issues, overall findings, recommendations…"></textarea>
     </div>`;
-  return makePanel('fire-smoke-damper', '🌀', 'Fire & Smoke Dampers (NFPA 80 Ch.19 / NFPA 105 Ch.6)', body);
+  return div;
+}
+
+function _damperCardBodyHTML(id, p) {
+  p = p || {};
+  const curType = p.type || 'Smoke';
+  const typeOpts = DAMPER_TYPES.map(t => `<option${t === curType ? ' selected' : ''}>${t}</option>`).join('');
+  const res = p.result || '';
+  const on = v => (res === v ? ' selected' : '');
+  return `
+    <div class="data-row cols-2">
+      <div class="data-field"><label>Damper Type</label>
+        <select id="dmp-type-${id}" onchange="recalcDamperInventory()">${typeOpts}</select>
+      </div>
+      <div class="data-field"><label>Location / Floor</label>
+        <input type="text" id="dmp-loc-${id}" value="${_dmpEsc(p.location)}" placeholder='e.g. 2nd Flr Corridor, AHU-3 supply duct'>
+      </div>
+    </div>
+    <div class="inspect-row-top" style="margin-top:8px;">
+      <div class="inspect-label">Drop Test / Operation Result<small>Fully closes, latches &amp; resets — NFPA 80 19.4 / 105 6.5</small></div>
+      <div class="pf-group">
+        <button class="pf-btn pass${on('PASS')}" onclick="setDamperResult(this,${id},'PASS')">PASS</button>
+        <button class="pf-btn fail${on('FAIL')}" onclick="setDamperResult(this,${id},'FAIL')">FAIL</button>
+        <button class="pf-btn na${on('N/A')}"   onclick="setDamperResult(this,${id},'N/A')">N/A</button>
+      </div>
+    </div>
+    <input type="hidden" id="dmp-result-${id}" value="${_dmpEsc(res)}">
+    <div class="data-field" style="margin-top:6px;"><label>Condition / Deficiency Notes</label>
+      <input type="text" id="dmp-note-${id}" value="${_dmpEsc(p.note)}" placeholder="Damage, obstruction, actuator/link issue, repair needed…">
+    </div>`;
+}
+
+// Add a damper card. prefill = {address,type,location,result,note} (from saved
+// data). With no argument (the "+ Add Damper" button) the address is guessed by
+// incrementing the previous card's trailing number.
+function addDamperCard(prefill) {
+  _damperCardCount++;
+  const id = _damperCardCount;
+  const container = document.getElementById('damper-cards-container');
+  if (!container) return;
+  const p = prefill || {};
+  let addr = p.address || '';
+  if (!addr && !prefill) addr = guessNextDamperAddress();
+
+  const card = document.createElement('div');
+  card.className = 'hood-card';              // reuse hood card styling
+  card.id = `damper-card-${id}`;
+  card.dataset.damperId = id;
+  card.innerHTML = `
+    <div class="hood-card-header">
+      <span style="font-size:0.7rem;font-weight:700;color:white;opacity:0.7;white-space:nowrap;margin-right:6px;">DAMPER #/ADDR</span>
+      <input type="text" id="dmp-addr-${id}" class="hood-ident-input" value="${_dmpEsc(addr)}"
+        placeholder="e.g. ADR-11-1">
+      <button class="hood-delete-btn" onclick="removeDamperCard(${id})" title="Remove this damper">✕</button>
+      <button class="hood-collapse-btn" onclick="toggleDamperCardBody(${id})">▼</button>
+    </div>
+    <div class="hood-card-body" id="damper-card-body-${id}">${_damperCardBodyHTML(id, p)}</div>`;
+  container.appendChild(card);
+  recalcDamperInventory();
+  return id;
+}
+
+function removeDamperCard(id) {
+  document.getElementById(`damper-card-${id}`)?.remove();
+  recalcDamperInventory();
+}
+
+function toggleDamperCardBody(id) {
+  const body = document.getElementById(`damper-card-body-${id}`);
+  const btn  = document.querySelector(`#damper-card-${id} .hood-collapse-btn`);
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (btn) btn.textContent = hidden ? '▼' : '▶';
+}
+
+function setDamperResult(btn, id, val) {
+  const hidden = document.getElementById(`dmp-result-${id}`);
+  const group  = btn.closest('.pf-group');
+  const isSame = btn.classList.contains('selected');
+  if (group) group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+  if (!isSame) { btn.classList.add('selected'); if (hidden) hidden.value = val; }
+  else         { if (hidden) hidden.value = ''; }   // click again to clear
+  recalcDamperInventory();
+}
+
+// Guess the next damper address by incrementing the trailing number of the last
+// card's current address, preserving any zero-padding. "ADR-11-1" → "ADR-11-2".
+function guessNextDamperAddress() {
+  const cards = document.querySelectorAll('#damper-cards-container .damper-card');
+  if (!cards.length) return '';
+  const lastId = cards[cards.length - 1].dataset.damperId;
+  return bumpDamperAddress((document.getElementById(`dmp-addr-${lastId}`)?.value || '').trim());
+}
+function bumpDamperAddress(s) {
+  if (!s) return '';
+  const m = s.match(/(\d+)(\D*)$/);
+  if (!m) return s;                                  // no trailing number — copy, let user edit
+  const num  = m[1];
+  const next = String(parseInt(num, 10) + 1).padStart(num.length, '0');
+  return s.slice(0, m.index) + next + m[2];
+}
+
+// Recompute the read-only Damper Inventory counts from the current cards.
+function recalcDamperInventory() {
+  const cards = document.querySelectorAll('#damper-cards-container .damper-card');
+  let fire = 0, smoke = 0, combo = 0, ceiling = 0, corridor = 0, tested = 0;
+  cards.forEach(card => {
+    const id = card.dataset.damperId;
+    const t  = (document.getElementById(`dmp-type-${id}`)?.value || '').toLowerCase();
+    if (t.includes('combination'))   combo++;
+    else if (t.includes('fire'))     fire++;
+    else if (t.includes('smoke'))    smoke++;
+    else if (t.includes('ceiling'))  ceiling++;
+    else if (t.includes('corridor')) corridor++;
+    const r = document.getElementById(`dmp-result-${id}`)?.value || '';
+    if (r === 'PASS' || r === 'FAIL') tested++;
+  });
+  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val; };
+  set('dmp-inv-fire', fire);       set('dmp-inv-smoke', smoke);   set('dmp-inv-combo', combo);
+  set('dmp-inv-ceiling', ceiling); set('dmp-inv-corridor', corridor);
+  set('dmp-inv-total', cards.length); set('dmp-inv-tested', tested);
+}
+
+// Fresh-inspection init: load saved dampers (address/type/location) for this
+// property with cleared results, or start with one blank card.
+function initDamperPanel() {
+  _damperCardCount = 0;
+  const saved = (window._prevInspectionData && window._prevInspectionData.dampers) || [];
+  if (saved.length) {
+    saved.forEach(d => addDamperCard({ address: d.address, type: d.type, location: d.location }));
+  } else {
+    addDamperCard({});   // one blank card, no address guess
+  }
+  recalcDamperInventory();
+}
+
+// Draft-resume: cards are restored from sysFormsHTML; just recover the id counter.
+function _rebuildDamperCountFromDOM() {
+  _damperCardCount = 0;
+  document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
+    const id = parseInt(card.dataset.damperId) || 0;
+    if (id > _damperCardCount) _damperCardCount = id;
+  });
 }
 
 function buildGasDetectionPanel() {
