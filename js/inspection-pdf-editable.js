@@ -2353,12 +2353,12 @@ async function buildEditablePDFBytes() {
     table(
       [{label:'LOCATION',w:80},{label:'MAKE',w:60},{label:'CIRCUIT',w:55},{label:'AMPS',w:45},
        {label:'L BATT',w:50},{label:'R BATT',w:50},{label:'SPVSD?',w:50},{label:'PASS/FAIL',w:50},{label:'NOTES',w:100}],
-      spRows.map(r => [...r, '']), 13, null, [7]
+      spRows.map(r => [...r, '']), 13, null, [4, 5, 6, 7]
     );
 
     // ── PAGE 6: Detection Devices ─────────────────────────────────────────────
     addPage();
-    secHdr('(LEVEL) (FLOOR/LOCATION) DEVICES — FIRE DETECTION');
+    secHdr('DEVICES — FIRE DETECTION');
     while (detRows.length < 20) detRows.push(Array(6).fill(''));
     table(
       [{label:'TYPE',w:60},{label:'LOCATION',w:200},{label:'SCAN ID',w:60},{label:'ADDRESS',w:60},{label:'ALARM',w:80},{label:'SUPERVISORY',w:80}],
@@ -2395,8 +2395,8 @@ async function buildEditablePDFBytes() {
     });
     while (deficList.length < 10) deficList.push(Array(3).fill(''));
     table(
-      [{label:'#',w:25},{label:'DEFICIENCY & PROPOSED SOLUTIONS',w:425},{label:'MAKE/MODEL',w:90}],
-      deficList, 14, 1
+      [{label:'#',w:25},{label:'DEFICIENCY',w:515}],
+      deficList.map(r => [r[0], r[1]]), 14, 1
     );
     gap(6);
     subHdr('FAILED BATTERIES (IF APPLICABLE)');

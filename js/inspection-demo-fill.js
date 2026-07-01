@@ -84,18 +84,28 @@
 
   // Randomly set PASS/FAIL/N-A (or Y/N/NA) on every pf-group / yna-group in scope so
   // results are a realistic mix instead of all-untested. Skips groups already chosen.
+  function clickOneGroup(g) {
+    if (g.dataset.demoRnd) return; g.dataset.demoRnd = '1';
+    if (g.querySelector('.selected')) return;
+    const btns = [...g.querySelectorAll('button.pf-btn, button.yna-btn')];
+    if (!btns.length) return;
+    const r = Math.random();
+    const pick = r < 0.65 ? g.querySelector('.pass, .y')
+               : r < 0.85 ? g.querySelector('.fail, .n')
+               : g.querySelector('.na');
+    try { (pick || btns[0]).click(); } catch (_) {}
+  }
   function randomCheckGroups(rootSelectors) {
     rootSelectors.forEach(sel => document.querySelectorAll(sel).forEach(root => {
-      root.querySelectorAll('.pf-group, .yna-group').forEach(g => {
-        if (g.dataset.demoRnd) return; g.dataset.demoRnd = '1';
-        if (g.querySelector('.selected')) return;
-        const btns = [...g.querySelectorAll('button')];
-        if (!btns.length) return;
-        const r = Math.random();
-        const pick = r < 0.65 ? g.querySelector('.pass, .y')
-                   : r < 0.85 ? g.querySelector('.fail, .n')
-                   : g.querySelector('.na');
-        try { (pick || btns[0]).click(); } catch (_) {}
+      root.querySelectorAll('.pf-group, .yna-group').forEach(clickOneGroup);
+      // Many FA toggles (alarm/supervisory/L-batt/R-batt/SPVSD/pass-fail) are bare
+      // .pf-btn buttons in a plain <div> with no group class — group them by parent.
+      const seen = new Set();
+      root.querySelectorAll('button.pf-btn').forEach(btn => {
+        const p = btn.parentElement;
+        if (!p || p.classList.contains('pf-group') || p.classList.contains('yna-group') || seen.has(p)) return;
+        seen.add(p);
+        clickOneGroup(p);
       });
     }));
   }
