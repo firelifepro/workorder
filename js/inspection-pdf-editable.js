@@ -48,7 +48,7 @@ async function drawReportHeader(H) {
   // ── Logo + company + right (freq + job) block ──
   const logoAreaH = sc(100);
   const logoX = ML, logoW = 84;
-  const infoX = ML + logoW + 4, infoW = 200;
+  const infoX = ML + logoW + 4, infoW = 214;
   const rtX = infoX + infoW + 6, rtW = ML + PW - rtX;
 
   try {
@@ -83,7 +83,7 @@ async function drawReportHeader(H) {
     { text: 'Littleton, CO 80127',                bold: false, sz: sc(7)   },
     { text: 'Cellular: (303) 726-8847',           bold: false, sz: sc(7)   },
     { text: 'Office: (720) 974-1570',             bold: false, sz: sc(7)   },
-    { text: 'Alan.antonio@firelifeprotectionsystems.com', bold: false, sz: sc(6.5) },
+    { text: 'Alan.antonio@firelifeprotectionsystems.com', bold: false, sz: sc(7) },
   ];
   let compY = ry(logoAreaH) + logoAreaH - sc(9);
   compLines.forEach(cl => {
@@ -290,10 +290,11 @@ async function buildExtinguisherPDFBytes() {
   };
   drawExtHdr();
 
-  const EXT_LOC_I = 2, EXT_NOTE_I = 12;
+  const EXT_NOTE_I = 12;
   const drawExtRow = (ext) => {
     const pf = (ext.pf || ext.overall || '').toUpperCase();
     const cabMissing = [ext.cabM === 'Y' ? 'Mallet' : '', ext.cabG === 'Y' ? 'Glass' : '', ext.cabS === 'Y' ? 'Sign' : ''].filter(Boolean).join(', ');
+    const noteTxt = ext.noteTxt || '';
     const cells = [
       String(ext.rowNum || ''),
       ext.flr || '',
@@ -307,13 +308,11 @@ async function buildExtinguisherPDFBytes() {
       ext.hydroDue || '',
       ext.recharge === 'Y' ? 'Y' : 'N',
       ext.newUnit === 'Y' ? 'Y' : 'N',
-      ext.noteTxt || '',
+      noteTxt ? '↓ below' : '',   // note text moves to its own full-width line under the row
     ];
-    // Auto-grow the row so the free-text LOCATION and NOTE columns wrap instead of clip.
-    const noteLines = wrap(cells[EXT_NOTE_I], sc(5.5), extCols[EXT_NOTE_I].w - 3).length;
-    const locLines  = wrap(cells[EXT_LOC_I],  sc(5.5), extCols[EXT_LOC_I].w  - 3).length;
-    const cellH = pdfRowHeight(Math.max(noteLines, locLines), { lineH: sc(7), pad: sc(4), min: sc(14) });
-    if (curY + cellH > PH - MB) { addPage(); drawExtHdr(); }
+    // Keep the inventory row compact — a long note no longer inflates the row height.
+    const cellH = sc(14);
+    if (curY + cellH + (noteTxt ? sc(12) : 0) > PH - MB) { addPage(); drawExtHdr(); }
     let x = ML;
     extCols.forEach((col, i) => {
       const isStatus = i === 8;
@@ -325,16 +324,28 @@ async function buildExtinguisherPDFBytes() {
       if (isStatus && pf) {
         const tw = hFont.widthOfTextAtSize(pf, sc(6));
         page.drawText(pf, { x: x + col.w/2 - tw/2, y: ty(cellH, sc(4)), size: sc(6), font: hFont, color: txtColor });
+      } else if (i === EXT_NOTE_I) {
+        page.drawText(cells[i], { x: x+2, y: ty(cellH, sc(4.5)), size: sc(5), font: rFont, color: blk });
       } else {
         const f = form.createTextField(fid());
         f.setText(cells[i]);
-        if (i === EXT_LOC_I || i === EXT_NOTE_I) f.enableMultiline();
         f.addToPage(page, { x: x+1, y: ry(cellH)+1, width: col.w-2, height: cellH-2, font: rFont });
         f.setFontSize(sc(5.5));
       }
       x += col.w;
     });
     curY += cellH + sc(1);
+    // Full-width NOTE line beneath the row (multiline, auto-height) when present.
+    if (noteTxt) {
+      const label = 'Unit #' + (ext.rowNum || '') + ' Note: ' + noteTxt;
+      const nh = pdfRowHeight(wrap(label, sc(6.5), PW - 12).length, { lineH: sc(9), pad: sc(4), min: sc(12) });
+      checkPage(nh + sc(1));
+      page.drawRectangle({ x: ML, y: ry(nh), width: PW, height: nh, color: rgb(1, 1, 0.92), borderColor: sky, borderWidth: 0.3 });
+      const nf = form.createTextField(fid());
+      nf.setText(label); nf.enableMultiline();
+      nf.addToPage(page, { x: ML+2, y: ry(nh)+1, width: PW-4, height: nh-2, font: rFont }); nf.setFontSize(sc(6.5));
+      curY += nh + sc(1);
+    }
   };
 
   if (data.extinguishers.length > 0) {
@@ -1452,7 +1463,7 @@ async function buildGenericSystemPDFBytes() {
       const resCol  = res === 'PASS' ? green : res === 'FAIL' ? red : slate;
       const hdrTxt  = `#${idx + 1}  ${d.address || '(unlabeled)'}   ·   ${d.type || '—'}${d.location ? '   ·   ' + d.location : ''}`;
       const hdrLines = wrap(hdrTxt, sc(8), PW - 70);
-      const hdrH    = Math.max(14, hdrLines.length * 9 + 4);
+      const hdrH    = Math.max(sc(14), hdrLines.length * sc(9) + sc(4));
       // Rough space for the header + all check rows + note, so a damper block
       // isn't split awkwardly right after its header.
       checkPage(hdrH + Math.ceil(CHK.length / 3) * 11 + (d.note ? 14 : 0) + 4);
@@ -1482,7 +1493,7 @@ async function buildGenericSystemPDFBytes() {
       if (d.note) {
         const nLines = [];
         ('Note: ' + d.note).split(/\r?\n/).forEach(seg => wrap(seg, sc(6.5), PW - 8).forEach(l => nLines.push(l)));
-        const nH = Math.max(11, nLines.length * 8 + 2);
+        const nH = Math.max(sc(12), nLines.length * sc(8) + sc(6)); // scaled so the box fits every wrapped line
         checkPage(nH);
         page.drawRectangle({ x: ML, y: ry(nH), width: PW, height: nH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.2 });
         nLines.forEach((ln, li) => page.drawText(ln, { x: ML + 4, y: ry(nH) + nH - sc(8) - li*sc(8), size: sc(6.5), font: rFont, color: slate }));
@@ -1554,8 +1565,8 @@ async function buildGenericSystemPDFBytes() {
     const result = (row.dataset.val || '').toUpperCase();
     const deficTxt = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
     const labelLines = wrap(label, sc(7.5), PW - 50);
-    const rowH = Math.max(13, labelLines.length * 9 + 4);
-    checkPage(rowH + (result === 'FAIL' && deficTxt ? 13 : 0) + 1);
+    const rowH = Math.max(sc(13), labelLines.length * sc(9) + sc(5)); // scaled so multi-line labels aren't clipped
+    checkPage(rowH + (result === 'FAIL' && deficTxt ? sc(13) : 0) + 1);
     const bg = result === 'PASS' ? rgb(0.94, 0.99, 0.95) : result === 'FAIL' ? rgb(0.99, 0.93, 0.93) : rgb(0.97, 0.97, 0.97);
     page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
     labelLines.forEach((line, li) => {
@@ -1631,40 +1642,6 @@ async function buildGenericSystemPDFBytes() {
     gap(4);
   }
 
-  // Photos
-  if (inspectionPhotos && inspectionPhotos.length > 0) {
-    addPage();
-    secHdr('INSPECTION PHOTOS');
-    const photoW = Math.floor((PW - 10) / 2);
-    const photoH = sc(140);
-    let col = 0;
-    for (let i = 0; i < inspectionPhotos.length; i++) {
-      const photo = inspectionPhotos[i];
-      checkPage(photoH + 30);
-      const px = ML + col * (photoW + 10);
-      try {
-        const b64 = photo.dataUrl.split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const img = photo.dataUrl.startsWith('data:image/png')
-          ? await pdfDoc.embedPng(ab) : await pdfDoc.embedJpg(ab);
-        const dims = img.scaleToFit(photoW, photoH);
-        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
-      } catch(_) {
-        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: lgray });
-      }
-      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: sc(12), color: rgb(0,0,0) });
-      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: sc(7), font: hFont, color: white });
-      if (photo.note) {
-        wrap(photo.note, sc(7), photoW).forEach((l, li) => {
-          page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li*sc(9), size: sc(7), font: rFont, color: navy });
-        });
-      }
-      col++;
-      if (col >= 2) { col = 0; curY += photoH + 22; }
-    }
-    if (col > 0) curY += photoH + 22;
-  }
-
   // Signatures
   checkPage(sc(120));
   secHdr('OVERALL STATUS & SIGNATURES');
@@ -1713,6 +1690,41 @@ async function buildGenericSystemPDFBytes() {
     { label: 'CLIENT PRINT NAME',    val: document.getElementById('cust-sig-name')?.value || '', w: PW/2 },
   ]);
   gap(4);
+
+  // Photos — rendered LAST (on their own page) so long captions can't overwrite
+  // the signatures section above.
+  if (inspectionPhotos && inspectionPhotos.length > 0) {
+    addPage();
+    secHdr('INSPECTION PHOTOS');
+    const photoW = Math.floor((PW - 10) / 2);
+    const photoH = sc(140);
+    let col = 0;
+    for (let i = 0; i < inspectionPhotos.length; i++) {
+      const photo = inspectionPhotos[i];
+      checkPage(photoH + 30);
+      const px = ML + col * (photoW + 10);
+      try {
+        const b64 = photo.dataUrl.split(',')[1];
+        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+        const img = photo.dataUrl.startsWith('data:image/png')
+          ? await pdfDoc.embedPng(ab) : await pdfDoc.embedJpg(ab);
+        const dims = img.scaleToFit(photoW, photoH);
+        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
+      } catch(_) {
+        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: lgray });
+      }
+      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: sc(12), color: rgb(0,0,0) });
+      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: sc(7), font: hFont, color: white });
+      if (photo.note) {
+        wrap(photo.note, sc(7), photoW).forEach((l, li) => {
+          page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li*sc(9), size: sc(7), font: rFont, color: navy });
+        });
+      }
+      col++;
+      if (col >= 2) { col = 0; curY += photoH + 22; }
+    }
+    if (col > 0) curY += photoH + 22;
+  }
 
   return await pdfDoc.save();
 }
@@ -2584,7 +2596,7 @@ async function buildHoodPDFBytes() {
     data.deficiencies.forEach(d => {
       const text = d.item + (d.description ? ': ' + d.description : '');
       const defLines = wrap(text, sc(8), PW - 20);
-      const defRowH = Math.max(18, defLines.length * 11 + 8);
+      const defRowH = Math.max(sc(18), defLines.length * sc(11) + sc(8));
       checkPage(defRowH + 2);
       page.drawRectangle({ x: ML, y: ry(defRowH), width: PW, height: defRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
       page.drawText('•', { x: ML+4, y: ry(defRowH) + defRowH - 9, size: sc(8), font: hFont, color: red });
@@ -2811,7 +2823,7 @@ async function buildHoodPDFBytes() {
     const greaseNoteVal = dv(`h${hid}-grease-note`);
     if (greaseNoteVal) {
       const gnLines = wrap(greaseNoteVal, sc(8), PW - 10);
-      const gnH = Math.max(12, gnLines.length * 11 + 6);
+      const gnH = Math.max(sc(12), gnLines.length * sc(11) + sc(6));
       checkPage(gnH + 2);
       page.drawRectangle({ x: ML, y: ry(gnH), width: PW, height: gnH, color: gold, borderColor: sky, borderWidth: 0.5 });
       gnLines.forEach((line, li) => {
@@ -2959,7 +2971,7 @@ async function buildHoodPDFBytes() {
     noteRows.forEach((nrow, idx) => {
       const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
       const noteLines = wrap(ntxt, sc(8), PW - 20);
-      const rowH = Math.max(16, noteLines.length * 11 + 8);
+      const rowH = Math.max(sc(16), noteLines.length * sc(11) + sc(8));
       checkPage(rowH + 3);
       page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: lgray, borderColor: sky, borderWidth: 0.5 });
       page.drawText(String(idx + 1) + '.', { x: ML+4, y: ry(rowH) + rowH - 10, size: sc(7.5), font: hFont, color: navy });

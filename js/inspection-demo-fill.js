@@ -157,7 +157,8 @@
     for (let i = 1; i <= 2; i++) {
       try {
         const dataUrl = await makeDemoImage(i);
-        arr.push({ dataUrl, note: 'Demo caption ' + i + ' — ' + LONG_NOTE });
+        const caps = ['Riser room — main control valve, tagged and operational.', 'Roof unit — no obstructions; label legible.'];
+        arr.push({ dataUrl, note: caps[i - 1] || ('Demo photo ' + i) });
       } catch (_) {}
     }
   }
@@ -202,6 +203,21 @@
       repeat('addSPDeficRow', 2); repeat('addSPNoteRow', 2);
     } else if (sysKey === 'exit-sign-lighting') {
       repeat('addELRow', 3); repeat('addESRow', 3);
+    } else if (sysKey === 'fire-smoke-damper') {
+      // initDamperPanel adds one blank card; add a couple more so there are 3.
+      call('addDamperCard'); call('addDamperCard');
+      // Randomly set each PASS/FAIL/N/A check on every damper so results aren't all "untested".
+      document.querySelectorAll('#damper-cards-container .damper-card').forEach((card, ci) => {
+        card.querySelectorAll('.pf-group').forEach(g => {
+          const r = Math.random();
+          const btn = r < 0.7 ? g.querySelector('.pf-btn.pass')
+                    : r < 0.87 ? g.querySelector('.pf-btn.fail')
+                    : g.querySelector('.pf-btn.na');
+          if (btn) try { btn.click(); } catch (_) {}
+        });
+        const loc = card.querySelector('[id^="dmp-loc-"]'); if (loc && !loc.value) loc.value = 'Demo location — 2nd Flr AHU-' + (ci + 1);
+        const note = card.querySelector('[id^="dmp-note-"]'); if (note && !note.value) note.value = 'Actuator cycled and verified; blade closed fully.';
+      });
     }
     // Generic deficiency + notes rows for every system that uses them.
     repeat('addGenericDeficRow', 2);
