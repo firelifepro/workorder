@@ -311,7 +311,7 @@ async function buildExtinguisherPDFBytes() {
       ext.hydroDue || '',
       ext.recharge === 'Y' ? 'Y' : 'N',
       ext.newUnit === 'Y' ? 'Y' : 'N',
-      noteTxt ? '↓ below' : '',   // note text moves to its own full-width line under the row
+      noteTxt ? '(below)' : '',   // note text moves to its own full-width line under the row
     ];
     // Keep the inventory row compact — a long note no longer inflates the row height.
     const cellH = sc(14);
@@ -2739,7 +2739,7 @@ async function buildHoodPDFBytes() {
   // never run off the box/page (used by every hood note field).
   const noteBox = (text) => {
     if (!text) return;
-    const lines = wrap('→ ' + text, sc(6.5), PW - 20);
+    const lines = wrap(text, sc(6.5), PW - 20);
     const nH = Math.max(sc(12), lines.length * sc(8) + sc(4));
     checkPage(nH + 1);
     page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
