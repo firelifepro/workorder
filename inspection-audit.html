@@ -775,6 +775,42 @@ function attachEntries(props, entries) {
   props.forEach(p => p.entries.sort((a, b) => (a.type || '').localeCompare(b.type || '')));
 }
 
+// Isolate the property portion of a report filename and return its tokens.
+// Filenames are FLPS_{sys}_{freq}_{property...}_{date}.pdf (EXT_ variants add a
+// vendor segment after the freq). We strip the structural head (prefix, system
+// slug, frequency, vendor) and tail (date + optional "_N" copy counter) so only
+// the property name+address tokens remain — the part built by buildFileSlug.
+// Keep the freq/vendor lists in sync with the filename convention (CLAUDE.md).
+function filePropTokens(name) {
+  let n = (name || '').toLowerCase().replace(/\.pdf$/, '');
+  n = n.replace(/^flps_/, '').replace(/^ext_/, '');
+  for (const d of SYS_DEFS_BY_SLUG_LEN) { if (n.startsWith(d.slug + '_')) { n = n.slice(d.slug.length + 1); break; } }
+  n = n.replace(/^(semi[_-]?annual|annual|quarterly|monthly|weekly|5[_-]?year|3[_-]?year)_/, '');
+  n = n.replace(/^(martinez|convergint)_/, '');
+  n = n.replace(/_\d{4}-\d{2}-\d{2}(_\d+)?$/, '').replace(/_\d{8}(_\d+)?$/, '');
+  return tokens(n);
+}
+
+// Score a report file against one property (0 = below the gate, higher = better).
+// Bidirectional so it survives long concatenated master names: pass if the
+// property NAME mostly appears in the filename (nOv) OR the filename's property
+// portion is mostly contained in the property's name+address pool (fileCover).
+// The service address is unique, so a filename whose tokens all belong to the
+// property is a reliable match even when the master name carries extra tokens
+// (city / zip / "…, LLC") that a shorter-named report never included.
+function propFileScore(nameToks, addrToks, filePropToks, fileAllToks) {
+  if (!nameToks.length) return 0;
+  const has = t => fileAllToks.includes(t);
+  const nOv = nameToks.filter(has).length / nameToks.length;
+  const pool = new Set([...nameToks, ...addrToks]);
+  const fileCover = filePropToks.length >= 2
+    ? filePropToks.filter(t => pool.has(t)).length / filePropToks.length
+    : 0;                                                 // avoid a lone token (e.g. "2555") matching many
+  if (nOv < 0.6 && fileCover < 0.6) return 0;
+  const aOv = addrToks.length ? addrToks.filter(has).length / addrToks.length : 0;
+  return Math.max(nOv, fileCover) + aOv * 0.5;           // address overlap breaks ties
+}
+
 // ── Match Drive report PDFs to inspection entries ──────────
 // Two phases: (1) assign each PDF to the property whose name it best matches;
 // (2) within a property, link each inspection entry to a PDF of the SAME system
@@ -784,15 +820,12 @@ function attachEntries(props, entries) {
 function matchReports(props, files) {
   props.forEach(p => { p._nameToks = tokens(p.name); p._addrToks = tokens(p.addr || ''); p._files = []; });
 
-  // Phase 1 — assign each PDF to its best-matching property by name tokens.
+  // Phase 1 — assign each PDF to its best-matching property (name + address).
   files.forEach(f => {
+    const fpToks = filePropTokens(f.name);
     let best = null, bestScore = 0;
     props.forEach(p => {
-      if (!p._nameToks.length) return;
-      const nOv = p._nameToks.filter(t => f.ntoks.includes(t)).length / p._nameToks.length;
-      if (nOv < 0.6) return;                               // property name must mostly appear
-      const aOv = p._addrToks.length ? p._addrToks.filter(t => f.ntoks.includes(t)).length / p._addrToks.length : 0;
-      const score = nOv + aOv * 0.5;                       // address overlap breaks ties
+      const score = propFileScore(p._nameToks, p._addrToks, fpToks, f.ntoks);
       if (score > bestScore) { bestScore = score; best = p; }
     });
     f.prop = best;

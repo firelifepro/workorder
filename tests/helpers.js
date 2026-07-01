@@ -126,9 +126,55 @@ function matchProperty(claudeProp, fullText, list) {
   return best.score >= 0.45 ? Object.assign({}, best.p, { score: best.score }) : null;
 }
 
+// ── filePropTokens / propFileScore (copied from inspection-audit.html) ────────
+// Keep in sync when the source functions change. SYS_SLUGS mirrors the SYS_DEFS
+// slugs used for stripping the system segment (only the ones exercised here need
+// to be present, but keep the full list to match the source's longest-first scan).
+
+const AUDIT_STOP = new Set(['the', 'and', 'llc', 'inc', 'of', 'co', 'company', 'corp', 'ltd', 'at']);
+function auditTokens(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+    .filter(function(t) { return t.length >= 3 && !AUDIT_STOP.has(t); });
+}
+// Longest-first so 'special_suppression' is tried before shorter prefixes.
+const SYS_SLUGS = [
+  'special_suppression', 'exit_sign_lighting', 'fire_smoke_damper', 'gas_detection',
+  'smoke_control', 'internal_pipe', 'extinguisher', 'fire_alarm', 'fire_pump',
+  'dry_pipe', 'sprinkler', 'standpipe', 'backflow', 'elevator', 'hydrant',
+  'jockey', 'hood', 'hospital', 'bda', 'fdc', 'deficiency', 'correction',
+].sort(function(a, b) { return b.length - a.length; });
+
+function filePropTokens(name) {
+  var n = (name || '').toLowerCase().replace(/\.pdf$/, '');
+  n = n.replace(/^flps_/, '').replace(/^ext_/, '');
+  for (var i = 0; i < SYS_SLUGS.length; i++) {
+    if (n.indexOf(SYS_SLUGS[i] + '_') === 0) { n = n.slice(SYS_SLUGS[i].length + 1); break; }
+  }
+  n = n.replace(/^(semi[_-]?annual|annual|quarterly|monthly|weekly|5[_-]?year|3[_-]?year)_/, '');
+  n = n.replace(/^(martinez|convergint)_/, '');
+  n = n.replace(/_\d{4}-\d{2}-\d{2}(_\d+)?$/, '').replace(/_\d{8}(_\d+)?$/, '');
+  return auditTokens(n);
+}
+
+function propFileScore(nameToks, addrToks, filePropToks, fileAllToks) {
+  if (!nameToks.length) return 0;
+  var has = function(t) { return fileAllToks.indexOf(t) !== -1; };
+  var nOv = nameToks.filter(has).length / nameToks.length;
+  var pool = new Set(nameToks.concat(addrToks));
+  var fileCover = filePropToks.length >= 2
+    ? filePropToks.filter(function(t) { return pool.has(t); }).length / filePropToks.length
+    : 0;
+  if (nOv < 0.6 && fileCover < 0.6) return 0;
+  var aOv = addrToks.length ? addrToks.filter(has).length / addrToks.length : 0;
+  return Math.max(nOv, fileCover) + aOv * 0.5;
+}
+
 module.exports = {
-  loadShared:    loadShared,
-  loadHistory:   loadHistory,
-  scoreMatch:    scoreMatch,
-  matchProperty: matchProperty,
+  loadShared:     loadShared,
+  loadHistory:    loadHistory,
+  scoreMatch:     scoreMatch,
+  matchProperty:  matchProperty,
+  auditTokens:    auditTokens,
+  filePropTokens: filePropTokens,
+  propFileScore:  propFileScore,
 };
