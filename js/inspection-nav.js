@@ -500,7 +500,7 @@ function goGenericDeficStep() {
   // Hood uses Y/N/N/A with manual deficiency entry — never rebuild, preserve existing rows.
   // Exit Sign & Lighting writes its deficiencies into generic-defic-tbody directly
   // (it has no `.inspect-row` items), so rebuilding would wipe them — preserve instead.
-  const usesPF = !['extinguisher', 'hood', 'exit-sign-lighting'].includes(activeInspectionSystem);
+  const usesPF = !['extinguisher', 'hood', 'exit-sign-lighting', 'fire-smoke-damper'].includes(activeInspectionSystem);
   if (usesPF) {
     genericDeficCount = 0;
     const tbody = document.getElementById('generic-defic-tbody');
@@ -521,6 +521,32 @@ function goGenericDeficStep() {
               <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
             </tr>`);
         }
+      });
+    }
+  } else if (activeInspectionSystem === 'fire-smoke-damper') {
+    // Dampers have no .inspect-row items — build one deficiency per damper that
+    // has any failed sub-check, so auto-deficiencies show on the normal page.
+    genericDeficCount = 0;
+    const tbody = document.getElementById('generic-defic-tbody');
+    if (tbody && typeof DAMPER_CHECKS !== 'undefined') {
+      tbody.innerHTML = '';
+      document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
+        const id = card.dataset.damperId;
+        const failed = DAMPER_CHECKS.filter(c => document.getElementById(`dmp-${id}-${c.id}`)?.value === 'FAIL').map(c => c.short || c.label);
+        if (!failed.length) return;
+        genericDeficCount++;
+        const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
+        const type = document.getElementById('dmp-type-' + id)?.value || 'Damper';
+        const loc  = (document.getElementById('dmp-loc-' + id)?.value || '').trim();
+        const note = (document.getElementById('dmp-note-' + id)?.value || '').trim();
+        const description = `Damper ${addr} — ${type}${loc ? ' @ ' + loc : ''}: Failed ${failed.join('; ')}${note ? '. ' + note : ''}`;
+        const rowId = 'generic-defic-' + genericDeficCount;
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr id="${rowId}">
+            <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
+            <td><input type="text" id="${rowId}-desc" value="${escHtml(description)}" placeholder="Describe deficiency…"></td>
+            <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
+          </tr>`);
       });
     }
   }
@@ -813,6 +839,11 @@ function syncStep4DateType() {
     step4Date.value = val;
     if (inspDate && !inspDate.value) inspDate.value = val;
   }
+  // Fire/smoke dampers run on a fixed 4/6-yr test interval (set on page 1) and the
+  // report type isn't shown on their PDF — hide the whole card. insp-date is still
+  // set (to today) just above, so the completion date is captured.
+  const drtCard = document.getElementById('step4-date-rt-card');
+  if (drtCard) drtCard.style.display = (activeInspectionSystem === 'fire-smoke-damper') ? 'none' : '';
   // Kitchen hoods default to Semi-Annual until the user explicitly picks a type.
   // Enforce it here so the default holds regardless of how step 4 was reached
   // (fresh build, draft restore, or a stale hidden value).

@@ -1690,19 +1690,25 @@ function buildSmokeControlPanel() {
 // (NOT NFPA 86/87/96 — those cover ovens, fluid heaters, and cooking hoods.)
 // Smoke is the default type. Cards are DOM-driven; _damperCardCount only mints ids.
 const DAMPER_TYPES = ['Smoke', 'Fire', 'Combination Fire/Smoke', 'Ceiling Radiation', 'Corridor'];
-// Per-damper operational sub-checklist (NFPA 80 19.4 / NFPA 105 6.5). Any FAIL
-// auto-generates a deficiency for that damper (see collectAllData). `short` is
-// the compact label used in the PDF grid.
+// Per-damper operational sub-checklist (NFPA 80 19.4 / NFPA 105 6.5), grouped by
+// the same categories as the original system-level form. Any FAIL auto-generates
+// a deficiency for that damper (see collectAllData / goGenericDeficStep). `short`
+// is the compact label used in the PDF grid; `group` starts a new sub-header.
 const DAMPER_CHECKS = [
-  { id: 'access',   label: 'Access Door Present & Operable',       short: 'Access' },
-  { id: 'clear',    label: 'Free of Obstructions / Debris',        short: 'Obstruct.' },
-  { id: 'frame',    label: 'Frame, Sleeve & Blades Undamaged',     short: 'Frame/Blades' },
-  { id: 'link',     label: 'Fusible Link Correct & Unpainted',     short: 'Fus. Link' },
-  { id: 'close',    label: 'Fully Closes (Drop Test)',             short: 'Closes' },
-  { id: 'latch',    label: 'Latches / Holds Closed',               short: 'Latches' },
-  { id: 'reopen',   label: 'Reopens & Resets',                     short: 'Reopens' },
-  { id: 'actuator', label: 'Actuator Operation (Electric/Pneum.)', short: 'Actuator' },
-  { id: 'detector', label: 'Closes on Detection / FA Signal',      short: 'FA/Detect' },
+  { id: 'access',   group: 'Access & Physical Condition', label: 'Access Door / Panel Present & Operable', short: 'Access' },
+  { id: 'clear',    label: 'Free of Obstructions / Debris',           short: 'Obstruct.' },
+  { id: 'frame',    label: 'Frame, Sleeve & Blades Undamaged',        short: 'Frame/Blades' },
+  { id: 'link',     label: 'Fusible Link Correct & Unpainted',        short: 'Fus. Link' },
+  { id: 'mounting', label: 'Sleeve & Mounting Secure',                short: 'Mounting' },
+  { id: 'close',    group: 'Operational (Drop) Test', label: 'Fully Closes (Drop Test)', short: 'Closes' },
+  { id: 'latch',    label: 'Latches / Holds Closed',                  short: 'Latches' },
+  { id: 'dynamic',  label: 'Closes Against Airflow (Dynamic)',        short: 'Dynamic' },
+  { id: 'reopen',   label: 'Reopens & Resets',                        short: 'Reopens' },
+  { id: 'actuator', group: 'Smoke & Control Integration', label: 'Actuator Operation (Electric/Pneum.)', short: 'Actuator' },
+  { id: 'detector', label: 'Closes on Detection / FA Signal',         short: 'FA/Detect' },
+  { id: 'hvac',     label: 'HVAC / Smoke-Control Interlock',          short: 'HVAC Intlk' },
+  { id: 'label',    group: 'Documentation', label: 'Damper Labeled / Tagged', short: 'Labeled' },
+  { id: 'records',  label: 'Test Records Maintained',                 short: 'Records' },
 ];
 const _dmpEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
@@ -1754,7 +1760,8 @@ function _damperCardBodyHTML(id, p) {
   const checkRows = DAMPER_CHECKS.map(c => {
     const val = checks[c.id] || '';
     const on = v => (val === v ? ' selected' : '');
-    return `
+    const grpHdr = c.group ? `<div style="margin-top:9px;margin-bottom:2px;font-size:0.7rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.02em;">${c.group}</div>` : '';
+    return `${grpHdr}
       <div class="inspect-row-top" style="padding:5px 0;border-top:1px solid #eee;">
         <div class="inspect-label" style="font-size:0.78rem;">${c.label}</div>
         <div class="pf-group">
@@ -1774,7 +1781,7 @@ function _damperCardBodyHTML(id, p) {
         <input type="text" id="dmp-loc-${id}" value="${_dmpEsc(p.location)}" placeholder='e.g. 2nd Flr Corridor, AHU-3 supply duct'>
       </div>
     </div>
-    <div style="margin-top:8px;font-size:0.72rem;font-weight:700;color:var(--slate);">OPERATIONAL CHECKS — any FAIL creates a deficiency for this damper</div>
+    <div style="margin-top:8px;font-size:0.72rem;color:var(--slate);font-style:italic;">Any FAIL below auto-creates a deficiency for this damper.</div>
     ${checkRows}
     <div class="field-group" style="margin-top:8px;"><label>Condition / Deficiency Notes</label>
       <textarea id="dmp-note-${id}" rows="2" placeholder="Damage, obstruction, actuator/link issue, repair needed… (multiple lines OK)">${_dmpEsc(p.note)}</textarea>

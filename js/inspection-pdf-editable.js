@@ -1558,9 +1558,9 @@ async function buildGenericSystemPDFBytes() {
       const hdrTxt  = `#${idx + 1}  ${d.address || '(unlabeled)'}   ·   ${d.type || '—'}${d.location ? '   ·   ' + d.location : ''}`;
       const hdrLines = wrap(hdrTxt, 8, PW - 70);
       const hdrH    = Math.max(14, hdrLines.length * 9 + 4);
-      // Rough space for the header + 3 rows of checks + note, so a damper block
+      // Rough space for the header + all check rows + note, so a damper block
       // isn't split awkwardly right after its header.
-      checkPage(hdrH + 3 * 11 + (d.note ? 14 : 0) + 4);
+      checkPage(hdrH + Math.ceil(CHK.length / 3) * 11 + (d.note ? 14 : 0) + 4);
       const bg = res === 'PASS' ? rgb(0.94, 0.99, 0.95) : res === 'FAIL' ? rgb(0.99, 0.93, 0.93) : lgray;
       page.drawRectangle({ x: ML, y: ry(hdrH), width: PW, height: hdrH, color: bg, borderColor: sky, borderWidth: 0.4 });
       hdrLines.forEach((ln, li) => page.drawText(ln, { x: ML + 4, y: ry(hdrH) + hdrH - 9 - li * 9, size: 8, font: hFont, color: navy }));
@@ -1710,16 +1710,28 @@ async function buildGenericSystemPDFBytes() {
     }
   }
 
-  // Notes
+  // Notes — the system panel's own notes field (NOTES_ID) PLUS the step-4
+  // "General Notes & Site Observations" rows (#fa-notes-tbody, shown for every
+  // non-sprinkler system). Previously only the panel notes rendered, so anything
+  // typed on the final page was dropped from generic reports.
   const notesId = NOTES_ID[sys];
-  const notesVal = notesId ? document.getElementById(notesId)?.value?.trim() : '';
-  if (notesVal) {
-    secHdr('NOTES');
-    const nl = wrap(notesVal, 8, PW - 8);
-    nl.forEach(line => {
-      checkPage(12);
-      page.drawText(line, { x: ML+4, y: ry(12)+3, size: 8, font: rFont, color: navy });
-      curY += 12;
+  const noteBlocks = [];
+  const panelNotes = notesId ? document.getElementById(notesId)?.value?.trim() : '';
+  if (panelNotes) noteBlocks.push(panelNotes);
+  document.querySelectorAll('#fa-notes-tbody input[type=text], #fa-notes-tbody textarea').forEach(el => {
+    const t = (el.value || '').trim();
+    if (t) noteBlocks.push(t);
+  });
+  if (noteBlocks.length) {
+    secHdr('GENERAL NOTES & SITE OBSERVATIONS');
+    noteBlocks.forEach(block => {
+      block.split(/\r?\n/).forEach(seg => {
+        wrap(seg, 8, PW - 8).forEach(line => {
+          checkPage(12);
+          page.drawText(line, { x: ML+4, y: ry(12)+3, size: 8, font: rFont, color: navy });
+          curY += 12;
+        });
+      });
     });
     gap(4);
   }

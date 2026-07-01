@@ -185,7 +185,10 @@ function collectAllData() {
         note:     v('dmp-note-' + id),
       };
       dampers.push(d);
-      if (anyFail) {
+      // Only synthesize the deficiency here if the on-screen Deficiencies step
+      // didn't already capture it (genericDeficRows populated by goGenericDeficStep) —
+      // otherwise the damper would be listed twice.
+      if (anyFail && genericDeficRows.length === 0) {
         deficiencies.push({
           item: `Damper ${d.address || '(unlabeled)'} — ${d.type || 'Damper'}${d.location ? ' @ ' + d.location : ''}`,
           description: `Failed: ${failedLabels.join('; ')}${d.note ? '. ' + d.note : ''}`,
