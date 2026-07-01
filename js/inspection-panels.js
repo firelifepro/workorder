@@ -1773,6 +1773,9 @@ function _damperCardBodyHTML(id, p) {
       <input type="hidden" id="dmp-${id}-${c.id}" value="${_dmpEsc(val)}">`;
   }).join('');
   return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+      <button onclick="fastPassDamper(${id})" style="font-size:0.72rem;font-weight:700;padding:5px 12px;border:none;border-radius:6px;background:var(--green);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;"><img src="mickey-head.svg" alt="" style="height:1.2em;width:auto;" aria-hidden="true"> Fast Pass: this Damper</button>
+    </div>
     <div class="data-row cols-2">
       <div class="data-field"><label>Damper Type</label>
         <select id="dmp-type-${id}" onchange="recalcDamperInventory()">${typeOpts}</select>
@@ -1781,7 +1784,7 @@ function _damperCardBodyHTML(id, p) {
         <input type="text" id="dmp-loc-${id}" value="${_dmpEsc(p.location)}" placeholder='e.g. 2nd Flr Corridor, AHU-3 supply duct'>
       </div>
     </div>
-    <div style="margin-top:8px;font-size:0.72rem;color:var(--slate);font-style:italic;">Any FAIL below auto-creates a deficiency for this damper.</div>
+    <div style="margin-top:8px;font-size:0.72rem;color:var(--slate);font-style:italic;">Any FAIL below auto-creates a deficiency for this damper. Use ⚡ Fast Pass to mark all remaining checks PASS.</div>
     ${checkRows}
     <div class="field-group" style="margin-top:8px;"><label>Condition / Deficiency Notes</label>
       <textarea id="dmp-note-${id}" rows="2" placeholder="Damage, obstruction, actuator/link issue, repair needed… (multiple lines OK)">${_dmpEsc(p.note)}</textarea>
@@ -1852,6 +1855,27 @@ function setDamperCheck(btn, id, checkId, val) {
   if (!isSame) { btn.classList.add('selected'); if (hidden) hidden.value = val; }
   else         { if (hidden) hidden.value = ''; }   // click again to clear
   recalcDamperInventory();
+}
+
+// Mark every UNANSWERED sub-check on this one damper PASS (preserves any FAIL/N-A
+// the inspector already set — mark exceptions first, then Fast Pass the rest).
+function fastPassDamper(id) {
+  let filled = 0;
+  DAMPER_CHECKS.forEach(c => {
+    const hidden = document.getElementById(`dmp-${id}-${c.id}`);
+    if (!hidden || hidden.value) return;        // skip already-answered checks
+    hidden.value = 'PASS';
+    filled++;
+    const grp = hidden.previousElementSibling?.querySelector('.pf-group');
+    if (grp) {
+      grp.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+      grp.querySelector('.pf-btn.pass')?.classList.add('selected');
+    }
+  });
+  recalcDamperInventory();
+  if (typeof toast === 'function') {
+    toast(filled ? `⚡ Damper passed — ${filled} check${filled === 1 ? '' : 's'} marked PASS` : '⚡ All checks already answered on this damper');
+  }
 }
 
 // Guess the next damper address by incrementing the trailing number of the last
