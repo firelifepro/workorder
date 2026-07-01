@@ -1776,8 +1776,8 @@ function _damperCardBodyHTML(id, p) {
     </div>
     <div style="margin-top:8px;font-size:0.72rem;font-weight:700;color:var(--slate);">OPERATIONAL CHECKS — any FAIL creates a deficiency for this damper</div>
     ${checkRows}
-    <div class="data-field" style="margin-top:8px;"><label>Condition / Deficiency Notes</label>
-      <input type="text" id="dmp-note-${id}" value="${_dmpEsc(p.note)}" placeholder="Damage, obstruction, actuator/link issue, repair needed…">
+    <div class="field-group" style="margin-top:8px;"><label>Condition / Deficiency Notes</label>
+      <textarea id="dmp-note-${id}" rows="2" placeholder="Damage, obstruction, actuator/link issue, repair needed… (multiple lines OK)">${_dmpEsc(p.note)}</textarea>
     </div>`;
 }
 

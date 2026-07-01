@@ -1585,7 +1585,8 @@ async function buildGenericSystemPDFBytes() {
       }
 
       if (d.note) {
-        const nLines = wrap('Note: ' + d.note, 6.5, PW - 8);
+        const nLines = [];
+        ('Note: ' + d.note).split(/\r?\n/).forEach(seg => wrap(seg, 6.5, PW - 8).forEach(l => nLines.push(l)));
         const nH = Math.max(11, nLines.length * 8 + 2);
         checkPage(nH);
         page.drawRectangle({ x: ML, y: ry(nH), width: PW, height: nH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.2 });
@@ -1633,7 +1634,10 @@ async function buildGenericSystemPDFBytes() {
     data.deficiencies.forEach(d => {
       const sanitize = s => (s || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
       const text = sanitize(d.item) + (d.description ? ': ' + sanitize(d.description) : '');
-      const rowH = pdfRowHeight(wrap(text, 7.5, PW-18).length, { lineH: 10, pad: 4, min: 13 });
+      // Count wrapped lines per hard newline so multi-line deficiency notes get a
+      // tall-enough (auto-growing) box instead of being clipped.
+      const lineCount = text.split(/\r?\n/).reduce((n, seg) => n + wrap(seg, 7.5, PW-18).length, 0);
+      const rowH = pdfRowHeight(lineCount, { lineH: 10, pad: 4, min: 13 });
       checkPage(rowH + 2);
       page.drawRectangle({ x: ML, y: ry(rowH), width: 12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
       page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: 8, font: hFont, color: red });
