@@ -83,11 +83,17 @@ async function drawReportHeader(H) {
     { text: 'Littleton, CO 80127',                bold: false, sz: sc(7)   },
     { text: 'Cellular: (303) 726-8847',           bold: false, sz: sc(7)   },
     { text: 'Office: (720) 974-1570',             bold: false, sz: sc(7)   },
-    { text: 'Alan.antonio@firelifeprotection',    bold: false, sz: sc(6.5) },
-    { text: 'systems.com',                        bold: false, sz: sc(6.5) },
+    { text: 'Alan.antonio@firelifeprotectionsystems.com', bold: false, sz: sc(6.5) },
   ];
   let compY = ry(logoAreaH) + logoAreaH - sc(9);
-  compLines.forEach(cl => { page.drawText(cl.text, { x: infoX + 4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk }); compY -= cl.sz + sc(1.5); });
+  compLines.forEach(cl => {
+    const fnt = cl.bold ? hFont : rFont;
+    // Auto-shrink any line (e.g. the long email) so it stays on ONE line inside the box.
+    let z = cl.sz;
+    while (z > sc(4.5) && fnt.widthOfTextAtSize(cl.text, z) > infoW - 8) z -= 0.5;
+    page.drawText(cl.text, { x: infoX + 4, y: compY, size: z, font: fnt, color: blk });
+    compY -= z + sc(1.5);
+  });
 
   // Frequency selector (top of right column)
   const rtBoxH = sc(14), rtBW = rtW / freqOptions.length;
@@ -218,12 +224,20 @@ async function buildExtinguisherPDFBytes() {
     { text: '  11. Check for obvious physical damage, corrosion, leakage, or clogged nozzle', bold: false },
   ];
   const nfpaLH = sc(7.5);
-  const nfpaBlockH = nfpaLines.length * nfpaLH + sc(8);
+  const nfpaSize = sc(6);
+  // Pre-wrap each reference line to the box width so long sentences don't spill out
+  // (blank strings stay as spacer rows).
+  const nfpaWrapped = [];
+  nfpaLines.forEach(ln => {
+    if (!ln.text) { nfpaWrapped.push({ text: '', bold: ln.bold }); return; }
+    wrap(ln.text, nfpaSize, PW - 12).forEach(w => nfpaWrapped.push({ text: w, bold: ln.bold }));
+  });
+  const nfpaBlockH = nfpaWrapped.length * nfpaLH + sc(8);
   checkPage(nfpaBlockH);
   page.drawRectangle({ x: ML, y: ry(nfpaBlockH), width: PW, height: nfpaBlockH, color: lgray, borderColor: sky, borderWidth: 0.3 });
   let nfpaY = ry(nfpaBlockH) + nfpaBlockH - sc(9);
-  nfpaLines.forEach(ln => {
-    if (ln.text) page.drawText(ln.text, { x: ML+5, y: nfpaY, size: sc(6), font: ln.bold ? hFont : rFont, color: blk });
+  nfpaWrapped.forEach(ln => {
+    if (ln.text) page.drawText(ln.text, { x: ML+5, y: nfpaY, size: nfpaSize, font: ln.bold ? hFont : rFont, color: blk });
     nfpaY -= nfpaLH;
   });
   curY += nfpaBlockH + sc(2);
@@ -276,9 +290,8 @@ async function buildExtinguisherPDFBytes() {
   };
   drawExtHdr();
 
+  const EXT_LOC_I = 2, EXT_NOTE_I = 12;
   const drawExtRow = (ext) => {
-    const cellH = sc(14);
-    if (curY + cellH > PH - MB) { addPage(); drawExtHdr(); }
     const pf = (ext.pf || ext.overall || '').toUpperCase();
     const cabMissing = [ext.cabM === 'Y' ? 'Mallet' : '', ext.cabG === 'Y' ? 'Glass' : '', ext.cabS === 'Y' ? 'Sign' : ''].filter(Boolean).join(', ');
     const cells = [
@@ -296,6 +309,11 @@ async function buildExtinguisherPDFBytes() {
       ext.newUnit === 'Y' ? 'Y' : 'N',
       ext.noteTxt || '',
     ];
+    // Auto-grow the row so the free-text LOCATION and NOTE columns wrap instead of clip.
+    const noteLines = wrap(cells[EXT_NOTE_I], sc(5.5), extCols[EXT_NOTE_I].w - 3).length;
+    const locLines  = wrap(cells[EXT_LOC_I],  sc(5.5), extCols[EXT_LOC_I].w  - 3).length;
+    const cellH = pdfRowHeight(Math.max(noteLines, locLines), { lineH: sc(7), pad: sc(4), min: sc(14) });
+    if (curY + cellH > PH - MB) { addPage(); drawExtHdr(); }
     let x = ML;
     extCols.forEach((col, i) => {
       const isStatus = i === 8;
@@ -310,6 +328,7 @@ async function buildExtinguisherPDFBytes() {
       } else {
         const f = form.createTextField(fid());
         f.setText(cells[i]);
+        if (i === EXT_LOC_I || i === EXT_NOTE_I) f.enableMultiline();
         f.addToPage(page, { x: x+1, y: ry(cellH)+1, width: col.w-2, height: cellH-2, font: rFont });
         f.setFontSize(sc(5.5));
       }
@@ -377,14 +396,18 @@ async function buildExtinguisherPDFBytes() {
     (data.extSvcTable || []).forEach(row => {
       const hasData = row.yr6 || row.hydro || row.recharge || row.newunit || row.notes;
       if (!hasData) return;
-      const rowH = sc(13);
-      checkPage(rowH + sc(1));
       const vals = [row.type, row.yr6||'', row.hydro||'', row.recharge||'', row.newunit||'', row.notes||''];
+      const SVC_NOTE_I = 5;
+      // Auto-grow the row so the NOTES column wraps instead of clipping.
+      const rowH = pdfRowHeight(wrap(vals[SVC_NOTE_I], sc(6), svcCols[SVC_NOTE_I].w - 4).length, { lineH: sc(8), pad: sc(4), min: sc(13) });
+      checkPage(rowH + sc(1));
       let rx = ML;
       svcCols.forEach((col, ci) => {
         page.drawRectangle({ x: rx, y: ry(rowH), width: col.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
         const f = form.createTextField(fid());
-        f.setText(vals[ci]); f.addToPage(page, { x: rx+1, y: ry(rowH)+1, width: col.w-2, height: rowH-2, font: rFont }); f.setFontSize(sc(6));
+        f.setText(vals[ci]);
+        if (ci === SVC_NOTE_I) f.enableMultiline();
+        f.addToPage(page, { x: rx+1, y: ry(rowH)+1, width: col.w-2, height: rowH-2, font: rFont }); f.setFontSize(sc(6));
         rx += col.w;
       });
       curY += rowH + sc(1);
@@ -777,23 +800,26 @@ async function buildSprinklerPDFBytes() {
   const nfpaStartY = curY;
   const nfpaLineH = sc(8);
   const maxLines = Math.max(nfpaLeft.length, nfpaRight.length);
-  checkPage(maxLines * nfpaLineH + 4);
-  page.drawRectangle({ x: ML,        y: ry(maxLines * nfpaLineH + 4), width: colW, height: maxLines * nfpaLineH + 4, color: lgray, borderColor: sky, borderWidth: 0.3 });
-  page.drawRectangle({ x: ML+colW+4, y: ry(maxLines * nfpaLineH + 4), width: colW, height: maxLines * nfpaLineH + 4, color: lgray, borderColor: sky, borderWidth: 0.3 });
+  const nfpaTopPad = sc(6); // space above the title line inside the box
+  const nfpaBoxH = maxLines * nfpaLineH + nfpaTopPad + sc(4);
+  checkPage(nfpaBoxH);
+  page.drawRectangle({ x: ML,        y: ry(nfpaBoxH), width: colW, height: nfpaBoxH, color: lgray, borderColor: sky, borderWidth: 0.3 });
+  page.drawRectangle({ x: ML+colW+4, y: ry(nfpaBoxH), width: colW, height: nfpaBoxH, color: lgray, borderColor: sky, borderWidth: 0.3 });
   // Shrink only the (few) lines wider than the column so titles like
   // "3 & 5 YEAR INSPECTIONS (PROPERTY SPECIFIC/IF APPLICABLE)" stay inside the box.
   const fitSize = (ln, fnt) => { let z = sc(6); while (z > sc(4.5) && fnt.widthOfTextAtSize(ln, z) > colW - 8) z -= 0.5; return z; };
+  const nfpaLineY = (i) => ry(nfpaBoxH) + nfpaBoxH - nfpaTopPad - i * nfpaLineH - sc(2);
   nfpaLeft.forEach((ln, i) => {
     const bold = !ln.startsWith('NFPA') && ln !== '';
     const fnt = bold ? hFont : rFont;
-    page.drawText(ln, { x: ML+3, y: ry(maxLines * nfpaLineH + 4) + maxLines * nfpaLineH - i * nfpaLineH - 2, size: fitSize(ln, fnt), font: fnt, color: blk });
+    page.drawText(ln, { x: ML+3, y: nfpaLineY(i), size: fitSize(ln, fnt), font: fnt, color: blk });
   });
   nfpaRight.forEach((ln, i) => {
     const bold = !ln.startsWith('NFPA') && ln !== '';
     const fnt = bold ? hFont : rFont;
-    page.drawText(ln, { x: ML+colW+7, y: ry(maxLines * nfpaLineH + 4) + maxLines * nfpaLineH - i * nfpaLineH - 2, size: fitSize(ln, fnt), font: fnt, color: blk });
+    page.drawText(ln, { x: ML+colW+7, y: nfpaLineY(i), size: fitSize(ln, fnt), font: fnt, color: blk });
   });
-  curY += maxLines * nfpaLineH + 6;
+  curY += nfpaBoxH + sc(2);
 
   // ── OVERALL STATUS — shown on page 1 (also rendered again at end of report) ──
   {
@@ -948,6 +974,7 @@ async function buildSprinklerPDFBytes() {
     const lbl = el?.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
     inspRow(lbl, id);
   });
+  gap(4); // padding above the trip-test row
   dataRow([
     { label: 'LAST TRIP TEST DATE', val: fd['sp-trip-date'] || '', w: PW/2 },
     { label: 'TRIP PRESSURE (PSI)', val: fd['sp-trip-psi']  || '', w: PW/2 },

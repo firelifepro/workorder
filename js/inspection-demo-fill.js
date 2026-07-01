@@ -123,18 +123,41 @@
     });
   }
 
+  // NOTE: inspectionPhotos is a top-level `const` (js/inspection-utils.js), so it's a
+  // global LEXICAL binding — reachable by bare name across scripts, but NOT a property
+  // of window. Referencing window.inspectionPhotos returns undefined, which is why the
+  // demo photos never appeared. Use the bare name (guarded with typeof).
+  const photos = () => (typeof inspectionPhotos !== 'undefined' && Array.isArray(inspectionPhotos)) ? inspectionPhotos : null;
+
+  // Render the FLPS logo onto a photo-shaped canvas as the demo image (falls back to a
+  // plain colored card if the logo can't be loaded).
+  function makeDemoImage(i) {
+    return new Promise((resolve) => {
+      const c = document.createElement('canvas'); c.width = 400; c.height = 300;
+      const g = c.getContext('2d');
+      g.fillStyle = i === 1 ? '#eef2fb' : '#fbf3ea'; g.fillRect(0, 0, 400, 300);
+      const done = () => { g.fillStyle = '#1f3566'; g.font = 'bold 20px sans-serif'; g.fillText('DEMO PHOTO ' + i, 130, 285); resolve(c.toDataURL('image/jpeg', 0.8)); };
+      try {
+        fetch('logo.svg').then(r => r.text()).then(txt => {
+          const svg = txt.replace('<svg ', '<svg width="240" height="200" ');
+          const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+          const img = new Image();
+          img.onload = () => { g.drawImage(img, 80, 30, 240, 200); URL.revokeObjectURL(url); done(); };
+          img.onerror = () => { URL.revokeObjectURL(url); done(); };
+          img.src = url;
+        }).catch(done);
+      } catch (_) { done(); }
+    });
+  }
+
   // ── Demo photos (exercise the photo grid + captions) ───────────────────────
-  function addDemoPhotos() {
-    if (typeof window.inspectionPhotos === 'undefined' || !Array.isArray(window.inspectionPhotos)) return;
-    if (window.inspectionPhotos.length) return;
+  async function addDemoPhotos() {
+    const arr = photos();
+    if (!arr || arr.length) return;
     for (let i = 1; i <= 2; i++) {
       try {
-        const c = document.createElement('canvas'); c.width = 400; c.height = 300;
-        const g = c.getContext('2d');
-        g.fillStyle = i === 1 ? '#c4d0e8' : '#e8d6c4'; g.fillRect(0, 0, 400, 300);
-        g.fillStyle = '#1f3566'; g.font = 'bold 28px sans-serif';
-        g.fillText('Demo Photo ' + i, 90, 160);
-        window.inspectionPhotos.push({ dataUrl: c.toDataURL('image/jpeg', 0.7), note: 'Demo caption ' + i + ' — ' + LONG_NOTE });
+        const dataUrl = await makeDemoImage(i);
+        arr.push({ dataUrl, note: 'Demo caption ' + i + ' — ' + LONG_NOTE });
       } catch (_) {}
     }
   }
@@ -241,7 +264,7 @@
       clickToggles(FILL_ROOTS);                     // set Y/N/NA & Inspecting? toggle buttons
       setInspectRows();
       seedIdentity();                               // re-assert cover fields after sweeps
-      addDemoPhotos();
+      await addDemoPhotos();
       if (has('buildItemPanelMap')) buildItemPanelMap();
       if (has('updateDeficiencySummary')) updateDeficiencySummary();
       await tick();
@@ -255,7 +278,7 @@
       returnToSystems(sysKey);
       if (has('clearDraft')) clearDraft();          // wipe any transient demo draft
       hideOverlay();
-      window.inspectionPhotos && (window.inspectionPhotos.length = 0); // reset for next run
+      const _p = photos(); if (_p) _p.length = 0; // reset photos for next run
     }
   }
 
