@@ -118,6 +118,7 @@
     rootSelectors.forEach(sel => document.querySelectorAll(sel).forEach(root => {
       root.querySelectorAll('.pf-group').forEach(g => {
         if (g.dataset.demoTog) return; g.dataset.demoTog = '1';
+        if (g.querySelector('.selected')) return;           // already chosen (e.g. by randomizer) → keep it
         const btns = [...g.querySelectorAll('button[onclick]')];
         const withId = btns
           .map(b => ({ b, m: b.getAttribute('onclick').match(/this\s*,\s*['"]([^'"]+)['"]/) }))
@@ -223,6 +224,14 @@
         const ids = (window.activeHoodList || []).map(h => (typeof h === 'string' ? h : h && h.id)).filter(Boolean);
         (ids.length ? ids : [null]).forEach(hid => { call('addHoodAppliance', hid); call('addHoodAppliance', hid); });
       } catch (e) { console.warn('demo hood', e); }
+      // Random-check the 25-item checklist + verified operations (Y/N/N-A).
+      randomCheckGroups(['#sys-forms']);
+      // Grease accumulation buttons (hood-grease-btn, one per hood).
+      document.querySelectorAll('input[id^="h"][id$="-grease"]').forEach(inp => {
+        const h = inp.id.slice(1, -('-grease'.length));
+        const lvl = ['low', 'moderate', 'excessive'][Math.floor(Math.random() * 3)];
+        try { document.getElementById('h' + h + '-grease-' + lvl)?.click(); } catch (_) {}
+      });
     } else if (sysKey === 'fire-alarm') {
       repeat('addFASubpanelRow', 2); repeat('addFADetectionRow', 3); repeat('addFAFlowRow', 2);
       repeat('addFATamperRow', 2); repeat('addFABatteryRow', 2); repeat('addFADeficRow', 2); repeat('addFANoteRow', 2);

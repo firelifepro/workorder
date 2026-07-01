@@ -2679,12 +2679,15 @@ async function buildHoodPDFBytes() {
     'VISUAL INSPECTION OF PORTABLE EXTINGUISHER UNITS AND VERIFICATION OF PROPER CLASS RATING FOR APPLICATION',
   ];
   const nfpaLineH = sc(9);
-  const nfpaBoxH = NFPA_LINES.length * nfpaLineH + 14;
+  // Pre-wrap each reference line to the box width so nothing spills out.
+  const NFPA_WRAPPED = [];
+  NFPA_LINES.forEach(line => wrap(line, sc(7), PW - 14).forEach(w => NFPA_WRAPPED.push(w)));
+  const nfpaBoxH = NFPA_WRAPPED.length * nfpaLineH + 14;
   checkPage(sc(18) + nfpaBoxH + sc(4));
   secHdr('NFPA REFERENCES AND PROCEDURE');
   page.drawRectangle({ x: ML, y: ry(nfpaBoxH), width: PW, height: nfpaBoxH, color: cream, borderColor: sky, borderWidth: 0.5 });
   let ntY = ry(nfpaBoxH) + nfpaBoxH - nfpaLineH - 2;
-  NFPA_LINES.forEach(line => {
+  NFPA_WRAPPED.forEach(line => {
     page.drawText(line, { x: ML+6, y: ntY, size: sc(7), font: rFont, color: navy });
     ntY -= nfpaLineH;
   });
@@ -2730,6 +2733,18 @@ async function buildHoodPDFBytes() {
     'no-deficiencies':  'NO DEFICIENCIES WITH OPERATION OR COVERAGE',
     'portable-ext':     'PROPER HAND HELD PORTABLE EXTINGUISHER(S)',
     'class-k':          'PROPERLY SERVICED (CLASS K IN KITCHEN)',
+  };
+
+  // Consistent "note opens below the line" box — wraps + auto-grows so long notes
+  // never run off the box/page (used by every hood note field).
+  const noteBox = (text) => {
+    if (!text) return;
+    const lines = wrap('→ ' + text, sc(6.5), PW - 20);
+    const nH = Math.max(sc(12), lines.length * sc(8) + sc(4));
+    checkPage(nH + 1);
+    page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
+    lines.forEach((l, li) => page.drawText(l, { x: ML+12, y: ry(nH) + nH - sc(8) - li*sc(8), size: sc(6.5), font: rFont, color: blk }));
+    curY += nH + 1;
   };
 
   for (let hi = 0; hi < activeHoods.length; hi++) {
@@ -2806,13 +2821,7 @@ async function buildHoodPDFBytes() {
         y: ry(rowH)+4, size: sc(7), font: hFont, color: white
       });
       curY += rowH + 1;
-      if (hasNote) {
-        const nH = sc(11);
-        checkPage(nH + 1);
-        page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
-        page.drawText('-> ' + noteVal, { x: ML+12, y: ry(nH)+3, size: sc(6.5), font: rFont, color: blk });
-        curY += nH + 1;
-      }
+      noteBox(noteVal);
     });
     gap(4);
 
@@ -2842,13 +2851,7 @@ async function buildHoodPDFBytes() {
         y: ry(rowH)+4, size: sc(7), font: hFont, color: white
       });
       curY += rowH + 1;
-      if (noteVal) {
-        const nH = sc(11);
-        checkPage(nH + 1);
-        page.drawRectangle({ x: ML+8, y: ry(nH), width: PW-8, height: nH, color: rgb(1, 1, 0.88), borderColor: sky, borderWidth: 0.3 });
-        page.drawText('-> ' + noteVal, { x: ML+12, y: ry(nH)+3, size: sc(6.5), font: rFont, color: blk });
-        curY += nH + 1;
-      }
+      noteBox(noteVal);
     });
     gap(4);
 
@@ -2906,12 +2909,7 @@ async function buildHoodPDFBytes() {
       page.drawText(vTxt, { x: vx+58+(bW-hFont.widthOfTextAtSize(vTxt,6.5))/2, y: ry(sc(14))+4, size: sc(6.5), font: hFont, color: white });
     });
     curY += sc(14) + sc(2);
-    const verifNoteVal = dv(`h${hid}-verif-note`);
-    if (verifNoteVal) {
-      checkPage(sc(14));
-      mkField(verifNoteVal, ML, ry(sc(12)), PW, 12, false);
-      curY += sc(13);
-    }
+    noteBox(dv(`h${hid}-verif-note`));
     gap(2);
 
     // Replace Fusible Links — title bar, then label row, then field row
