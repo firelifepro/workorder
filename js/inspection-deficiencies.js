@@ -1081,32 +1081,6 @@ function updateDeficiencySummary() {
     if (hdr)   hdr.classList.add('has-defic');
     if (badge) { badge.textContent = count + (count === 1 ? ' defic.' : ' defic.'); badge.style.display = 'inline-block'; }
   });
-
-  // Also update the FA deficiency summary (step-fa-defic)
-  const faSumDiv   = document.getElementById('fa-defic-summary');
-  const faListDiv  = document.getElementById('fa-defic-list');
-  const faCountPill= document.getElementById('fa-defic-count-pill');
-  if (faSumDiv && faListDiv) {
-    if (faCountPill) faCountPill.textContent = defics.length + (defics.length === 1 ? ' deficiency' : ' deficiencies');
-    if (defics.length > 0) {
-      faSumDiv.classList.add('show');
-      faListDiv.innerHTML = defics.map(d => `
-        <div class="defic-item" id="fa-defic-card-${d.itemId}">
-          <div class="defic-item-body">
-            <div class="defic-item-section">${escHtml(d.panelTitle)}</div>
-            <div class="defic-item-label">&#9888; ${escHtml(d.label)}</div>
-            ${d.note
-              ? `<div class="defic-item-note">${escHtml(d.note)}</div>`
-              : `<div class="defic-item-note missing">No description entered — tap the item to add details</div>`
-            }
-          </div>
-          ${d.panelId ? `<button class="defic-jump-btn" onclick="goFAStep('${d.panelId.replace('step-fa-','')}')" >Go to item ↓</button>` : ''}
-        </div>`).join('');
-    } else {
-      faSumDiv.classList.remove('show');
-      faListDiv.innerHTML = '';
-    }
-  }
 }
 
 // Scroll to an inspection item and open its panel if collapsed
