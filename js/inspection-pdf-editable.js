@@ -47,9 +47,9 @@ async function drawReportHeader(H) {
 
   // ── Logo + company + right (freq + job) block ──
   const logoAreaH = sc(96);
-  const logoX = ML, logoW = 88;
-  const infoX = ML + logoW + 6, infoW = 168;
-  const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
+  const logoX = ML, logoW = 84;
+  const infoX = ML + logoW + 4, infoW = 200;
+  const rtX = infoX + infoW + 6, rtW = ML + PW - rtX;
 
   try {
     const svgText = await fetch('logo.svg').then(r => r.text());
@@ -66,7 +66,7 @@ async function drawReportHeader(H) {
         crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
         const ab = Uint8Array.from(atob(crop.toDataURL('image/png').split(',')[1]), c => c.charCodeAt(0)).buffer;
         const logoImg = await pdfDoc.embedPng(ab);
-        const d = logoImg.scaleToFit(70, 70);
+        const d = logoImg.scaleToFit(82, 82);
         page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - d.height) / 2, width: d.width, height: d.height });
         URL.revokeObjectURL(url); resolve();
       };
@@ -78,15 +78,16 @@ async function drawReportHeader(H) {
   // Company info box
   page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
   const compLines = [
-    { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(8)   },
-    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7.5) },
-    { text: 'Littleton, CO 80127',                bold: false, sz: sc(7.5) },
-    { text: 'Cell: (303) 726-8847',              bold: false, sz: sc(7.5) },
-    { text: 'Office: (720) 974-1570',            bold: false, sz: sc(7.5) },
-    { text: 'Alan.antonio@firelifeprotectionsystems.com', bold: false, sz: sc(6.5) },
+    { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(7.5) },
+    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7)   },
+    { text: 'Littleton, CO 80127',                bold: false, sz: sc(7)   },
+    { text: 'Cellular: (303) 726-8847',           bold: false, sz: sc(7)   },
+    { text: 'Office: (720) 974-1570',             bold: false, sz: sc(7)   },
+    { text: 'Alan.antonio@firelifeprotection',    bold: false, sz: sc(6.5) },
+    { text: 'systems.com',                        bold: false, sz: sc(6.5) },
   ];
-  let compY = ry(logoAreaH) + logoAreaH - sc(10);
-  compLines.forEach(cl => { page.drawText(cl.text, { x: infoX + 4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk }); compY -= cl.sz + sc(2); });
+  let compY = ry(logoAreaH) + logoAreaH - sc(9);
+  compLines.forEach(cl => { page.drawText(cl.text, { x: infoX + 4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk }); compY -= cl.sz + sc(1.5); });
 
   // Frequency selector (top of right column)
   const rtBoxH = sc(14), rtBW = rtW / freqOptions.length;
@@ -116,8 +117,9 @@ async function drawReportHeader(H) {
   });
   cy += logoAreaH + sc(4);
 
-  // ── Property rows (no Jurisdiction) ──
-  dataRow([{ label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }], 12, 8, 2);
+  // ── Property rows (no Jurisdiction) ── (extra gap after the name row so the
+  // STREET label has breathing room above it)
+  dataRow([{ label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }], 12, 8, 6);
   dataRow([{ label: 'STREET, CITY, STATE, ZIP CODE', val: (data.property?.address || '') + (data.property?.cityStateZip ? ', ' + data.property.cityStateZip : ''), w: PW }], 12, 8, 4);
 
   return cy;
@@ -194,6 +196,7 @@ async function buildExtinguisherPDFBytes() {
 
   // NFPA 10 compliance block
   secHdr('NFPA 10 COMPLIANCE REFERENCES AND PROCEDURE');
+  gap(3); // breathing room so the reference box doesn't touch the header bar
   const nfpaLines = [
     { text: 'ALL PORTABLE FIRE EXTINGUISHER UNITS ARE REQUIRED TO BE THOROUGHLY INSPECTED EACH YEAR BY AN APPROVED SERVICING COMPANY IN ACCORDANCE WITH', bold: false },
     { text: 'THE FOLLOWING NFPA CHAPTER REFERENCES:  NFPA 10 - 2010;  7.1.2, 7.2.2, 7.2.4, and 7.3.1', bold: false },
@@ -236,7 +239,7 @@ async function buildExtinguisherPDFBytes() {
     checkPage(stH + sc(6));
     page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
     page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, sc(6)), size: sc(6.5), font: hFont, color: white });
-    page.drawText(stVal || 'PENDING', { x: ML + 130, y: ty(stH, sc(6)), size: sc(9.5), font: hFont, color: white });
+    page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, sc(6)), size: sc(9.5), font: hFont, color: white });
     curY += stH + sc(6);
   }
 
@@ -791,7 +794,7 @@ async function buildSprinklerPDFBytes() {
     checkPage(stH + 4);
     page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
     page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: sc(6.5), font: hFont, color: white });
-    page.drawText(stVal || 'PENDING', { x: ML + 130, y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
+    page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
     curY += stH + 4;
   }
   gap(4);
@@ -1470,7 +1473,7 @@ async function buildGenericSystemPDFBytes() {
   checkPage(sc(22));
   page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
   page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal || 'PENDING', { x: ML+130, y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
+  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
   curY += sc(18);
   gap(6);
 
@@ -2350,7 +2353,7 @@ async function buildEditablePDFBytes() {
                                               rgb(0.38, 0.44, 0.54);
       page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
       page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: sc(6.5), font: hFont, color: white });
-      page.drawText(stVal || 'PENDING', { x: ML + 130, y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
+      page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
       curY += stH + 4;
     }
 
@@ -2894,7 +2897,7 @@ async function buildHoodPDFBytes() {
   checkPage(sc(22));
   page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
   page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal || 'PENDING', { x: ML+130, y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
+  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
   curY += sc(18);
   gap(6);
 

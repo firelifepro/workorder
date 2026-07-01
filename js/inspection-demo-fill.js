@@ -82,6 +82,27 @@
     });
   }
 
+  // Y/N/NA & "Inspecting?" values live in hidden inputs set by toggle BUTTONS
+  // (setSPBtn/setPFTable) — a plain value sweep can't reach them, so click the
+  // affirmative button of each empty toggle group. Groups whose target is already
+  // set (e.g. a prefilled extinguisher pass/fail) are left alone.
+  function clickToggles(rootSelectors) {
+    rootSelectors.forEach(sel => document.querySelectorAll(sel).forEach(root => {
+      root.querySelectorAll('.pf-group').forEach(g => {
+        if (g.dataset.demoTog) return; g.dataset.demoTog = '1';
+        const btns = [...g.querySelectorAll('button[onclick]')];
+        const withId = btns
+          .map(b => ({ b, m: b.getAttribute('onclick').match(/this\s*,\s*['"]([^'"]+)['"]/) }))
+          .filter(x => x.m);
+        if (!withId.length) return;                         // unknown toggle shape → leave to prefill
+        const t = $(withId[0].m[1]);
+        if (t && (t.value || '').trim()) return;            // already set → don't override
+        const pref = withId.find(x => /['"](Y|PASS)['"]/i.test(x.b.getAttribute('onclick'))) || withId[0];
+        try { pref.b.click(); } catch (_) {}
+      });
+    }));
+  }
+
   function setById(id, val) { const el = $(id); if (el) { el.value = val; fire(el, 'input'); fire(el, 'change'); el.dataset.demoFilled = '1'; } }
 
   // ── Pass/Fail rows: mostly PASS, every 4th FAIL (+ deficiency text) ─────────
@@ -203,12 +224,12 @@
     try {
       overlay('🧪 Generating demo ' + sysKey + ' PDF…');
       window.saveDraft = function () {};            // don't persist demo data as a draft
-      if (has('clearDraft')) clearDraft();
-      seedIdentity();
       // Build FRESH panels with no saved-inspection prefill (ignore the profile).
       if (typeof buildInspectionForms !== 'function') throw new Error('buildInspectionForms not found on this page');
-      activeInspectionSystem = sysKey;
+      activeInspectionSystem = sysKey;              // set BEFORE clearDraft so it targets this system's key
       window._prevInspectionData = null;
+      if (has('clearDraft')) clearDraft();          // avoids the "Saved Draft Found" modal
+      seedIdentity();
       if (has('syncMainNavDisabled')) syncMainNavDisabled();
       buildInspectionForms();
       await tick();
@@ -217,6 +238,7 @@
       // clear demoFilled marks from any freshly-added rows so they get filled too
       document.querySelectorAll('[data-demo-filled]').forEach(el => { if (!el.value) delete el.dataset.demoFilled; });
       fillScope(FILL_ROOTS);
+      clickToggles(FILL_ROOTS);                     // set Y/N/NA & Inspecting? toggle buttons
       setInspectRows();
       seedIdentity();                               // re-assert cover fields after sweeps
       addDemoPhotos();
@@ -256,6 +278,7 @@
         if (el.closest('#demo-fill-ui')) return;
         fillEl(el);
       });
+      clickToggles(['body']);
       seedIdentity();
       await tick();
       if (!has('hospPreviewPDF')) throw new Error('hospPreviewPDF not found');
