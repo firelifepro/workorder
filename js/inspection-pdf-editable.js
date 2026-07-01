@@ -51,6 +51,10 @@ async function drawReportHeader(H) {
   const infoX = ML + logoW + 4, infoW = 214;
   const rtX = infoX + infoW + 6, rtW = ML + PW - rtX;
 
+  // One box holds the logo (left) + company text (right), drawn first so the logo
+  // sits inside it.
+  page.drawRectangle({ x: ML, y: ry(logoAreaH), width: logoW + 4 + infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+
   try {
     const svgText = await fetch('logo.svg').then(r => r.text());
     const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
@@ -75,8 +79,8 @@ async function drawReportHeader(H) {
     });
   } catch (_) {}
 
-  // Company info box
-  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+  // Thin divider between the logo and the company text (same combined box).
+  page.drawRectangle({ x: infoX - 3, y: ry(logoAreaH) + 4, width: 0.5, height: logoAreaH - 8, color: sky });
   const compLines = [
     { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(7.5) },
     { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7)   },
@@ -1491,6 +1495,7 @@ async function buildGenericSystemPDFBytes() {
       }
 
       if (d.note) {
+        curY += sc(3); // small gap between the last check row and the note box
         const nLines = [];
         ('Note: ' + d.note).split(/\r?\n/).forEach(seg => wrap(seg, sc(6.5), PW - 8).forEach(l => nLines.push(l)));
         const nH = Math.max(sc(12), nLines.length * sc(8) + sc(6)); // scaled so the box fits every wrapped line
@@ -2022,8 +2027,9 @@ async function buildEditablePDFBytes() {
     // Table: draws header + rows of editable cells, handles page breaks.
     // Pass wrapCol (column index) to let that column's text wrap onto multiple
     // lines — the row grows to fit and that cell becomes a multiline field.
-    const table = (hdrs, rows, cellH, wrapCol) => {
+    const table = (hdrs, rows, cellH, wrapCol, pfCols) => {
       cellH = sc(cellH);
+      const isPF = (i) => Array.isArray(pfCols) && pfCols.includes(i);
       const drawHdr = () => {
         checkPage(sc(13));
         let x = ML;
@@ -2042,12 +2048,22 @@ async function buildEditablePDFBytes() {
         if (curY + rowH > PH - MB) { addPage(); drawHdr(); }
         let x = ML;
         hdrs.forEach((h, i) => {
-          page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
-          const f = form.createTextField(fid());
-          f.setText(String(row[i]||''));
-          if (wrapCol != null && i === wrapCol) f.enableMultiline();
-          f.addToPage(page, { x: x+1, y: ry(rowH)+1, width: h.w-2, height: rowH-2, font: rFont });
-          f.setFontSize(sc(7));
+          const val = String(row[i]||'');
+          const pf = isPF(i) ? val.toUpperCase() : '';
+          // PASS/FAIL columns render as a colored cell with centered text (like the
+          // extinguisher/sprinkler tables) instead of a cramped input box.
+          if (pf === 'PASS' || pf === 'FAIL') {
+            page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: pf === 'PASS' ? rgb(0.06,0.50,0.22) : rgb(0.76,0.10,0.10), borderColor: sky, borderWidth: 0.3 });
+            const tw = hFont.widthOfTextAtSize(pf, sc(6.5));
+            page.drawText(pf, { x: x + h.w/2 - tw/2, y: ty(rowH, sc(4)), size: sc(6.5), font: hFont, color: white });
+          } else {
+            page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
+            const f = form.createTextField(fid());
+            f.setText(val);
+            if (wrapCol != null && i === wrapCol) f.enableMultiline();
+            f.addToPage(page, { x: x+1, y: ry(rowH)+1, width: h.w-2, height: rowH-2, font: rFont });
+            f.setFontSize(sc(7));
+          }
           x += h.w;
         });
         curY += rowH + 1;
@@ -2159,10 +2175,12 @@ async function buildEditablePDFBytes() {
     secHdr('MAIN FIRE ALARM CONTROL PANEL & MONITORING INFORMATION');
     subHdr('CONTROL PANEL SPECIFICATION');
     dataRow([
-      { label:'MAKE',        val: fd['fa-cp-make'],      w: PW/4 },
-      { label:'MODEL',       val: fd['fa-cp-model'],     w: PW/4 },
-      { label:'LOCATION',    val: fd['fa-cp-location'],  w: PW/4 },
-      { label:'TYPE',        val: fd['fa-cp-type'],      w: PW/4 },
+      { label:'MAKE',  val: fd['fa-cp-make'],  w: PW/3 },
+      { label:'MODEL', val: fd['fa-cp-model'], w: PW/3 },
+      { label:'TYPE',  val: fd['fa-cp-type'],  w: PW/3 },
+    ]);
+    dataRow([
+      { label:'LOCATION', val: fd['fa-cp-location'], w: PW },
     ]);
     dataRow([
       { label:'SERIAL #',       val: fd['fa-cp-serial'],    w: PW/3 },
@@ -2174,10 +2192,12 @@ async function buildEditablePDFBytes() {
     ]);
     subHdr('DIALER/RADIO SPECIFICATIONS');
     dataRow([
-      { label:'MAKE',  val: fd['fa-dr-make'],  w: PW/4 },
-      { label:'MODEL', val: fd['fa-dr-model'], w: PW/4 },
-      { label:'TYPE',  val: fd['fa-dr-type'],  w: PW/4 },
-      { label:'LOCATION', val: '',             w: PW/4 },
+      { label:'MAKE',  val: fd['fa-dr-make'],  w: PW/3 },
+      { label:'MODEL', val: fd['fa-dr-model'], w: PW/3 },
+      { label:'TYPE',  val: fd['fa-dr-type'],  w: PW/3 },
+    ]);
+    dataRow([
+      { label:'LOCATION', val: fd['fa-dr-location'] || '', w: PW },
     ]);
     subHdr('PANEL TESTING / DISABLE INSTRUCTIONS');
     textArea(fd['fa-panel-instructions'], 35);
@@ -2189,10 +2209,13 @@ async function buildEditablePDFBytes() {
       { label:'ACCOUNT #',             val: fd['fa-monitor-account'],   w: PW/4 },
     ]);
     dataRow([
-      { label:'TIME OFFLINE', val: fd['fa-monitor-offline'], w: PW/3 },
-      { label:'TIME ONLINE',  val: fd['fa-monitor-online'],  w: PW/3 },
-      { label:'NOTES',        val: fd['fa-monitor-notes'],   w: PW/3 },
+      { label:'TIME OFFLINE', val: fd['fa-monitor-offline'], w: PW/2 },
+      { label:'TIME ONLINE',  val: fd['fa-monitor-online'],  w: PW/2 },
     ]);
+    // NOTES on their own full-width, auto-growing line so long text doesn't run off.
+    page.drawText('MONITORING NOTES:', { x: ML+2, y: ry(sc(9)) + sc(2), size: sc(6), font: hFont, color: navy });
+    curY += sc(9);
+    textArea(fd['fa-monitor-notes'] || '', pdfRowHeight(wrap(fd['fa-monitor-notes'] || '', sc(7), PW - 6).length, { lineH: sc(9), pad: sc(4), min: sc(16) }));
     gap(4);
     subHdr('PRE & POST INSPECTION CHECKLIST');
     const preLabels  = ['CHECK IN WITH THE ENGINEER?','WERE KEYS PROVIDED?','ALL FIRE EQUIPMENT IN WORKING ORDER?','PANEL SHOWING "NORMAL" UPON ARRIVAL?','PANEL TAKEN OFFLINE/DISABLED?','ALL LAMPS/LEDs/LCDs FUNCTIONING?','ALL FUSES IN GOOD CONDITION/FUNCTIONAL'];
@@ -2254,7 +2277,7 @@ async function buildEditablePDFBytes() {
         const cond = row?.querySelector('.pf-btn.selected')?.textContent?.trim() || '';
         return [dv('fa-onsite-eq-'+n), cond, dv('fa-onsite-notes-'+n)];
       }),
-      14
+      14, 2, [1]   // wrapCol: NOTES auto-grow; pfCols: CONDITION as colored PASS/FAIL
     );
 
     // ── PAGE 4: AV / Door / HVAC + Additional Notes ───────────────────────────
@@ -2316,7 +2339,7 @@ async function buildEditablePDFBytes() {
     table(
       [{label:'LOCATION',w:80},{label:'MAKE',w:60},{label:'CIRCUIT',w:55},{label:'AMPS',w:45},
        {label:'L BATT',w:50},{label:'R BATT',w:50},{label:'SPVSD?',w:50},{label:'PASS/FAIL',w:50},{label:'NOTES',w:100}],
-      spRows.map(r => [...r, '']), 13
+      spRows.map(r => [...r, '']), 13, null, [7]
     );
 
     // ── PAGE 6: Detection Devices ─────────────────────────────────────────────
@@ -2325,7 +2348,7 @@ async function buildEditablePDFBytes() {
     while (detRows.length < 20) detRows.push(Array(6).fill(''));
     table(
       [{label:'TYPE',w:60},{label:'LOCATION',w:200},{label:'SCAN ID',w:60},{label:'ADDRESS',w:60},{label:'ALARM',w:80},{label:'SUPERVISORY',w:80}],
-      detRows, 13
+      detRows, 13, null, [4, 5]
     );
 
     // ── PAGE 7: Flow Switches ─────────────────────────────────────────────────
@@ -2334,7 +2357,7 @@ async function buildEditablePDFBytes() {
     while (flowRows.length < 20) flowRows.push(Array(6).fill(''));
     table(
       [{label:'TYPE',w:60},{label:'LOCATION',w:200},{label:'SCAN ID',w:60},{label:'ADDRESS',w:60},{label:'SUPERVISORY',w:80},{label:'SECONDS',w:80}],
-      flowRows, 13
+      flowRows, 13, null, [4]
     );
 
     // ── PAGE 8: Tamper Switches ───────────────────────────────────────────────
@@ -2343,7 +2366,7 @@ async function buildEditablePDFBytes() {
     while (tamperRows.length < 20) tamperRows.push(Array(6).fill(''));
     table(
       [{label:'TYPE',w:60},{label:'LOCATION',w:200},{label:'SCAN ID',w:60},{label:'ADDRESS',w:60},{label:'SUPERVISORY',w:80},{label:'NOTES',w:80}],
-      tamperRows, 13
+      tamperRows, 13, null, [4]
     );
 
     // ── PAGE 9: Deficiency + Batteries + Notes + Signatures ───────────────────
@@ -2400,7 +2423,7 @@ async function buildEditablePDFBytes() {
       } catch(_) {}
     } else {
       const sf = form.createTextField(fid());
-      sf.setText(data.signature?.name||'');
+      sf.setText(''); // blank, signable box (name goes in the PRINT NAME field below) — matches other reports
       sf.addToPage(page, { x:ML+2, y:ry(sigH)+2, width:sigW-4, height:sigH-12, font: rFont });
       sf.setFontSize(sc(9));
     }
@@ -2424,7 +2447,11 @@ async function buildEditablePDFBytes() {
     curY += sigH + 4;
     dataRow([
       { label:'INSPECTOR DATE', val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
-      { label:'CLIENT DATE',    val: '', w: PW/2 },
+      { label:'CLIENT DATE',    val: fd['cust-sig-date'] || '', w: PW/2 },
+    ]);
+    dataRow([
+      { label:'INSPECTOR PRINT NAME', val: data.signature?.name || data.inspection?.inspectorName || '', w: PW/2 },
+      { label:'CLIENT PRINT NAME',    val: fd['cust-sig-name'] || '', w: PW/2 },
     ]);
 
     // ── Photos page ───────────────────────────────────────────────────────────

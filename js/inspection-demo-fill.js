@@ -82,6 +82,24 @@
     });
   }
 
+  // Randomly set PASS/FAIL/N-A (or Y/N/NA) on every pf-group / yna-group in scope so
+  // results are a realistic mix instead of all-untested. Skips groups already chosen.
+  function randomCheckGroups(rootSelectors) {
+    rootSelectors.forEach(sel => document.querySelectorAll(sel).forEach(root => {
+      root.querySelectorAll('.pf-group, .yna-group').forEach(g => {
+        if (g.dataset.demoRnd) return; g.dataset.demoRnd = '1';
+        if (g.querySelector('.selected')) return;
+        const btns = [...g.querySelectorAll('button')];
+        if (!btns.length) return;
+        const r = Math.random();
+        const pick = r < 0.65 ? g.querySelector('.pass, .y')
+                   : r < 0.85 ? g.querySelector('.fail, .n')
+                   : g.querySelector('.na');
+        try { (pick || btns[0]).click(); } catch (_) {}
+      });
+    }));
+  }
+
   // Y/N/NA & "Inspecting?" values live in hidden inputs set by toggle BUTTONS
   // (setSPBtn/setPFTable) — a plain value sweep can't reach them, so click the
   // affirmative button of each empty toggle group. Groups whose target is already
@@ -198,6 +216,10 @@
     } else if (sysKey === 'fire-alarm') {
       repeat('addFASubpanelRow', 2); repeat('addFADetectionRow', 3); repeat('addFAFlowRow', 2);
       repeat('addFATamperRow', 2); repeat('addFABatteryRow', 2); repeat('addFADeficRow', 2); repeat('addFANoteRow', 2);
+      // Vary the pre/post checklists, sup toggles and sub-panel pass/fail (all default to N/A).
+      randomCheckGroups(['#step-fa-panel', '#step-fa-devices', '#step-fa-aux']);
+      setById('fa-av-notes', 'A/V demo: all notification appliances synchronized; candela verified per plan.');
+      setById('fa-door-notes', 'Door holders released on alarm and re-latched on reset.');
     } else if (sysKey === 'sprinkler') {
       call('addSPDrainRow', 'Riser 1 — North', '55', '48', '52'); call('addSPDrainRow', 'Riser 2 — South', '58', '50', '54');
       repeat('addSPDeficRow', 2); repeat('addSPNoteRow', 2);
@@ -206,15 +228,8 @@
     } else if (sysKey === 'fire-smoke-damper') {
       // initDamperPanel adds one blank card; add a couple more so there are 3.
       call('addDamperCard'); call('addDamperCard');
-      // Randomly set each PASS/FAIL/N/A check on every damper so results aren't all "untested".
+      randomCheckGroups(['#damper-cards-container']); // random PASS/FAIL/N/A per check
       document.querySelectorAll('#damper-cards-container .damper-card').forEach((card, ci) => {
-        card.querySelectorAll('.pf-group').forEach(g => {
-          const r = Math.random();
-          const btn = r < 0.7 ? g.querySelector('.pf-btn.pass')
-                    : r < 0.87 ? g.querySelector('.pf-btn.fail')
-                    : g.querySelector('.pf-btn.na');
-          if (btn) try { btn.click(); } catch (_) {}
-        });
         const loc = card.querySelector('[id^="dmp-loc-"]'); if (loc && !loc.value) loc.value = 'Demo location — 2nd Flr AHU-' + (ci + 1);
         const note = card.querySelector('[id^="dmp-note-"]'); if (note && !note.value) note.value = 'Actuator cycled and verified; blade closed fully.';
       });
@@ -223,10 +238,37 @@
     repeat('addGenericDeficRow', 2);
     repeat('addExtGenericNote', 2);
     repeat('addExtNoteRow', 1);
+    // Two DISTINCT general notes so the "two notes" layout is visible on every type.
+    seedTwoGeneralNotes();
+  }
+
+  // Ensure the General Notes & Site Observations section shows two distinct notes.
+  function seedTwoGeneralNotes() {
+    const texts = [
+      'General note 1: System serviced and returned to normal; monitoring confirmed with central station.',
+      'General note 2: Recommend replacing weathered signage at the exterior FDC before next inspection.'
+    ];
+    // #fa-notes-tbody feeds the shared "General Notes" section for every non-sprinkler type.
+    let rows = [...document.querySelectorAll('#fa-notes-tbody tr')];
+    while (rows.length < 2 && has('addFANoteRow')) { addFANoteRow(); rows = [...document.querySelectorAll('#fa-notes-tbody tr')]; }
+    rows.slice(0, 2).forEach((tr, i) => {
+      const el = tr.querySelector('input[type=text], textarea');
+      if (el) { el.value = texts[i]; el.dataset.demoFilled = '1'; fire(el, 'input'); }
+    });
+    // Sprinkler keeps its own notes tbody.
+    let sp = [...document.querySelectorAll('#sp-notes-tbody tr')];
+    sp.slice(0, 2).forEach((tr, i) => {
+      const el = tr.querySelector('input[type=text], textarea');
+      if (el) { el.value = texts[i]; el.dataset.demoFilled = '1'; fire(el, 'input'); }
+    });
   }
 
   const FILL_ROOTS = [
-    '#sys-forms', '#step-fa-panel', '#step-sp-overview', '#step-sp-inspection',
+    '#sys-forms',
+    // Fire-alarm spans multiple sub-steps — include them all or their tables stay blank.
+    '#step-fa-panel', '#step-fa-devices', '#step-fa-aux', '#step-fa-defic',
+    '#fa-detection-tbody', '#fa-flow-tbody', '#fa-tamper-tbody', '#fa-battery-tbody', '#fa-subpanel-tbody',
+    '#step-sp-overview', '#step-sp-inspection',
     '#step-sp-drain', '#step-sp-defic', '#step-ext-summary', '#step-generic-prevdefic',
     '#generic-defic-tbody', '#ext-notes-tbody', '#fa-defic-tbody', '#fa-notes-tbody',
     '#sp-defic-tbody', '#sp-notes-tbody', '#ext-tbody'
