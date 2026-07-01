@@ -172,13 +172,45 @@
     '#sp-defic-tbody', '#sp-notes-tbody', '#ext-tbody'
   ];
 
+  // ── Overlay to mask the transient wizard navigation during generation ───────
+  function overlay(msg) {
+    let o = $('demo-overlay');
+    if (!o) {
+      o = document.createElement('div');
+      o.id = 'demo-overlay';
+      o.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(31,53,102,.92);color:#fff;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-size:1.1rem;font-weight:600;text-align:center;padding:20px;';
+      document.body.appendChild(o);
+    }
+    o.textContent = msg;
+    o.style.display = 'flex';
+  }
+  const hideOverlay = () => { const o = $('demo-overlay'); if (o) o.style.display = 'none'; };
+
+  // Return the user to the Systems tab (step 2) no matter which system ran.
+  function returnToSystems(sysKey) {
+    try {
+      if (sysKey === 'fire-alarm' && has('exitFireAlarmInspection')) return exitFireAlarmInspection('systems');
+      if (sysKey === 'sprinkler' && has('exitSprinklerInspection')) return exitSprinklerInspection('systems');
+      activeInspectionSystem = null;
+      if (has('syncMainNavDisabled')) syncMainNavDisabled();
+      if (has('goStep')) goStep(2);
+    } catch (e) { console.warn('demo returnToSystems', e); }
+  }
+
   // ── Run one system end-to-end ──────────────────────────────────────────────
   async function runInspectionDemo(sysKey) {
+    const origSaveDraft = window.saveDraft;
     try {
-      if (has('clearDraft')) clearDraft();          // avoid the resume-draft modal
+      overlay('🧪 Generating demo ' + sysKey + ' PDF…');
+      window.saveDraft = function () {};            // don't persist demo data as a draft
+      if (has('clearDraft')) clearDraft();
       seedIdentity();
-      if (!has('startInspectionForSystem')) throw new Error('startInspectionForSystem not found on this page');
-      startInspectionForSystem(sysKey);             // builds the real panels
+      // Build FRESH panels with no saved-inspection prefill (ignore the profile).
+      if (typeof buildInspectionForms !== 'function') throw new Error('buildInspectionForms not found on this page');
+      activeInspectionSystem = sysKey;
+      window._prevInspectionData = null;
+      if (has('syncMainNavDisabled')) syncMainNavDisabled();
+      buildInspectionForms();
       await tick();
       seedRows(sysKey);
       await tick();
@@ -192,16 +224,23 @@
       if (has('updateDeficiencySummary')) updateDeficiencySummary();
       await tick();
       if (!has('previewPDF')) throw new Error('previewPDF not found');
-      await previewPDF();
+      await previewPDF();                           // generates + downloads the PDF
     } catch (e) {
       console.error('Demo fill failed:', e);
       alert('Demo fill failed for "' + sysKey + '": ' + e.message + '\n(See console for details.)');
+    } finally {
+      window.saveDraft = origSaveDraft;
+      returnToSystems(sysKey);
+      if (has('clearDraft')) clearDraft();          // wipe any transient demo draft
+      hideOverlay();
+      window.inspectionPhotos && (window.inspectionPhotos.length = 0); // reset for next run
     }
   }
 
   // ── Hospital (separate page / engine) ──────────────────────────────────────
   async function runHospitalDemo() {
     try {
+      overlay('🧪 Generating demo Hospital PDF…');
       seedIdentity();
       if (!has('startHospInspection')) throw new Error('startHospInspection not found');
       startHospInspection(true);
@@ -224,17 +263,22 @@
     } catch (e) {
       console.error('Hospital demo fill failed:', e);
       alert('Hospital demo fill failed: ' + e.message + '\n(See console for details.)');
+    } finally {
+      hideOverlay();
     }
   }
 
   // ── Launcher UI (gated to the test property) ───────────────────────────────
   const isHospitalPage = () => has('startHospInspection') && !has('startInspectionForSystem');
 
-  const SYSTEMS = [
-    ['extinguisher', '🧯 Extinguishers'], ['sprinkler', '💧 Sprinkler'],
-    ['fire-alarm', '🔔 Fire Alarm'], ['hood', '🍳 Kitchen Hood'],
-    ['exit-sign-lighting', '🚪 Exit & Lighting'], ['fire-smoke-damper', '🌀 Fire/Smoke Damper']
-  ];
+  // Every inspectable system (hospital lives on its own page). Built from SYS_META
+  // so the popup always lists ALL types, not just previously-inspected ones.
+  function allSystems() {
+    const meta = (typeof SYS_META !== 'undefined') ? SYS_META : {};
+    return Object.keys(meta)
+      .filter(k => k !== 'hospital')
+      .map(k => [k, ((meta[k].icon || '⚙️') + ' ' + (meta[k].label || k))]);
+  }
 
   function buildUI() {
     if ($('demo-fill-ui')) return;
@@ -258,7 +302,7 @@
     if (isHospitalPage()) {
       menu.appendChild(mkBtn('🏥 Hospital TJC/CMS', runHospitalDemo));
     } else {
-      SYSTEMS.forEach(([key, label]) => menu.appendChild(mkBtn(label, () => runInspectionDemo(key))));
+      allSystems().forEach(([key, label]) => menu.appendChild(mkBtn(label, () => runInspectionDemo(key))));
     }
     const fab = document.createElement('button');
     fab.textContent = '🧪 Demo';

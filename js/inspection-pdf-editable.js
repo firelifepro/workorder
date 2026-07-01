@@ -1,3 +1,128 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED REPORT HEADER — identical cover header for every editable inspection PDF.
+//
+// Draws (top → down): red title banner · logo · FLPS company box · right column
+// with the FREQUENCY selector + JOB NUMBER / PO NUMBER / DATE PERFORMED / INSPECTOR
+// · BUILDING/PROPERTY NAME · STREET, CITY, STATE, ZIP. (Jurisdiction intentionally
+// dropped — never filled.) Spacing lives here ONCE so every system's header lines
+// up; only the title + frequency labels change per system.
+//
+// Returns the new curY (distance from the top of the page) after the header so the
+// calling builder can continue its content below it.
+//   H = { pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data, fd, dv,
+//         title, freqOptions?, C:{FIRE_RED,navy,sky,gold,lgray,white,blk} }
+// ─────────────────────────────────────────────────────────────────────────────
+async function drawReportHeader(H) {
+  const { pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data, fd, dv, title, C } = H;
+  const { FIRE_RED, navy, sky, gold, lgray, white, blk } = C;
+  const rgb = window.PDFLib.rgb;
+  const freqOptions = H.freqOptions || ['ANNUAL', 'SEMI-ANNUAL', 'QUARTERLY'];
+
+  let cy = 0;
+  const ry = (h) => PH - cy - h;
+  const ty = (h, a = 3) => PH - cy - h + a;
+  const mkField = (val, x, fy, w, h) => {
+    page.drawRectangle({ x, y: fy, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
+    const f = form.createTextField(fid());
+    f.setText(String(val || ''));
+    f.addToPage(page, { x: x + 1, y: fy + 1, width: w - 2, height: h - 2, font: rFont });
+    f.setFontSize(sc(8));
+  };
+  const dataRow = (cols, fh = 12, lh = 8, gp = 3) => {
+    const FH = sc(fh), LH = sc(lh), GP = sc(gp);
+    let x = ML;
+    cols.forEach(c => {
+      page.drawText((c.label || '') + ':', { x: x + 2, y: ty(LH, LH - sc(3)), size: sc(6), font: hFont, color: navy });
+      mkField(c.val, x, ry(LH + FH), c.w, FH);
+      x += c.w;
+    });
+    cy += LH + FH + GP;
+  };
+
+  // ── Title banner (leave white space above so printers don't clip the top) ──
+  const TOP_PAD = 18, titleH = sc(22);
+  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: FIRE_RED });
+  page.drawText(title, { x: W / 2 - hFont.widthOfTextAtSize(title, sc(13)) / 2, y: PH - TOP_PAD - titleH + sc(5), size: sc(13), font: hFont, color: white });
+  cy = TOP_PAD + titleH + sc(6);
+
+  // ── Logo + company + right (freq + job) block ──
+  const logoAreaH = sc(96);
+  const logoX = ML, logoW = 88;
+  const infoX = ML + logoW + 6, infoW = 168;
+  const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
+
+  try {
+    const svgText = await fetch('logo.svg').then(r => r.text());
+    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
+    const url = URL.createObjectURL(new Blob([sizedSvg], { type: 'image/svg+xml' }));
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        const s = 3, full = document.createElement('canvas');
+        full.width = 400 * s; full.height = 600 * s;
+        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
+        const cropW = 400 * s, cropH = 445 * s, crop = document.createElement('canvas');
+        crop.width = cropW; crop.height = cropH;
+        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
+        const ab = Uint8Array.from(atob(crop.toDataURL('image/png').split(',')[1]), c => c.charCodeAt(0)).buffer;
+        const logoImg = await pdfDoc.embedPng(ab);
+        const d = logoImg.scaleToFit(70, 70);
+        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - d.height) / 2, width: d.width, height: d.height });
+        URL.revokeObjectURL(url); resolve();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      img.src = url;
+    });
+  } catch (_) {}
+
+  // Company info box
+  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
+  const compLines = [
+    { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(8)   },
+    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7.5) },
+    { text: 'Littleton, CO 80127',                bold: false, sz: sc(7.5) },
+    { text: 'Cell: (303) 726-8847',              bold: false, sz: sc(7.5) },
+    { text: 'Office: (720) 974-1570',            bold: false, sz: sc(7.5) },
+    { text: 'Alan.antonio@firelifeprotectionsystems.com', bold: false, sz: sc(6.5) },
+  ];
+  let compY = ry(logoAreaH) + logoAreaH - sc(10);
+  compLines.forEach(cl => { page.drawText(cl.text, { x: infoX + 4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk }); compY -= cl.sz + sc(2); });
+
+  // Frequency selector (top of right column)
+  const rtBoxH = sc(14), rtBW = rtW / freqOptions.length;
+  const rtCur = (fd['report-type'] || fd['sp-report-type'] || data.inspection?.reportType || '').toUpperCase();
+  freqOptions.forEach((t, i) => {
+    const sel = rtCur === t || (t === 'SEMI-ANNUAL' && rtCur.includes('SEMI'));
+    const bx = rtX + i * rtBW;
+    page.drawRectangle({ x: bx, y: ry(logoAreaH) + logoAreaH - rtBoxH, width: rtBW - 1, height: rtBoxH, color: sel ? rgb(1, 0.85, 0) : white, borderColor: sky, borderWidth: 0.5 });
+    page.drawText(t, { x: bx + 2, y: ry(logoAreaH) + logoAreaH - rtBoxH + sc(4.5), size: sc(5.5), font: hFont, color: sel ? rgb(0.4, 0.25, 0) : navy });
+  });
+  // Job info fields
+  const jFields = [
+    ['JOB NUMBER',         fd['job-num'] || fd['sp-job-num'] || fd['fa-job-num'] || ''],
+    ['PO NUMBER (IF ANY)', fd['po-num'] || ''],
+    ['DATE PERFORMED',     dv('insp-date') || data.inspection?.date || fd['insp-date'] || ''],
+    ['INSPECTOR',          dv('inspector-name') || data.inspection?.inspectorName || fd['inspector-name'] || ''],
+  ];
+  let jY = ry(logoAreaH) + logoAreaH - rtBoxH - sc(3);
+  jFields.forEach(([lbl, val]) => {
+    jY -= sc(6.5);
+    page.drawText(lbl, { x: rtX + 2, y: jY, size: sc(5.5), font: hFont, color: navy });
+    jY -= sc(10);
+    page.drawRectangle({ x: rtX, y: jY, width: rtW, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
+    const jf = form.createTextField(fid());
+    jf.setText(val); jf.addToPage(page, { x: rtX + 1, y: jY + 1, width: rtW - 2, height: sc(10) - 2, font: rFont }); jf.setFontSize(sc(7));
+    jY -= sc(2);
+  });
+  cy += logoAreaH + sc(4);
+
+  // ── Property rows (no Jurisdiction) ──
+  dataRow([{ label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }], 12, 8, 2);
+  dataRow([{ label: 'STREET, CITY, STATE, ZIP CODE', val: (data.property?.address || '') + (data.property?.cityStateZip ? ', ' + data.property.cityStateZip : ''), w: PW }], 12, 8, 4);
+
+  return cy;
+}
+
 // SPRINKLER PDF
 // ─────────────────────────────────────────────────────────────────────────────
 async function buildExtinguisherPDFBytes() {
@@ -58,107 +183,13 @@ async function buildExtinguisherPDFBytes() {
   const dv = (id) => document.getElementById(id)?.value?.trim() || '';
   const fd = data.fieldData || {};
 
-  // ── PAGE 1: COVER ────────────────────────────────────────────────────────────
+  // ── PAGE 1: COVER (shared header) ────────────────────────────────────────────
   addPage();
-
-  // Red title banner — leave white space above it so printers (which clip the
-  // unprintable edge ~0.25") don't cut the top off the header.
-  const TOP_PAD = 18;
-  const titleH = sc(22);
-  const titleText = 'PORTABLE FIRE EXTINGUISHER INSPECTION REPORT';
-  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: FIRE_RED });
-  page.drawText(titleText, {
-    x: W/2 - hFont.widthOfTextAtSize(titleText, sc(13))/2,
-    y: PH - TOP_PAD - titleH + sc(5), size: sc(13), font: hFont, color: white
+  curY = await drawReportHeader({
+    pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data, fd, dv,
+    title: 'PORTABLE FIRE EXTINGUISHER INSPECTION REPORT',
+    C: { FIRE_RED, navy, sky, gold, lgray, white, blk }
   });
-  curY = TOP_PAD + titleH + sc(6);
-
-  // Logo + company block
-  const logoAreaH = sc(88);
-  const logoX = ML, logoW = 90;
-  const infoX = ML + logoW + 6, infoW = 160;
-  const rtX   = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
-
-  try {
-    const svgText = await fetch('logo.svg').then(r => r.text());
-    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
-    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = async () => {
-        const scale = 3;
-        const full = document.createElement('canvas');
-        full.width = 400 * scale; full.height = 600 * scale;
-        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
-        const cropW = 400 * scale, cropH = 445 * scale;
-        const crop = document.createElement('canvas');
-        crop.width = cropW; crop.height = cropH;
-        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
-        const b64 = crop.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const logoImg = await pdfDoc.embedPng(ab);
-        const logoDims = logoImg.scaleToFit(70, 70);
-        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - logoDims.height)/2, width: logoDims.width, height: logoDims.height });
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-      img.src = url;
-    });
-  } catch(_) {}
-
-  // Company info box
-  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-  const compLines = [
-    { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(7.5) },
-    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7)   },
-    { text: 'Littleton, CO 80127',                bold: false, sz: sc(7)   },
-    { text: 'Cellular: (303) 726-8847',           bold: false, sz: sc(7)   },
-    { text: 'Office: (720) 974-1570',             bold: false, sz: sc(7)   },
-    { text: 'Alan.antonio@firelifeprotection',    bold: false, sz: sc(6.5) },
-    { text: 'systems.com',                        bold: false, sz: sc(6.5) },
-  ];
-  let compY = ry(logoAreaH) + logoAreaH - sc(10);
-  compLines.forEach(cl => {
-    page.drawText(cl.text, { x: infoX+4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk });
-    compY -= cl.sz + sc(1.5);
-  });
-
-  // Report type selector boxes
-  const rtBoxH = sc(15), rtBW = rtW / 3;
-  const rtCur = (fd['report-type'] || '').toUpperCase();
-  ['ANNUAL','SEMI-ANNUAL','QUARTERLY'].forEach((t, i) => {
-    const sel = rtCur === t || (t === 'SEMI-ANNUAL' && rtCur.includes('SEMI'));
-    const bx = rtX + i * rtBW;
-    page.drawRectangle({ x: bx, y: ry(logoAreaH)+logoAreaH-rtBoxH, width: rtBW-1, height: rtBoxH, color: sel ? rgb(1,0.85,0) : white, borderColor: sky, borderWidth: 0.5 });
-    page.drawText(t, { x: bx+3, y: ry(logoAreaH)+logoAreaH-rtBoxH+sc(5), size: sc(6), font: hFont, color: sel ? rgb(0.4,0.25,0) : navy });
-  });
-  // Job info fields
-  const jFields = [
-    ['JOB NUMBER',        fd['job-num'] || ''],
-    ['PO NUMBER (IF ANY)', ''],
-    ['DATE PERFORMED',    dv('insp-date') || data.inspection?.date || ''],
-    ['INSPECTOR',         dv('inspector-name') || data.inspection?.inspectorName || ''],
-  ];
-  let jY = ry(logoAreaH) + logoAreaH - rtBoxH - sc(3);
-  jFields.forEach(([lbl, val]) => {
-    jY -= sc(7);
-    page.drawText(lbl, { x: rtX+2, y: jY, size: sc(5.5), font: hFont, color: navy });
-    jY -= sc(10);
-    page.drawRectangle({ x: rtX, y: jY, width: rtW, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
-    const jf = form.createTextField(fid());
-    jf.setText(val); jf.addToPage(page, { x: rtX+1, y: jY+1, width: rtW-2, height: sc(10)-2, font: rFont }); jf.setFontSize(sc(7));
-    jY -= sc(2);
-  });
-  curY += logoAreaH + sc(4);
-
-  // Property fields
-  dataRow([{ label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }], 12, 8, 2);
-  dataRow([
-    { label: 'STREET, CITY, STATE, ZIP CODE', val: (data.property?.address || '') + (data.property?.cityStateZip ? ', ' + data.property.cityStateZip : ''), w: PW * 0.7 },
-    { label: 'JURISDICTION', val: fd['jurisdiction'] || '', w: PW * 0.3 }
-  ], 12, 8, 2);
   gap(4);
 
   // NFPA 10 compliance block
@@ -687,108 +718,13 @@ async function buildSprinklerPDFBytes() {
     curY += h + sc(1);
   };
 
-  // ── PAGE 1: COVER ──────────────────────────────────────────────────────────
+  // ── PAGE 1: COVER (shared header) ────────────────────────────────────────────
   addPage();
-
-  // Red title banner — leave white space above it so printers don't clip the top.
-  const TOP_PAD = 18;
-  const titleH = sc(22);
-  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: FIRE_RED });
-  page.drawText('FIRE SPRINKLER INSPECTION REPORT', {
-    x: W/2 - hFont.widthOfTextAtSize('FIRE SPRINKLER INSPECTION REPORT', sc(14))/2,
-    y: PH - TOP_PAD - titleH + 5, size: sc(14), font: hFont, color: white
+  curY = await drawReportHeader({
+    pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data, fd, dv,
+    title: 'FIRE SPRINKLER INSPECTION REPORT',
+    C: { FIRE_RED, navy, sky, gold, lgray, white, blk }
   });
-  curY = TOP_PAD + titleH + 6;
-
-  // Logo + company block
-  const logoAreaH = sc(88);
-  const logoX = ML, logoW = 90;
-  const infoX = ML + logoW + 6, infoW = 160;
-  const rtX   = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
-
-  // Logo embed
-  try {
-    const svgText = await fetch('logo.svg').then(r => r.text());
-    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
-    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-    await new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = async () => {
-        const scale = 3;
-        const full = document.createElement('canvas');
-        full.width = 400 * scale; full.height = 600 * scale;
-        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
-        const cropW = 400 * scale, cropH = 445 * scale;
-        const crop = document.createElement('canvas');
-        crop.width = cropW; crop.height = cropH;
-        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
-        const b64 = crop.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const logoImg = await pdfDoc.embedPng(ab);
-        const logoS = 70;
-        const logoDims = logoImg.scaleToFit(logoS, logoS);
-        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - logoDims.height)/2, width: logoDims.width, height: logoDims.height });
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-      img.src = url;
-    });
-  } catch(_) {}
-
-  // Company info box
-  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-  const compLines = [
-    { text: 'Fire Life Protection Systems, Inc.', bold: true, sz: sc(7.5) },
-    { text: '8201 Shaffer Parkway Suite B', bold: false, sz: sc(7) },
-    { text: 'Littleton, CO 80127', bold: false, sz: sc(7) },
-    { text: 'Cellular: (303) 726-8847', bold: false, sz: sc(7) },
-    { text: 'Office: (720) 974-1570', bold: false, sz: sc(7) },
-    { text: 'Alan.antonio@firelifeprotection', bold: false, sz: sc(6.5) },
-    { text: 'systems.com', bold: false, sz: sc(6.5) },
-  ];
-  let compY = ry(logoAreaH) + logoAreaH - 10;
-  compLines.forEach(cl => { page.drawText(cl.text, { x: infoX+4, y: compY, size: cl.sz, font: cl.bold ? hFont : rFont, color: blk }); compY -= cl.sz + 1.5; });
-
-  // Report type + job fields
-  // Report type boxes (3 equal segments)
-  const rtBoxH = sc(15);
-  const rtBW = rtW / 3;
-  const rtCur = (fd['sp-report-type'] || '').toUpperCase();
-  ['ANNUAL','SEMI-ANNUAL','QUARTERLY'].forEach((t, i) => {
-    const sel = rtCur === t || (t === 'SEMI-ANNUAL' && (rtCur === 'SEMI ANNUAL' || rtCur.includes('SEMI')));
-    const bx = rtX + i * rtBW;
-    page.drawRectangle({ x: bx, y: ry(logoAreaH)+logoAreaH-rtBoxH, width: rtBW-1, height: rtBoxH, color: sel ? rgb(1,0.85,0) : white, borderColor: sky, borderWidth: 0.5 });
-    page.drawText(t, { x: bx+3, y: ry(logoAreaH)+logoAreaH-rtBoxH+5, size: sc(6), font: hFont, color: sel ? rgb(0.4,0.25,0) : navy });
-  });
-  // Job info fields (editable)
-  const jFields = [
-    ['JOB NUMBER', fd['sp-job-num'] || ''],
-    ['PO NUMBER (IF ANY)', ''],
-    ['DATE PERFORMED', fd['insp-date'] || data.inspection?.date || ''],
-    ['INSPECTOR', fd['inspector-name'] || data.inspection?.inspectorName || ''],
-  ];
-  let jY = ry(logoAreaH) + logoAreaH - rtBoxH - 3;
-  jFields.forEach(([lbl, val]) => {
-    jY -= 7;
-    page.drawText(lbl, { x: rtX+2, y: jY, size: sc(5.5), font: hFont, color: navy });
-    jY -= 10;
-    page.drawRectangle({ x: rtX, y: jY, width: rtW, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
-    const jf = form.createTextField(fid());
-    jf.setText(val); jf.addToPage(page, { x: rtX+1, y: jY+1, width: rtW-2, height: sc(8), font: rFont }); jf.setFontSize(sc(7));
-    jY -= 2;
-  });
-  curY += logoAreaH + 4;
-
-  // Property fields
-  dataRow([
-    { label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }
-  ], 12, 8, 2);
-  dataRow([
-    { label: 'STREET, CITY, STATE, ZIP CODE', val: (data.property?.address || '') + (data.property?.cityStateZip ? ', ' + data.property.cityStateZip : ''), w: PW * 0.7 },
-    { label: 'JURISDICTION', val: fd['jurisdiction'] || '', w: PW * 0.3 }
-  ], 12, 8, 2);
   gap(4);
 
   // NFPA References — two columns
