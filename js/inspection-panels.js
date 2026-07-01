@@ -1690,6 +1690,20 @@ function buildSmokeControlPanel() {
 // (NOT NFPA 86/87/96 — those cover ovens, fluid heaters, and cooking hoods.)
 // Smoke is the default type. Cards are DOM-driven; _damperCardCount only mints ids.
 const DAMPER_TYPES = ['Smoke', 'Fire', 'Combination Fire/Smoke', 'Ceiling Radiation', 'Corridor'];
+// Per-damper operational sub-checklist (NFPA 80 19.4 / NFPA 105 6.5). Any FAIL
+// auto-generates a deficiency for that damper (see collectAllData). `short` is
+// the compact label used in the PDF grid.
+const DAMPER_CHECKS = [
+  { id: 'access',   label: 'Access Door Present & Operable',       short: 'Access' },
+  { id: 'clear',    label: 'Free of Obstructions / Debris',        short: 'Obstruct.' },
+  { id: 'frame',    label: 'Frame, Sleeve & Blades Undamaged',     short: 'Frame/Blades' },
+  { id: 'link',     label: 'Fusible Link Correct & Unpainted',     short: 'Fus. Link' },
+  { id: 'close',    label: 'Fully Closes (Drop Test)',             short: 'Closes' },
+  { id: 'latch',    label: 'Latches / Holds Closed',               short: 'Latches' },
+  { id: 'reopen',   label: 'Reopens & Resets',                     short: 'Reopens' },
+  { id: 'actuator', label: 'Actuator Operation (Electric/Pneum.)', short: 'Actuator' },
+  { id: 'detector', label: 'Closes on Detection / FA Signal',      short: 'FA/Detect' },
+];
 const _dmpEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 function buildFireSmokeDamperPanel() {
@@ -1699,12 +1713,10 @@ function buildFireSmokeDamperPanel() {
     <div style="font-size:0.82rem;font-weight:700;color:var(--navy);margin-bottom:10px;">🌀 Fire &amp; Smoke Dampers (NFPA 80 Ch.19 / NFPA 105 Ch.6) — operational drop test</div>
 
     ${sectionDiv('Test Cycle')}
-    <div class="data-row cols-3">
+    <div class="data-row cols-1">
       <div class="data-field"><label>Test Interval</label>
         <select id="fsd-interval"><option>Every 4 Years (Standard)</option><option>Every 6 Years (Hospital)</option><option>1 Year After Install</option></select>
       </div>
-      <div class="data-field"><label>Last Test Date</label><input type="date" id="fsd-last-test"></div>
-      <div class="data-field"><label>Next Test Due</label><input type="date" id="fsd-next-due"></div>
     </div>
 
     ${sectionDiv('Dampers — inspect each independently')}
@@ -1738,8 +1750,21 @@ function _damperCardBodyHTML(id, p) {
   p = p || {};
   const curType = p.type || 'Smoke';
   const typeOpts = DAMPER_TYPES.map(t => `<option${t === curType ? ' selected' : ''}>${t}</option>`).join('');
-  const res = p.result || '';
-  const on = v => (res === v ? ' selected' : '');
+  const checks = p.checks || {};
+  const checkRows = DAMPER_CHECKS.map(c => {
+    const val = checks[c.id] || '';
+    const on = v => (val === v ? ' selected' : '');
+    return `
+      <div class="inspect-row-top" style="padding:5px 0;border-top:1px solid #eee;">
+        <div class="inspect-label" style="font-size:0.78rem;">${c.label}</div>
+        <div class="pf-group">
+          <button class="pf-btn pass${on('PASS')}" onclick="setDamperCheck(this,${id},'${c.id}','PASS')">PASS</button>
+          <button class="pf-btn fail${on('FAIL')}" onclick="setDamperCheck(this,${id},'${c.id}','FAIL')">FAIL</button>
+          <button class="pf-btn na${on('N/A')}"   onclick="setDamperCheck(this,${id},'${c.id}','N/A')">N/A</button>
+        </div>
+      </div>
+      <input type="hidden" id="dmp-${id}-${c.id}" value="${_dmpEsc(val)}">`;
+  }).join('');
   return `
     <div class="data-row cols-2">
       <div class="data-field"><label>Damper Type</label>
@@ -1749,18 +1774,23 @@ function _damperCardBodyHTML(id, p) {
         <input type="text" id="dmp-loc-${id}" value="${_dmpEsc(p.location)}" placeholder='e.g. 2nd Flr Corridor, AHU-3 supply duct'>
       </div>
     </div>
-    <div class="inspect-row-top" style="margin-top:8px;">
-      <div class="inspect-label">Drop Test / Operation Result<small>Fully closes, latches &amp; resets — NFPA 80 19.4 / 105 6.5</small></div>
-      <div class="pf-group">
-        <button class="pf-btn pass${on('PASS')}" onclick="setDamperResult(this,${id},'PASS')">PASS</button>
-        <button class="pf-btn fail${on('FAIL')}" onclick="setDamperResult(this,${id},'FAIL')">FAIL</button>
-        <button class="pf-btn na${on('N/A')}"   onclick="setDamperResult(this,${id},'N/A')">N/A</button>
-      </div>
-    </div>
-    <input type="hidden" id="dmp-result-${id}" value="${_dmpEsc(res)}">
-    <div class="data-field" style="margin-top:6px;"><label>Condition / Deficiency Notes</label>
+    <div style="margin-top:8px;font-size:0.72rem;font-weight:700;color:var(--slate);">OPERATIONAL CHECKS — any FAIL creates a deficiency for this damper</div>
+    ${checkRows}
+    <div class="data-field" style="margin-top:8px;"><label>Condition / Deficiency Notes</label>
       <input type="text" id="dmp-note-${id}" value="${_dmpEsc(p.note)}" placeholder="Damage, obstruction, actuator/link issue, repair needed…">
     </div>`;
+}
+
+// Derived damper result: FAIL if any sub-check failed, else PASS if any passed,
+// else '' (untested). Drives the inventory "# Tested" and PDF row shading.
+function damperCardResult(id) {
+  let anyPass = false, anyFail = false;
+  DAMPER_CHECKS.forEach(c => {
+    const v = document.getElementById(`dmp-${id}-${c.id}`)?.value || '';
+    if (v === 'FAIL') anyFail = true;
+    else if (v === 'PASS') anyPass = true;
+  });
+  return anyFail ? 'FAIL' : anyPass ? 'PASS' : '';
 }
 
 // Add a damper card. prefill = {address,type,location,result,note} (from saved
@@ -1776,7 +1806,7 @@ function addDamperCard(prefill) {
   if (!addr && !prefill) addr = guessNextDamperAddress();
 
   const card = document.createElement('div');
-  card.className = 'hood-card';              // reuse hood card styling
+  card.className = 'hood-card damper-card';  // reuse hood card styling; .damper-card is the selector hook
   card.id = `damper-card-${id}`;
   card.dataset.damperId = id;
   card.innerHTML = `
@@ -1807,8 +1837,8 @@ function toggleDamperCardBody(id) {
   if (btn) btn.textContent = hidden ? '▼' : '▶';
 }
 
-function setDamperResult(btn, id, val) {
-  const hidden = document.getElementById(`dmp-result-${id}`);
+function setDamperCheck(btn, id, checkId, val) {
+  const hidden = document.getElementById(`dmp-${id}-${checkId}`);
   const group  = btn.closest('.pf-group');
   const isSame = btn.classList.contains('selected');
   if (group) group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
@@ -1846,8 +1876,7 @@ function recalcDamperInventory() {
     else if (t.includes('smoke'))    smoke++;
     else if (t.includes('ceiling'))  ceiling++;
     else if (t.includes('corridor')) corridor++;
-    const r = document.getElementById(`dmp-result-${id}`)?.value || '';
-    if (r === 'PASS' || r === 'FAIL') tested++;
+    if (damperCardResult(id)) tested++;   // any sub-check marked = tested
   });
   const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val; };
   set('dmp-inv-fire', fire);       set('dmp-inv-smoke', smoke);   set('dmp-inv-combo', combo);

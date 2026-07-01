@@ -1527,11 +1527,7 @@ async function buildGenericSystemPDFBytes() {
 
     secHdr('TEST CYCLE');
     gap(4);
-    dataRow([
-      { label: 'Test Interval',  val: gv('fsd-interval'),  w: 180 },
-      { label: 'Last Test Date', val: gv('fsd-last-test'), w: 180 },
-      { label: 'Next Test Due',  val: gv('fsd-next-due'),  w: 180 },
-    ]);
+    dataRow([{ label: 'Test Interval', val: gv('fsd-interval'), w: 540 }]);
     gap(4);
 
     secHdr('DAMPER INVENTORY');
@@ -1549,61 +1545,56 @@ async function buildGenericSystemPDFBytes() {
     ]);
     gap(6);
 
-    const dCards = document.querySelectorAll('#damper-cards-container .damper-card');
-    secHdr('DAMPER TEST RESULTS — ' + dCards.length + ' DAMPER(S)');
+    const dampers = data.dampers || [];
+    const CHK = (typeof DAMPER_CHECKS !== 'undefined') ? DAMPER_CHECKS : [];
+    secHdr('DAMPER TEST RESULTS — ' + dampers.length + ' DAMPER(S)');
     gap(2);
 
-    // Table header
-    const DCOLS = [ { t: '#', w: 22 }, { t: 'ADDRESS / ID', w: 118 }, { t: 'TYPE', w: 132 }, { t: 'LOCATION', w: 208 }, { t: 'RESULT', w: 60 } ];
-    const drawDamperHeader = () => {
-      checkPage(14);
-      let hx = ML;
-      page.drawRectangle({ x: ML, y: ry(13), width: PW, height: 13, color: sky });
-      DCOLS.forEach(c => { page.drawText(c.t, { x: hx + 3, y: ty(13, 4), size: 6.5, font: hFont, color: navy }); hx += c.w; });
-      curY += 14;
-    };
-    drawDamperHeader();
+    dampers.forEach((d, idx) => {
+      // Damper header bar: #, address · type · location, with derived result
+      const res     = d.result || '';
+      const resTxt  = res || 'UNTESTED';
+      const resCol  = res === 'PASS' ? green : res === 'FAIL' ? red : slate;
+      const hdrTxt  = `#${idx + 1}  ${d.address || '(unlabeled)'}   ·   ${d.type || '—'}${d.location ? '   ·   ' + d.location : ''}`;
+      const hdrLines = wrap(hdrTxt, 8, PW - 70);
+      const hdrH    = Math.max(14, hdrLines.length * 9 + 4);
+      // Rough space for the header + 3 rows of checks + note, so a damper block
+      // isn't split awkwardly right after its header.
+      checkPage(hdrH + 3 * 11 + (d.note ? 14 : 0) + 4);
+      const bg = res === 'PASS' ? rgb(0.94, 0.99, 0.95) : res === 'FAIL' ? rgb(0.99, 0.93, 0.93) : lgray;
+      page.drawRectangle({ x: ML, y: ry(hdrH), width: PW, height: hdrH, color: bg, borderColor: sky, borderWidth: 0.4 });
+      hdrLines.forEach((ln, li) => page.drawText(ln, { x: ML + 4, y: ry(hdrH) + hdrH - 9 - li * 9, size: 8, font: hFont, color: navy }));
+      page.drawText(resTxt, { x: ML + PW - hFont.widthOfTextAtSize(resTxt, 8) - 5, y: ry(hdrH) + hdrH - 10, size: 8, font: hFont, color: resCol });
+      curY += hdrH + 1;
 
-    let di = 0;
-    dCards.forEach(card => {
-      di++;
-      const id   = card.dataset.damperId;
-      const addr = gv('dmp-addr-' + id);
-      const type = document.getElementById('dmp-type-' + id)?.value || '';
-      const loc  = gv('dmp-loc-' + id);
-      const res  = document.getElementById('dmp-result-' + id)?.value || '';
-      const note = gv('dmp-note-' + id);
-
-      const addrLines = wrap(addr, 7, DCOLS[1].w - 6);
-      const typeLines = wrap(type, 7, DCOLS[2].w - 6);
-      const locLines  = wrap(loc,  7, DCOLS[3].w - 6);
-      const nLines    = note ? wrap('Note: ' + note, 6.5, PW - 30) : [];
-      const rowH  = Math.max(13, Math.max(addrLines.length, typeLines.length, locLines.length) * 8 + 4);
-      const noteH = note ? Math.max(11, nLines.length * 8 + 2) : 0;
-      checkPage(rowH + noteH + 2);
-
-      const bg = res === 'PASS' ? rgb(0.94, 0.99, 0.95) : res === 'FAIL' ? rgb(0.99, 0.93, 0.93) : white;
-      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
-      let cx = ML;
-      const cell = (lines) => {
-        lines.forEach((ln, li) => page.drawText(ln, { x: cx + 3, y: ry(rowH) + rowH - 8 - li * 8, size: 7, font: rFont, color: navy }));
-      };
-      cell([String(di)]);            cx += DCOLS[0].w;
-      cell(addrLines.length ? addrLines : ['']); cx += DCOLS[1].w;
-      cell(typeLines.length ? typeLines : ['']); cx += DCOLS[2].w;
-      cell(locLines.length  ? locLines  : ['']); cx += DCOLS[3].w;
-      const rColor = res === 'PASS' ? green : res === 'FAIL' ? red : slate;
-      page.drawText(res || '—', { x: cx + 3, y: ry(rowH) + rowH - 8, size: 7, font: hFont, color: rColor });
-      curY += rowH;
-
-      if (note) {
-        page.drawRectangle({ x: ML + DCOLS[0].w, y: ry(noteH), width: PW - DCOLS[0].w, height: noteH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.2 });
-        nLines.forEach((ln, li) => page.drawText(ln, { x: ML + DCOLS[0].w + 3, y: ry(noteH) + noteH - 8 - li * 8, size: 6.5, font: rFont, color: slate }));
-        curY += noteH;
+      // Sub-checks in 3 columns
+      const checks = d.checks || {};
+      const colW   = PW / 3;
+      const chkRowH = 11;
+      for (let i = 0; i < CHK.length; i++) {
+        const c   = CHK[i];
+        const col = i % 3;
+        if (col === 0) checkPage(chkRowH);
+        const cx  = ML + col * colW;
+        const val = checks[c.id] || '';
+        const vCol = val === 'PASS' ? green : val === 'FAIL' ? red : slate;
+        const lbl = c.short + ': ';
+        page.drawText(lbl, { x: cx + 4, y: ry(chkRowH) + 2, size: 6.5, font: rFont, color: navy });
+        page.drawText(val || '—', { x: cx + 4 + rFont.widthOfTextAtSize(lbl, 6.5), y: ry(chkRowH) + 2, size: 6.5, font: hFont, color: vCol });
+        if (col === 2 || i === CHK.length - 1) curY += chkRowH;
       }
-      curY += 1;
+
+      if (d.note) {
+        const nLines = wrap('Note: ' + d.note, 6.5, PW - 8);
+        const nH = Math.max(11, nLines.length * 8 + 2);
+        checkPage(nH);
+        page.drawRectangle({ x: ML, y: ry(nH), width: PW, height: nH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.2 });
+        nLines.forEach((ln, li) => page.drawText(ln, { x: ML + 4, y: ry(nH) + nH - 8 - li * 8, size: 6.5, font: rFont, color: slate }));
+        curY += nH;
+      }
+      gap(4);
     });
-    gap(6);
+    gap(2);
   }
 
   // System info fields

@@ -163,21 +163,32 @@ function collectAllData() {
   // Fire/smoke dampers — one record per damper card. Failed dampers also feed the
   // shared deficiency list so overall-status checks and the PDF pick them up.
   const dampers = [];
-  if (activeInspectionSystem === 'fire-smoke-damper') {
+  if (activeInspectionSystem === 'fire-smoke-damper' && typeof DAMPER_CHECKS !== 'undefined') {
     document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
       const id = card.dataset.damperId;
+      const checks = {};
+      const failedLabels = [];
+      let anyPass = false, anyFail = false;
+      DAMPER_CHECKS.forEach(c => {
+        const val = document.getElementById(`dmp-${id}-${c.id}`)?.value || '';
+        checks[c.id] = val;
+        if (val === 'FAIL') { anyFail = true; failedLabels.push(c.short || c.label); }
+        else if (val === 'PASS') anyPass = true;
+      });
+      const result = anyFail ? 'FAIL' : anyPass ? 'PASS' : '';
       const d = {
         address:  v('dmp-addr-' + id),
         type:     document.getElementById('dmp-type-' + id)?.value || '',
         location: v('dmp-loc-' + id),
-        result:   document.getElementById('dmp-result-' + id)?.value || '',
+        result,
+        checks,
         note:     v('dmp-note-' + id),
       };
       dampers.push(d);
-      if (d.result === 'FAIL') {
+      if (anyFail) {
         deficiencies.push({
           item: `Damper ${d.address || '(unlabeled)'} — ${d.type || 'Damper'}${d.location ? ' @ ' + d.location : ''}`,
-          description: d.note || 'Failed operational / drop test',
+          description: `Failed: ${failedLabels.join('; ')}${d.note ? '. ' + d.note : ''}`,
         });
       }
     });
