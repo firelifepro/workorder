@@ -218,6 +218,13 @@
       repeat('addFATamperRow', 2); repeat('addFABatteryRow', 2); repeat('addFADeficRow', 2); repeat('addFANoteRow', 2);
       // Vary the pre/post checklists, sup toggles and sub-panel pass/fail (all default to N/A).
       randomCheckGroups(['#step-fa-panel', '#step-fa-devices', '#step-fa-aux']);
+      // On-site "CONDITION" buttons are bare .pf-btn (not a .pf-group) — click one per row.
+      document.querySelectorAll('[id^="fa-onsite-row-"]').forEach(row => {
+        if (row.querySelector('.pf-btn.selected')) return;
+        const r = Math.random();
+        const pick = r < 0.7 ? row.querySelector('.pf-btn.pass') : r < 0.88 ? row.querySelector('.pf-btn.fail') : row.querySelector('.pf-btn.na');
+        if (pick) try { pick.click(); } catch (_) {}
+      });
       setById('fa-av-notes', 'A/V demo: all notification appliances synchronized; candela verified per plan.');
       setById('fa-door-notes', 'Door holders released on alarm and re-latched on reset.');
     } else if (sysKey === 'sprinkler') {

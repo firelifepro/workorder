@@ -79,8 +79,6 @@ async function drawReportHeader(H) {
     });
   } catch (_) {}
 
-  // Thin divider between the logo and the company text (same combined box).
-  page.drawRectangle({ x: infoX - 3, y: ry(logoAreaH) + 4, width: 0.5, height: logoAreaH - 8, color: sky });
   const compLines = [
     { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(7.5) },
     { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7)   },
@@ -2085,6 +2083,21 @@ async function buildEditablePDFBytes() {
       return rows[rowIdx]?.querySelectorAll('.pf-group')[grpIdx]?.querySelector('.pf-btn.selected')?.textContent?.trim() || '';
     };
     // Returns [leftBoxVal, rightBoxVal] routing FAIL to the right box, PASS/other to the left
+    // Draw a value as a colored PASS/FAIL/N-A cell (like the other reports) instead
+    // of a plain input box; falls back to a normal field for anything else.
+    const pfCell = (val, x, fieldY, w, h) => {
+      const u = (val || '').toUpperCase();
+      const col = (u === 'PASS' || u === 'YES') ? rgb(0.06, 0.50, 0.22)
+                : u === 'FAIL' ? rgb(0.76, 0.10, 0.10)
+                : u === 'N/A' ? rgb(0.45, 0.50, 0.60) : null;
+      if (col) {
+        page.drawRectangle({ x, y: fieldY, width: w, height: h, color: col, borderColor: sky, borderWidth: 0.3 });
+        const tw = hFont.widthOfTextAtSize(u, sc(6.5));
+        page.drawText(u, { x: x + w / 2 - tw / 2, y: fieldY + (h - sc(6.5)) / 2 + sc(0.5), size: sc(6.5), font: hFont, color: white });
+      } else {
+        mkField(val, x, fieldY, w, h, false);
+      }
+    };
     const pfBoxes = (cardId, rowIdx) => {
       const rows = document.getElementById(cardId)?.querySelectorAll('.inspect-row') || [];
       const grps = rows[rowIdx]?.querySelectorAll('.pf-group') || [];
@@ -2274,7 +2287,8 @@ async function buildEditablePDFBytes() {
       [{label:'EQUIPMENT',w:130},{label:'CONDITION',w:130},{label:'NOTES & OBSERVATIONS',w:280}],
       [1,2,3,4,5].map(n => {
         const row = document.getElementById('fa-onsite-row-'+n);
-        const cond = row?.querySelector('.pf-btn.selected')?.textContent?.trim() || '';
+        const selBtn = row?.querySelector('.pf-btn.selected');
+        const cond = selBtn ? (selBtn.classList.contains('pass') ? 'PASS' : selBtn.classList.contains('fail') ? 'FAIL' : 'N/A') : '';
         return [dv('fa-onsite-eq-'+n), cond, dv('fa-onsite-notes-'+n)];
       }),
       14, 2, [1]   // wrapCol: NOTES auto-grow; pfCols: CONDITION as colored PASS/FAIL
@@ -2293,8 +2307,8 @@ async function buildEditablePDFBytes() {
       checkPage(sc(18));
       const [v1, v2] = pfBoxes('fa-av-card', i);
       wrap(lbl,6.5,PW-84).forEach((l,li,arr) => page.drawText(l, { x:ML+2, y:ry(sc(16))+(arr.length-1-li)*8+4, size:6.5, font:rFont, color:blk }));
-      mkField(v1, ML+PW-80, ry(sc(14))+1, 36, 12, false);
-      mkField(v2, ML+PW-42, ry(sc(14))+1, 36, 12, false);
+      pfCell(v1, ML+PW-80, ry(sc(14))+1, 36, 12);
+      pfCell(v2, ML+PW-42, ry(sc(14))+1, 36, 12);
       curY += sc(17);
     });
     dataRow([{ label:'A/V NOTES', val: dv('fa-av-notes'), w: PW }], 16, 8, 3);
@@ -2308,8 +2322,8 @@ async function buildEditablePDFBytes() {
       checkPage(sc(18));
       const [v1, v2] = pfBoxes('fa-door-card', i);
       wrap(lbl,6.5,PW-84).forEach((l,li,arr) => page.drawText(l, { x:ML+2, y:ry(sc(16))+(arr.length-1-li)*8+4, size:6.5, font:rFont, color:blk }));
-      mkField(v1, ML+PW-80, ry(sc(14))+1, 36, 12, false);
-      mkField(v2, ML+PW-42, ry(sc(14))+1, 36, 12, false);
+      pfCell(v1, ML+PW-80, ry(sc(14))+1, 36, 12);
+      pfCell(v2, ML+PW-42, ry(sc(14))+1, 36, 12);
       curY += sc(17);
     });
     dataRow([{ label:'DOOR HOLDER NOTES', val: dv('fa-door-notes'), w: PW }], 16, 8, 3);
@@ -2319,8 +2333,8 @@ async function buildEditablePDFBytes() {
     {
       const [v1, v2] = pfBoxes('fa-hvac-card', 0);
       page.drawText('HVAC SHUT DOWN PRESENT?', { x:ML+2, y:ry(sc(16))+4, size:6.5, font:rFont, color:blk });
-      mkField(v1, ML+PW-80, ry(sc(14))+1, 36, 12, false);
-      mkField(v2, ML+PW-42, ry(sc(14))+1, 36, 12, false);
+      pfCell(v1, ML+PW-80, ry(sc(14))+1, 36, 12);
+      pfCell(v2, ML+PW-42, ry(sc(14))+1, 36, 12);
       curY += sc(17);
     }
     dataRow([
@@ -2387,15 +2401,10 @@ async function buildEditablePDFBytes() {
     gap(6);
     subHdr('FAILED BATTERIES (IF APPLICABLE)');
     while (batRows.length < 4) batRows.push(Array(4).fill(''));
-    const batPairs = [];
-    for (let i = 0; i < batRows.length; i+=2) {
-      batPairs.push([...(batRows[i]||Array(4).fill('')), ...(batRows[i+1]||Array(4).fill(''))]);
-    }
-    while (batPairs.length < 3) batPairs.push(Array(8).fill(''));
+    // One battery per row (was two-per-row); LOCATIONS wraps.
     table(
-      [{label:'SIZE (AH)',w:68},{label:'TYPE',w:68},{label:'COUNT',w:67},{label:'LOCATIONS',w:67},
-       {label:'SIZE (AH)',w:68},{label:'TYPE',w:68},{label:'COUNT',w:67},{label:'LOCATIONS',w:67}],
-      batPairs, 14
+      [{label:'SIZE (AH)',w:90},{label:'TYPE',w:120},{label:'COUNT',w:80},{label:'LOCATIONS',w:250}],
+      batRows.map(r => [r[0]||'', r[1]||'', r[2]||'', r[3]||'']), 14, 3
     );
     gap(6);
     subHdr('GENERAL NOTES & SITE OBSERVATIONS');
