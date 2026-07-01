@@ -216,9 +216,15 @@ function addSPNoteRow() {
 
 function setFAPF(btn) {
   const group = btn.closest('.pf-group');
+  const inspRow = btn.closest('.inspect-row');
+  // Toggle off if this button is already selected (second click deselects).
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+    inspRow?.querySelector('.fa-static-defic')?.remove();
+    return;
+  }
   group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
-  const inspRow = btn.closest('.inspect-row');
   if (!inspRow) return;
   let deficDiv = inspRow.querySelector('.fa-static-defic');
   if (btn.classList.contains('fail')) {
@@ -679,6 +685,13 @@ function setOnsiteCond(btn, n, state) {
   // Toggle button styles in the pair
   const row = document.getElementById('fa-onsite-row-' + n);
   if (!row) return;
+  // Toggle off if already selected (second click deselects).
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+    _onsiteUnsat[n] = false;
+    removeOnsiteDeficRow(n);
+    return;
+  }
   row.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
 

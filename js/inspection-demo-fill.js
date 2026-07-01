@@ -240,6 +240,8 @@
     } else if (sysKey === 'sprinkler') {
       call('addSPDrainRow', 'Riser 1 — North', '55', '48', '52'); call('addSPDrainRow', 'Riser 2 — South', '58', '50', '54');
       repeat('addSPDeficRow', 2); repeat('addSPNoteRow', 2);
+      // Overview (Y/N/NA + Inspecting?) and 3&5-year (Applicable? + Inspecting?) toggles.
+      randomCheckGroups(['#step-sp-overview', '#step-sp-inspection']);
     } else if (sysKey === 'exit-sign-lighting') {
       repeat('addELRow', 3); repeat('addESRow', 3);
     } else if (sysKey === 'fire-smoke-damper') {

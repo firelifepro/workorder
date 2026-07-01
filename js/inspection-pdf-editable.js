@@ -41,7 +41,7 @@ async function drawReportHeader(H) {
 
   // ── Title banner (leave white space above so printers don't clip the top) ──
   const TOP_PAD = 18, titleH = sc(22);
-  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: FIRE_RED });
+  page.drawRectangle({ x: 0, y: PH - TOP_PAD - titleH, width: W, height: titleH, color: navy });
   page.drawText(title, { x: W / 2 - hFont.widthOfTextAtSize(title, sc(13)) / 2, y: PH - TOP_PAD - titleH + sc(5), size: sc(13), font: hFont, color: white });
   cy = TOP_PAD + titleH + sc(6);
 
@@ -87,7 +87,8 @@ async function drawReportHeader(H) {
     { text: 'Office: (720) 974-1570',             bold: false, sz: sc(7)   },
     { text: 'Alan.antonio@firelifeprotectionsystems.com', bold: false, sz: sc(7) },
   ];
-  let compY = ry(logoAreaH) + logoAreaH - sc(9);
+  // Start the text ~2 lines lower so it centers against the logo (box unchanged).
+  let compY = ry(logoAreaH) + logoAreaH - sc(26);
   compLines.forEach(cl => {
     const fnt = cl.bold ? hFont : rFont;
     // Auto-shrink any line (e.g. the long email) so it stays on ONE line inside the box.
@@ -2113,6 +2114,44 @@ async function buildEditablePDFBytes() {
       return [g0 !== 'FAIL' ? g0 : '', g0 === 'FAIL' ? 'FAIL' : ''];
     };
 
+    // Render an auxiliary check as a fire-pump-style "inspection result" row: a
+    // full-width tinted row (green PASS / red FAIL / gray N/A) with a colored result
+    // pill on the right, and — on FAIL — the deficiency box beneath it.
+    const green = rgb(0.06, 0.50, 0.22), red = rgb(0.76, 0.10, 0.10), slate = rgb(0.45, 0.50, 0.60);
+    const auxResultRow = (cardId, rowIdx, label) => {
+      const rows = document.getElementById(cardId)?.querySelectorAll('.inspect-row') || [];
+      const rowEl = rows[rowIdx];
+      const [v1, v2] = pfBoxes(cardId, rowIdx);
+      let result = (v2 === 'FAIL') ? 'FAIL' : (v1 || '').toUpperCase(); // PASS / YES / N/A / FAIL
+      const disp = result === 'YES' ? 'PASS' : result;
+      const deficTxt = rowEl?.querySelector('.fa-static-defic input')?.value?.trim() || '';
+      const labelLines = wrap(label, sc(7), PW - 54);
+      const rowH = Math.max(sc(14), labelLines.length * sc(8) + sc(6));
+      checkPage(rowH + (result === 'FAIL' && deficTxt ? sc(13) : 0) + 1);
+      const bg = disp === 'PASS' ? rgb(0.94, 0.99, 0.95) : disp === 'FAIL' ? rgb(0.99, 0.93, 0.93) : rgb(0.97, 0.97, 0.97);
+      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
+      labelLines.forEach((line, li) => page.drawText(line, { x: ML+4, y: ry(rowH) + rowH - sc(7) - li*sc(8), size: sc(7), font: rFont, color: navy }));
+      const bColor = disp === 'PASS' ? green : disp === 'FAIL' ? red : (disp ? slate : lgray);
+      const bW = 44, bX = ML + PW - bW - 2;
+      page.drawRectangle({ x: bX, y: ry(rowH)+1, width: bW, height: rowH-2, color: bColor });
+      if (disp) {
+        const tw = hFont.widthOfTextAtSize(disp, sc(6.5));
+        page.drawText(disp, { x: bX + bW/2 - tw/2, y: ry(rowH) + rowH/2 - sc(2.5), size: sc(6.5), font: hFont, color: white });
+      }
+      curY += rowH + 3;
+      if (result === 'FAIL' && deficTxt) {
+        const dLines = wrap('Deficiency: ' + deficTxt, sc(7), PW - 12);
+        const defH = Math.max(sc(12), dLines.length * sc(9) + sc(4));
+        checkPage(defH + 2);
+        page.drawRectangle({ x: ML+4, y: ry(defH), width: PW-4, height: defH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
+        const df = form.createTextField(fid());
+        df.setText('Deficiency: ' + deficTxt); df.enableMultiline();
+        df.addToPage(page, { x: ML+6, y: ry(defH)+1, width: PW-10, height: defH-2, font: rFont });
+        df.setFontSize(sc(7));
+        curY += defH + 3;
+      }
+    };
+
     // Collect device table rows — query DOM directly so gaps from deletions are handled
     const collectRows = (prefix, fields) =>
       [...document.querySelectorAll(`[id^="${prefix}-row-"]`)].map(row => {
@@ -2303,14 +2342,7 @@ async function buildEditablePDFBytes() {
       'IF PRESENT - WHEN IN ALARM, LIGHTING IS SYNCHRONIZED?',
       'IF PRESENT - ALL LIGHTING APPLIANCES ARE UNOBSTRUCTED AND CLEARLY VISIBLE?',
       'AUDIBLE NOTIFICATION PRESENT? (TO INCLUDE BELLS, CHIMES, & HORNS & COMBOS)',
-    ].forEach((lbl, i) => {
-      checkPage(sc(18));
-      const [v1, v2] = pfBoxes('fa-av-card', i);
-      wrap(lbl,6.5,PW-84).forEach((l,li,arr) => page.drawText(l, { x:ML+2, y:ry(sc(16))+(arr.length-1-li)*8+4, size:6.5, font:rFont, color:blk }));
-      pfCell(v1, ML+PW-80, ry(sc(14))+1, 36, 12);
-      pfCell(v2, ML+PW-42, ry(sc(14))+1, 36, 12);
-      curY += sc(17);
-    });
+    ].forEach((lbl, i) => auxResultRow('fa-av-card', i, lbl));
     dataRow([{ label:'A/V NOTES', val: dv('fa-av-notes'), w: PW }], 16, 8, 3);
     gap(4);
     subHdr('DOOR HOLDER FUNCTIONALITY - ANNUAL ONLY');
@@ -2318,25 +2350,11 @@ async function buildEditablePDFBytes() {
       'DOOR HOLDER HARDWARE PRESENT (TO INCLUDE MAGNETIC LOCKS, CARD ACCESS)',
       'IF PRESENT - ALL DOOR HARDWARE FREE FROM DAMAGE?',
       'IF PRESENT - ALL DOOR RELEASE AND CLOSE AS INTENDED UPON ALARM ACTIVATION?',
-    ].forEach((lbl, i) => {
-      checkPage(sc(18));
-      const [v1, v2] = pfBoxes('fa-door-card', i);
-      wrap(lbl,6.5,PW-84).forEach((l,li,arr) => page.drawText(l, { x:ML+2, y:ry(sc(16))+(arr.length-1-li)*8+4, size:6.5, font:rFont, color:blk }));
-      pfCell(v1, ML+PW-80, ry(sc(14))+1, 36, 12);
-      pfCell(v2, ML+PW-42, ry(sc(14))+1, 36, 12);
-      curY += sc(17);
-    });
+    ].forEach((lbl, i) => auxResultRow('fa-door-card', i, lbl));
     dataRow([{ label:'DOOR HOLDER NOTES', val: dv('fa-door-notes'), w: PW }], 16, 8, 3);
     gap(4);
     subHdr('HVAC CONTROL - ANNUAL ONLY');
-    checkPage(sc(18));
-    {
-      const [v1, v2] = pfBoxes('fa-hvac-card', 0);
-      page.drawText('HVAC SHUT DOWN PRESENT?', { x:ML+2, y:ry(sc(16))+4, size:6.5, font:rFont, color:blk });
-      pfCell(v1, ML+PW-80, ry(sc(14))+1, 36, 12);
-      pfCell(v2, ML+PW-42, ry(sc(14))+1, 36, 12);
-      curY += sc(17);
-    }
+    auxResultRow('fa-hvac-card', 0, 'HVAC SHUT DOWN PRESENT?');
     dataRow([
       { label:'HVAC METHOD', val: dv('fa-hvac-method'), w: PW/2 },
       { label:'HVAC NOTES',  val: dv('fa-hvac-notes'),  w: PW/2 },
