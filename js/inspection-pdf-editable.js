@@ -46,7 +46,7 @@ async function drawReportHeader(H) {
   cy = TOP_PAD + titleH + sc(6);
 
   // ── Logo + company + right (freq + job) block ──
-  const logoAreaH = sc(96);
+  const logoAreaH = sc(100);
   const logoX = ML, logoW = 84;
   const infoX = ML + logoW + 4, infoW = 200;
   const rtX = infoX + infoW + 6, rtW = ML + PW - rtX;
@@ -113,7 +113,7 @@ async function drawReportHeader(H) {
     page.drawRectangle({ x: rtX, y: jY, width: rtW, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
     const jf = form.createTextField(fid());
     jf.setText(val); jf.addToPage(page, { x: rtX + 1, y: jY + 1, width: rtW - 2, height: sc(10) - 2, font: rFont }); jf.setFontSize(sc(7));
-    jY -= sc(2);
+    jY -= sc(4); // gap below each field box so the next label isn't cramped
   });
   cy += logoAreaH + sc(4);
 
@@ -639,7 +639,7 @@ async function buildSprinklerPDFBytes() {
     curY += LH + FH + GP;
   };
   const gap = (h) => { curY += sc(h); };
-  const table = (hdrs, rows, cellH) => {
+  const table = (hdrs, rows, cellH, wrapCol) => {
     cellH = sc(cellH);
     const drawHdr = () => {
       checkPage(sc(13));
@@ -653,17 +653,23 @@ async function buildSprinklerPDFBytes() {
     };
     drawHdr();
     rows.forEach(row => {
-      if (curY + cellH > PH - MB) { addPage(); drawHdr(); }
+      // When wrapCol is set, that column auto-grows the row so long LOCATIONS/NOTES
+      // text wraps to more lines instead of overflowing on one line.
+      const rowH = (wrapCol != null)
+        ? pdfRowHeight(wrap(String(row[wrapCol]||''), sc(7), hdrs[wrapCol].w-4).length, { lineH: sc(9), pad: sc(4), min: cellH })
+        : cellH;
+      if (curY + rowH > PH - MB) { addPage(); drawHdr(); }
       let x = ML;
       hdrs.forEach((h, i) => {
-        page.drawRectangle({ x, y: ry(cellH), width: h.w, height: cellH, color: gold, borderColor: sky, borderWidth: 0.3 });
+        page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
         const f = form.createTextField(fid());
         f.setText(String(row[i]||''));
-        f.addToPage(page, { x: x+1, y: ry(cellH)+1, width: h.w-2, height: cellH-2, font: rFont });
+        if (wrapCol != null && i === wrapCol) f.enableMultiline();
+        f.addToPage(page, { x: x+1, y: ry(rowH)+1, width: h.w-2, height: rowH-2, font: rFont });
         f.setFontSize(sc(7));
         x += h.w;
       });
-      curY += cellH + 1;
+      curY += rowH + 1;
     });
   };
 
@@ -732,6 +738,7 @@ async function buildSprinklerPDFBytes() {
 
   // NFPA References — two columns
   secHdr('NFPA REFERENCES AND PROCEDURE');
+  gap(3); // breathing room so the reference box doesn't touch the header bar
   const nfpaLeft = [
     'ANNUAL INSPECTIONS (PROPERTY SPECIFIC/IF APPLICABLE)',
     '',
@@ -773,13 +780,18 @@ async function buildSprinklerPDFBytes() {
   checkPage(maxLines * nfpaLineH + 4);
   page.drawRectangle({ x: ML,        y: ry(maxLines * nfpaLineH + 4), width: colW, height: maxLines * nfpaLineH + 4, color: lgray, borderColor: sky, borderWidth: 0.3 });
   page.drawRectangle({ x: ML+colW+4, y: ry(maxLines * nfpaLineH + 4), width: colW, height: maxLines * nfpaLineH + 4, color: lgray, borderColor: sky, borderWidth: 0.3 });
+  // Shrink only the (few) lines wider than the column so titles like
+  // "3 & 5 YEAR INSPECTIONS (PROPERTY SPECIFIC/IF APPLICABLE)" stay inside the box.
+  const fitSize = (ln, fnt) => { let z = sc(6); while (z > sc(4.5) && fnt.widthOfTextAtSize(ln, z) > colW - 8) z -= 0.5; return z; };
   nfpaLeft.forEach((ln, i) => {
     const bold = !ln.startsWith('NFPA') && ln !== '';
-    page.drawText(ln, { x: ML+3, y: ry(maxLines * nfpaLineH + 4) + maxLines * nfpaLineH - i * nfpaLineH - 2, size: sc(6), font: bold ? hFont : rFont, color: blk });
+    const fnt = bold ? hFont : rFont;
+    page.drawText(ln, { x: ML+3, y: ry(maxLines * nfpaLineH + 4) + maxLines * nfpaLineH - i * nfpaLineH - 2, size: fitSize(ln, fnt), font: fnt, color: blk });
   });
   nfpaRight.forEach((ln, i) => {
     const bold = !ln.startsWith('NFPA') && ln !== '';
-    page.drawText(ln, { x: ML+colW+7, y: ry(maxLines * nfpaLineH + 4) + maxLines * nfpaLineH - i * nfpaLineH - 2, size: sc(6), font: bold ? hFont : rFont, color: blk });
+    const fnt = bold ? hFont : rFont;
+    page.drawText(ln, { x: ML+colW+7, y: ry(maxLines * nfpaLineH + 4) + maxLines * nfpaLineH - i * nfpaLineH - 2, size: fitSize(ln, fnt), font: fnt, color: blk });
   });
   curY += maxLines * nfpaLineH + 6;
 
@@ -838,7 +850,7 @@ async function buildSprinklerPDFBytes() {
   ];
   table(
     [{label:'QUESTION',w:180},{label:'Y/N/NA',w:45},{label:'#',w:35},{label:'INSPECTING?',w:65},{label:'LOCATIONS/NOTES',w:PW-325}],
-    ovRows, 14
+    ovRows, 14, 4
   );
   gap(4);
 
@@ -852,7 +864,7 @@ async function buildSprinklerPDFBytes() {
   ];
   table(
     [{label:'SERVICE',w:155},{label:'APPLICABLE?',w:65},{label:'LAST YEAR',w:70},{label:'NEXT YEAR DUE',w:75},{label:'INSPECTING?',w:65},{label:'LOCATION/NOTES',w:PW-430}],
-    y35Rows, 14
+    y35Rows, 14, 5
   );
 
   // ── PAGE 3: PRE-INSPECTION + INSPECTION ITEMS ────────────────────────────────
@@ -949,6 +961,7 @@ async function buildSprinklerPDFBytes() {
     const lbl = el?.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
     inspRow(lbl, id);
   });
+  gap(4); // padding above the next-due-date row
   dataRow([{ label: '5-YEAR ITEMS NEXT DUE DATE', val: fd['sp-5yr-due'] || '', w: PW }]);
 
   // ── PAGE 4: MAIN DRAIN TEST RESULTS ─────────────────────────────────────────
@@ -1353,118 +1366,14 @@ async function buildGenericSystemPDFBytes() {
   // ── PAGE 1: HEADER ──────────────────────────────────────────────────────────
   addPage();
 
-  // Red title banner — leave white space above it so printers don't clip the top.
-  const TOP_PAD = 18;
-  const titleText = SYS_TITLE[sys] || (meta.label.toUpperCase() + ' INSPECTION REPORT');
-  page.drawRectangle({ x: 0, y: PH - TOP_PAD - 22, width: W, height: sc(22), color: FIRE_RED });
-  page.drawText(titleText, {
-    x: W/2 - hFont.widthOfTextAtSize(titleText, sc(12))/2,
-    y: PH - TOP_PAD - 22 + 5, size: sc(12), font: hFont, color: white
+  curY = await drawReportHeader({
+    pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
+    fd: data.fieldData || {},
+    dv: (id) => document.getElementById(id)?.value?.trim() || '',
+    title: SYS_TITLE[sys] || (meta.label.toUpperCase() + ' INSPECTION REPORT'),
+    freqOptions: (sys === 'fire-smoke-damper') ? ['1 YEAR', '4 YEAR', '6 YEAR'] : undefined,
+    C: { FIRE_RED, navy, sky, gold, lgray, white, blk: rgb(0, 0, 0) }
   });
-  curY = TOP_PAD + 22 + 6;
-
-  // Logo + company block  (5 fields × 21pt + 4pt top pad = 109; use 112 for breathing room)
-  const logoAreaH = sc(112);
-  const logoX = ML, logoW = 88;
-  const infoX = ML + logoW + 6, infoW = 162;
-  const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
-
-  try {
-    const svgText = await fetch('logo.svg').then(r => r.text());
-    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
-    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = async () => {
-        const scale = 3;
-        const full = document.createElement('canvas');
-        full.width = 400 * scale; full.height = 600 * scale;
-        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
-        const cropW = 400 * scale, cropH = 445 * scale;
-        const crop = document.createElement('canvas');
-        crop.width = cropW; crop.height = cropH;
-        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
-        const b64 = crop.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const logoImg = await pdfDoc.embedPng(ab);
-        const logoDims = logoImg.scaleToFit(66, 66);
-        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - logoDims.height)/2, width: logoDims.width, height: logoDims.height });
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-      img.src = url;
-    });
-  } catch(_) {}
-
-  // Company info box
-  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-  const compLines = [
-    { text: 'Fire Life Protection Systems, Inc.', bold: true,  sz: sc(9)   },
-    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(8)   },
-    { text: 'Littleton, CO 80127',                bold: false, sz: sc(8)   },
-    { text: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', bold: false, sz: sc(7.5) },
-    { text: 'Alan.antonio@firelifeprotectionsystems.com',       bold: false, sz: sc(7.5) },
-  ];
-  let clY = ry(logoAreaH) + logoAreaH - 9;
-  compLines.forEach(l => {
-    page.drawText(l.text, { x: infoX + 4, y: clY, size: l.sz, font: l.bold ? hFont : rFont, color: navy });
-    clY -= l.sz + 5;
-  });
-
-  // Report info box (right side)
-  page.drawRectangle({ x: rtX, y: ry(logoAreaH), width: rtW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-  const rtFields = [
-    { label: 'DATE', val: data.inspection.date || '' },
-    { label: 'REPORT TYPE', val: data.inspection.reportType || '' },
-    { label: 'INSPECTOR', val: data.inspection.inspectorName || '' },
-    { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
-    { label: 'NFPA REF.', val: data.inspection.nfpaRef || NFPA_REF[sys] || '' },
-  ];
-  // 5 fields × 21pt (6 label + 2 gap + 10 box + 3 bottom) + 4 top pad = 109pt ≤ 112
-  let rfY = ry(logoAreaH) + logoAreaH - 4;
-  rtFields.forEach(f => {
-    rfY -= 6; // label line height
-    page.drawText(f.label + ':', { x: rtX+3, y: rfY, size: sc(6), font: hFont, color: slate });
-    rfY -= 2; // gap label→box
-    page.drawRectangle({ x: rtX+2, y: rfY - 10, width: rtW-4, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
-    const tf = form.createTextField(fid());
-    tf.setText(f.val); tf.addToPage(page, { x: rtX+4, y: rfY-9, width: rtW-8, height: sc(8), font: rFont }); tf.setFontSize(sc(7));
-    rfY -= 13; // box (10) + bottom gap (3)
-  });
-  curY += logoAreaH + 4;
-
-  // Property block
-  secHdr('PROPERTY INFORMATION');
-  gap(3);
-  const propAddress = data.property.address || data.property.name || '';
-  const propCSZ     = data.property.cityStateZip || '';
-  const propMgr     = data.property.contact || '';
-  const propEmail   = data.property.contactEmail || '';
-  // Street address
-  if (propAddress) {
-    wrap(propAddress, sc(8), PW - 8).forEach(line => {
-      checkPage(sc(12));
-      page.drawText(line, { x: ML+4, y: ry(sc(12))+3, size: sc(8), font: rFont, color: navy });
-      curY += sc(12);
-    });
-  }
-  // City, State, ZIP
-  if (propCSZ) {
-    checkPage(sc(12));
-    page.drawText(propCSZ, { x: ML+4, y: ry(sc(12))+3, size: sc(8), font: rFont, color: navy });
-    curY += sc(12);
-  }
-  // Property manager and email
-  const mgr = [propMgr ? 'Property Manager: ' + propMgr : '', propEmail ? 'Email: ' + propEmail : ''].filter(Boolean).join('   |   ');
-  if (mgr) {
-    wrap(mgr, sc(7.5), PW - 8).forEach(line => {
-      checkPage(sc(11));
-      page.drawText(line, { x: ML+4, y: ry(sc(11))+3, size: sc(7.5), font: rFont, color: slate });
-      curY += sc(11);
-    });
-  }
   gap(4);
 
   // Overall status bar
@@ -1825,98 +1734,12 @@ async function buildExitSignLightingPDFBytes() {
 
   // ── HEADER (same logo pattern as other PDFs) ─────────────────────────────
   addPage();
-  // Leave white space above the banner so printers don't clip the top edge.
-  const TOP_PAD = 18;
-  const titleText = 'EXIT SIGN & EMERGENCY LIGHTING INSPECTION REPORT';
-  page.drawRectangle({ x: 0, y: PH - TOP_PAD - 22, width: W, height: sc(22), color: FIRE_RED });
-  page.drawText(titleText, {
-    x: W/2 - hFont.widthOfTextAtSize(titleText, sc(11))/2,
-    y: PH - TOP_PAD - 22 + 5, size: sc(11), font: hFont, color: white
-  });
-  curY = TOP_PAD + 22 + 6;
-
-  const logoAreaH = sc(84);
-  const logoX = ML, logoW = 88;
-  const infoX = ML + logoW + 6, infoW = 162;
-  const rtX = infoX + infoW + 6, rtW = PW - logoW - infoW - 18;
-
-  try {
-    const svgText = await fetch('logo.svg').then(r => r.text());
-    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
-    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = async () => {
-        const scale = 3;
-        const full = document.createElement('canvas');
-        full.width = 400 * scale; full.height = 600 * scale;
-        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
-        const cropW = 400 * scale, cropH = 445 * scale;
-        const crop = document.createElement('canvas');
-        crop.width = cropW; crop.height = cropH;
-        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
-        const b64 = crop.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const logoImg = await pdfDoc.embedPng(ab);
-        const logoDims = logoImg.scaleToFit(66, 66);
-        page.drawImage(logoImg, { x: logoX, y: ry(logoAreaH) + (logoAreaH - logoDims.height)/2, width: logoDims.width, height: logoDims.height });
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-      img.src = url;
-    });
-  } catch(_) {}
-
-  page.drawRectangle({ x: infoX, y: ry(logoAreaH), width: infoW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-  const compLines2 = [
-    { text: 'Fire Life Protection Systems, Inc.', bold: true, sz: sc(7.5) },
-    { text: '8201 Shaffer Parkway Suite B',       bold: false, sz: sc(7) },
-    { text: 'Littleton, CO 80127',                bold: false, sz: sc(7) },
-    { text: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', bold: false, sz: sc(6.5) },
-    { text: 'Alan.antonio@firelifeprotectionsystems.com',       bold: false, sz: sc(6.5) },
-  ];
-  let clY2 = ry(logoAreaH) + logoAreaH - 8;
-  compLines2.forEach(l => {
-    page.drawText(l.text, { x: infoX+4, y: clY2, size: l.sz, font: l.bold ? hFont : rFont, color: navy });
-    clY2 -= l.sz + 4;
-  });
-
-  page.drawRectangle({ x: rtX, y: ry(logoAreaH), width: rtW, height: logoAreaH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-  const rtFields2 = [
-    { label: 'DATE',         val: data.inspection.date || '' },
-    { label: 'REPORT TYPE',  val: data.inspection.reportType || '' },
-    { label: 'INSPECTOR',    val: data.inspection.inspectorName || '' },
-    { label: 'LICENSE/CERT', val: data.inspection.inspectorCert || '' },
-    { label: 'NFPA REF.',    val: data.inspection.nfpaRef || 'NFPA 101' },
-  ];
-  let rfY2 = ry(logoAreaH) + logoAreaH - 7;
-  rtFields2.forEach(f => {
-    page.drawText(f.label + ':', { x: rtX+3, y: rfY2, size: sc(5.5), font: hFont, color: slate });
-    // gold box sits 2pt below the label baseline (top fixed) and grows downward so
-    // the value text has more vertical room and isn't clipped at the descenders
-    page.drawRectangle({ x: rtX+2, y: rfY2-12, width: rtW-4, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
-    const tf = form.createTextField(fid());
-    tf.setText(f.val); tf.addToPage(page, { x: rtX+3, y: rfY2-11, width: rtW-6, height: sc(8), font: rFont }); tf.setFontSize(sc(7));
-    rfY2 -= 16;
-  });
-  curY += logoAreaH + 4;
-
-  // Property
-  secHdr('PROPERTY INFORMATION');
-  const propName = data.property.name || 'Property Not Selected';
-  const addrLine = [data.property.address, data.property.cityStateZip].filter(Boolean).join('  |  ');
-  [
-    { text: propName, sz: sc(10), font: hFont, color: navy },
-    { text: addrLine, sz: sc(8), font: rFont, color: navy },
-  ].forEach(l => {
-    if (!l.text) return;
-    wrap(l.text, l.sz, PW - 8).forEach(line => {
-      checkPage(l.sz + 4);
-      page.drawText(line, { x: ML+4, y: ry(l.sz+4)+2, size: l.sz, font: l.font, color: l.color });
-      curY += l.sz + 4;
-    });
+  curY = await drawReportHeader({
+    pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
+    fd: data.fieldData || {},
+    dv: (id) => document.getElementById(id)?.value?.trim() || '',
+    title: 'EXIT SIGN & EMERGENCY LIGHTING INSPECTION REPORT',
+    C: { FIRE_RED, navy, sky, gold, lgray, white, blk: rgb(0, 0, 0) }
   });
   gap(4);
 
@@ -2239,109 +2062,13 @@ async function buildEditablePDFBytes() {
     // ── PAGE 1: Header + Property + NFPA ─────────────────────────────────────
     addPage();
 
-    // Red title banner
-    const FIRE_RED = rgb(0.72, 0.08, 0.08);
-    const titleH = sc(22);
-    page.drawRectangle({ x: ML, y: ry(titleH), width: PW, height: titleH, color: FIRE_RED });
-    page.drawText('FIRE ALARM INSPECTION REPORT', { x: ML+PW/2-97, y: ty(titleH,7), size: sc(13), font: hFont, color: white });
-    curY += titleH + 1;
-
-    // Info block: left=logo+company (315pt), right=report type+fields (225pt)
-    const iH = sc(106);
-    const divX = ML + 315;
-    const rcW = ML + PW - divX;
-
-    // Left background
-    page.drawRectangle({ x: ML, y: ry(iH), width: 313, height: iH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-
-    // Load FLPS logo from SVG file → canvas → PNG → pdf-lib
-    let logoImg = null;
-    try {
-      const svgResp = await fetch('logo.svg');
-      const svgText = await svgResp.text();
-      // Inject explicit dimensions so all browsers render SVG at a known pixel size
-      const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
-      const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
-      const svgUrl  = URL.createObjectURL(svgBlob);
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          // Step 1: Render full SVG to canvas at 3× scale (guaranteed 400×600 coordinate space)
-          const scale = 3;
-          const fullCanvas = document.createElement('canvas');
-          fullCanvas.width = 400 * scale; fullCanvas.height = 600 * scale;
-          fullCanvas.getContext('2d').drawImage(img, 0, 0, fullCanvas.width, fullCanvas.height);
-          // Step 2: Crop just the shield+flame (SVG y=0 to y=445, full width)
-          const cropW = 400 * scale, cropH = 445 * scale;
-          const canvas = document.createElement('canvas');
-          canvas.width = cropW; canvas.height = cropH;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(fullCanvas, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
-          URL.revokeObjectURL(svgUrl);
-          const dataUrl = canvas.toDataURL('image/png');
-          const b64 = dataUrl.split(',')[1];
-          const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-          pdfDoc.embedPng(ab).then(i => { logoImg = i; resolve(); }).catch(resolve);
-        };
-        img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve(); };
-        img.src = svgUrl;
-      });
-    } catch(_) {}
-
-    // Draw logo (transparent PNG — no background square needed)
-    if (logoImg) {
-      const logoS = 70;
-      const dims  = logoImg.scaleToFit(logoS, logoS);
-      page.drawImage(logoImg, {
-        x: ML + 2,
-        y: ry(iH) + (iH - dims.height) / 2,
-        width:  dims.width,
-        height: dims.height,
-      });
-    }
-
-    // Company info text
-    const compX = ML + 65;
-    const compInfo = [
-      { t: 'Fire Life Protection Systems, Inc.', sz: sc(8.5), f: hFont },
-      { t: '8201 Shaffer Parkway Suite B',        sz: sc(7.5), f: rFont },
-      { t: 'Littleton, CO 80127',                sz: sc(7.5), f: rFont },
-      { t: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', sz: sc(7), f: rFont },
-      { t: 'Alan.antonio@firelifeprotectionsystems.com', sz: sc(7), f: rFont },
-    ];
-    let clY = ry(iH) + iH - 10;
-    compInfo.forEach(l => { page.drawText(l.t, { x: compX, y: clY, size: l.sz, font: l.f, color: navy }); clY -= l.sz + 4; });
-
-    // Right column: ANNUAL/SEMI-ANNUAL/QUARTERLY
-    const rtCur = (data.inspection?.reportType || '').toUpperCase();
-    const rtBoxH = sc(15);
-    const rtBW = rcW / 3;
-    ['ANNUAL','SEMI-ANNUAL','QUARTERLY'].forEach((t, i) => {
-      const sel = rtCur === t || (t === 'SEMI-ANNUAL' && (rtCur === 'SEMI ANNUAL' || rtCur.includes('SEMI')));
-      const bx = divX + i * rtBW;
-      page.drawRectangle({ x: bx, y: ry(iH)+iH-rtBoxH, width: rtBW-1, height: rtBoxH, color: sel ? rgb(1,0.85,0) : white, borderColor: sky, borderWidth: 0.5 });
-      page.drawText(t, { x: bx+3, y: ry(iH)+iH-rtBoxH+5, size: sc(6), font: hFont, color: sel ? rgb(0.4,0.25,0) : navy });
+    curY = await drawReportHeader({
+      pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
+      fd: data.fieldData || {},
+      dv: (id) => document.getElementById(id)?.value?.trim() || '',
+      title: 'FIRE ALARM INSPECTION REPORT',
+      C: { FIRE_RED: rgb(0.72, 0.08, 0.08), navy, sky, gold, lgray, white, blk }
     });
-
-    // Right column: job info fields
-    const jFields = [
-      ['JOB NUMBER', ''],
-      ['PO NUMBER (IF ANY)', ''],
-      ['DATE PERFORMED', data.inspection?.date || ''],
-      ['INSPECTOR', data.inspection?.inspectorName || ''],
-    ];
-    let jY = ry(iH) + iH - rtBoxH - 4;
-    jFields.forEach(([lbl, val]) => {
-      jY -= 7;
-      page.drawText(lbl, { x: divX+2, y: jY, size: sc(5.5), font: hFont, color: navy });
-      jY -= 13;  // 3pt gap between label baseline and box top (was 0 — felt cramped)
-      page.drawRectangle({ x: divX, y: jY, width: rcW, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
-      const jf = form.createTextField(fid());
-      jf.setText(val); jf.addToPage(page, { x: divX+1, y: jY+1, width: rcW-2, height: sc(8), font: rFont }); jf.setFontSize(sc(7));
-      jY -= 2;
-    });
-
-    curY += iH + 4;
 
     // Overall System Status bar — full width, prominently colored
     {
@@ -2357,12 +2084,7 @@ async function buildEditablePDFBytes() {
       curY += stH + 4;
     }
 
-    // Property + contact info
-    dataRow([{ label: 'BUILDING/PROPERTY NAME', val: data.property?.name || '', w: PW }]);
-    dataRow([
-      { label: 'SERVICE ADDRESS',    val: data.property?.address || '',     w: PW*0.6 },
-      { label: 'CITY / STATE / ZIP', val: data.property?.cityStateZip || '', w: PW*0.4 },
-    ]);
+    // Property name + address are drawn by the shared header above; continue with contact info.
     gap(6);
     subHdr('SITE CONTACT INFORMATION');
     dataRow([
@@ -2802,94 +2524,13 @@ async function buildHoodPDFBytes() {
   // ── PAGE 1 ─────────────────────────────────────────────────────────────────
   addPage();
 
-  // Red title banner
-  page.drawRectangle({ x: ML, y: ry(sc(22)), width: PW, height: sc(22), color: FIRE_RED });
-  page.drawText('KITCHEN HOOD SUPPRESSION INSPECTION REPORT', {
-    x: ML + PW/2 - hFont.widthOfTextAtSize('KITCHEN HOOD SUPPRESSION INSPECTION REPORT', sc(12))/2,
-    y: ty(sc(22), sc(7)), size: sc(12), font: hFont, color: white
+  curY = await drawReportHeader({
+    pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
+    fd: data.fieldData || {},
+    dv,
+    title: 'KITCHEN HOOD SUPPRESSION INSPECTION REPORT',
+    C: { FIRE_RED, navy, sky, gold, lgray, white, blk }
   });
-  curY += sc(23);
-
-  // Info block: left = logo + company (315pt), right = report type + fields (225pt)
-  const iH = sc(100);
-  const divX = ML + 315;
-  const rcW  = ML + PW - divX;
-
-  page.drawRectangle({ x: ML, y: ry(iH), width: 313, height: iH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-
-  // Logo
-  try {
-    const svgText = await fetch('logo.svg').then(r => r.text());
-    const sizedSvg = svgText.replace('<svg ', '<svg width="400" height="600" ');
-    const svgBlob = new Blob([sizedSvg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = async () => {
-        const scale = 3;
-        const full = document.createElement('canvas');
-        full.width = 400 * scale; full.height = 600 * scale;
-        full.getContext('2d').drawImage(img, 0, 0, full.width, full.height);
-        const cropW = 400 * scale, cropH = 445 * scale;
-        const crop = document.createElement('canvas');
-        crop.width = cropW; crop.height = cropH;
-        crop.getContext('2d').drawImage(full, 0, 0, cropW, cropH, 0, 0, cropW, cropH);
-        const b64 = crop.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const logoImg = await pdfDoc.embedPng(ab);
-        const logoDims = logoImg.scaleToFit(60, 60);
-        page.drawImage(logoImg, { x: ML+4, y: ry(iH)+(iH-logoDims.height)/2, width: logoDims.width, height: logoDims.height });
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-      img.src = url;
-    });
-  } catch(_) {}
-
-  // Company info
-  const compX = ML + 70;
-  const compInfo = [
-    { t: 'Fire Life Protection Systems, Inc.', sz: sc(8), f: hFont },
-    { t: '8201 Shaffer Parkway Suite B',       sz: sc(7.5), f: rFont },
-    { t: 'Littleton, CO 80127',                sz: sc(7.5), f: rFont },
-    { t: 'Cell: (303) 726-8847  |  Office: (720) 974-1570', sz: sc(7), f: rFont },
-    { t: 'Alan.antonio@firelifeprotectionsystems.com',       sz: sc(7), f: rFont },
-  ];
-  let clY = ry(iH) + iH - 10;
-  compInfo.forEach(l => { page.drawText(l.t, { x: compX, y: clY, size: l.sz, font: l.f, color: navy }); clY -= l.sz + 4; });
-
-  // Right column: ANNUAL / SEMI-ANNUAL
-  const rtCur = (data.inspection?.reportType || '').toUpperCase();
-  const rtBoxH = sc(15);
-  const rtBW = rcW / 2;
-  ['ANNUAL', 'SEMI-ANNUAL'].forEach((t, i) => {
-    const sel = rtCur === t || (t === 'SEMI-ANNUAL' && rtCur.includes('SEMI'));
-    const bx = divX + i * rtBW;
-    page.drawRectangle({ x: bx, y: ry(iH)+iH-rtBoxH, width: rtBW-1, height: rtBoxH, color: sel ? rgb(1,0.85,0) : white, borderColor: sky, borderWidth: 0.5 });
-    page.drawText(t, { x: bx+3, y: ry(iH)+iH-rtBoxH+5, size: sc(6), font: hFont, color: sel ? rgb(0.4,0.25,0) : navy });
-  });
-
-  const jFields = [
-    ['DATE PERFORMED', data.inspection?.date || ''],
-    ['INSPECTOR',      data.inspection?.inspectorName || ''],
-    ['LICENSE / CERT', data.inspection?.inspectorCert || ''],
-    ['NFPA REFERENCE', 'NFPA 96 / 17A'],
-  ];
-  let jY = ry(iH) + iH - rtBoxH - 3;
-  jFields.forEach(([lbl, val]) => {
-    jY -= 6;
-    page.drawText(lbl, { x: divX+2, y: jY, size: sc(5.5), font: hFont, color: navy });
-    jY -= 1;
-    jY -= 12;
-    page.drawRectangle({ x: divX, y: jY, width: rcW, height: sc(12), color: gold, borderColor: sky, borderWidth: 0.3 });
-    const jf = form.createTextField(fid());
-    jf.setText(val);
-    jf.addToPage(page, { x: divX+1, y: jY+1, width: rcW-2, height: sc(10), font: rFont });
-    jf.setFontSize(sc(7));
-    jY -= 1;
-  });
-  curY += iH + 4;
 
   // Overall status bar
   const stVal = (data.overallStatus || '').toUpperCase();
@@ -2901,12 +2542,7 @@ async function buildHoodPDFBytes() {
   curY += sc(18);
   gap(6);
 
-  // Property info
-  dataRow([{ label: 'BUILDING / PROPERTY NAME', val: data.property?.name || '', w: PW }]);
-  dataRow([
-    { label: 'SERVICE ADDRESS',    val: data.property?.address || '',      w: PW * 0.6 },
-    { label: 'CITY / STATE / ZIP', val: data.property?.cityStateZip || '', w: PW * 0.4 },
-  ]);
+  // Property name + address are drawn by the shared header above; continue with contact info.
   const phoneVal = dv('property-contact-phone');
   dataRow([
     { label: 'PROPERTY CONTACT', val: data.property?.contact || '', w: PW / 3 },
