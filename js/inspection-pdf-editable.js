@@ -191,7 +191,7 @@ async function buildExtinguisherPDFBytes() {
   };
   const gap = (h) => { curY += sc(h); };
 
-  const dv = (id) => document.getElementById(id)?.value?.trim() || '';
+  const dv = (id) => pdfSafe(document.getElementById(id)?.value?.trim() || '');
   const fd = data.fieldData || {};
 
   // ── PAGE 1: COVER (shared header) ────────────────────────────────────────────
@@ -710,7 +710,7 @@ async function buildSprinklerPDFBytes() {
     });
   };
 
-  const dv = (id) => document.getElementById(id)?.value?.trim() || '';
+  const dv = (id) => pdfSafe(document.getElementById(id)?.value?.trim() || '');
   const fd = data.fieldData || {};
   const spPF = (rowId) => {
     const val = document.getElementById('row-' + rowId)?.dataset?.val || '';
@@ -1410,7 +1410,7 @@ async function buildGenericSystemPDFBytes() {
   curY = await drawReportHeader({
     pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
     fd: data.fieldData || {},
-    dv: (id) => document.getElementById(id)?.value?.trim() || '',
+    dv: (id) => pdfSafe(document.getElementById(id)?.value?.trim() || ''),
     title: SYS_TITLE[sys] || (meta.label.toUpperCase() + ' INSPECTION REPORT'),
     freqOptions: (sys === 'fire-smoke-damper') ? ['1 YEAR', '4 YEAR', '6 YEAR'] : undefined,
     C: { FIRE_RED, navy, sky, gold, lgray, white, blk: rgb(0, 0, 0) }
@@ -1780,7 +1780,7 @@ async function buildExitSignLightingPDFBytes() {
   curY = await drawReportHeader({
     pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
     fd: data.fieldData || {},
-    dv: (id) => document.getElementById(id)?.value?.trim() || '',
+    dv: (id) => pdfSafe(document.getElementById(id)?.value?.trim() || ''),
     title: 'EXIT SIGN & EMERGENCY LIGHTING INSPECTION REPORT',
     C: { FIRE_RED, navy, sky, gold, lgray, white, blk: rgb(0, 0, 0) }
   });
@@ -2070,7 +2070,7 @@ async function buildEditablePDFBytes() {
     };
 
     // Helpers to read DOM values
-    const dv = (id) => document.getElementById(id)?.value?.trim() || '';
+    const dv = (id) => pdfSafe(document.getElementById(id)?.value?.trim() || '');
     const fd = data.fieldData || {};
     const getYNA = (el) => {
       if (!el) return 'N/A';
@@ -2172,7 +2172,7 @@ async function buildEditablePDFBytes() {
     curY = await drawReportHeader({
       pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW, fid, data,
       fd: data.fieldData || {},
-      dv: (id) => document.getElementById(id)?.value?.trim() || '',
+      dv: (id) => pdfSafe(document.getElementById(id)?.value?.trim() || ''),
       title: 'FIRE ALARM INSPECTION REPORT',
       C: { FIRE_RED: rgb(0.72, 0.08, 0.08), navy, sky, gold, lgray, white, blk }
     });
@@ -2611,7 +2611,7 @@ async function buildHoodPDFBytes() {
     curY += LH + FH + GP;
   };
 
-  const dv   = (id) => document.getElementById(id)?.value?.trim() || '';
+  const dv   = (id) => pdfSafe(document.getElementById(id)?.value?.trim() || '');
   const ddat = (id) => document.getElementById(id)?.dataset?.val?.trim() || '';
 
   // ── PAGE 1 ─────────────────────────────────────────────────────────────────
@@ -2756,7 +2756,7 @@ async function buildHoodPDFBytes() {
     checkPage(sc(22));
     page.drawRectangle({ x: ML, y: ry(sc(20)), width: PW, height: sc(20), color: amber });
     page.drawText('HOOD:', { x: ML+8, y: ty(sc(20), sc(6)), size: sc(7), font: hFont, color: white });
-    page.drawText(hood.identifier || '(not specified)', { x: ML+44, y: ty(sc(20), sc(7)), size: sc(10), font: hFont, color: white });
+    page.drawText(pdfSafe(hood.identifier) || '(not specified)', { x: ML+44, y: ty(sc(20), sc(7)), size: sc(10), font: hFont, color: white });
     curY += sc(20);
     gap(4);
 
@@ -2944,7 +2944,7 @@ async function buildHoodPDFBytes() {
     addPage();
     const contBarH = sc(14);
     page.drawRectangle({ x: ML, y: ry(contBarH), width: PW, height: contBarH, color: amber });
-    page.drawText(`HOOD: ${hood.identifier || '(not specified)'} (continued)`, { x: ML+8, y: ty(contBarH, 4), size: sc(8), font: hFont, color: white });
+    page.drawText(`HOOD: ${pdfSafe(hood.identifier) || '(not specified)'} (continued)`, { x: ML+8, y: ty(contBarH, 4), size: sc(8), font: hFont, color: white });
     curY += contBarH + 4;
     secHdr('SYSTEM DIMENSIONS');
     gap(2);
@@ -3021,7 +3021,7 @@ async function buildHoodPDFBytes() {
     secHdr('GENERAL NOTES & SITE OBSERVATIONS');
     gap(2);
     noteRows.forEach((nrow, idx) => {
-      const ntxt = nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+      const ntxt = pdfSafe(nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '');
       const noteLines = wrap(ntxt, sc(8), PW - 20);
       const rowH = Math.max(sc(16), noteLines.length * sc(11) + sc(8));
       checkPage(rowH + 3);

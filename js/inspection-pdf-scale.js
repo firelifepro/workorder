@@ -36,7 +36,28 @@ function sc(n) {
   return Math.round(n * PDF_SCALE * 2) / 2;
 }
 
+// Make text safe for pdf-lib's StandardFont (WinAnsi/CP1252) encoder, which throws
+// on any character it can't encode (e.g. arrows →, smart quotes, bullets, em dashes)
+// — common when users paste notes from Word/web. Maps the frequent offenders to
+// ASCII and strips anything else outside Latin-1 so PDF generation never crashes.
+function pdfSafe(s) {
+  if (s == null) return s;
+  return String(s)
+    .replace(/[→⇒➡➔]/g, '->')
+    .replace(/[←⇐]/g, '<-')
+    .replace(/↑/g, '^').replace(/↓/g, 'v')
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„]/g, '"')
+    .replace(/[–—―]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[•▪●‣⁃]/g, '*')
+    .replace(/≥/g, '>=').replace(/≤/g, '<=')
+    .replace(/≠/g, '!=')
+    .replace(/[   ]/g, ' ')
+    .replace(/[^\x00-\xff]/g, ''); // strip any remaining non-Latin-1 char
+}
+
 // Dual-environment export: CommonJS for Node tests, globals for the browser.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { PDF_SCALE, sc };
+  module.exports = { PDF_SCALE, sc, pdfSafe };
 }

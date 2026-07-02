@@ -1,5 +1,23 @@
 'use strict';
-const { PDF_SCALE, sc } = require('../js/inspection-pdf-scale.js');
+const { PDF_SCALE, sc, pdfSafe } = require('../js/inspection-pdf-scale.js');
+
+// ── pdfSafe() — WinAnsi safety (pdf-lib StandardFont can't encode arrows etc.) ──
+
+test('pdfSafe maps arrows and strips non-Latin-1 so pdf-lib never throws', () => {
+  assert.strictEqual(pdfSafe('a → b'), 'a -> b');
+  assert.strictEqual(pdfSafe('up ↑ down ↓'), 'up ^ down v');
+  assert.strictEqual(pdfSafe('“smart” ‘quotes’'), '"smart" \'quotes\'');
+  assert.strictEqual(pdfSafe('a — b … c'), 'a - b ... c');
+  assert.strictEqual(pdfSafe('x ≥ 5, y ≤ 3'), 'x >= 5, y <= 3');
+  // Any leftover non-Latin-1 (e.g. an emoji) is stripped, not thrown on.
+  assert.strictEqual(/[^\x00-\xff]/.test(pdfSafe('note 🔥 →')), false);
+});
+
+test('pdfSafe passes through plain ASCII and preserves null/empty', () => {
+  assert.strictEqual(pdfSafe('Plain note 123.'), 'Plain note 123.');
+  assert.strictEqual(pdfSafe(''), '');
+  assert.strictEqual(pdfSafe(null), null);
+});
 
 test('sc() multiplies by PDF_SCALE and rounds to the nearest 0.5pt', () => {
   assert.strictEqual(sc(10), Math.round(10 * PDF_SCALE * 2) / 2);
