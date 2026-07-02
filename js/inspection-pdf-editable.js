@@ -1856,55 +1856,108 @@ async function buildExitSignLightingPDFBytes() {
   const drawDeviceTable = (title, units, colDefs) => {
     if (!units || !units.length) return;
     secHdr(title);
-    // Table header
+    // Each unit spans TWO rows: the data columns, then a full-width COMMENTS row —
+    // this gives LOCATION/TYPE room so they don't collide, and COMMENTS real space.
+    const mainCols = colDefs.filter(c => !c.comment);
+    const commentCol = colDefs.find(c => c.comment);
+    // Header (data columns only)
     checkPage(sc(14));
     let hx = ML;
-    colDefs.forEach(c => {
+    mainCols.forEach(c => {
       page.drawRectangle({ x: hx, y: ry(sc(13)), width: c.w, height: sc(13), color: navy });
-      page.drawText(c.label, { x: hx+2, y: ty(sc(13), sc(4)), size: sc(5.5), font: hFont, color: white });
+      page.drawText(wrap(c.label, sc(5.5), c.w-3)[0] || '', { x: hx+2, y: ty(sc(13), sc(4)), size: sc(5.5), font: hFont, color: white });
       hx += c.w;
     });
     curY += sc(14);
 
     units.forEach((u, idx) => {
       const rowH = sc(13);
-      checkPage(rowH + 1);
+      const cval = commentCol ? String(commentCol.get(u, idx) || '') : '';
+      const cLines = wrap('Comments: ' + cval, sc(6.5), PW - 12);
+      const cH = commentCol ? pdfRowHeight(cLines.length, { lineH: sc(8), pad: sc(3), min: sc(11) }) : 0;
+      checkPage(rowH + cH + 2);
       const bg = u.pf === 'FAIL' ? rgb(0.99, 0.93, 0.93) : u.pf === 'PASS' ? rgb(0.94, 0.99, 0.95) : rgb(0.97, 0.97, 0.97);
+      // Data row — first-line-fit each cell to its column so nothing overflows.
       page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: bg, borderColor: sky, borderWidth: 0.3 });
       let cx = ML;
-      colDefs.forEach(c => {
+      mainCols.forEach(c => {
         const val = String(c.get(u, idx) || '');
         const color = (c.isPF && val === 'FAIL') ? red : (c.isPF && val === 'PASS') ? green : navy;
-        page.drawText(val.slice(0, Math.floor(c.w / 4.5)), { x: cx+2, y: ty(rowH, 4), size: sc(7), font: c.isPF ? hFont : rFont, color });
+        page.drawText(wrap(val, sc(7), c.w - 4)[0] || '', { x: cx+2, y: ty(rowH, sc(4)), size: sc(7), font: c.isPF ? hFont : rFont, color });
         cx += c.w;
       });
-      curY += rowH + 1;
+      curY += rowH;
+      // Comments row (full width, wrapped)
+      if (commentCol) {
+        page.drawRectangle({ x: ML, y: ry(cH), width: PW, height: cH, color: rgb(0.99, 0.99, 0.96), borderColor: sky, borderWidth: 0.3 });
+        cLines.forEach((l, li) => page.drawText(l, { x: ML+6, y: ry(cH) + cH - sc(8) - li*sc(8), size: sc(6.5), font: rFont, color: navy }));
+        curY += cH;
+      }
+      curY += 1;
     });
     gap(6);
   };
 
+  // NFPA references & procedure (emergency lighting + exit signs)
+  {
+    secHdr('NFPA REFERENCES AND PROCEDURE');
+    gap(3);
+    const eslNfpaLines = [
+      'EMERGENCY LIGHTING AND EXIT SIGNAGE ARE REQUIRED TO BE INSPECTED AND TESTED IN ACCORDANCE WITH THE FOLLOWING NFPA REFERENCES:',
+      'EMERGENCY LIGHTING:  NFPA 101 (LIFE SAFETY CODE) 7.9 — AND NFPA 111 WHERE APPLICABLE.',
+      'EXIT SIGNS / MARKING OF MEANS OF EGRESS:  NFPA 101 7.10.',
+      '',
+      'FREQUENCY:  FUNCTIONAL TEST FOR NOT LESS THAN 30 SECONDS MONTHLY; AND A 90-MINUTE FULL-DURATION TEST ANNUALLY',
+      '(NFPA 101 7.9.3).',
+      '',
+      'PROCEDURE:',
+      '  1.  Verify each unit / sign is present, secure, and unobstructed.',
+      '  2.  Confirm exit signs are illuminated with legible legend and correct directional arrows.',
+      '  3.  Activate the 30-second functional test and confirm the lamps illuminate on battery.',
+      '  4.  Perform the annual 90-minute test and confirm illumination is maintained for the full duration.',
+      '  5.  Inspect the battery and charger for damage, corrosion, and proper charge.',
+      '  6.  Record any deficiencies and re-test after repair/replacement.',
+    ];
+    const eslNfpaLH = sc(8.5);
+    const eslWrapped = [];
+    eslNfpaLines.forEach(ln => {
+      if (!ln) { eslWrapped.push({ text: '', bold: false }); return; }
+      const bold = ln.includes('FREQUENCY') || ln.includes('PROCEDURE') || ln.includes('REQUIRED');
+      wrap(ln, sc(7), PW - 14).forEach(w => eslWrapped.push({ text: w, bold }));
+    });
+    const eslNfpaBoxH = eslWrapped.length * eslNfpaLH + sc(8);
+    checkPage(eslNfpaBoxH);
+    page.drawRectangle({ x: ML, y: ry(eslNfpaBoxH), width: PW, height: eslNfpaBoxH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.4 });
+    let eslNfpaY = ry(eslNfpaBoxH) + eslNfpaBoxH - sc(9);
+    eslWrapped.forEach(ln => {
+      if (ln.text) page.drawText(ln.text, { x: ML+6, y: eslNfpaY, size: sc(7), font: ln.bold ? hFont : rFont, color: navy });
+      eslNfpaY -= eslNfpaLH;
+    });
+    curY += eslNfpaBoxH + sc(4);
+  }
+
   // EL table
   drawDeviceTable('EMERGENCY LIGHTING UNITS (NFPA 101 7.9)', data.elUnits, [
     { label: '#',          w: 22,  get: (u, i) => String(i+1) },
-    { label: 'LOCATION',   w: 140, get: u => u.loc },
-    { label: 'TYPE',       w: 80,  get: u => u.type },
-    { label: '30-SEC',     w: 56,  get: u => u.pf30s },
-    { label: '90-MIN',     w: 56,  get: u => u.pf90m },
-    { label: 'BATTERY',    w: 56,  get: u => u.pfBatt },
-    { label: 'PASS/FAIL',  w: 56,  get: u => u.pf, isPF: true },
-    { label: 'COMMENTS',   w: 74,  get: u => u.comments },
+    { label: 'LOCATION',   w: 190, get: u => u.loc },
+    { label: 'TYPE',       w: 96,  get: u => u.type },
+    { label: '30-SEC',     w: 55,  get: u => u.pf30s },
+    { label: '90-MIN',     w: 55,  get: u => u.pf90m },
+    { label: 'BATTERY',    w: 55,  get: u => u.pfBatt },
+    { label: 'PASS/FAIL',  w: 67,  get: u => u.pf, isPF: true },
+    { label: 'COMMENTS',   comment: true, get: u => u.comments },
   ]);
 
   // ES table
   drawDeviceTable('EXIT SIGNS (NFPA 101 7.10)', data.esUnits, [
     { label: '#',          w: 22,  get: (u, i) => String(i+1) },
-    { label: 'LOCATION',   w: 140, get: u => u.loc },
-    { label: 'TYPE',       w: 80,  get: u => u.type },
+    { label: 'LOCATION',   w: 190, get: u => u.loc },
+    { label: 'TYPE',       w: 96,  get: u => u.type },
     { label: 'ILLUMINATED',w: 60,  get: u => u.pfIllum },
-    { label: 'ARROWS',     w: 52,  get: u => u.pfArrows },
-    { label: 'BATT. BKUP', w: 52,  get: u => u.pfBatt },
+    { label: 'ARROWS',     w: 56,  get: u => u.pfArrows },
+    { label: 'BATT. BKUP', w: 56,  get: u => u.pfBatt },
     { label: 'PASS/FAIL',  w: 60,  get: u => u.pf, isPF: true },
-    { label: 'COMMENTS',   w: 74,  get: u => u.comments },
+    { label: 'COMMENTS',   comment: true, get: u => u.comments },
   ]);
 
   // Notes
