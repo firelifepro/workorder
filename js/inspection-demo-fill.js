@@ -137,7 +137,10 @@
   // ── Pass/Fail rows: mostly PASS, every 4th FAIL (+ deficiency text) ─────────
   function setInspectRows() {
     let i = 0;
-    document.querySelectorAll('.inspect-row[data-val]').forEach(row => {
+    // Hood checklist rows use Y/N/N-A (set by randomCheckGroups) — don't overwrite them
+    // with PASS/FAIL here, or the hood PDF's Y/N shading falls through to gray.
+    document.querySelectorAll('.inspect-row[data-val]:not(.hood-inspect-row)').forEach(row => {
+      if (row.querySelector('.pf-btn.selected, .yna-btn.selected')) return; // already set by the randomizer
       const fail = (i++ % 4 === 3);
       row.dataset.val = fail ? 'FAIL' : 'PASS';
       // reflect selection on any button UI so the panel looks right too

@@ -24,7 +24,7 @@ async function drawReportHeader(H) {
   const mkField = (val, x, fy, w, h) => {
     page.drawRectangle({ x, y: fy, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
     const f = form.createTextField(fid());
-    f.setText(String(val || ''));
+    f.setText(pdfSafe(String(val || '')));
     f.addToPage(page, { x: x + 1, y: fy + 1, width: w - 2, height: h - 2, font: rFont });
     f.setFontSize(sc(8));
   };
@@ -121,7 +121,7 @@ async function drawReportHeader(H) {
     jY -= sc(10);
     page.drawRectangle({ x: rtX, y: jY, width: rtW, height: sc(10), color: gold, borderColor: sky, borderWidth: 0.3 });
     const jf = form.createTextField(fid());
-    jf.setText(val); jf.addToPage(page, { x: rtX + 1, y: jY + 1, width: rtW - 2, height: sc(10) - 2, font: rFont }); jf.setFontSize(sc(7));
+    jf.setText(pdfSafe(val)); jf.addToPage(page, { x: rtX + 1, y: jY + 1, width: rtW - 2, height: sc(10) - 2, font: rFont }); jf.setFontSize(sc(7));
     jY -= sc(4); // gap below each field box so the next label isn't cramped
   });
   cy += logoAreaH + sc(4);
@@ -174,7 +174,7 @@ async function buildExtinguisherPDFBytes() {
   const mkField = (val, x, fieldY, w, h) => {
     page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
     const f = form.createTextField(fid());
-    f.setText(String(val || ''));
+    f.setText(pdfSafe(String(val || '')));
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
     f.setFontSize(sc(8));
   };
@@ -331,7 +331,7 @@ async function buildExtinguisherPDFBytes() {
         page.drawText(cells[i], { x: x+2, y: ty(cellH, sc(4.5)), size: sc(5), font: rFont, color: blk });
       } else {
         const f = form.createTextField(fid());
-        f.setText(cells[i]);
+        f.setText(pdfSafe(cells[i]));
         f.addToPage(page, { x: x+1, y: ry(cellH)+1, width: col.w-2, height: cellH-2, font: rFont });
         f.setFontSize(sc(5.5));
       }
@@ -345,7 +345,7 @@ async function buildExtinguisherPDFBytes() {
       checkPage(nh + sc(1));
       page.drawRectangle({ x: ML, y: ry(nh), width: PW, height: nh, color: rgb(1, 1, 0.92), borderColor: sky, borderWidth: 0.3 });
       const nf = form.createTextField(fid());
-      nf.setText(label); nf.enableMultiline();
+      nf.setText(pdfSafe(label)); nf.enableMultiline();
       nf.addToPage(page, { x: ML+2, y: ry(nh)+1, width: PW-4, height: nh-2, font: rFont }); nf.setFontSize(sc(6.5));
       curY += nh + sc(1);
     }
@@ -419,7 +419,7 @@ async function buildExtinguisherPDFBytes() {
       svcCols.forEach((col, ci) => {
         page.drawRectangle({ x: rx, y: ry(rowH), width: col.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
         const f = form.createTextField(fid());
-        f.setText(vals[ci]);
+        f.setText(pdfSafe(vals[ci]));
         if (ci === SVC_NOTE_I) f.enableMultiline();
         f.addToPage(page, { x: rx+1, y: ry(rowH)+1, width: col.w-2, height: rowH-2, font: rFont }); f.setFontSize(sc(6));
         rx += col.w;
@@ -466,7 +466,7 @@ async function buildExtinguisherPDFBytes() {
       });
       page.drawRectangle({ x: ML+qaLW, y: ry(rowH), width: qaAW, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
       const af = form.createTextField(fid());
-      af.setText(ansText); af.enableMultiline();
+      af.setText(pdfSafe(ansText)); af.enableMultiline();
       af.addToPage(page, { x: ML+qaLW+1, y: ry(rowH)+1, width: qaAW-2, height: rowH-2, font: rFont }); af.setFontSize(qaSz);
       curY += rowH + sc(1);
     });
@@ -491,7 +491,7 @@ async function buildExtinguisherPDFBytes() {
       page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - sc(9), size: sc(7), font: hFont, color: blk });
       page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24,  height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
       const nf = form.createTextField(fid());
-      nf.setText(desc); nf.enableMultiline();
+      nf.setText(pdfSafe(desc)); nf.enableMultiline();
       nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont }); nf.setFontSize(sc(7));
       curY += rh + sc(1);
     });
@@ -523,7 +523,7 @@ async function buildExtinguisherPDFBytes() {
     page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - sc(9), size: sc(7), font: hFont, color: blk });
     page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24,  height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
     const nf = form.createTextField(fid());
-    nf.setText(ntxt); nf.enableMultiline();
+    nf.setText(pdfSafe(ntxt)); nf.enableMultiline();
     nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont }); nf.setFontSize(sc(7));
     curY += rh + sc(1);
   }
@@ -659,7 +659,7 @@ async function buildSprinklerPDFBytes() {
   const mkField = (val, x, fieldY, w, h, multiline) => {
     page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
     const f = form.createTextField(fid());
-    f.setText(String(val || ''));
+    f.setText(pdfSafe(String(val || '')));
     if (multiline) f.enableMultiline();
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
     f.setFontSize(sc(8));
@@ -700,7 +700,7 @@ async function buildSprinklerPDFBytes() {
       hdrs.forEach((h, i) => {
         page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
         const f = form.createTextField(fid());
-        f.setText(String(row[i]||''));
+        f.setText(pdfSafe(String(row[i]||'')));
         if (wrapCol != null && i === wrapCol) f.enableMultiline();
         f.addToPage(page, { x: x+1, y: ry(rowH)+1, width: h.w-2, height: rowH-2, font: rFont });
         f.setFontSize(sc(7));
@@ -750,16 +750,16 @@ async function buildSprinklerPDFBytes() {
     });
     page.drawRectangle({ x: ML+LW,      y: ry(h), width: BW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
     const yf = form.createTextField(fid());
-    yf.setText(yVal); yf.addToPage(page, { x: ML+LW+1,      y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); yf.setFontSize(sc(8));
+    yf.setText(pdfSafe(yVal)); yf.addToPage(page, { x: ML+LW+1,      y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); yf.setFontSize(sc(8));
     page.drawRectangle({ x: ML+LW+BW,   y: ry(h), width: BW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
     const nf2 = form.createTextField(fid());
-    nf2.setText(nVal); nf2.addToPage(page, { x: ML+LW+BW+1,  y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); nf2.setFontSize(sc(8));
+    nf2.setText(pdfSafe(nVal)); nf2.addToPage(page, { x: ML+LW+BW+1,  y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); nf2.setFontSize(sc(8));
     page.drawRectangle({ x: ML+LW+BW*2, y: ry(h), width: BW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
     const naf = form.createTextField(fid());
-    naf.setText(naVal); naf.addToPage(page, { x: ML+LW+BW*2+1, y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); naf.setFontSize(sc(8));
+    naf.setText(pdfSafe(naVal)); naf.addToPage(page, { x: ML+LW+BW*2+1, y: ry(h)+1, width: BW-2, height: h-2, font: rFont }); naf.setFontSize(sc(8));
     page.drawRectangle({ x: ML+LW+BW*3, y: ry(h), width: NW, height: h, color: gold, borderColor: sky, borderWidth: 0.3 });
     const nf = form.createTextField(fid());
-    nf.setText(noteVal); nf.enableMultiline();
+    nf.setText(pdfSafe(noteVal)); nf.enableMultiline();
     nf.addToPage(page, { x: ML+LW+BW*3+1, y: ry(h)+1, width: NW-2, height: h-2, font: rFont }); nf.setFontSize(sc(6));
     curY += h + sc(1);
   };
@@ -1039,7 +1039,7 @@ async function buildSprinklerPDFBytes() {
       page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
       page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: sc(7), font: hFont, color: blk });
       const nf = form.createTextField(fid());
-      nf.setText(desc); nf.enableMultiline();
+      nf.setText(pdfSafe(desc)); nf.enableMultiline();
       page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24, height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
       nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont });
       nf.setFontSize(sc(7));
@@ -1059,7 +1059,7 @@ async function buildSprinklerPDFBytes() {
     page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
     page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: sc(7), font: hFont, color: blk });
     const nf = form.createTextField(fid());
-    nf.setText(note); nf.enableMultiline();
+    nf.setText(pdfSafe(note)); nf.enableMultiline();
     page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24, height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
     nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont });
     nf.setFontSize(sc(7));
@@ -1214,7 +1214,7 @@ async function buildGenericSystemPDFBytes() {
   const mkField = (val, x, fieldY, w, h, ml) => {
     page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
     const f = form.createTextField(fid());
-    f.setText(String(val || ''));
+    f.setText(pdfSafe(String(val || '')));
     if (ml) f.enableMultiline();
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
     f.setFontSize(sc(8));
@@ -1312,7 +1312,7 @@ async function buildGenericSystemPDFBytes() {
     'smoke-control': { sections: [
       { title: 'SYSTEM CONFIGURATION', rows: [
         [{label:'System Type',id:'sc-type',w:180},{label:'# Smoke Zones',id:'sc-zones',w:180},{label:'Year Installed',id:'sc-year',w:180}],
-        [{label:'# Supply/Exhaust Fans',id:'sc-fans',w:180},{label:'# Smoke/Fire Dampers',id:'sc-dampers',w:180},{label:'Measured ΔP (in. w.g.)',id:'sc-pressure-val',w:180}],
+        [{label:'# Supply/Exhaust Fans',id:'sc-fans',w:180},{label:'# Smoke/Fire Dampers',id:'sc-dampers',w:180},{label:'Measured Delta-P (in. w.g.)',id:'sc-pressure-val',w:180}],
       ]},
     ]},
     'gas-detection': { sections: [
@@ -1434,6 +1434,42 @@ async function buildGenericSystemPDFBytes() {
   if (sys === 'fire-smoke-damper') {
     const gv = id => (document.getElementById(id)?.value || '').trim();
 
+    // NFPA references & procedure (fire/smoke dampers)
+    secHdr('NFPA REFERENCES AND PROCEDURE');
+    gap(3);
+    const dmpNfpaLines = [
+      'FIRE & SMOKE DAMPERS ARE REQUIRED TO BE OPERATIONALLY (DROP) TESTED IN ACCORDANCE WITH THE FOLLOWING NFPA REFERENCES:',
+      'FIRE DAMPERS:  NFPA 80, CHAPTER 19 (19.4) — 2010 EDITION.',
+      'SMOKE & COMBINATION FIRE/SMOKE DAMPERS:  NFPA 105, CHAPTER 6 (6.5) — 2010 EDITION.',
+      '',
+      'FREQUENCY:  OPERATIONAL TEST ONE (1) YEAR AFTER INSTALLATION, THEN EVERY FOUR (4) YEARS THEREAFTER',
+      '(EVERY SIX (6) YEARS IN HOSPITALS / HEALTHCARE OCCUPANCIES).',
+      '',
+      'PROCEDURE:',
+      '  1.  Verify damper is accessible and properly labeled.',
+      '  2.  Confirm the damper is not rusted, blocked, or obstructed.',
+      '  3.  Operationally cycle the damper (drop test) and verify full closure.',
+      '  4.  Verify the fusible link / actuator is in place, undamaged, and of the correct rating.',
+      '  5.  Re-open, reset, and return the damper to its normal operating position.',
+      '  6.  Confirm curtain/blades, springs, and latches are intact and unobstructed.',
+    ];
+    const dmpNfpaLH = sc(8.5);
+    const dmpWrapped = [];
+    dmpNfpaLines.forEach(ln => {
+      if (!ln) { dmpWrapped.push({ text: '', bold: false }); return; }
+      const bold = !ln.startsWith(' ') && (ln.includes('FREQUENCY') || ln.includes('PROCEDURE') || ln.includes('REQUIRED'));
+      wrap(ln, sc(7), PW - 14).forEach(w => dmpWrapped.push({ text: w, bold }));
+    });
+    const dmpNfpaBoxH = dmpWrapped.length * dmpNfpaLH + sc(8);
+    checkPage(dmpNfpaBoxH);
+    page.drawRectangle({ x: ML, y: ry(dmpNfpaBoxH), width: PW, height: dmpNfpaBoxH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.4 });
+    let dmpNfpaY = ry(dmpNfpaBoxH) + dmpNfpaBoxH - sc(9);
+    dmpWrapped.forEach(ln => {
+      if (ln.text) page.drawText(ln.text, { x: ML+6, y: dmpNfpaY, size: sc(7), font: ln.bold ? hFont : rFont, color: navy });
+      dmpNfpaY -= dmpNfpaLH;
+    });
+    curY += dmpNfpaBoxH + sc(4);
+
     secHdr('TEST CYCLE');
     gap(4);
     dataRow([{ label: 'Test Interval', val: gv('fsd-interval'), w: 540 }]);
@@ -1553,7 +1589,7 @@ async function buildGenericSystemPDFBytes() {
       page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: sc(8), font: hFont, color: red });
       page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
       const dff = form.createTextField(fid());
-      dff.setText(text); dff.enableMultiline();
+      dff.setText(pdfSafe(text)); dff.enableMultiline();
       dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
       dff.setFontSize(sc(7.5));
       curY += rowH + 2;
@@ -1581,7 +1617,7 @@ async function buildGenericSystemPDFBytes() {
     const bX = ML + PW - bW - 2;
     page.drawRectangle({ x: bX, y: ry(rowH)+1, width: bW, height: rowH-2, color: bColor });
     const rf = form.createTextField(fid());
-    rf.setText(result || '');
+    rf.setText(pdfSafe(result || ''));
     rf.addToPage(page, { x: bX+1, y: ry(rowH)+2, width: bW-2, height: rowH-4, font: hFont });
     rf.setFontSize(sc(7));
     curY += rowH + 3;
@@ -1590,7 +1626,7 @@ async function buildGenericSystemPDFBytes() {
       checkPage(defH + 2);
       page.drawRectangle({ x: ML+4, y: ry(defH), width: PW-4, height: defH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
       const defField = form.createTextField(fid());
-      defField.setText('Deficiency: ' + deficTxt);
+      defField.setText(pdfSafe('Deficiency: ' + deficTxt));
       defField.addToPage(page, { x: ML+6, y: ry(defH)+1, width: PW-10, height: defH-2, font: rFont });
       defField.setFontSize(sc(7));
       curY += defH + 3;
@@ -1808,7 +1844,7 @@ async function buildExitSignLightingPDFBytes() {
       page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: sc(8), font: hFont, color: red });
       page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
       const dff = form.createTextField(fid());
-      dff.setText(text); dff.enableMultiline();
+      dff.setText(pdfSafe(text)); dff.enableMultiline();
       dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
       dff.setFontSize(sc(7.5));
       curY += rowH + 2;
@@ -1914,10 +1950,10 @@ async function buildExitSignLightingPDFBytes() {
   gap(10);
   page.drawRectangle({ x: ML, y: ry(sc(18)), width: halfW2, height: sc(18), color: gold, borderColor: sky, borderWidth: 0.5 });
   const sf2 = form.createTextField(fid());
-  sf2.setText(sigName2); sf2.addToPage(page, { x: ML+2, y: ry(sc(18))+2, width: halfW2-4, height: sc(14), font: rFont }); sf2.setFontSize(sc(9));
+  sf2.setText(pdfSafe(sigName2)); sf2.addToPage(page, { x: ML+2, y: ry(sc(18))+2, width: halfW2-4, height: sc(14), font: rFont }); sf2.setFontSize(sc(9));
   page.drawRectangle({ x: ML+halfW2+8, y: ry(sc(18)), width: halfW2, height: sc(18), color: gold, borderColor: sky, borderWidth: 0.5 });
   const df2 = form.createTextField(fid());
-  df2.setText(sigDate2); df2.addToPage(page, { x: ML+halfW2+10, y: ry(sc(18))+2, width: halfW2-4, height: sc(14), font: rFont }); df2.setFontSize(sc(9));
+  df2.setText(pdfSafe(sigDate2)); df2.addToPage(page, { x: ML+halfW2+10, y: ry(sc(18))+2, width: halfW2-4, height: sc(14), font: rFont }); df2.setFontSize(sc(9));
   curY += sc(22);
 
   return await pdfDoc.save();
@@ -1977,7 +2013,7 @@ async function buildEditablePDFBytes() {
     const mkField = (val, x, fieldY, w, h, multiline) => {
       page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
       const f = form.createTextField(fid());
-      f.setText(String(val || ''));
+      f.setText(pdfSafe(String(val || '')));
       if (multiline) f.enableMultiline();
       f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
       f.setFontSize(sc(8));
@@ -2058,7 +2094,7 @@ async function buildEditablePDFBytes() {
           } else {
             page.drawRectangle({ x, y: ry(rowH), width: h.w, height: rowH, color: gold, borderColor: sky, borderWidth: 0.3 });
             const f = form.createTextField(fid());
-            f.setText(val);
+            f.setText(pdfSafe(val));
             if (wrapCol != null && i === wrapCol) f.enableMultiline();
             f.addToPage(page, { x: x+1, y: ry(rowH)+1, width: h.w-2, height: rowH-2, font: rFont });
             f.setFontSize(sc(7));
@@ -2145,7 +2181,7 @@ async function buildEditablePDFBytes() {
         checkPage(defH + 2);
         page.drawRectangle({ x: ML+4, y: ry(defH), width: PW-4, height: defH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
         const df = form.createTextField(fid());
-        df.setText('Deficiency: ' + deficTxt); df.enableMultiline();
+        df.setText(pdfSafe('Deficiency: ' + deficTxt)); df.enableMultiline();
         df.addToPage(page, { x: ML+6, y: ry(defH)+1, width: PW-10, height: defH-2, font: rFont });
         df.setFontSize(sc(7));
         curY += defH + 3;
@@ -2594,7 +2630,7 @@ async function buildHoodPDFBytes() {
   const mkField = (val, x, fieldY, w, h, multiline) => {
     page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
     const f = form.createTextField(fid());
-    f.setText(String(val || ''));
+    f.setText(pdfSafe(String(val || '')));
     if (multiline) f.enableMultiline();
     f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
     f.setFontSize(sc(8));
@@ -2785,7 +2821,7 @@ async function buildHoodPDFBytes() {
         page.drawText(lbl, { x: cx+3, y: ry(cellH)+cellH-8, size: sc(5.5), font: hFont, color: navy });
         page.drawRectangle({ x: cx+1, y: ry(cellH)+1, width: cellW-2, height: sc(12), color: gold, borderColor: sky, borderWidth: 0.3 });
         const vf = form.createTextField(fid());
-        vf.setText(val);
+        vf.setText(pdfSafe(val));
         vf.addToPage(page, { x: cx+2, y: ry(cellH)+2, width: cellW-4, height: sc(10), font: rFont });
         vf.setFontSize(sc(7));
         cx += cellW;
@@ -2963,7 +2999,7 @@ async function buildHoodPDFBytes() {
       page.drawText(lbl, { x: dcx+3, y: ry(dimCellH)+dimCellH-8, size: sc(5.5), font: hFont, color: navy });
       page.drawRectangle({ x: dcx+1, y: ry(dimCellH)+1, width: dimCellW-2, height: sc(12), color: gold, borderColor: sky, borderWidth: 0.3 });
       const vf = form.createTextField(fid());
-      vf.setText(val);
+      vf.setText(pdfSafe(val));
       vf.addToPage(page, { x: dcx+2, y: ry(dimCellH)+2, width: dimCellW-4, height: sc(10), font: rFont });
       vf.setFontSize(sc(7));
       dcx += dimCellW;
@@ -3001,7 +3037,7 @@ async function buildHoodPDFBytes() {
         appVals.forEach(val => {
           page.drawRectangle({ x: arx, y: ry(aRowH), width: appColW, height: aRowH, color: aBg, borderColor: sky, borderWidth: 0.3 });
           const af = form.createTextField(fid());
-          af.setText(val);
+          af.setText(pdfSafe(val));
           af.addToPage(page, { x: arx+2, y: ry(aRowH)+2, width: appColW-4, height: aRowH-4, font: rFont });
           af.setFontSize(sc(7));
           arx += appColW;
@@ -3054,7 +3090,7 @@ async function buildHoodPDFBytes() {
     } catch(_) {}
   } else {
     const sf = form.createTextField(fid());
-    sf.setText(data.signature?.name || '');
+    sf.setText(pdfSafe(data.signature?.name || ''));
     sf.addToPage(page, { x: ML+2, y: ry(sigH)+2, width: sigW-4, height: sigH-12, font: rFont });
     sf.setFontSize(sc(9));
   }
