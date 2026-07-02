@@ -171,24 +171,6 @@ async function buildExtinguisherPDFBytes() {
     page.drawText(title, { x: ML+4, y: ty(H,sc(5)), size: sc(9), font: hFont, color: white });
     curY += sc(18);
   };
-  const mkField = (val, x, fieldY, w, h) => {
-    page.drawRectangle({ x, y: fieldY, width: w, height: h, color: gold, borderColor: sky, borderWidth: 0.5 });
-    const f = form.createTextField(fid());
-    f.setText(pdfSafe(String(val || '')));
-    f.addToPage(page, { x: x+1, y: fieldY+1, width: w-2, height: h-2, font: rFont });
-    f.setFontSize(sc(8));
-  };
-  const dataRow = (cols, fh = 12, lh = 8, gp = 3) => {
-    const FH = sc(fh), LH = sc(lh), GP = sc(gp);
-    checkPage(LH + FH + GP);
-    let x = ML;
-    cols.forEach(c => {
-      page.drawText((c.label||'')+':', { x: x+2, y: ty(LH, LH-sc(3)), size: sc(6), font: hFont, color: navy });
-      mkField(c.val, x, ry(LH+FH), c.w, FH);
-      x += c.w;
-    });
-    curY += LH + FH + GP;
-  };
   const gap = (h) => { curY += sc(h); };
 
   const dv = (id) => pdfSafe(document.getElementById(id)?.value?.trim() || '');
@@ -473,133 +455,11 @@ async function buildExtinguisherPDFBytes() {
     gap(8);
   }
 
-  // ── DEFICIENCY LIST ──────────────────────────────────────────────────────────
-  secHdr('DEFICIENCY LIST');
-  const deficList = data.deficiencies || [];
-  if (deficList.length === 0) {
-    const dnH = sc(13);
-    checkPage(dnH + sc(1));
-    page.drawRectangle({ x: ML, y: ry(dnH), width: PW, height: dnH, color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText('No deficiencies noted.', { x: ML+4, y: ty(dnH,sc(4)), size: sc(8), font: rFont, color: blk });
-    curY += dnH + sc(1);
-  } else {
-    deficList.forEach((d, i) => {
-      const desc = d.item || '';
-      const rh = pdfRowHeight(wrap(desc, sc(7), PW-30).length, { lineH: sc(9), pad: sc(4), min: sc(13) });
-      checkPage(rh + sc(1));
-      page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-      page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - sc(9), size: sc(7), font: hFont, color: blk });
-      page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24,  height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-      const nf = form.createTextField(fid());
-      nf.setText(pdfSafe(desc)); nf.enableMultiline();
-      nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont }); nf.setFontSize(sc(7));
-      curY += rh + sc(1);
-    });
-  }
-  gap(6);
-
-  // ── GENERAL NOTES ─────────────────────────────────────────────────────────────
-  secHdr('GENERAL NOTES & RECOMMENDATIONS');
-  // Notes are normalized in collectAllData → data.notes (dynamic rows + unit notes).
-  const allNotes = data.notes || [];
-  const noteRowCount = Math.max(allNotes.length, 3);
-  for (let i = 0; i < noteRowCount; i++) {
-    const ntxt = allNotes[i] || '';
-    const rh = pdfRowHeight(wrap(ntxt, sc(7), PW-30).length, { lineH: sc(12), pad: sc(7), min: sc(18) });
-    checkPage(rh + sc(1));
-    page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - sc(9), size: sc(7), font: hFont, color: blk });
-    page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24,  height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-    const nf = form.createTextField(fid());
-    nf.setText(pdfSafe(ntxt)); nf.enableMultiline();
-    nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont }); nf.setFontSize(sc(7));
-    curY += rh + sc(1);
-  }
-  gap(6);
-
-  // ── OVERALL STATUS & SIGNATURES ───────────────────────────────────────────────
-  checkPage(sc(120));
-  gap(10);
-  secHdr('OVERALL STATUS & SIGNATURES');
-  gap(3); // small padding so the status row's label clears the header bar above
-  dataRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', w: PW }]);
-  gap(12); // extra padding so the signature labels' ascenders clear the status box above
-
-  const sigH = sc(40), sigW = PW / 2 - 6;
-  page.drawText('INSPECTOR / OWNER SIGNATURE:', { x: ML, y: ty(sigH) + sigH + sc(2), size: sc(7), font: hFont, color: navy });
-  page.drawRectangle({ x: ML, y: ry(sigH), width: sigW, height: sigH, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (sigHasData) {
-    try {
-      const sigCanvas = document.getElementById('sig-canvas');
-      const b64 = sigCanvas.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const sImg = await pdfDoc.embedPng(ab);
-      const sDims = sImg.scaleToFit(sigW - 8, sigH - 8);
-      page.drawImage(sImg, { x: ML + 4, y: ry(sigH) + 4, width: sDims.width, height: sDims.height });
-    } catch(_) {}
-  } else {
-    const sf = form.createTextField(fid());
-    sf.setText(''); sf.addToPage(page, { x: ML+2, y: ry(sigH)+2, width: sigW-4, height: sigH-4, font: rFont }); sf.setFontSize(sc(9));
-  }
-  page.drawText('CLIENT SIGNATURE:', { x: ML+PW/2+10, y: ty(sigH) + sigH + sc(2), size: sc(7), font: hFont, color: navy });
-  page.drawRectangle({ x: ML+PW/2+8, y: ry(sigH), width: sigW, height: sigH, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (custSigHasData) {
-    try {
-      const cc = document.getElementById('cust-sig-canvas');
-      const b64 = cc.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const cImg = await pdfDoc.embedPng(ab);
-      const cDims = cImg.scaleToFit(sigW - 8, sigH - 8);
-      page.drawImage(cImg, { x: ML+PW/2+12, y: ry(sigH) + 4, width: cDims.width, height: cDims.height });
-    } catch(_) {}
-  } else {
-    const cf = form.createTextField(fid());
-    cf.setText(''); cf.addToPage(page, { x: ML+PW/2+10, y: ry(sigH)+2, width: sigW-4, height: sigH-4, font: rFont }); cf.setFontSize(sc(9));
-  }
-  curY += sigH + sc(4);
-  dataRow([
-    { label: 'INSPECTOR DATE',      val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
-    { label: 'CLIENT DATE',         val: fd['cust-sig-date'] || '', w: PW/2 },
-  ]);
-  dataRow([
-    { label: 'INSPECTOR PRINT NAME', val: fd['sig-name'] || data.inspection?.inspectorName || '', w: PW/2 },
-    { label: 'CLIENT PRINT NAME',    val: fd['cust-sig-name'] || '', w: PW/2 },
-  ]);
-
-  // ── PHOTOS ───────────────────────────────────────────────────────────────────
-  if (inspectionPhotos.length > 0) {
-    addPage();
-    secHdr('INSPECTION PHOTOS');
-    const photoW = Math.floor((PW - 10) / 2);
-    const photoH = sc(140);
-    let col = 0;
-    for (let i = 0; i < inspectionPhotos.length; i++) {
-      const photo = inspectionPhotos[i];
-      checkPage(photoH + 30);
-      const px = ML + col * (photoW + 10);
-      try {
-        const b64 = photo.dataUrl.split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const img = photo.dataUrl.startsWith('data:image/png')
-          ? await pdfDoc.embedPng(ab) : await pdfDoc.embedJpg(ab);
-        const dims = img.scaleToFit(photoW, photoH);
-        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
-      } catch(_) {
-        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: lgray });
-      }
-      const badgeH = sc(12);
-      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-badgeH-2, width: sc(40), height: badgeH, color: rgb(0,0,0) });
-      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-badgeH+sc(3), size: sc(7), font: hFont, color: white });
-      if (photo.note) {
-        wrap(photo.note, sc(7), photoW).forEach((l, li) => {
-          page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li * sc(9), size: sc(7), font: rFont, color: blk });
-        });
-      }
-      col++;
-      if (col >= 2) { col = 0; curY += photoH + sc(22); }
-    }
-    if (col > 0) curY += photoH + sc(22);
-  }
+  const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+  renderInspectionDeficiencies(_c, data);
+  renderInspectionNotes(_c, data);
+  await renderInspectionStatusAndSignatures(_c, data);
+  await renderInspectionPhotos(_c);
 
   return await pdfDoc.save();
 }
@@ -1011,142 +871,11 @@ async function buildSprinklerPDFBytes() {
   );
   gap(6);
 
-  // Deficiency list
-  secHdr('WET SPRINKLER DEFICIENCY LIST');
-  const spDeficList = data.deficiencies || [];
-  if (spDeficList.length === 0) {
-    checkPage(sc(14));
-    page.drawRectangle({ x: ML, y: ry(sc(13)), width: PW, height: sc(13), color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText('No deficiencies noted.', { x: ML+4, y: ty(sc(13), sc(4)), size: sc(8), font: rFont, color: blk });
-    curY += sc(14);
-  } else {
-    spDeficList.forEach((d, i) => {
-      const desc = d.item || '';
-      const rh = pdfRowHeight(wrap(desc, sc(7), PW-30).length, { lineH: sc(9), pad: sc(4), min: sc(13) });
-      checkPage(rh + 1);
-      page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-      page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: sc(7), font: hFont, color: blk });
-      const nf = form.createTextField(fid());
-      nf.setText(pdfSafe(desc)); nf.enableMultiline();
-      page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24, height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-      nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont });
-      nf.setFontSize(sc(7));
-      curY += rh + 1;
-    });
-  }
-  gap(6);
-
-  // General notes — normalized in collectAllData → data.notes.
-  secHdr('GENERAL NOTES & SITE OBSERVATIONS');
-  const spNotes = data.notes || [];
-  const noteRowCount = Math.max(spNotes.length, 3);
-  for (let i = 0; i < noteRowCount; i++) {
-    const note = spNotes[i] || '';
-    const rh = pdfRowHeight(wrap(note, sc(7), PW-30).length, { lineH: sc(9), pad: sc(4), min: sc(13) });
-    checkPage(rh + 1);
-    page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-    page.drawText(String(i+1), { x: ML+8, y: ry(rh) + rh - 9, size: sc(7), font: hFont, color: blk });
-    const nf = form.createTextField(fid());
-    nf.setText(pdfSafe(note)); nf.enableMultiline();
-    page.drawRectangle({ x: ML+24, y: ry(rh), width: PW-24, height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
-    nf.addToPage(page, { x: ML+25, y: ry(rh)+1, width: PW-26, height: rh-2, font: rFont });
-    nf.setFontSize(sc(7));
-    curY += rh + 1;
-  }
-
-  // ── SIGNATURES ───────────────────────────────────────────────────────────────
-  checkPage(sc(120));
-  gap(10);
-  secHdr('OVERALL STATUS & SIGNATURES');
-  gap(4);
-
-  // Overall status
-  const statusVal = data.overallStatus || '';
-  dataRow([{ label: 'OVERALL INSPECTION STATUS', val: statusVal, w: PW }]);
-  gap(12);
-
-  // Inspector signature
-  const sigH = sc(40);
-  const sigW = PW / 2 - 6;
-  page.drawText('INSPECTOR / OWNER SIGNATURE:', { x: ML, y: ty(sigH) + sigH + 2, size: sc(7), font: hFont, color: navy });
-  page.drawRectangle({ x: ML, y: ry(sigH), width: sigW, height: sigH, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (sigHasData) {
-    try {
-      const sigCanvas = document.getElementById('sig-canvas');
-      const b64 = sigCanvas.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const sImg  = await pdfDoc.embedPng(ab);
-      const sDims = sImg.scaleToFit(sigW - 8, sigH - 8);
-      page.drawImage(sImg, { x: ML + 4, y: ry(sigH) + 4, width: sDims.width, height: sDims.height });
-    } catch(_) {}
-  } else {
-    const sf = form.createTextField(fid());
-    sf.setText('');
-    sf.addToPage(page, { x: ML+2, y: ry(sigH)+2, width: sigW-4, height: sigH-4, font: rFont });
-    sf.setFontSize(sc(9));
-  }
-  // Client signature
-  page.drawText('CLIENT SIGNATURE:', { x: ML+PW/2+10, y: ty(sigH) + sigH + 2, size: sc(7), font: hFont, color: navy });
-  page.drawRectangle({ x: ML+PW/2+8, y: ry(sigH), width: sigW, height: sigH, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (custSigHasData) {
-    try {
-      const cc  = document.getElementById('cust-sig-canvas');
-      const b64 = cc.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const cImg  = await pdfDoc.embedPng(ab);
-      const cDims = cImg.scaleToFit(sigW - 8, sigH - 8);
-      page.drawImage(cImg, { x: ML+PW/2+12, y: ry(sigH) + 4, width: cDims.width, height: cDims.height });
-    } catch(_) {}
-  } else {
-    const cf = form.createTextField(fid());
-    cf.setText('');
-    cf.addToPage(page, { x: ML+PW/2+10, y: ry(sigH)+2, width: sigW-4, height: sigH-4, font: rFont });
-    cf.setFontSize(sc(9));
-  }
-  curY += sigH + 4;
-  dataRow([
-    { label: 'INSPECTOR DATE', val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
-    { label: 'CLIENT DATE',    val: fd['cust-sig-date'] || '', w: PW/2 },
-  ]);
-  dataRow([
-    { label: 'INSPECTOR PRINT NAME', val: fd['sig-name'] || data.inspection?.inspectorName || '', w: PW/2 },
-    { label: 'CLIENT PRINT NAME',    val: fd['cust-sig-name'] || '', w: PW/2 },
-  ]);
-
-  // Photos page
-  if (inspectionPhotos.length > 0) {
-    addPage();
-    secHdr('INSPECTION PHOTOS');
-    const photoW = Math.floor((PW - 10) / 2);
-    const photoH = sc(140);
-    let col = 0;
-    for (let i = 0; i < inspectionPhotos.length; i++) {
-      const photo = inspectionPhotos[i];
-      checkPage(photoH + 30);
-      const px = ML + col * (photoW + 10);
-      try {
-        const b64 = photo.dataUrl.split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const img = photo.dataUrl.startsWith('data:image/png')
-          ? await pdfDoc.embedPng(ab) : await pdfDoc.embedJpg(ab);
-        const dims = img.scaleToFit(photoW, photoH);
-        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
-      } catch(_) {
-        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: lgray });
-      }
-      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: sc(12), color: rgb(0,0,0) });
-      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: sc(7), font: hFont, color: white });
-      if (photo.note) {
-        const noteLines = wrap(photo.note, sc(7), photoW);
-        noteLines.forEach((l, li) => {
-          page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li*sc(9), size: sc(7), font: rFont, color: blk });
-        });
-      }
-      col++;
-      if (col >= 2) { col = 0; curY += photoH + 22; }
-    }
-    if (col > 0) curY += photoH + 22;
-  }
+  const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+  renderInspectionDeficiencies(_c, data);
+  renderInspectionNotes(_c, data);
+  await renderInspectionStatusAndSignatures(_c, data);
+  await renderInspectionPhotos(_c);
 
   return await pdfDoc.save();
 }
@@ -1556,28 +1285,11 @@ async function buildGenericSystemPDFBytes() {
     }
   }
 
-  // Deficiencies
-  if (data.deficiencies.length > 0) {
-    secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
-    gap(2);
-    data.deficiencies.forEach(d => {
-      const sanitize = s => (s || '').replace(/≥/g, '>=').replace(/≤/g, '<=');
-      const text = sanitize(d.item) + (d.description ? ': ' + sanitize(d.description) : '');
-      // Count wrapped lines per hard newline so multi-line deficiency notes get a
-      // tall-enough (auto-growing) box instead of being clipped.
-      const lineCount = text.split(/\r?\n/).reduce((n, seg) => n + wrap(seg, sc(7.5), PW-18).length, 0);
-      const rowH = pdfRowHeight(lineCount, { lineH: sc(10), pad: sc(4), min: sc(13) });
-      checkPage(rowH + 2);
-      page.drawRectangle({ x: ML, y: ry(rowH), width: 12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
-      page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: sc(8), font: hFont, color: red });
-      page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
-      const dff = form.createTextField(fid());
-      dff.setText(pdfSafe(text)); dff.enableMultiline();
-      dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
-      dff.setFontSize(sc(7.5));
-      curY += rowH + 2;
-    });
-    gap(4);
+  // Deficiencies — standardized shared renderer (gold numbered editable rows).
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
   }
 
   // Inspection checklist row renderer (shared across flat and sectioned formats)
@@ -1639,105 +1351,13 @@ async function buildGenericSystemPDFBytes() {
     }
   }
 
-  // Notes — normalized in collectAllData → data.notes (panel notes field +
-  // the step-4 "General Notes & Site Observations" rows).
-  const noteBlocks = data.notes || [];
-  if (noteBlocks.length) {
-    secHdr('GENERAL NOTES & SITE OBSERVATIONS');
-    noteBlocks.forEach(block => {
-      block.split(/\r?\n/).forEach(seg => {
-        wrap(seg, sc(8), PW - 8).forEach(line => {
-          checkPage(sc(12));
-          page.drawText(line, { x: ML+4, y: ry(sc(12))+3, size: sc(8), font: rFont, color: navy });
-          curY += sc(12);
-        });
-      });
-    });
-    gap(4);
-  }
-
-  // Signatures
-  checkPage(sc(120));
-  secHdr('OVERALL STATUS & SIGNATURES');
-  gap(4);
-  dataRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', w: PW }]);
-  gap(14);
-  const genSigH = sc(40), genSigW = PW / 2 - 6;
-  page.drawText('INSPECTOR SIGNATURE:', { x: ML, y: ry(sc(0)) + 2, size: sc(7), font: hFont, color: navy });
-  page.drawText('CLIENT SIGNATURE:',    { x: ML+PW/2+10, y: ry(sc(0)) + 2, size: sc(7), font: hFont, color: navy });
-  gap(10);
-  page.drawRectangle({ x: ML, y: ry(genSigH), width: genSigW, height: genSigH, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (sigHasData) {
-    try {
-      const sigCanvas = document.getElementById('sig-canvas');
-      const b64 = sigCanvas.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const sImg = await pdfDoc.embedPng(ab);
-      const sDims = sImg.scaleToFit(genSigW - 8, genSigH - 8);
-      page.drawImage(sImg, { x: ML + 4, y: ry(genSigH) + 4, width: sDims.width, height: sDims.height });
-    } catch(_) {}
-  } else {
-    const sf2 = form.createTextField(fid());
-    sf2.setText(''); sf2.addToPage(page, { x: ML+2, y: ry(genSigH)+2, width: genSigW-4, height: genSigH-4, font: rFont }); sf2.setFontSize(sc(9));
-  }
-  page.drawRectangle({ x: ML+PW/2+8, y: ry(genSigH), width: genSigW, height: genSigH, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (custSigHasData) {
-    try {
-      const cc = document.getElementById('cust-sig-canvas');
-      const b64 = cc.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const cImg = await pdfDoc.embedPng(ab);
-      const cDims = cImg.scaleToFit(genSigW - 8, genSigH - 8);
-      page.drawImage(cImg, { x: ML+PW/2+12, y: ry(genSigH) + 4, width: cDims.width, height: cDims.height });
-    } catch(_) {}
-  } else {
-    const cf2 = form.createTextField(fid());
-    cf2.setText(''); cf2.addToPage(page, { x: ML+PW/2+10, y: ry(genSigH)+2, width: genSigW-4, height: genSigH-4, font: rFont }); cf2.setFontSize(sc(9));
-  }
-  curY += genSigH + 4;
-  dataRow([
-    { label: 'INSPECTOR DATE',      val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
-    { label: 'CLIENT DATE',         val: document.getElementById('cust-sig-date')?.value || '', w: PW/2 },
-  ]);
-  dataRow([
-    { label: 'INSPECTOR PRINT NAME', val: data.signature?.name || data.inspection?.inspectorName || '', w: PW/2 },
-    { label: 'CLIENT PRINT NAME',    val: document.getElementById('cust-sig-name')?.value || '', w: PW/2 },
-  ]);
-  gap(4);
-
-  // Photos — rendered LAST (on their own page) so long captions can't overwrite
-  // the signatures section above.
-  if (inspectionPhotos && inspectionPhotos.length > 0) {
-    addPage();
-    secHdr('INSPECTION PHOTOS');
-    const photoW = Math.floor((PW - 10) / 2);
-    const photoH = sc(140);
-    let col = 0;
-    for (let i = 0; i < inspectionPhotos.length; i++) {
-      const photo = inspectionPhotos[i];
-      checkPage(photoH + 30);
-      const px = ML + col * (photoW + 10);
-      try {
-        const b64 = photo.dataUrl.split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const img = photo.dataUrl.startsWith('data:image/png')
-          ? await pdfDoc.embedPng(ab) : await pdfDoc.embedJpg(ab);
-        const dims = img.scaleToFit(photoW, photoH);
-        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
-      } catch(_) {
-        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: lgray });
-      }
-      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: sc(12), color: rgb(0,0,0) });
-      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: sc(7), font: hFont, color: white });
-      if (photo.note) {
-        wrap(photo.note, sc(7), photoW).forEach((l, li) => {
-          page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li*sc(9), size: sc(7), font: rFont, color: navy });
-        });
-      }
-      col++;
-      if (col >= 2) { col = 0; curY += photoH + 22; }
-    }
-    if (col > 0) curY += photoH + 22;
+  // Notes, overall status & signatures, and photos — standardized shared renderers.
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionNotes(_c, data);
+    await renderInspectionStatusAndSignatures(_c, data);
+    await renderInspectionPhotos(_c);
+    page = _c.page; curY = _c.curY;
   }
 
   return await pdfDoc.save();
@@ -1806,24 +1426,11 @@ async function buildExitSignLightingPDFBytes() {
   curY += sc(18);
   gap(6);
 
-  // Deficiencies
-  if (data.deficiencies.length > 0) {
-    secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
-    gap(2);
-    data.deficiencies.forEach(d => {
-      const text = d.item + (d.description ? ': ' + d.description : '');
-      const rowH = pdfRowHeight(wrap(text, sc(7.5), PW-18).length, { lineH: sc(10), pad: sc(4), min: sc(13) });
-      checkPage(rowH + 2);
-      page.drawRectangle({ x: ML, y: ry(rowH), width: 12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
-      page.drawText('\u2022', { x: ML+4, y: ry(rowH) + rowH - 10, size: sc(8), font: hFont, color: red });
-      page.drawRectangle({ x: ML+12, y: ry(rowH), width: PW-12, height: rowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.3 });
-      const dff = form.createTextField(fid());
-      dff.setText(pdfSafe(text)); dff.enableMultiline();
-      dff.addToPage(page, { x: ML+14, y: ry(rowH)+1, width: PW-16, height: rowH-2, font: rFont });
-      dff.setFontSize(sc(7.5));
-      curY += rowH + 2;
-    });
-    gap(4);
+  // Deficiencies — standardized shared renderer (gold numbered editable rows).
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
   }
 
   // Helper: draw a device table
@@ -1938,86 +1545,10 @@ async function buildExitSignLightingPDFBytes() {
     { label: 'COMMENTS',   comment: true, get: u => u.comments },
   ]);
 
-  // Notes — normalized in collectAllData → data.notes (#esl-notes field).
-  const eslNotes = data.notes || [];
-  if (eslNotes.length) {
-    secHdr('NOTES');
-    eslNotes.forEach(block => {
-      block.split(/\r?\n/).forEach(seg => {
-        wrap(seg, sc(8), PW - 8).forEach(line => {
-          checkPage(sc(12));
-          page.drawText(line, { x: ML+4, y: ry(sc(12))+3, size: sc(8), font: rFont, color: navy });
-          curY += sc(12);
-        });
-      });
-    });
-    gap(4);
-  }
-
-  // Signature
-  checkPage(sc(88));
-  // ── OVERALL STATUS & SIGNATURES (matches the other reports) ──────────────────
-  const sigName2 = data.signature?.name || data.inspection?.inspectorName || '';
-  const sigDate2 = data.signature?.date || data.inspection?.date || '';
-  // Labeled full-width / half-width editable field rows (this builder has no dataRow).
-  const eslFieldRow = (pairs) => {
-    const LH = sc(8), FH = sc(12);
-    pairs.forEach(({ label, val, x, w }) => {
-      page.drawText(label + ':', { x: x+2, y: ty(LH, LH-sc(3)), size: sc(6), font: hFont, color: navy });
-      page.drawRectangle({ x, y: ry(LH+FH), width: w, height: FH, color: gold, borderColor: sky, borderWidth: 0.5 });
-      const f = form.createTextField(fid());
-      f.setText(pdfSafe(String(val || '')));
-      f.addToPage(page, { x: x+1, y: ry(LH+FH)+1, width: w-2, height: FH-2, font: rFont });
-      f.setFontSize(sc(8));
-    });
-    curY += LH + FH + sc(3);
-  };
-
-  checkPage(sc(140));
-  secHdr('OVERALL STATUS & SIGNATURES');
-  gap(3);
-  eslFieldRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', x: ML, w: PW }]);
-  gap(12);
-
-  const sigH2 = sc(40), sigW2 = PW / 2 - 6;
-  page.drawText('INSPECTOR / OWNER SIGNATURE:', { x: ML, y: ty(sigH2) + sigH2 + sc(2), size: sc(7), font: hFont, color: navy });
-  page.drawRectangle({ x: ML, y: ry(sigH2), width: sigW2, height: sigH2, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (sigHasData) {
-    try {
-      const sigCanvas = document.getElementById('sig-canvas');
-      const ab = Uint8Array.from(atob(sigCanvas.toDataURL('image/png').split(',')[1]), c => c.charCodeAt(0)).buffer;
-      const sImg = await pdfDoc.embedPng(ab);
-      const sDims = sImg.scaleToFit(sigW2 - 8, sigH2 - 8);
-      page.drawImage(sImg, { x: ML + 4, y: ry(sigH2) + 4, width: sDims.width, height: sDims.height });
-    } catch(_) {}
-  } else {
-    const sf = form.createTextField(fid());
-    sf.setText(''); sf.addToPage(page, { x: ML+2, y: ry(sigH2)+2, width: sigW2-4, height: sigH2-4, font: rFont }); sf.setFontSize(sc(9));
-  }
-  page.drawText('CLIENT SIGNATURE:', { x: ML+PW/2+10, y: ty(sigH2) + sigH2 + sc(2), size: sc(7), font: hFont, color: navy });
-  page.drawRectangle({ x: ML+PW/2+8, y: ry(sigH2), width: sigW2, height: sigH2, color: gold, borderColor: sky, borderWidth: 0.5 });
-  if (custSigHasData) {
-    try {
-      const cc = document.getElementById('cust-sig-canvas');
-      const ab = Uint8Array.from(atob(cc.toDataURL('image/png').split(',')[1]), c => c.charCodeAt(0)).buffer;
-      const cImg = await pdfDoc.embedPng(ab);
-      const cDims = cImg.scaleToFit(sigW2 - 8, sigH2 - 8);
-      page.drawImage(cImg, { x: ML+PW/2+12, y: ry(sigH2) + 4, width: cDims.width, height: cDims.height });
-    } catch(_) {}
-  } else {
-    const cf = form.createTextField(fid());
-    cf.setText(''); cf.addToPage(page, { x: ML+PW/2+10, y: ry(sigH2)+2, width: sigW2-4, height: sigH2-4, font: rFont }); cf.setFontSize(sc(9));
-  }
-  curY += sigH2 + sc(4);
-
-  eslFieldRow([
-    { label: 'INSPECTOR DATE', val: sigDate2, x: ML,        w: PW/2 },
-    { label: 'CLIENT DATE',    val: '',       x: ML+PW/2,   w: PW/2 },
-  ]);
-  eslFieldRow([
-    { label: 'INSPECTOR PRINT NAME', val: sigName2, x: ML,      w: PW/2 },
-    { label: 'CLIENT PRINT NAME',    val: '',       x: ML+PW/2, w: PW/2 },
-  ]);
+  const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+  renderInspectionNotes(_c, data);
+  await renderInspectionStatusAndSignatures(_c, data);
+  await renderInspectionPhotos(_c);
 
   return await pdfDoc.save();
 }
@@ -2502,121 +2033,19 @@ async function buildEditablePDFBytes() {
 
     // ── PAGE 9: Deficiency + Batteries + Notes + Signatures ───────────────────
     addPage();
-    secHdr('DEFICIENCY LIST');
-    const deficList = [];
-    document.querySelectorAll('#fa-defic-tbody tr').forEach((r, i) => {
-      deficList.push([String(i+1), r.querySelector('td:nth-child(2) input')?.value?.trim()||'', '']);
-    });
-    (data.deficiencies||[]).forEach((d,i) => {
-      if (!deficList.find(r => r[1]===d.item)) deficList.push([String(deficList.length+1), d.item||'', '']);
-    });
-    while (deficList.length < 10) deficList.push(Array(3).fill(''));
-    table(
-      [{label:'#',w:25},{label:'DEFICIENCY',w:515}],
-      deficList.map(r => [r[0], r[1]]), 14, 1
-    );
-    gap(6);
-    subHdr('FAILED BATTERIES (IF APPLICABLE)');
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    _c.subHdr('FAILED BATTERIES (IF APPLICABLE)');
     while (batRows.length < 4) batRows.push(Array(4).fill(''));
-    // One battery per row (was two-per-row); LOCATIONS wraps.
-    table(
-      [{label:'SIZE (AH)',w:90},{label:'TYPE',w:120},{label:'COUNT',w:80},{label:'LOCATIONS',w:250}],
-      batRows.map(r => [r[0]||'', r[1]||'', r[2]||'', r[3]||'']), 14, 3
+    _c.table(
+      [{ label: 'SIZE (AH)', w: 90 }, { label: 'TYPE', w: 120 }, { label: 'COUNT', w: 80 }, { label: 'LOCATIONS', w: 250 }],
+      batRows.map(r => [r[0] || '', r[1] || '', r[2] || '', r[3] || '']), 14, 3
     );
-    gap(6);
-    subHdr('GENERAL NOTES & SITE OBSERVATIONS');
-    // Notes normalized in collectAllData → data.notes.
-    const notesList = (data.notes || []).map((t, i) => [String(i+1), t]);
-    while (notesList.length < 3) notesList.push(['','']);
-    table([{label:'#',w:25},{label:'NOTE',w:515}], notesList, 14, 1);
-    gap(10);
-    // Signatures
-    checkPage(sc(60));
-    const sigH = sc(35), sigW = PW/2-10;
-    page.drawRectangle({ x:ML, y:ry(sigH), width:sigW, height:sigH, color:lgray, borderColor:navy, borderWidth:0.5 });
-    page.drawText('INSPECTOR SIGNATURE:', { x:ML+3, y:ry(sigH)+sigH-8, size:7, font:hFont, color:navy });
-    if (sigHasData) {
-      try {
-        const sigCanvas = document.getElementById('sig-canvas');
-        const b64 = sigCanvas.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const sImg  = await pdfDoc.embedPng(ab);
-        const sDims = sImg.scaleToFit(sigW - 8, sigH - 14);
-        page.drawImage(sImg, { x: ML + 4, y: ry(sigH) + 3, width: sDims.width, height: sDims.height });
-      } catch(_) {}
-    } else {
-      const sf = form.createTextField(fid());
-      sf.setText(''); // blank, signable box (name goes in the PRINT NAME field below) — matches other reports
-      sf.addToPage(page, { x:ML+2, y:ry(sigH)+2, width:sigW-4, height:sigH-12, font: rFont });
-      sf.setFontSize(sc(9));
-    }
-    page.drawRectangle({ x:ML+PW/2+10, y:ry(sigH), width:sigW, height:sigH, color:lgray, borderColor:navy, borderWidth:0.5 });
-    page.drawText('CLIENT SIGNATURE:', { x:ML+PW/2+13, y:ry(sigH)+sigH-8, size:7, font:hFont, color:navy });
-    if (custSigHasData) {
-      try {
-        const cc  = document.getElementById('cust-sig-canvas');
-        const b64 = cc.toDataURL('image/png').split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const cImg  = await pdfDoc.embedPng(ab);
-        const cDims = cImg.scaleToFit(sigW - 8, sigH - 14);
-        page.drawImage(cImg, { x: ML+PW/2+14, y: ry(sigH) + 3, width: cDims.width, height: cDims.height });
-      } catch(_) {}
-    } else {
-      const cf = form.createTextField(fid());
-      cf.setText('');
-      cf.addToPage(page, { x:ML+PW/2+12, y:ry(sigH)+2, width:sigW-4, height:sigH-12, font: rFont });
-      cf.setFontSize(sc(9));
-    }
-    curY += sigH + 4;
-    dataRow([
-      { label:'INSPECTOR DATE', val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
-      { label:'CLIENT DATE',    val: fd['cust-sig-date'] || '', w: PW/2 },
-    ]);
-    dataRow([
-      { label:'INSPECTOR PRINT NAME', val: data.signature?.name || data.inspection?.inspectorName || '', w: PW/2 },
-      { label:'CLIENT PRINT NAME',    val: fd['cust-sig-name'] || '', w: PW/2 },
-    ]);
+    _c.gap(6);
+    renderInspectionNotes(_c, data);
+    await renderInspectionStatusAndSignatures(_c, data);
+    await renderInspectionPhotos(_c);
 
-    // ── Photos page ───────────────────────────────────────────────────────────
-    if (inspectionPhotos.length > 0) {
-      addPage();
-      secHdr('INSPECTION PHOTOS');
-      const photoW = Math.floor((PW - 10) / 2);
-      const photoH = sc(140);
-      let col = 0;
-      for (let i = 0; i < inspectionPhotos.length; i++) {
-        const photo = inspectionPhotos[i];
-        checkPage(photoH + 30);
-        const px = ML + col * (photoW + 10);
-        try {
-          const b64 = photo.dataUrl.split(',')[1];
-          const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-          const img = photo.dataUrl.startsWith('data:image/png')
-            ? await pdfDoc.embedPng(ab)
-            : await pdfDoc.embedJpg(ab);
-          const dims = img.scaleToFit(photoW, photoH);
-          page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
-        } catch(_) {
-          page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: rgb(0.93,0.93,0.93) });
-          page.drawText('Image unavailable', { x: px + photoW/2 - 30, y: ry(photoH) + photoH/2, size: sc(8), font: rFont, color: rgb(0.5,0.5,0.5) });
-        }
-        // Photo number badge
-        page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: sc(12), color: rgb(0,0,0) });
-        page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: sc(7), font: hFont, color: white });
-        // Note below photo
-        if (photo.note) {
-          const noteLines = wrap(photo.note, sc(7), photoW);
-          noteLines.forEach((l, li) => {
-            page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li*sc(9), size: sc(7), font: rFont, color: blk });
-          });
-        }
-        col++;
-        if (col >= 2) { col = 0; curY += photoH + 22; }
-      }
-      if (col > 0) curY += photoH + 22;
-    }
-
-    // Return bytes to caller
     return await pdfDoc.save();
 }
 
@@ -2740,22 +2169,11 @@ async function buildHoodPDFBytes() {
   ]);
   gap(6);
 
-  // Deficiencies
-  if (data.deficiencies && data.deficiencies.length > 0) {
-    secHdr('DEFICIENCIES — ' + data.deficiencies.length + ' ITEM(S)');
-    data.deficiencies.forEach(d => {
-      const text = d.item + (d.description ? ': ' + d.description : '');
-      const defLines = wrap(text, sc(8), PW - 20);
-      const defRowH = Math.max(sc(18), defLines.length * sc(11) + sc(8));
-      checkPage(defRowH + 2);
-      page.drawRectangle({ x: ML, y: ry(defRowH), width: PW, height: defRowH, color: rgb(0.99, 0.93, 0.93), borderColor: red, borderWidth: 0.5 });
-      page.drawText('•', { x: ML+4, y: ry(defRowH) + defRowH - 9, size: sc(8), font: hFont, color: red });
-      defLines.forEach((line, li) => {
-        page.drawText(line, { x: ML+14, y: ry(defRowH) + defRowH - sc(10) - li*sc(11), size: sc(8), font: rFont, color: blk });
-      });
-      curY += defRowH + 3;
-    });
-    gap(4);
+  // Deficiencies — standardized shared renderer (gold numbered editable rows).
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
   }
 
   // NFPA References and Procedure
@@ -3108,116 +2526,11 @@ async function buildHoodPDFBytes() {
     gap(6);
   }
 
-  // ── General Notes & Site Observations ──────────────────────────────────────
-  // Notes normalized in collectAllData → data.notes.
-  const hoodNotes = data.notes || [];
-  if (hoodNotes.length > 0) {
-    secHdr('GENERAL NOTES & SITE OBSERVATIONS');
-    gap(2);
-    hoodNotes.forEach((note, idx) => {
-      const ntxt = pdfSafe(note);
-      const noteLines = wrap(ntxt, sc(8), PW - 20);
-      const rowH = Math.max(sc(16), noteLines.length * sc(11) + sc(8));
-      checkPage(rowH + 3);
-      page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: lgray, borderColor: sky, borderWidth: 0.5 });
-      page.drawText(String(idx + 1) + '.', { x: ML+4, y: ry(rowH) + rowH - 10, size: sc(7.5), font: hFont, color: navy });
-      noteLines.forEach((line, li) => {
-        page.drawText(line, { x: ML+16, y: ry(rowH) + rowH - sc(10) - li*sc(11), size: sc(8), font: rFont, color: blk });
-      });
-      curY += rowH + 3;
-    });
-    gap(4);
-  }
-
-  // ── Signatures ─────────────────────────────────────────────────────────────
-  checkPage(sc(80));
-  secHdr('CERTIFICATION & SIGNATURES');
-  gap(4);
-  const sigH = sc(35), sigW = PW / 2 - 10;
-
-  page.drawRectangle({ x: ML, y: ry(sigH), width: sigW, height: sigH, color: lgray, borderColor: navy, borderWidth: 0.5 });
-  page.drawText('INSPECTOR SIGNATURE:', { x: ML+3, y: ry(sigH)+sigH-8, size: sc(7), font: hFont, color: navy });
-  if (sigHasData) {
-    try {
-      const sigCanvas = document.getElementById('sig-canvas');
-      const b64 = sigCanvas.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const sImg  = await pdfDoc.embedPng(ab);
-      const sDims = sImg.scaleToFit(sigW - 8, sigH - 14);
-      page.drawImage(sImg, { x: ML+4, y: ry(sigH)+3, width: sDims.width, height: sDims.height });
-    } catch(_) {}
-  } else {
-    const sf = form.createTextField(fid());
-    sf.setText(pdfSafe(data.signature?.name || ''));
-    sf.addToPage(page, { x: ML+2, y: ry(sigH)+2, width: sigW-4, height: sigH-12, font: rFont });
-    sf.setFontSize(sc(9));
-  }
-
-  page.drawRectangle({ x: ML+PW/2+10, y: ry(sigH), width: sigW, height: sigH, color: lgray, borderColor: navy, borderWidth: 0.5 });
-  page.drawText('CLIENT / REPRESENTATIVE SIGNATURE:', { x: ML+PW/2+13, y: ry(sigH)+sigH-8, size: sc(7), font: hFont, color: navy });
-  if (typeof custSigHasData !== 'undefined' && custSigHasData) {
-    try {
-      const cc  = document.getElementById('cust-sig-canvas');
-      const b64 = cc.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-      const cImg  = await pdfDoc.embedPng(ab);
-      const cDims = cImg.scaleToFit(sigW - 8, sigH - 14);
-      page.drawImage(cImg, { x: ML+PW/2+14, y: ry(sigH)+3, width: cDims.width, height: cDims.height });
-    } catch(_) {}
-  } else {
-    const cf = form.createTextField(fid());
-    cf.setText('');
-    cf.addToPage(page, { x: ML+PW/2+12, y: ry(sigH)+2, width: sigW-4, height: sigH-12, font: rFont });
-    cf.setFontSize(sc(9));
-  }
-  curY += sigH + 4;
-
-  dataRow([
-    { label: 'INSPECTOR DATE', val: data.signature?.date || data.inspection?.date || '', w: PW/2 },
-    { label: 'CLIENT DATE',    val: '', w: PW/2 },
-  ]);
-  gap(4);
-  dataRow([
-    { label: 'INSPECTOR PRINTED NAME', val: data.signature?.name || '', w: PW/2 },
-    { label: 'CLIENT PRINTED NAME',    val: dv('cust-sig-name') || '', w: PW/2 },
-  ]);
-
-  // ── Photos ────────────────────────────────────────────────────────────────
-  if (inspectionPhotos && inspectionPhotos.length > 0) {
-    addPage();
-    secHdr('INSPECTION PHOTOS');
-    const photoW = Math.floor((PW - 10) / 2);
-    const photoH = sc(140);
-    let col = 0;
-    for (let i = 0; i < inspectionPhotos.length; i++) {
-      const photo = inspectionPhotos[i];
-      checkPage(photoH + 30);
-      const px = ML + col * (photoW + 10);
-      try {
-        const b64 = photo.dataUrl.split(',')[1];
-        const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-        const img = photo.dataUrl.startsWith('data:image/png')
-          ? await pdfDoc.embedPng(ab)
-          : await pdfDoc.embedJpg(ab);
-        const dims = img.scaleToFit(photoW, photoH);
-        page.drawImage(img, { x: px, y: ry(photoH) + (photoH - dims.height), width: dims.width, height: dims.height });
-      } catch(_) {
-        page.drawRectangle({ x: px, y: ry(photoH), width: photoW, height: photoH, color: rgb(0.93, 0.93, 0.93) });
-        page.drawText('Image unavailable', { x: px+photoW/2-30, y: ry(photoH)+photoH/2, size: sc(8), font: rFont, color: rgb(0.5, 0.5, 0.5) });
-      }
-      page.drawRectangle({ x: px+2, y: ry(photoH)+photoH-14, width: 40, height: sc(12), color: rgb(0, 0, 0) });
-      page.drawText('Photo ' + (i+1), { x: px+4, y: ry(photoH)+photoH-7, size: sc(7), font: hFont, color: white });
-      if (photo.note) {
-        const noteLines = wrap(photo.note, sc(7), photoW);
-        noteLines.forEach((l, li) => {
-          page.drawText(l, { x: px, y: ry(photoH) - sc(10) - li*sc(9), size: sc(7), font: rFont, color: blk });
-        });
-      }
-      col++;
-      if (col >= 2) { col = 0; curY += photoH + 22; }
-    }
-    if (col > 0) curY += photoH + 22;
-  }
+  // Notes, overall status & signatures, and photos — standardized shared renderers.
+  const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+  renderInspectionNotes(_c, data);
+  await renderInspectionStatusAndSignatures(_c, data);
+  await renderInspectionPhotos(_c);
 
   return await pdfDoc.save();
 }
