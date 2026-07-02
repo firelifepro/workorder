@@ -134,6 +134,27 @@
 
   function setById(id, val) { const el = $(id); if (el) { el.value = val; fire(el, 'input'); fire(el, 'change'); el.dataset.demoFilled = '1'; } }
 
+  // Some systems (exit-sign, smoke-control and other generic checklists) otherwise
+  // come out all-PASS. Click one real FAIL so a failure + its shading/deficiency shows.
+  function forceOneFail(sysKey) {
+    if (['fire-alarm', 'sprinkler', 'hood', 'extinguisher', 'fire-smoke-damper'].includes(sysKey)) return; // these already get fails
+    let btn = null;
+    if (sysKey === 'exit-sign-lighting') {
+      // Fail the OVERALL pass/fail of the first Emergency Lighting unit (setESLPF).
+      btn = document.querySelector('button[onclick*="setESLPF"][onclick*="FAIL"]');
+    }
+    if (!btn) btn = document.querySelector('#sys-forms button.pf-btn.fail'); // generic checklist FAIL (setPF)
+    if (!btn) return;
+    try { btn.click(); } catch (_) {}
+    // Fill any deficiency description the failure just revealed.
+    document.querySelectorAll('#sys-forms [id*="defic"], .fa-static-defic input').forEach(el => {
+      if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && !el.value) {
+        el.value = 'Demo: failed functional test — corrective action recommended.';
+        fire(el, 'input');
+      }
+    });
+  }
+
   // ── Pass/Fail rows: mostly PASS, every 4th FAIL (+ deficiency text) ─────────
   function setInspectRows() {
     let i = 0;
@@ -352,6 +373,7 @@
       fillScope(FILL_ROOTS);
       clickToggles(FILL_ROOTS);                     // set Y/N/NA & Inspecting? toggle buttons
       setInspectRows();
+      forceOneFail(sysKey);                         // guarantee ≥1 visible failure (exit-sign, smoke-control, etc.)
       seedIdentity();                               // re-assert cover fields after sweeps
       await addDemoPhotos();
       if (has('buildItemPanelMap')) buildItemPanelMap();

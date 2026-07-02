@@ -1936,6 +1936,10 @@ async function buildExitSignLightingPDFBytes() {
     curY += eslNfpaBoxH + sc(4);
   }
 
+  // Start the device tables on a fresh page so the EMERGENCY LIGHTING header and its
+  // rows stay together (previously the header orphaned at the bottom of page 1).
+  addPage();
+
   // EL table
   drawDeviceTable('EMERGENCY LIGHTING UNITS (NFPA 101 7.9)', data.elUnits, [
     { label: '#',          w: 22,  get: (u, i) => String(i+1) },
@@ -1974,40 +1978,68 @@ async function buildExitSignLightingPDFBytes() {
 
   // Signature
   checkPage(sc(88));
-  secHdr('INSPECTOR CERTIFICATION');
-  gap(8); // clear the header bar before the INSPECTOR SIGNATURE label below
+  // ── OVERALL STATUS & SIGNATURES (matches the other reports) ──────────────────
   const sigName2 = data.signature?.name || data.inspection?.inspectorName || '';
   const sigDate2 = data.signature?.date || data.inspection?.date || '';
-  const halfW2 = PW / 2 - 4;
+  // Labeled full-width / half-width editable field rows (this builder has no dataRow).
+  const eslFieldRow = (pairs) => {
+    const LH = sc(8), FH = sc(12);
+    pairs.forEach(({ label, val, x, w }) => {
+      page.drawText(label + ':', { x: x+2, y: ty(LH, LH-sc(3)), size: sc(6), font: hFont, color: navy });
+      page.drawRectangle({ x, y: ry(LH+FH), width: w, height: FH, color: gold, borderColor: sky, borderWidth: 0.5 });
+      const f = form.createTextField(fid());
+      f.setText(pdfSafe(String(val || '')));
+      f.addToPage(page, { x: x+1, y: ry(LH+FH)+1, width: w-2, height: FH-2, font: rFont });
+      f.setFontSize(sc(8));
+    });
+    curY += LH + FH + sc(3);
+  };
 
-  // Drawn signature (matches sprinkler/other reports) — embed the sig-canvas PNG
-  const eslSigH = sc(40);
-  page.drawText('INSPECTOR SIGNATURE:', { x: ML+2, y: ry(sc(0)) + 2, size: sc(7), font: hFont, color: navy });
-  gap(11);
-  page.drawRectangle({ x: ML, y: ry(eslSigH), width: PW, height: eslSigH, color: gold, borderColor: sky, borderWidth: 0.5 });
+  checkPage(sc(140));
+  secHdr('OVERALL STATUS & SIGNATURES');
+  gap(3);
+  eslFieldRow([{ label: 'OVERALL INSPECTION STATUS', val: data.overallStatus || '', x: ML, w: PW }]);
+  gap(12);
+
+  const sigH2 = sc(40), sigW2 = PW / 2 - 6;
+  page.drawText('INSPECTOR / OWNER SIGNATURE:', { x: ML, y: ty(sigH2) + sigH2 + sc(2), size: sc(7), font: hFont, color: navy });
+  page.drawRectangle({ x: ML, y: ry(sigH2), width: sigW2, height: sigH2, color: gold, borderColor: sky, borderWidth: 0.5 });
   if (sigHasData) {
     try {
       const sigCanvas = document.getElementById('sig-canvas');
-      const b64 = sigCanvas.toDataURL('image/png').split(',')[1];
-      const ab  = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+      const ab = Uint8Array.from(atob(sigCanvas.toDataURL('image/png').split(',')[1]), c => c.charCodeAt(0)).buffer;
       const sImg = await pdfDoc.embedPng(ab);
-      const sDims = sImg.scaleToFit(PW - 8, eslSigH - 8);
-      page.drawImage(sImg, { x: ML + 4, y: ry(eslSigH) + 4, width: sDims.width, height: sDims.height });
+      const sDims = sImg.scaleToFit(sigW2 - 8, sigH2 - 8);
+      page.drawImage(sImg, { x: ML + 4, y: ry(sigH2) + 4, width: sDims.width, height: sDims.height });
     } catch(_) {}
+  } else {
+    const sf = form.createTextField(fid());
+    sf.setText(''); sf.addToPage(page, { x: ML+2, y: ry(sigH2)+2, width: sigW2-4, height: sigH2-4, font: rFont }); sf.setFontSize(sc(9));
   }
-  curY += eslSigH + 6;
+  page.drawText('CLIENT SIGNATURE:', { x: ML+PW/2+10, y: ty(sigH2) + sigH2 + sc(2), size: sc(7), font: hFont, color: navy });
+  page.drawRectangle({ x: ML+PW/2+8, y: ry(sigH2), width: sigW2, height: sigH2, color: gold, borderColor: sky, borderWidth: 0.5 });
+  if (custSigHasData) {
+    try {
+      const cc = document.getElementById('cust-sig-canvas');
+      const ab = Uint8Array.from(atob(cc.toDataURL('image/png').split(',')[1]), c => c.charCodeAt(0)).buffer;
+      const cImg = await pdfDoc.embedPng(ab);
+      const cDims = cImg.scaleToFit(sigW2 - 8, sigH2 - 8);
+      page.drawImage(cImg, { x: ML+PW/2+12, y: ry(sigH2) + 4, width: cDims.width, height: cDims.height });
+    } catch(_) {}
+  } else {
+    const cf = form.createTextField(fid());
+    cf.setText(''); cf.addToPage(page, { x: ML+PW/2+10, y: ry(sigH2)+2, width: sigW2-4, height: sigH2-4, font: rFont }); cf.setFontSize(sc(9));
+  }
+  curY += sigH2 + sc(4);
 
-  // Printed name + date row below the signature
-  page.drawText('INSPECTOR PRINT NAME:', { x: ML+2, y: ry(sc(0)) + 2, size: sc(6.5), font: hFont, color: navy });
-  page.drawText('DATE:', { x: ML+halfW2+10, y: ry(sc(0)) + 2, size: sc(6.5), font: hFont, color: navy });
-  gap(10);
-  page.drawRectangle({ x: ML, y: ry(sc(18)), width: halfW2, height: sc(18), color: gold, borderColor: sky, borderWidth: 0.5 });
-  const sf2 = form.createTextField(fid());
-  sf2.setText(pdfSafe(sigName2)); sf2.addToPage(page, { x: ML+2, y: ry(sc(18))+2, width: halfW2-4, height: sc(14), font: rFont }); sf2.setFontSize(sc(9));
-  page.drawRectangle({ x: ML+halfW2+8, y: ry(sc(18)), width: halfW2, height: sc(18), color: gold, borderColor: sky, borderWidth: 0.5 });
-  const df2 = form.createTextField(fid());
-  df2.setText(pdfSafe(sigDate2)); df2.addToPage(page, { x: ML+halfW2+10, y: ry(sc(18))+2, width: halfW2-4, height: sc(14), font: rFont }); df2.setFontSize(sc(9));
-  curY += sc(22);
+  eslFieldRow([
+    { label: 'INSPECTOR DATE', val: sigDate2, x: ML,        w: PW/2 },
+    { label: 'CLIENT DATE',    val: '',       x: ML+PW/2,   w: PW/2 },
+  ]);
+  eslFieldRow([
+    { label: 'INSPECTOR PRINT NAME', val: sigName2, x: ML,      w: PW/2 },
+    { label: 'CLIENT PRINT NAME',    val: '',       x: ML+PW/2, w: PW/2 },
+  ]);
 
   return await pdfDoc.save();
 }
