@@ -475,16 +475,16 @@ async function buildExtinguisherPDFBytes() {
 
   // ── DEFICIENCY LIST ──────────────────────────────────────────────────────────
   secHdr('DEFICIENCY LIST');
-  const deficTrs = [...(document.getElementById('generic-defic-tbody')?.querySelectorAll('tr') || [])];
-  if (deficTrs.length === 0) {
+  const deficList = data.deficiencies || [];
+  if (deficList.length === 0) {
     const dnH = sc(13);
     checkPage(dnH + sc(1));
     page.drawRectangle({ x: ML, y: ry(dnH), width: PW, height: dnH, color: gold, borderColor: sky, borderWidth: 0.3 });
     page.drawText('No deficiencies noted.', { x: ML+4, y: ty(dnH,sc(4)), size: sc(8), font: rFont, color: blk });
     curY += dnH + sc(1);
   } else {
-    deficTrs.forEach((tr, i) => {
-      const desc = tr.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+    deficList.forEach((d, i) => {
+      const desc = d.item || '';
       const rh = pdfRowHeight(wrap(desc, sc(7), PW-30).length, { lineH: sc(9), pad: sc(4), min: sc(13) });
       checkPage(rh + sc(1));
       page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
@@ -500,20 +500,8 @@ async function buildExtinguisherPDFBytes() {
 
   // ── GENERAL NOTES ─────────────────────────────────────────────────────────────
   secHdr('GENERAL NOTES & RECOMMENDATIONS');
-  // Collect general notes from dynamic rows
-  const extNotesTbody = document.getElementById('ext-notes-tbody');
-  const generalNotes = [];
-  if (extNotesTbody) {
-    extNotesTbody.querySelectorAll('textarea').forEach(ta => {
-      const txt = ta.value.trim();
-      if (txt) generalNotes.push(txt);
-    });
-  }
-  // Collect unit notes
-  const unitNotes = (data.extinguishers || []).filter(e => e.noteTxt).map(e => 'Unit #' + e.rowNum + (e.location ? ' – ' + e.location : '') + ': ' + e.noteTxt);
-  const allNotes = [];
-  generalNotes.forEach(n => allNotes.push(n));
-  unitNotes.forEach(n => allNotes.push(n));
+  // Notes are normalized in collectAllData → data.notes (dynamic rows + unit notes).
+  const allNotes = data.notes || [];
   const noteRowCount = Math.max(allNotes.length, 3);
   for (let i = 0; i < noteRowCount; i++) {
     const ntxt = allNotes[i] || '';
@@ -1025,15 +1013,15 @@ async function buildSprinklerPDFBytes() {
 
   // Deficiency list
   secHdr('WET SPRINKLER DEFICIENCY LIST');
-  const spDeficRows = [...(document.getElementById('sp-defic-tbody')?.querySelectorAll('tr') || [])];
-  if (spDeficRows.length === 0) {
+  const spDeficList = data.deficiencies || [];
+  if (spDeficList.length === 0) {
     checkPage(sc(14));
     page.drawRectangle({ x: ML, y: ry(sc(13)), width: PW, height: sc(13), color: gold, borderColor: sky, borderWidth: 0.3 });
     page.drawText('No deficiencies noted.', { x: ML+4, y: ty(sc(13), sc(4)), size: sc(8), font: rFont, color: blk });
     curY += sc(14);
   } else {
-    spDeficRows.forEach((tr, i) => {
-      const desc = tr.querySelector('td:nth-child(2) input')?.value?.trim() || '';
+    spDeficList.forEach((d, i) => {
+      const desc = d.item || '';
       const rh = pdfRowHeight(wrap(desc, sc(7), PW-30).length, { lineH: sc(9), pad: sc(4), min: sc(13) });
       checkPage(rh + 1);
       page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
@@ -1048,12 +1036,12 @@ async function buildSprinklerPDFBytes() {
   }
   gap(6);
 
-  // General notes
+  // General notes — normalized in collectAllData → data.notes.
   secHdr('GENERAL NOTES & SITE OBSERVATIONS');
-  const spNoteRows = [...(document.getElementById('sp-notes-tbody')?.querySelectorAll('tr') || [])];
-  const noteRowCount = Math.max(spNoteRows.length, 3);
+  const spNotes = data.notes || [];
+  const noteRowCount = Math.max(spNotes.length, 3);
   for (let i = 0; i < noteRowCount; i++) {
-    const note = i < spNoteRows.length ? (spNoteRows[i].querySelector('td:nth-child(2) input')?.value?.trim() || '') : '';
+    const note = spNotes[i] || '';
     const rh = pdfRowHeight(wrap(note, sc(7), PW-30).length, { lineH: sc(9), pad: sc(4), min: sc(13) });
     checkPage(rh + 1);
     page.drawRectangle({ x: ML,    y: ry(rh), width: 24,     height: rh, color: gold, borderColor: sky, borderWidth: 0.3 });
@@ -1398,11 +1386,6 @@ async function buildGenericSystemPDFBytes() {
       { title: 'PHYSICAL CONDITION', ids: ['bf-casing','bf-shutoffs','bf-clearance','bf-freeze'] },
     ],
   };
-  const NOTES_ID = {
-    'standpipe':'std-notes','hood':'hood-notes','hydrant':'hy-notes',
-    'bda':'bda-notes','smoke-control':'sc-notes','fire-smoke-damper':'fsd-notes','gas-detection':'gd-notes',
-    'special-suppression':'ss-notes','backflow':'bf-notes',
-  };
 
   // ── PAGE 1: HEADER ──────────────────────────────────────────────────────────
   addPage();
@@ -1656,18 +1639,9 @@ async function buildGenericSystemPDFBytes() {
     }
   }
 
-  // Notes — the system panel's own notes field (NOTES_ID) PLUS the step-4
-  // "General Notes & Site Observations" rows (#fa-notes-tbody, shown for every
-  // non-sprinkler system). Previously only the panel notes rendered, so anything
-  // typed on the final page was dropped from generic reports.
-  const notesId = NOTES_ID[sys];
-  const noteBlocks = [];
-  const panelNotes = notesId ? document.getElementById(notesId)?.value?.trim() : '';
-  if (panelNotes) noteBlocks.push(panelNotes);
-  document.querySelectorAll('#fa-notes-tbody input[type=text], #fa-notes-tbody textarea').forEach(el => {
-    const t = (el.value || '').trim();
-    if (t) noteBlocks.push(t);
-  });
+  // Notes — normalized in collectAllData → data.notes (panel notes field +
+  // the step-4 "General Notes & Site Observations" rows).
+  const noteBlocks = data.notes || [];
   if (noteBlocks.length) {
     secHdr('GENERAL NOTES & SITE OBSERVATIONS');
     noteBlocks.forEach(block => {
@@ -1964,14 +1938,18 @@ async function buildExitSignLightingPDFBytes() {
     { label: 'COMMENTS',   comment: true, get: u => u.comments },
   ]);
 
-  // Notes
-  const notesVal = document.getElementById('esl-notes')?.value?.trim() || '';
-  if (notesVal) {
+  // Notes — normalized in collectAllData → data.notes (#esl-notes field).
+  const eslNotes = data.notes || [];
+  if (eslNotes.length) {
     secHdr('NOTES');
-    wrap(notesVal, sc(8), PW - 8).forEach(line => {
-      checkPage(sc(12));
-      page.drawText(line, { x: ML+4, y: ry(sc(12))+3, size: sc(8), font: rFont, color: navy });
-      curY += sc(12);
+    eslNotes.forEach(block => {
+      block.split(/\r?\n/).forEach(seg => {
+        wrap(seg, sc(8), PW - 8).forEach(line => {
+          checkPage(sc(12));
+          page.drawText(line, { x: ML+4, y: ry(sc(12))+3, size: sc(8), font: rFont, color: navy });
+          curY += sc(12);
+        });
+      });
     });
     gap(4);
   }
@@ -2547,11 +2525,8 @@ async function buildEditablePDFBytes() {
     );
     gap(6);
     subHdr('GENERAL NOTES & SITE OBSERVATIONS');
-    const notesList = [];
-    document.querySelectorAll('#fa-notes-tbody tr').forEach((r, i) => {
-      const txt = r.querySelector('td:nth-child(2) input')?.value?.trim()||'';
-      notesList.push([String(i+1), txt]);
-    });
+    // Notes normalized in collectAllData → data.notes.
+    const notesList = (data.notes || []).map((t, i) => [String(i+1), t]);
     while (notesList.length < 3) notesList.push(['','']);
     table([{label:'#',w:25},{label:'NOTE',w:515}], notesList, 14, 1);
     gap(10);
@@ -3134,15 +3109,13 @@ async function buildHoodPDFBytes() {
   }
 
   // ── General Notes & Site Observations ──────────────────────────────────────
-  const notesTbody = document.getElementById('fa-notes-tbody');
-  const noteRows = notesTbody
-    ? [...notesTbody.querySelectorAll('tr')].filter(r => r.querySelector('td:nth-child(2) input')?.value?.trim())
-    : [];
-  if (noteRows.length > 0) {
+  // Notes normalized in collectAllData → data.notes.
+  const hoodNotes = data.notes || [];
+  if (hoodNotes.length > 0) {
     secHdr('GENERAL NOTES & SITE OBSERVATIONS');
     gap(2);
-    noteRows.forEach((nrow, idx) => {
-      const ntxt = pdfSafe(nrow.querySelector('td:nth-child(2) input')?.value?.trim() || '');
+    hoodNotes.forEach((note, idx) => {
+      const ntxt = pdfSafe(note);
       const noteLines = wrap(ntxt, sc(8), PW - 20);
       const rowH = Math.max(sc(16), noteLines.length * sc(11) + sc(8));
       checkPage(rowH + 3);

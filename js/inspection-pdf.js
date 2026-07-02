@@ -1,4 +1,51 @@
 // ─────────────────────────────────────────────────────────────────────────────
+// GENERAL NOTES / SITE OBSERVATIONS — normalization
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel-level notes field id per generic-builder system. Mirrors NOTES_ID in the
+// generic PDF builder (js/inspection-pdf-editable.js) — kept here so buildNotesList
+// assembles the same note set the generic builder currently reads from the DOM.
+const PANEL_NOTES_ID = {
+  'standpipe':'std-notes','hydrant':'hy-notes','bda':'bda-notes',
+  'smoke-control':'sc-notes','fire-smoke-damper':'fsd-notes','gas-detection':'gd-notes',
+  'special-suppression':'ss-notes','backflow':'bf-notes',
+};
+
+// Collapse every system's "General Notes & Site Observations" into ONE ordered
+// array of non-empty strings — the authoritative source the PDF builders render
+// from (Phase 1 of the PDF-component unification). Each branch reproduces exactly
+// what that system's builder reads today; blank-row padding stays in the builders.
+//   extinguisher      → #ext-notes-tbody textareas + per-unit note lines
+//   sprinkler         → #sp-notes-tbody note column
+//   exit-sign-lighting→ #esl-notes single field
+//   fire-alarm / hood → shared step-4 #fa-notes-tbody note column
+//   generic systems   → panel notes field + shared #fa-notes-tbody note column
+function buildNotesList(system, extinguishers) {
+  const notes = [];
+  const push = t => { const s = (t || '').trim(); if (s) notes.push(s); };
+  const faTable = () => document
+    .querySelectorAll('#fa-notes-tbody td:nth-child(2) input, #fa-notes-tbody td:nth-child(2) textarea')
+    .forEach(el => push(el.value));
+
+  if (system === 'extinguisher') {
+    document.querySelectorAll('#ext-notes-tbody textarea').forEach(ta => push(ta.value));
+    (extinguishers || []).forEach(e => {
+      if (e.noteTxt) push('Unit #' + e.rowNum + (e.location ? ' – ' + e.location : '') + ': ' + e.noteTxt);
+    });
+  } else if (system === 'sprinkler') {
+    document.querySelectorAll('#sp-notes-tbody td:nth-child(2) input').forEach(inp => push(inp.value));
+  } else if (system === 'exit-sign-lighting') {
+    push(document.getElementById('esl-notes')?.value);
+  } else {
+    // fire-alarm, hood, and every generic system share the step-4 notes table;
+    // generic systems ALSO carry a panel-level notes field (fire-alarm/hood don't).
+    const panelId = PANEL_NOTES_ID[system];
+    if (panelId) push(document.getElementById(panelId)?.value);
+    faTable();
+  }
+  return notes;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // COLLECT ALL FORM DATA  (complete snapshot for save/restore)
 // ─────────────────────────────────────────────────────────────────────────────
 function collectAllData() {
@@ -221,6 +268,7 @@ function collectAllData() {
     systems:      activeInspectionSystem ? [activeInspectionSystem] : [...activeSystems],
     overallStatus,
     generalNotes: v('general-notes'),
+    notes: buildNotesList(activeInspectionSystem, extinguishers),
     fieldData,
     pfStates,
     deficiencies,

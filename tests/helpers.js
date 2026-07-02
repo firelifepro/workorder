@@ -45,6 +45,36 @@ function loadHistory() {
   return ctx;
 }
 
+// Load js/inspection-pdf.js in a context with the given `document` stub.
+// The file is all function/const declarations (no top-level execution beyond
+// PANEL_NOTES_ID), so it loads cleanly with only a document stub, and its
+// functions (e.g. buildNotesList) become callable on the returned context.
+function loadInspectionPdf(documentStub) {
+  const ctx = vm.createContext({ console: console, document: documentStub });
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, 'js/inspection-pdf.js'), 'utf8'),
+    ctx
+  );
+  return ctx;
+}
+
+// Minimal DOM stub for the notes/deficiency reads: getElementById resolves
+// against `elements` (id → value string), querySelectorAll against `queries`
+// (exact selector string → array of value strings), each wrapped as { value }.
+function notesDomStub(spec) {
+  const elements = (spec && spec.elements) || {};
+  const queries  = (spec && spec.queries)  || {};
+  const wrap = v => ({ value: v });
+  return {
+    getElementById: function(id) {
+      return Object.prototype.hasOwnProperty.call(elements, id) ? wrap(elements[id]) : null;
+    },
+    querySelectorAll: function(sel) {
+      return (queries[sel] || []).map(wrap);
+    },
+  };
+}
+
 // ── scoreMatch (copied from sub-invoices.html) ────────────────────────────────
 // Keep in sync when the source function changes.
 
@@ -170,8 +200,10 @@ function propFileScore(nameToks, addrToks, filePropToks, fileAllToks) {
 }
 
 module.exports = {
-  loadShared:     loadShared,
-  loadHistory:    loadHistory,
+  loadShared:        loadShared,
+  loadHistory:       loadHistory,
+  loadInspectionPdf: loadInspectionPdf,
+  notesDomStub:      notesDomStub,
   scoreMatch:     scoreMatch,
   matchProperty:  matchProperty,
   auditTokens:    auditTokens,
