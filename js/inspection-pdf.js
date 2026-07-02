@@ -50,18 +50,9 @@ function collectAllData() {
       const desc = row.querySelector('td:nth-child(2) input')?.value?.trim();
       if (desc) deficiencies.push({ item: desc, description: '' });
     });
-  } else if (!isGeneric) {
-    // FA/SP: scan inspect-rows for FAIL states
-    document.querySelectorAll('.inspect-row').forEach(row => {
-      if (row.dataset.val === 'FAIL') {
-        const id = row.id.replace('row-','');
-        const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || id;
-        const desc  = document.getElementById('defic-txt-' + id)?.value?.trim() || '';
-        deficiencies.push({ item: label, description: desc });
-      }
-    });
-  } else {
-    // Generic: inspector hasn't visited defic step yet — fall back to inspect-row scan
+  } else if (isGeneric) {
+    // Generic: inspector hasn't visited defic step yet — fall back to inspect-row
+    // scan, scoped to #sys-forms so only the ACTIVE system's rows are read.
     document.querySelectorAll('#sys-forms .inspect-row').forEach(row => {
       if (row.dataset.val === 'FAIL') {
         const id = row.id.replace('row-','');
@@ -71,8 +62,14 @@ function collectAllData() {
       }
     });
   }
+  // FA/SP deliberately have NO raw .inspect-row scan: their dedicated Deficiency
+  // List tables (fa-defic-tbody / sp-defic-tbody) are the authoritative, complete
+  // source — every genuine FAIL routes a row there, and that's the exact list the
+  // UI shows. Scanning .inspect-row instead double-counted those and, worse, swept
+  // in hidden static rows from OTHER systems (e.g. sprinkler pre-inspection rows
+  // during a fire-alarm report), producing phantom deficiencies in the PDF.
 
-  // For FA inspections, also collect from fa-defic-tbody (manually added rows)
+  // For FA inspections, collect from fa-defic-tbody (the UI Deficiency List)
   if (activeInspectionSystem === 'fire-alarm') {
     document.querySelectorAll('#fa-defic-tbody tr').forEach(row => {
       const desc = row.querySelector('td:nth-child(2) input')?.value?.trim();
