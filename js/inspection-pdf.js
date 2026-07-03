@@ -42,6 +42,17 @@ function buildNotesList(system, extinguishers) {
     const panelId = PANEL_NOTES_ID[system];
     if (panelId) push(document.getElementById(panelId)?.value);
     faTable();
+    // Fire/smoke dampers: fold each card's "General Condition Notes" into the
+    // overall notes, tagged with the damper address (they have no other home).
+    if (system === 'fire-smoke-damper') {
+      document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
+        const id   = card.dataset.damperId;
+        const note = (document.getElementById('dmp-note-' + id)?.value || '').trim();
+        if (!note) return;
+        const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
+        push('Damper ' + addr + ': ' + note);
+      });
+    }
   }
   return notes;
 }

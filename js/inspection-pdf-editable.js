@@ -1506,9 +1506,11 @@ async function buildExitSignLightingPDFBytes() {
 
     units.forEach((u, idx) => {
       const rowH = sc(13);
-      const cval = commentCol ? String(commentCol.get(u, idx) || '') : '';
-      const cLines = wrap('Comments: ' + cval, sc(6.5), PW - 12);
-      const cH = commentCol ? pdfRowHeight(cLines.length, { lineH: sc(8), pad: sc(3), min: sc(11) }) : 0;
+      const cval = commentCol ? String(commentCol.get(u, idx) || '').trim() : '';
+      // Only draw a Comments row when there's actually a comment — no blank rows.
+      const hasComment = !!cval;
+      const cLines = hasComment ? wrap('Comments: ' + cval, sc(6.5), PW - 12) : [];
+      const cH = hasComment ? pdfRowHeight(cLines.length, { lineH: sc(8), pad: sc(3), min: sc(11) }) : 0;
       checkPage(rowH + cH + 2);
       const bg = u.pf === 'FAIL' ? rgb(0.99, 0.93, 0.93) : u.pf === 'PASS' ? rgb(0.94, 0.99, 0.95) : rgb(0.97, 0.97, 0.97);
       // Data row — first-line-fit each cell to its column so nothing overflows.
@@ -1521,8 +1523,8 @@ async function buildExitSignLightingPDFBytes() {
         cx += c.w;
       });
       curY += rowH;
-      // Comments row (full width, wrapped)
-      if (commentCol) {
+      // Comments row (full width, wrapped) — only when the unit has a comment.
+      if (hasComment) {
         page.drawRectangle({ x: ML, y: ry(cH), width: PW, height: cH, color: rgb(0.99, 0.99, 0.96), borderColor: sky, borderWidth: 0.3 });
         cLines.forEach((l, li) => page.drawText(l, { x: ML+6, y: ry(cH) + cH - sc(8) - li*sc(8), size: sc(6.5), font: rFont, color: navy }));
         curY += cH;
