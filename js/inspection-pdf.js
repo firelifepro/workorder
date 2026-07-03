@@ -211,12 +211,14 @@ function collectAllData() {
     document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
       const id = card.dataset.damperId;
       const checks = {};
-      const failedLabels = [];
+      const checkNotes = {};
       let anyPass = false, anyFail = false;
       DAMPER_CHECKS.forEach(c => {
         const val = document.getElementById(`dmp-${id}-${c.id}`)?.value || '';
         checks[c.id] = val;
-        if (val === 'FAIL') { anyFail = true; failedLabels.push(c.short || c.label); }
+        const cn = document.getElementById(`dmp-cknote-${id}-${c.id}`)?.value?.trim() || '';
+        if (cn) checkNotes[c.id] = cn;
+        if (val === 'FAIL') anyFail = true;
         else if (val === 'PASS') anyPass = true;
       });
       const result = anyFail ? 'FAIL' : anyPass ? 'PASS' : '';
@@ -226,16 +228,19 @@ function collectAllData() {
         location: v('dmp-loc-' + id),
         result,
         checks,
+        checkNotes,
         note:     v('dmp-note-' + id),
       };
       dampers.push(d);
-      // Only synthesize the deficiency here if the on-screen Deficiencies step
-      // didn't already capture it (genericDeficRows populated by goGenericDeficStep) —
-      // otherwise the damper would be listed twice.
+      // Fallback: if the live list didn't capture the fails (Deficiencies step not
+      // visited AND no live rows), synthesize one deficiency per failed check — same
+      // shape the live syncDamperDefic produces — so nothing is lost in the PDF.
       if (anyFail && genericDeficRows.length === 0) {
-        deficiencies.push({
-          item: `Damper ${d.address || '(unlabeled)'} — ${d.type || 'Damper'}${d.location ? ' @ ' + d.location : ''}`,
-          description: `Failed: ${failedLabels.join('; ')}${d.note ? '. ' + d.note : ''}`,
+        DAMPER_CHECKS.forEach(c => {
+          if (checks[c.id] !== 'FAIL') return;
+          const base = `Damper ${d.address || '(unlabeled)'} — ${d.type || 'Damper'}${d.location ? ' @ ' + d.location : ''}: ${c.label}`;
+          const note = checkNotes[c.id] || '';
+          deficiencies.push({ item: note ? base + ' — ' + note : base, description: '' });
         });
       }
     });

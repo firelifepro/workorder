@@ -836,6 +836,18 @@ function setHoodYNN(btn, rowId, val) {
     if (group) group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
   }
+  // Picking N auto-opens the inline note and colors it red so it's clear the note
+  // becomes a deficiency; Y / N/A un-reddens it (the deficiency itself is removed).
+  const noteRow = document.getElementById('note-row-' + rowId);
+  if (noteRow) {
+    const nInp = noteRow.querySelector('input');
+    if (val === 'N') {
+      noteRow.classList.add('visible');
+      if (nInp) { nInp.style.border = '1.5px solid var(--red)'; nInp.style.background = 'var(--fail-bg, #fef2f2)'; nInp.placeholder = 'Describe deficiency…'; }
+    } else if (nInp) {
+      nInp.style.border = ''; nInp.style.background = ''; nInp.placeholder = 'Note…';
+    }
+  }
   _syncHoodDefic(rowId, val);
 }
 
@@ -1816,10 +1828,15 @@ function _damperCardBodyHTML(id, p) {
   const curType = p.type || 'Smoke';
   const typeOpts = DAMPER_TYPES.map(t => `<option${t === curType ? ' selected' : ''}>${t}</option>`).join('');
   const checks = p.checks || {};
+  const checkNotes = p.checkNotes || {};
   const checkRows = DAMPER_CHECKS.map(c => {
     const val = checks[c.id] || '';
     const on = v => (val === v ? ' selected' : '');
     const grpHdr = c.group ? `<div style="margin-top:9px;margin-bottom:2px;font-size:0.7rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.02em;">${c.group}</div>` : '';
+    const cnote = checkNotes[c.id] || '';
+    // Inline per-check deficiency note — opens (red) when this check is FAILed,
+    // matching the hood checklist. Its text feeds the check's live deficiency.
+    const noteVis = val === 'FAIL' ? '' : 'display:none;';
     return `${grpHdr}
       <div class="inspect-row-top" style="padding:5px 0;border-top:1px solid #eee;">
         <div class="inspect-label" style="font-size:0.78rem;">${c.label}</div>
@@ -1829,7 +1846,10 @@ function _damperCardBodyHTML(id, p) {
           <button class="pf-btn na${on('N/A')}"   onclick="setDamperCheck(this,${id},'${c.id}','N/A')">N/A</button>
         </div>
       </div>
-      <input type="hidden" id="dmp-${id}-${c.id}" value="${_dmpEsc(val)}">`;
+      <input type="hidden" id="dmp-${id}-${c.id}" value="${_dmpEsc(val)}">
+      <div class="damper-note-row" id="dmp-note-row-${id}-${c.id}" style="${noteVis}margin:0 0 4px;">
+        <input type="text" id="dmp-cknote-${id}-${c.id}" value="${_dmpEsc(cnote)}" placeholder="Describe deficiency…" oninput="syncDamperDefic(${id})" style="width:100%;box-sizing:border-box;border:1.5px solid var(--red);background:var(--fail-bg,#fef2f2);border-radius:4px;padding:5px 8px;font-size:.8rem;font-family:inherit;">
+      </div>`;
   }).join('');
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
@@ -1845,8 +1865,8 @@ function _damperCardBodyHTML(id, p) {
     </div>
     <div style="margin-top:8px;font-size:0.72rem;color:var(--slate);font-style:italic;">Any FAIL below auto-creates a deficiency for this damper. Use ⚡ Fast Pass to mark all remaining checks PASS.</div>
     ${checkRows}
-    <div class="field-group" style="margin-top:8px;"><label>Condition / Deficiency Notes</label>
-      <textarea id="dmp-note-${id}" rows="2" placeholder="Damage, obstruction, actuator/link issue, repair needed… (multiple lines OK)" oninput="syncDamperDefic(${id})">${_dmpEsc(p.note)}</textarea>
+    <div class="field-group" style="margin-top:8px;"><label>General Condition Notes (optional)</label>
+      <textarea id="dmp-note-${id}" rows="2" placeholder="Overall condition notes for this damper (deficiency notes go inline under each failed check above)">${_dmpEsc(p.note)}</textarea>
     </div>`;
 }
 
@@ -1913,43 +1933,48 @@ function setDamperCheck(btn, id, checkId, val) {
   if (group) group.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
   if (!isSame) { btn.classList.add('selected'); if (hidden) hidden.value = val; }
   else         { if (hidden) hidden.value = ''; }   // click again to clear
+  // Open the inline deficiency note for this check on FAIL; hide it otherwise.
+  const noteRow = document.getElementById(`dmp-note-row-${id}-${checkId}`);
+  if (noteRow) noteRow.style.display = (hidden && hidden.value === 'FAIL') ? '' : 'none';
   recalcDamperInventory();
   syncDamperDefic(id);
 }
 
-// Live deficiency for one damper: any FAILed sub-check auto-creates/updates a single
-// row in #generic-defic-tbody (the shared live list); clearing all fails removes it.
-// The auto description tracks the failed checks + address/type/location/note; once
-// the inspector hand-edits the row text (data-dmp-auto="0") we stop overwriting it.
+// Live deficiencies for one damper — one row per FAILed sub-check (like the hood
+// checklist), each carrying that check's inline note. Clearing a check removes its
+// row. Once the inspector hand-edits a row's text (data-dmp-auto="0") we stop
+// overwriting it. Called on every sub-check change, inline-note edit, and the
+// address/type/location edits (which refresh the auto descriptions).
 function syncDamperDefic(id) {
   const tbody = document.getElementById('generic-defic-tbody');
   if (!tbody) return;
-  const deficId  = 'dmp-defic-' + id;
-  const existing = document.getElementById(deficId);
-  const failed = DAMPER_CHECKS
-    .filter(c => document.getElementById(`dmp-${id}-${c.id}`)?.value === 'FAIL')
-    .map(c => c.short || c.label);
-  if (failed.length) {
-    const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
-    const type = document.getElementById('dmp-type-' + id)?.value || 'Damper';
-    const loc  = (document.getElementById('dmp-loc-' + id)?.value || '').trim();
-    const note = (document.getElementById('dmp-note-' + id)?.value || '').trim();
-    const desc = `Damper ${addr} — ${type}${loc ? ' @ ' + loc : ''}: Failed ${failed.join('; ')}${note ? '. ' + note : ''}`;
-    if (!existing) {
-      if (typeof genericDeficCount !== 'undefined') genericDeficCount++;
-      tbody.insertAdjacentHTML('beforeend', `
-        <tr id="${deficId}" data-src-damper="${id}">
-          <td style="text-align:center;font-weight:700;color:var(--slate);"></td>
-          <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" data-dmp-auto="1" oninput="this.dataset.dmpAuto='0'" placeholder="Describe deficiency…"></td>
-          <td><button class="del-btn" onclick="removeDamperDefic('${deficId}')">✕</button></td>
-        </tr>`);
-    } else {
-      const txt = document.getElementById(deficId + '-desc');
-      if (txt && txt.dataset.dmpAuto !== '0') txt.value = desc;
+  const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
+  const type = document.getElementById('dmp-type-' + id)?.value || 'Damper';
+  const loc  = (document.getElementById('dmp-loc-' + id)?.value || '').trim();
+  DAMPER_CHECKS.forEach(c => {
+    const deficId  = `dmp-defic-${id}-${c.id}`;
+    const existing = document.getElementById(deficId);
+    const isFail   = document.getElementById(`dmp-${id}-${c.id}`)?.value === 'FAIL';
+    if (isFail) {
+      const note = (document.getElementById(`dmp-cknote-${id}-${c.id}`)?.value || '').trim();
+      const base = `Damper ${addr} — ${type}${loc ? ' @ ' + loc : ''}: ${c.label}`;
+      const desc = note ? base + ' — ' + note : base;
+      if (!existing) {
+        if (typeof genericDeficCount !== 'undefined') genericDeficCount++;
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr id="${deficId}" data-src-damper="${id}">
+            <td style="text-align:center;font-weight:700;color:var(--slate);"></td>
+            <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" data-dmp-auto="1" oninput="this.dataset.dmpAuto='0'" placeholder="Describe deficiency…"></td>
+            <td><button class="del-btn" onclick="removeDamperDefic('${deficId}')">✕</button></td>
+          </tr>`);
+      } else {
+        const txt = document.getElementById(deficId + '-desc');
+        if (txt && txt.dataset.dmpAuto !== '0') txt.value = desc;
+      }
+    } else if (existing) {
+      existing.remove();
     }
-  } else if (existing) {
-    existing.remove();
-  }
+  });
   if (typeof renumberGenericDefic === 'function') renumberGenericDefic();
   if (typeof refreshAutoStatus === 'function') refreshAutoStatus();
 }
