@@ -542,33 +542,21 @@ function goGenericDeficStep() {
     // FAILs (demo / restore) while preserving edited + manually-added rows.
     syncGenericDeficList();
   } else if (activeInspectionSystem === 'fire-smoke-damper') {
-    // Dampers have no .inspect-row items — build one deficiency per damper that
-    // has any failed sub-check, so auto-deficiencies show on the normal page.
-    genericDeficCount = 0;
-    const tbody = document.getElementById('generic-defic-tbody');
-    if (tbody && typeof DAMPER_CHECKS !== 'undefined') {
-      tbody.innerHTML = '';
+    // Dampers maintain their deficiencies live (syncDamperDefic on every sub-check).
+    // Entering the step just re-syncs each card non-destructively to catch any
+    // programmatic FAILs (demo/restore) without wiping edited rows.
+    if (typeof syncDamperDefic === 'function') {
       document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
-        const id = card.dataset.damperId;
-        const failed = DAMPER_CHECKS.filter(c => document.getElementById(`dmp-${id}-${c.id}`)?.value === 'FAIL').map(c => c.short || c.label);
-        if (!failed.length) return;
-        genericDeficCount++;
-        const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
-        const type = document.getElementById('dmp-type-' + id)?.value || 'Damper';
-        const loc  = (document.getElementById('dmp-loc-' + id)?.value || '').trim();
-        const note = (document.getElementById('dmp-note-' + id)?.value || '').trim();
-        const description = `Damper ${addr} — ${type}${loc ? ' @ ' + loc : ''}: Failed ${failed.join('; ')}${note ? '. ' + note : ''}`;
-        const rowId = 'generic-defic-' + genericDeficCount;
-        tbody.insertAdjacentHTML('beforeend', `
-          <tr id="${rowId}">
-            <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
-            <td><input type="text" id="${rowId}-desc" value="${escHtml(description)}" placeholder="Describe deficiency…"></td>
-            <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
-          </tr>`);
+        syncDamperDefic(card.dataset.damperId);
       });
     }
+  } else if (activeInspectionSystem === 'hood') {
+    // Hoods maintain deficiencies live (an "N" answer → syncHoodDefic). Entering the
+    // step re-syncs each checklist row non-destructively to catch programmatic "N"s
+    // (demo/restore) without disturbing edited or manually-added rows.
+    if (typeof syncAllHoodDefic === 'function') syncAllHoodDefic();
   }
-  // For extinguisher / hood: deficiencies managed separately — don't rebuild
+  // For extinguisher: deficiencies managed separately (live) — don't rebuild
 
   // Show/hide
   document.getElementById('step-3').style.display = 'none';
