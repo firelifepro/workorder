@@ -502,27 +502,10 @@ function goGenericDeficStep() {
   // (it has no `.inspect-row` items), so rebuilding would wipe them — preserve instead.
   const usesPF = !['extinguisher', 'hood', 'exit-sign-lighting', 'fire-smoke-damper'].includes(activeInspectionSystem);
   if (usesPF) {
-    genericDeficCount = 0;
-    const tbody = document.getElementById('generic-defic-tbody');
-    if (tbody) {
-      tbody.innerHTML = '';
-      document.querySelectorAll('#sys-forms .inspect-row').forEach(row => {
-        if (row.dataset.val === 'FAIL') {
-          genericDeficCount++;
-          const itemId = row.id.replace('row-', '');
-          const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || itemId;
-          const noteVal = document.getElementById('defic-txt-' + itemId)?.value?.trim() || '';
-          const description = label + (noteVal ? ': ' + noteVal : '');
-          const rowId = 'generic-defic-' + genericDeficCount;
-          tbody.insertAdjacentHTML('beforeend', `
-            <tr id="${rowId}">
-              <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
-              <td><input type="text" id="${rowId}-desc" value="${escHtml(description)}" placeholder="Describe deficiency…"></td>
-              <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
-            </tr>`);
-        }
-      });
-    }
+    // The end list is now maintained live by syncGenericDeficList() (Phase 3) on
+    // every result change; entering the step just re-syncs to catch programmatic
+    // FAILs (demo / restore) while preserving edited + manually-added rows.
+    syncGenericDeficList();
   } else if (activeInspectionSystem === 'fire-smoke-damper') {
     // Dampers have no .inspect-row items — build one deficiency per damper that
     // has any failed sub-check, so auto-deficiencies show on the normal page.
@@ -576,11 +559,12 @@ function goGenericDeficStep() {
 function addGenericDeficRow() {
   genericDeficCount++;
   const rowId = 'generic-defic-' + genericDeficCount;
+  // data-manual so a live re-sync (syncGenericDeficList) preserves it.
   document.getElementById('generic-defic-tbody').insertAdjacentHTML('beforeend', `
-    <tr id="${rowId}">
+    <tr id="${rowId}" data-manual="1">
       <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
       <td><input type="text" placeholder="Describe deficiency…"></td>
-      <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>
+      <td><button class="del-btn" onclick="this.closest('tr').remove();if(typeof renumberGenericDefic==='function')renumberGenericDefic()">✕</button></td>
     </tr>`);
 }
 

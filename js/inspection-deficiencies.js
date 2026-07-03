@@ -43,6 +43,33 @@ const FA_SEV_OPTS = ['','Critical','High','Moderate','Low','Advisory'];
 let faSubpanelCount = 0, faDetectionCount = 0, faFlowCount = 0, faTamperCount = 0, faBatteryCount = 0;
 let faYNANoteCounter = 0, faDeficCount = 0, faNoteCount = 0;
 
+// ─── SHARED DEFICIENCY-ROW LINKING (Phase 3) ─────────────────────────────────
+// Every system builds its live end deficiency list through this one helper, so a
+// failed item instantly gets an editable, prefilled row and the inline "describe"
+// field stays synced into it — the Fire-alarm/Sprinkler behavior, now shared.
+//   tbodyId       — the end-list <tbody> for the active system
+//   deficId       — unique row id (caller owns its counter)
+//   number        — the row's display number
+//   label         — item label, prefilled as the description base
+//   inlineInput   — the inline "Describe deficiency…" <input> to sync (optional)
+//   removeOnclick — onclick expression for the row's ✕ button (system-specific reset)
+function linkDeficiencyRow({ tbodyId, deficId, number, label, inlineInput, removeOnclick }) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.insertAdjacentHTML('beforeend', `
+    <tr id="${deficId}">
+      <td style="text-align:center;font-weight:700;color:var(--slate);">${number}</td>
+      <td><input type="text" id="${deficId}-desc" value="${escHtml(label)}" placeholder="Describe deficiency…"></td>
+      <td><button class="del-btn" onclick="${removeOnclick}">✕</button></td>
+    </tr>`);
+  const deficInp = document.getElementById(deficId + '-desc');
+  if (inlineInput && deficInp) {
+    inlineInput.addEventListener('input', () => {
+      deficInp.value = label + (inlineInput.value ? ': ' + inlineInput.value : '');
+    });
+  }
+}
+
 // ─── SPRINKLER PASS/FAIL + DEFICIENCY ────────────────────────────────────────
 function setSPYNA(btn, rowId, val) {
   // Map Y/N/NA → internal PASS/FAIL/N/A for compatibility with defic tracking + PDF
@@ -149,19 +176,11 @@ function setSPPF(btn, rowId, val) {
       const deficId = 'sp-defic-pf-' + spDeficCount;
       row.dataset.spDeficId = deficId;
       const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || rowId;
-      document.getElementById('sp-defic-tbody').insertAdjacentHTML('beforeend', `
-        <tr id="${deficId}">
-          <td style="text-align:center;font-weight:700;color:var(--slate);">${spDeficCount}</td>
-          <td><input type="text" id="${deficId}-desc" value="${escHtml(label)}" placeholder="Describe deficiency…"></td>
-          <td><button class="del-btn" onclick="removeSPDefic('${deficId}','${rowId}')">✕</button></td>
-        </tr>`);
-      const noteInp  = document.getElementById('sp-defic-note-' + rowId);
-      const deficInp = document.getElementById(deficId + '-desc');
-      if (noteInp && deficInp) {
-        noteInp.addEventListener('input', () => {
-          deficInp.value = label + (noteInp.value ? ': ' + noteInp.value : '');
-        });
-      }
+      linkDeficiencyRow({
+        tbodyId: 'sp-defic-tbody', deficId, number: spDeficCount, label,
+        inlineInput: document.getElementById('sp-defic-note-' + rowId),
+        removeOnclick: `removeSPDefic('${deficId}','${rowId}')`,
+      });
     }
   } else {
     if (deficRow) { deficRow.classList.remove('show'); const ni = deficRow.querySelector('input'); if (ni) ni.value = ''; }
@@ -243,20 +262,11 @@ function setFAPF(btn) {
       const deficId = 'fa-defic-pf-' + faDeficCount;
       inspRow.dataset.pfDeficId = deficId;
       const label = inspRow.querySelector('.inspect-label')?.textContent?.trim() || 'Inspection Item';
-      document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
-        <tr id="${deficId}">
-          <td style="text-align:center;font-weight:700;color:var(--slate);">${faDeficCount}</td>
-          <td><input type="text" id="${deficId}-desc" value="${escHtml(label)}" placeholder="Describe deficiency…"></td>
-          <td><button class="del-btn" onclick="removeFAPFDefic('${deficId}')">✕</button></td>
-        </tr>`);
-      // Sync inline note → deficiency row description
-      const inlineInp = deficDiv.querySelector('input');
-      const deficInp  = document.getElementById(deficId + '-desc');
-      if (inlineInp && deficInp) {
-        inlineInp.addEventListener('input', () => {
-          deficInp.value = label + (inlineInp.value ? ': ' + inlineInp.value : '');
-        });
-      }
+      linkDeficiencyRow({
+        tbodyId: 'fa-defic-tbody', deficId, number: faDeficCount, label,
+        inlineInput: deficDiv.querySelector('input'),
+        removeOnclick: `removeFAPFDefic('${deficId}')`,
+      });
     }
   } else {
     if (deficDiv) {
@@ -323,18 +333,11 @@ function setFAYNA(btn, noteId, type) {
       const deficId = 'fa-defic-yna-' + faDeficCount;
       inspRow.dataset.ynaDeficId = deficId;
       const label = inspRow.querySelector('.inspect-label')?.textContent?.trim() || 'Checklist Item';
-      document.getElementById('fa-defic-tbody').insertAdjacentHTML('beforeend', `
-        <tr id="${deficId}">
-          <td style="text-align:center;font-weight:700;color:var(--slate);">${faDeficCount}</td>
-          <td><input type="text" id="${deficId}-desc" value="${escHtml(label)}" placeholder="Describe deficiency…"></td>
-          <td><button class="del-btn" onclick="removeFAYNADefic('${deficId}')">✕</button></td>
-        </tr>`);
-      const deficInp = document.getElementById(deficId + '-desc');
-      if (inp && deficInp) {
-        inp.addEventListener('input', () => {
-          deficInp.value = label + (inp.value ? ': ' + inp.value : '');
-        });
-      }
+      linkDeficiencyRow({
+        tbodyId: 'fa-defic-tbody', deficId, number: faDeficCount, label,
+        inlineInput: inp,
+        removeOnclick: `removeFAYNADefic('${deficId}')`,
+      });
     }
   } else {
     noteRow.classList.remove('show');
@@ -1010,6 +1013,99 @@ function setPF(btn, itemId, val) {
     }
   }
   updateDeficiencySummary();
+  syncGenericDeficList();
+}
+
+// Renumber the generic deficiency list (first cell = 1..N) after add/remove.
+function renumberGenericDefic() {
+  const tbody = document.getElementById('generic-defic-tbody');
+  if (!tbody) return;
+  [...tbody.querySelectorAll('tr')].forEach((tr, i) => {
+    const numTd = tr.querySelector('td');
+    if (numTd) numTd.textContent = i + 1;
+  });
+}
+
+// ✕ on a generic auto-deficiency row: drop the row AND clear the source item's
+// FAIL (so the list and the checklist stay in sync, matching removeSPDefic).
+function removeGenericDefic(deficId, itemId) {
+  document.getElementById(deficId)?.remove();
+  const row = document.getElementById('row-' + itemId);
+  if (row) {
+    delete row.dataset.genericDeficId;
+    row.dataset.val = '';
+    row.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('selected'));
+  }
+  const deficRow = document.getElementById('defic-' + itemId);
+  if (deficRow) {
+    deficRow.classList.remove('show');
+    const inp = document.getElementById('defic-txt-' + itemId);
+    if (inp) inp.value = '';
+  }
+  renumberGenericDefic();
+  if (typeof refreshAutoStatus === 'function') refreshAutoStatus();
+}
+
+// Live-rebuild the generic-system end deficiency list from the current FAIL rows —
+// the Phase 3 "live editable list" for every PASS/FAIL generic system. Called on
+// each result change (setPF) and on entering the Deficiencies step. Preserves
+// edited descriptions (keyed by source item via data-src-item) and any manually
+// added rows (data-manual), so the list stays live without discarding user text.
+// FA/SP have their own per-row live path (linkDeficiencyRow); the table-driven
+// systems (extinguisher/exit-sign/hood/damper) manage their own rows.
+function syncGenericDeficList() {
+  if (!activeInspectionSystem || ['fire-alarm', 'sprinkler'].includes(activeInspectionSystem)) return;
+  const usesPF = !['extinguisher', 'hood', 'exit-sign-lighting', 'fire-smoke-damper'].includes(activeInspectionSystem);
+  if (!usesPF) return;
+  const tbody = document.getElementById('generic-defic-tbody');
+  if (!tbody) return;
+
+  // Snapshot: edited auto-row text (by source item) + preserved manual rows.
+  const editedBySrc = {};
+  const manualRows = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const src  = tr.getAttribute('data-src-item');
+    const desc = tr.querySelector('input')?.value ?? '';
+    if (src) editedBySrc[src] = desc;
+    else if (tr.getAttribute('data-manual') === '1') manualRows.push(desc);
+    // untagged rows (e.g. an old restored draft) are dropped — matches the prior
+    // wipe-and-rebuild behavior of goGenericDeficStep.
+  });
+
+  tbody.innerHTML = '';
+  genericDeficCount = 0;
+
+  // One row per current FAIL, restoring any edited description.
+  document.querySelectorAll('#sys-forms .inspect-row').forEach(row => {
+    if (row.dataset.val !== 'FAIL') { delete row.dataset.genericDeficId; return; }
+    genericDeficCount++;
+    const itemId  = row.id.replace('row-', '');
+    const label   = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || itemId;
+    const noteVal = document.getElementById('defic-txt-' + itemId)?.value?.trim() || '';
+    const deficId = 'generic-defic-' + genericDeficCount;
+    row.dataset.genericDeficId = deficId;
+    const desc = (itemId in editedBySrc) ? editedBySrc[itemId] : label + (noteVal ? ': ' + noteVal : '');
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr id="${deficId}" data-src-item="${itemId}">
+        <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
+        <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" placeholder="Describe deficiency…"></td>
+        <td><button class="del-btn" onclick="removeGenericDefic('${deficId}','${itemId}')">✕</button></td>
+      </tr>`);
+  });
+
+  // Re-append preserved manual rows.
+  manualRows.forEach(desc => {
+    genericDeficCount++;
+    const deficId = 'generic-defic-' + genericDeficCount;
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr id="${deficId}" data-manual="1">
+        <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
+        <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" placeholder="Describe deficiency…"></td>
+        <td><button class="del-btn" onclick="this.closest('tr').remove();renumberGenericDefic();if(typeof refreshAutoStatus==='function')refreshAutoStatus();">✕</button></td>
+      </tr>`);
+  });
+
+  if (typeof refreshAutoStatus === 'function') refreshAutoStatus();
 }
 
 function updateDeficiencySummary() {
