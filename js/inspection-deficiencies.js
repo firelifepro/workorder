@@ -53,11 +53,13 @@ let faYNANoteCounter = 0, faDeficCount = 0, faNoteCount = 0;
 //   label         — item label, prefilled as the description base
 //   inlineInput   — the inline "Describe deficiency…" <input> to sync (optional)
 //   removeOnclick — onclick expression for the row's ✕ button (system-specific reset)
-function linkDeficiencyRow({ tbodyId, deficId, number, label, inlineInput, removeOnclick }) {
+//   srcItem       — source inspect-row itemId; tags the row (data-src-item) so an
+//                   incremental re-sync can match it (generic systems)
+function linkDeficiencyRow({ tbodyId, deficId, number, label, inlineInput, removeOnclick, srcItem }) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
   tbody.insertAdjacentHTML('beforeend', `
-    <tr id="${deficId}">
+    <tr id="${deficId}"${srcItem ? ` data-src-item="${srcItem}"` : ''}>
       <td style="text-align:center;font-weight:700;color:var(--slate);">${number}</td>
       <td><input type="text" id="${deficId}-desc" value="${escHtml(label)}" placeholder="Describe deficiency…"></td>
       <td><button class="del-btn" onclick="${removeOnclick}">✕</button></td>
@@ -1046,13 +1048,33 @@ function removeGenericDefic(deficId, itemId) {
   if (typeof refreshAutoStatus === 'function') refreshAutoStatus();
 }
 
-// Live-rebuild the generic-system end deficiency list from the current FAIL rows —
-// the Phase 3 "live editable list" for every PASS/FAIL generic system. Called on
-// each result change (setPF) and on entering the Deficiencies step. Preserves
-// edited descriptions (keyed by source item via data-src-item) and any manually
-// added rows (data-manual), so the list stays live without discarding user text.
-// FA/SP have their own per-row live path (linkDeficiencyRow); the table-driven
-// systems (extinguisher/exit-sign/hood/damper) manage their own rows.
+// Create the live end-list deficiency row for one failed generic item, wiring its
+// inline "Describe deficiency…" field into the row (via linkDeficiencyRow), so the
+// generic systems get the same live inline→list behavior as Fire-alarm/Sprinkler.
+function linkGenericDefic(row) {
+  const itemId = row.id.replace('row-', '');
+  genericDeficCount++;
+  const deficId = 'generic-defic-' + genericDeficCount;
+  row.dataset.genericDeficId = deficId;
+  const label = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || itemId;
+  const inlineInput = document.getElementById('defic-txt-' + itemId);
+  linkDeficiencyRow({
+    tbodyId: 'generic-defic-tbody', deficId, number: genericDeficCount, label,
+    inlineInput, removeOnclick: `removeGenericDefic('${deficId}','${itemId}')`, srcItem: itemId,
+  });
+  // Reflect any note already typed in the inline field.
+  const noteVal = inlineInput?.value?.trim() || '';
+  const descInp = document.getElementById(deficId + '-desc');
+  if (descInp && noteVal) descInp.value = label + ': ' + noteVal;
+}
+
+// Keep the generic-system end deficiency list in sync with the current FAIL rows,
+// NON-destructively (Phase 3 "live editable list"): add a linked row for each new
+// FAIL, drop auto rows whose item is no longer FAIL, and leave existing rows (their
+// edited text, wired inline-sync, and manually-added `data-manual` rows) untouched.
+// Called on each result change (setPF) and on entering the Deficiencies step (to
+// catch programmatic FAILs from demo/restore). FA/SP use their own per-row path;
+// the table-driven systems (extinguisher/exit-sign/hood/damper) manage their own.
 function syncGenericDeficList() {
   if (!activeInspectionSystem || ['fire-alarm', 'sprinkler'].includes(activeInspectionSystem)) return;
   const usesPF = !['extinguisher', 'hood', 'exit-sign-lighting', 'fire-smoke-damper'].includes(activeInspectionSystem);
@@ -1060,51 +1082,24 @@ function syncGenericDeficList() {
   const tbody = document.getElementById('generic-defic-tbody');
   if (!tbody) return;
 
-  // Snapshot: edited auto-row text (by source item) + preserved manual rows.
-  const editedBySrc = {};
-  const manualRows = [];
-  tbody.querySelectorAll('tr').forEach(tr => {
-    const src  = tr.getAttribute('data-src-item');
-    const desc = tr.querySelector('input')?.value ?? '';
-    if (src) editedBySrc[src] = desc;
-    else if (tr.getAttribute('data-manual') === '1') manualRows.push(desc);
-    // untagged rows (e.g. an old restored draft) are dropped — matches the prior
-    // wipe-and-rebuild behavior of goGenericDeficStep.
+  // Drop auto rows whose source item is gone or no longer FAIL.
+  tbody.querySelectorAll('tr[data-src-item]').forEach(tr => {
+    const src = tr.getAttribute('data-src-item');
+    const row = document.getElementById('row-' + src);
+    if (!row || row.dataset.val !== 'FAIL') {
+      tr.remove();
+      if (row) delete row.dataset.genericDeficId;
+    }
   });
 
-  tbody.innerHTML = '';
-  genericDeficCount = 0;
-
-  // One row per current FAIL, restoring any edited description.
+  // Add a linked row for each FAIL that doesn't have a live one yet.
   document.querySelectorAll('#sys-forms .inspect-row').forEach(row => {
-    if (row.dataset.val !== 'FAIL') { delete row.dataset.genericDeficId; return; }
-    genericDeficCount++;
-    const itemId  = row.id.replace('row-', '');
-    const label   = row.querySelector('.inspect-label')?.childNodes[0]?.textContent?.trim() || itemId;
-    const noteVal = document.getElementById('defic-txt-' + itemId)?.value?.trim() || '';
-    const deficId = 'generic-defic-' + genericDeficCount;
-    row.dataset.genericDeficId = deficId;
-    const desc = (itemId in editedBySrc) ? editedBySrc[itemId] : label + (noteVal ? ': ' + noteVal : '');
-    tbody.insertAdjacentHTML('beforeend', `
-      <tr id="${deficId}" data-src-item="${itemId}">
-        <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
-        <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" placeholder="Describe deficiency…"></td>
-        <td><button class="del-btn" onclick="removeGenericDefic('${deficId}','${itemId}')">✕</button></td>
-      </tr>`);
+    if (row.dataset.val !== 'FAIL') return;
+    if (row.dataset.genericDeficId && document.getElementById(row.dataset.genericDeficId)) return;
+    linkGenericDefic(row);
   });
 
-  // Re-append preserved manual rows.
-  manualRows.forEach(desc => {
-    genericDeficCount++;
-    const deficId = 'generic-defic-' + genericDeficCount;
-    tbody.insertAdjacentHTML('beforeend', `
-      <tr id="${deficId}" data-manual="1">
-        <td style="text-align:center;font-weight:700;color:var(--slate);">${genericDeficCount}</td>
-        <td><input type="text" id="${deficId}-desc" value="${escHtml(desc)}" placeholder="Describe deficiency…"></td>
-        <td><button class="del-btn" onclick="this.closest('tr').remove();renumberGenericDefic();if(typeof refreshAutoStatus==='function')refreshAutoStatus();">✕</button></td>
-      </tr>`);
-  });
-
+  renumberGenericDefic();
   if (typeof refreshAutoStatus === 'function') refreshAutoStatus();
 }
 

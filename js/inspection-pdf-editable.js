@@ -242,6 +242,13 @@ async function buildExtinguisherPDFBytes() {
     curY += stH + sc(6);
   }
 
+  // Deficiencies (only if any) — right after the overall status bar.
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
+  }
+
   // ── PAGE 2: EXTINGUISHER INVENTORY ───────────────────────────────────────────
   addPage();
   secHdr('EXTINGUISHER UNIT INVENTORY');
@@ -456,7 +463,6 @@ async function buildExtinguisherPDFBytes() {
   }
 
   const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
-  renderInspectionDeficiencies(_c, data);
   renderInspectionNotes(_c, data);
   await renderInspectionStatusAndSignatures(_c, data);
   await renderInspectionPhotos(_c);
@@ -697,6 +703,13 @@ async function buildSprinklerPDFBytes() {
     page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
     curY += stH + 4;
   }
+
+  // Deficiencies (only if any) — right after the overall status bar.
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
+  }
   gap(4);
 
   // ── PAGE 2: SYSTEM OVERVIEW ─────────────────────────────────────────────────
@@ -872,7 +885,6 @@ async function buildSprinklerPDFBytes() {
   gap(6);
 
   const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
-  renderInspectionDeficiencies(_c, data);
   renderInspectionNotes(_c, data);
   await renderInspectionStatusAndSignatures(_c, data);
   await renderInspectionPhotos(_c);
@@ -1129,23 +1141,8 @@ async function buildGenericSystemPDFBytes() {
   });
   gap(4);
 
-  // Overall status bar
-  const stVal = (data.overallStatus || '').toUpperCase();
-  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
-  checkPage(sc(22));
-  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
-  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
-  curY += sc(18);
-  gap(6);
-
-  // ── FIRE & SMOKE DAMPERS: test cycle + auto inventory + per-damper table ──────
-  // (SYS_FIELDS / SYS_ITEMS_SECTIONED have no 'fire-smoke-damper' entry, so the
-  // generic system-info + checklist blocks below skip; deficiencies/notes/photos/
-  // signatures still render from the shared code that follows.)
+  // NFPA reference (fire/smoke dampers) — before the status bar per canonical order.
   if (sys === 'fire-smoke-damper') {
-    const gv = id => (document.getElementById(id)?.value || '').trim();
-
     // NFPA references & procedure (fire/smoke dampers)
     secHdr('NFPA REFERENCES AND PROCEDURE');
     gap(3);
@@ -1181,6 +1178,31 @@ async function buildGenericSystemPDFBytes() {
       dmpNfpaY -= dmpNfpaLH;
     });
     curY += dmpNfpaBoxH + sc(4);
+  }
+
+  // Overall status bar
+  const stVal = (data.overallStatus || '').toUpperCase();
+  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
+  checkPage(sc(22));
+  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
+  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
+  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
+  curY += sc(18);
+  gap(6);
+
+  // Deficiencies first (right after the overall status bar) — consistent placement.
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
+  }
+
+  // ── FIRE & SMOKE DAMPERS: test cycle + auto inventory + per-damper table ──────
+  // (SYS_FIELDS / SYS_ITEMS_SECTIONED have no 'fire-smoke-damper' entry, so the
+  // generic system-info + checklist blocks below skip; deficiencies/notes/photos/
+  // signatures still render from the shared code that follows.)
+  if (sys === 'fire-smoke-damper') {
+    const gv = id => (document.getElementById(id)?.value || '').trim();
 
     secHdr('TEST CYCLE');
     gap(4);
@@ -1283,13 +1305,6 @@ async function buildGenericSystemPDFBytes() {
       });
       gap(4);
     }
-  }
-
-  // Deficiencies — standardized shared renderer (gold numbered editable rows).
-  {
-    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
-    renderInspectionDeficiencies(_c, data);
-    page = _c.page; curY = _c.curY;
   }
 
   // Inspection checklist row renderer (shared across flat and sectioned formats)
@@ -1416,6 +1431,44 @@ async function buildExitSignLightingPDFBytes() {
   });
   gap(4);
 
+  // NFPA references & procedure (emergency lighting + exit signs)
+  {
+    secHdr('NFPA REFERENCES AND PROCEDURE');
+    gap(3);
+    const eslNfpaLines = [
+      'EMERGENCY LIGHTING AND EXIT SIGNAGE ARE REQUIRED TO BE INSPECTED AND TESTED IN ACCORDANCE WITH THE FOLLOWING NFPA REFERENCES:',
+      'EMERGENCY LIGHTING:  NFPA 101 (LIFE SAFETY CODE) 7.9 — AND NFPA 111 WHERE APPLICABLE.',
+      'EXIT SIGNS / MARKING OF MEANS OF EGRESS:  NFPA 101 7.10.',
+      '',
+      'FREQUENCY:  FUNCTIONAL TEST FOR NOT LESS THAN 30 SECONDS MONTHLY; AND A 90-MINUTE FULL-DURATION TEST ANNUALLY',
+      '(NFPA 101 7.9.3).',
+      '',
+      'PROCEDURE:',
+      '  1.  Verify each unit / sign is present, secure, and unobstructed.',
+      '  2.  Confirm exit signs are illuminated with legible legend and correct directional arrows.',
+      '  3.  Activate the 30-second functional test and confirm the lamps illuminate on battery.',
+      '  4.  Perform the annual 90-minute test and confirm illumination is maintained for the full duration.',
+      '  5.  Inspect the battery and charger for damage, corrosion, and proper charge.',
+      '  6.  Record any deficiencies and re-test after repair/replacement.',
+    ];
+    const eslNfpaLH = sc(8.5);
+    const eslWrapped = [];
+    eslNfpaLines.forEach(ln => {
+      if (!ln) { eslWrapped.push({ text: '', bold: false }); return; }
+      const bold = ln.includes('FREQUENCY') || ln.includes('PROCEDURE') || ln.includes('REQUIRED');
+      wrap(ln, sc(7), PW - 14).forEach(w => eslWrapped.push({ text: w, bold }));
+    });
+    const eslNfpaBoxH = eslWrapped.length * eslNfpaLH + sc(8);
+    checkPage(eslNfpaBoxH);
+    page.drawRectangle({ x: ML, y: ry(eslNfpaBoxH), width: PW, height: eslNfpaBoxH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.4 });
+    let eslNfpaY = ry(eslNfpaBoxH) + eslNfpaBoxH - sc(9);
+    eslWrapped.forEach(ln => {
+      if (ln.text) page.drawText(ln.text, { x: ML+6, y: eslNfpaY, size: sc(7), font: ln.bold ? hFont : rFont, color: navy });
+      eslNfpaY -= eslNfpaLH;
+    });
+    curY += eslNfpaBoxH + sc(4);
+  }
+
   // Overall status
   const stVal2 = (data.overallStatus || '').toUpperCase();
   const stColor2 = stVal2 === 'COMPLIANT' ? green : stVal2 === 'DEFICIENT' ? red : stVal2 === 'IMPAIRED' ? amber : slate;
@@ -1478,44 +1531,6 @@ async function buildExitSignLightingPDFBytes() {
     });
     gap(6);
   };
-
-  // NFPA references & procedure (emergency lighting + exit signs)
-  {
-    secHdr('NFPA REFERENCES AND PROCEDURE');
-    gap(3);
-    const eslNfpaLines = [
-      'EMERGENCY LIGHTING AND EXIT SIGNAGE ARE REQUIRED TO BE INSPECTED AND TESTED IN ACCORDANCE WITH THE FOLLOWING NFPA REFERENCES:',
-      'EMERGENCY LIGHTING:  NFPA 101 (LIFE SAFETY CODE) 7.9 — AND NFPA 111 WHERE APPLICABLE.',
-      'EXIT SIGNS / MARKING OF MEANS OF EGRESS:  NFPA 101 7.10.',
-      '',
-      'FREQUENCY:  FUNCTIONAL TEST FOR NOT LESS THAN 30 SECONDS MONTHLY; AND A 90-MINUTE FULL-DURATION TEST ANNUALLY',
-      '(NFPA 101 7.9.3).',
-      '',
-      'PROCEDURE:',
-      '  1.  Verify each unit / sign is present, secure, and unobstructed.',
-      '  2.  Confirm exit signs are illuminated with legible legend and correct directional arrows.',
-      '  3.  Activate the 30-second functional test and confirm the lamps illuminate on battery.',
-      '  4.  Perform the annual 90-minute test and confirm illumination is maintained for the full duration.',
-      '  5.  Inspect the battery and charger for damage, corrosion, and proper charge.',
-      '  6.  Record any deficiencies and re-test after repair/replacement.',
-    ];
-    const eslNfpaLH = sc(8.5);
-    const eslWrapped = [];
-    eslNfpaLines.forEach(ln => {
-      if (!ln) { eslWrapped.push({ text: '', bold: false }); return; }
-      const bold = ln.includes('FREQUENCY') || ln.includes('PROCEDURE') || ln.includes('REQUIRED');
-      wrap(ln, sc(7), PW - 14).forEach(w => eslWrapped.push({ text: w, bold }));
-    });
-    const eslNfpaBoxH = eslWrapped.length * eslNfpaLH + sc(8);
-    checkPage(eslNfpaBoxH);
-    page.drawRectangle({ x: ML, y: ry(eslNfpaBoxH), width: PW, height: eslNfpaBoxH, color: rgb(0.985, 0.985, 0.985), borderColor: sky, borderWidth: 0.4 });
-    let eslNfpaY = ry(eslNfpaBoxH) + eslNfpaBoxH - sc(9);
-    eslWrapped.forEach(ln => {
-      if (ln.text) page.drawText(ln.text, { x: ML+6, y: eslNfpaY, size: sc(7), font: ln.bold ? hFont : rFont, color: navy });
-      eslNfpaY -= eslNfpaLH;
-    });
-    curY += eslNfpaBoxH + sc(4);
-  }
 
   // Start the device tables on a fresh page so the EMERGENCY LIGHTING header and its
   // rows stay together (previously the header orphaned at the bottom of page 1).
@@ -1807,29 +1822,6 @@ async function buildEditablePDFBytes() {
       C: { FIRE_RED: rgb(0.72, 0.08, 0.08), navy, sky, gold, lgray, white, blk }
     });
 
-    // Overall System Status bar — full width, prominently colored
-    {
-      const stH = sc(18);
-      const stVal = (data.overallStatus || '').toUpperCase();
-      const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22) :
-                      stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10) :
-                      stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00) :
-                                              rgb(0.38, 0.44, 0.54);
-      page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
-      page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: sc(6.5), font: hFont, color: white });
-      page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
-      curY += stH + 4;
-    }
-
-    // Property name + address are drawn by the shared header above; continue with contact info.
-    gap(6);
-    subHdr('SITE CONTACT INFORMATION');
-    dataRow([
-      { label: 'PRIMARY CONTACT NAME',  val: data.property?.contact || '',      w: PW/2 },
-      { label: 'COMPANY',               val: data.property?.company || '',       w: PW/2 },
-    ]);
-    dataRow([{ label: 'PRIMARY CONTACT EMAIL', val: data.property?.contactEmail || '', w: PW }]);
-    gap(8);
     subHdr('NFPA REFERENCES AND PROCEDURE');
     gap(2);
     [
@@ -1851,6 +1843,37 @@ async function buildEditablePDFBytes() {
       'DOCUMENTATION OF SYSTEM TESTING AND WHEN APPLICABLE GENERATION OF SYSTEM DEFICIENCIES REPORT',
     ].forEach(b => bulletText(b, 6.5));
     gap(4);
+
+    // Overall System Status bar — full width, prominently colored
+    {
+      const stH = sc(18);
+      const stVal = (data.overallStatus || '').toUpperCase();
+      const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22) :
+                      stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10) :
+                      stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00) :
+                                              rgb(0.38, 0.44, 0.54);
+      page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
+      page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: sc(6.5), font: hFont, color: white });
+      page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
+      curY += stH + 4;
+    }
+
+    // Deficiencies (only if any) — right after the overall status bar.
+    {
+      const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+      renderInspectionDeficiencies(_c, data);
+      page = _c.page; curY = _c.curY;
+    }
+
+    // Property name + address are drawn by the shared header above; continue with contact info.
+    gap(6);
+    subHdr('SITE CONTACT INFORMATION');
+    dataRow([
+      { label: 'PRIMARY CONTACT NAME',  val: data.property?.contact || '',      w: PW/2 },
+      { label: 'COMPANY',               val: data.property?.company || '',       w: PW/2 },
+    ]);
+    dataRow([{ label: 'PRIMARY CONTACT EMAIL', val: data.property?.contactEmail || '', w: PW }]);
+    gap(8);
 
     // ── PAGE 2: Panel + Monitoring + Checklists ───────────────────────────────
     addPage();
@@ -2034,7 +2057,6 @@ async function buildEditablePDFBytes() {
     // ── PAGE 9: Deficiency + Batteries + Notes + Signatures ───────────────────
     addPage();
     const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
-    renderInspectionDeficiencies(_c, data);
     _c.subHdr('FAILED BATTERIES (IF APPLICABLE)');
     while (batRows.length < 4) batRows.push(Array(4).fill(''));
     _c.table(
@@ -2150,32 +2172,6 @@ async function buildHoodPDFBytes() {
     C: { FIRE_RED, navy, sky, gold, lgray, white, blk }
   });
 
-  // Overall status bar
-  const stVal = (data.overallStatus || '').toUpperCase();
-  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
-  checkPage(sc(22));
-  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
-  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
-  curY += sc(18);
-  gap(6);
-
-  // Property name + address are drawn by the shared header above; continue with contact info.
-  const phoneVal = dv('property-contact-phone');
-  dataRow([
-    { label: 'PROPERTY CONTACT', val: data.property?.contact || '', w: PW / 3 },
-    { label: 'CONTACT PHONE',    val: phoneVal,                     w: PW / 3 },
-    { label: 'COMPANY',          val: data.property?.company || '', w: PW / 3 },
-  ]);
-  gap(6);
-
-  // Deficiencies — standardized shared renderer (gold numbered editable rows).
-  {
-    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
-    renderInspectionDeficiencies(_c, data);
-    page = _c.page; curY = _c.curY;
-  }
-
   // NFPA References and Procedure
   const NFPA_LINES = [
     'YOUR KITCHEN HOOD EXTINGUISHING SYSTEM(S) ARE REQUIRED TO BE THOROUGHLY INSPECTED, TESTED AND MAINTAINED EVERY 6',
@@ -2206,6 +2202,32 @@ async function buildHoodPDFBytes() {
     ntY -= nfpaLineH;
   });
   curY += nfpaBoxH + 6;
+
+  // Overall status bar
+  const stVal = (data.overallStatus || '').toUpperCase();
+  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
+  checkPage(sc(22));
+  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
+  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
+  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
+  curY += sc(18);
+  gap(6);
+
+  // Deficiencies — standardized shared renderer (gold numbered editable rows).
+  {
+    const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionDeficiencies(_c, data);
+    page = _c.page; curY = _c.curY;
+  }
+
+  // Property name + address are drawn by the shared header above; continue with contact info.
+  const phoneVal = dv('property-contact-phone');
+  dataRow([
+    { label: 'PROPERTY CONTACT', val: data.property?.contact || '', w: PW / 3 },
+    { label: 'CONTACT PHONE',    val: phoneVal,                     w: PW / 3 },
+    { label: 'COMPANY',          val: data.property?.company || '', w: PW / 3 },
+  ]);
+  gap(6);
 
   // ── PAGE 2+: PER-HOOD CONTENT ───────────────────────────────────────────────
   addPage();

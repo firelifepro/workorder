@@ -35,8 +35,9 @@ function makeRow(itemId, label, sublabel, opts) {
           ${naBtn}
         </div>
       </div>
-      <div class="deficiency-row" id="defic-${itemId}">
-        <input type="text" id="defic-txt-${itemId}" placeholder="Describe deficiency / location…" oninput="updateDeficiencySummary()">
+      <div class="deficiency-row" id="defic-${itemId}" style="gap:8px;align-items:center;">
+        <span style="font-size:.72rem;font-weight:700;color:var(--red);white-space:nowrap;">⚠ Deficiency:</span>
+        <input type="text" id="defic-txt-${itemId}" placeholder="Describe deficiency / location…" oninput="updateDeficiencySummary()" style="flex:1;">
       </div>
     </div>`;
 }

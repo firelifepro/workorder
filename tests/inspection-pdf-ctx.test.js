@@ -85,11 +85,13 @@ test('checkPage breaks to a new page only when content would overflow', () => {
   assert.strictEqual(ctx.curY, 36);
 });
 
-test('deficiency renderer: empty list draws the "none" bar, zero fields', () => {
+test('deficiency renderer: empty list renders nothing (section omitted)', () => {
   const { input, fields } = fakeCtxInput();
   const ctx = makeInspectionPdfCtx(input);
+  const y0 = ctx.curY;
   renderInspectionDeficiencies(ctx, { deficiencies: [] });
   assert.strictEqual(fields.length, 0);
+  assert.strictEqual(ctx.curY, y0); // cursor untouched — no header, no bar
 });
 
 test('deficiency renderer: one editable field per item', () => {

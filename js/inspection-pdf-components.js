@@ -139,22 +139,17 @@ function _inspectionNumberedRow(ctx, i, text, opts) {
 
 // DEFICIENCY LIST — numbered editable rows from data.deficiencies, or a gold
 // "No deficiencies noted." bar when empty.
+// Renders the DEFICIENCY LIST only when there are deficiencies — a clean report
+// omits the section entirely (no "none noted" bar), so the canonical report order
+// is header → NFPA → status bar → deficiencies (if any) → rest.
 function renderInspectionDeficiencies(ctx, data) {
-  const { ML, PW } = ctx;
-  ctx.secHdr('DEFICIENCY LIST');
   const list = data.deficiencies || [];
-  if (list.length === 0) {
-    const dnH = sc(13);
-    ctx.checkPage(dnH + sc(1));
-    ctx.page.drawRectangle({ x: ML, y: ctx.ry(dnH), width: PW, height: dnH, color: ctx.gold, borderColor: ctx.sky, borderWidth: 0.3 });
-    ctx.page.drawText('No deficiencies noted.', { x: ML + 4, y: ctx.ty(dnH, sc(4)), size: sc(8), font: ctx.rFont, color: ctx.blk });
-    ctx.curY += dnH + sc(1);
-  } else {
-    list.forEach((d, i) => {
-      const text = (d.item || '') + (d.description ? ': ' + d.description : '');
-      _inspectionNumberedRow(ctx, i, text, { lineH: sc(9), pad: sc(4), min: sc(13) });
-    });
-  }
+  if (list.length === 0) return;
+  ctx.secHdr('DEFICIENCY LIST');
+  list.forEach((d, i) => {
+    const text = (d.item || '') + (d.description ? ': ' + d.description : '');
+    _inspectionNumberedRow(ctx, i, text, { lineH: sc(9), pad: sc(4), min: sc(13) });
+  });
   ctx.gap(6);
 }
 
