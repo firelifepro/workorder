@@ -616,6 +616,10 @@ function buildInspectionForms() {
 }
 
 function _resumeGenericFromDraft(draft) {
+  // Tear down any Sprinkler/Fire-alarm view still on screen and restore the generic nav.
+  if (typeof _hideAllSubsystemViews === 'function') _hideAllSubsystemViews();
+  const _stepNav = document.getElementById('step-nav');
+  if (_stepNav) _stepNav.style.display = 'flex';
   overallStatus = '';
   overallStatusUserSet = false;
   clearStatusButtonSelection();  // status buttons only — keep report-type selection intact
@@ -690,6 +694,11 @@ function _rebuildHoodListFromDOM() {
 }
 
 function _buildFreshGenericInspection() {
+  // Tear down any Sprinkler/Fire-alarm view still on screen (e.g. switching from a
+  // sprinkler mid-inspection to standpipe) and restore the generic step nav.
+  if (typeof _hideAllSubsystemViews === 'function') _hideAllSubsystemViews();
+  const _stepNav = document.getElementById('step-nav');
+  if (_stepNav) _stepNav.style.display = 'flex';
   if (typeof clearStep4State === 'function') clearStep4State();
   // CRITICAL: wipe the shared deficiency list from any PRIOR inspection before
   // starting a new one. ESL / extinguisher / hood write straight into

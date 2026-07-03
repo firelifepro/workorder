@@ -18,6 +18,27 @@ function syncMainNavDisabled() {
   });
 }
 
+// Hide every OTHER subsystem's dedicated view — the Sprinkler and Fire-alarm
+// static multi-step panels plus their nav bars and "Inspecting:" banners. Called
+// before building ANY system so switching systems mid-inspection can't leave the
+// previous system's panels/tabs on screen (which stacked two inspections together,
+// e.g. Sprinkler + Standpipe both showing with two "Inspecting:" banners).
+function _hideAllSubsystemViews() {
+  ['sp-step-nav', 'sp-active-banner', 'step-sp-prevdefic',
+   'fa-step-nav', 'fa-active-banner'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  (typeof SP_STEP_ORDER !== 'undefined' ? SP_STEP_ORDER : []).forEach(k => {
+    const el = document.getElementById('step-sp-' + k);
+    if (el) el.style.display = 'none';
+  });
+  (typeof FA_STEP_ORDER !== 'undefined' ? FA_STEP_ORDER : []).forEach(k => {
+    const el = document.getElementById('step-fa-' + k);
+    if (el) el.style.display = 'none';
+  });
+}
+
 function goStep(n) {
   if (n >= 3 && !activeInspectionSystem) return;
   // Auto-save draft for non-FA/SP system types when navigating steps
@@ -154,6 +175,7 @@ function goFAStep(key) {
 }
 
 function startFireAlarmInspection() {
+  _hideAllSubsystemViews();  // clear any Sprinkler view (or a prior generic form) first
   // Swap navigation
   document.getElementById('step-nav').style.display = 'none';
   document.getElementById('fa-step-nav').style.display = 'flex';
@@ -371,6 +393,7 @@ function goSPStep(key) {
 }
 
 function startSprinklerInspection() {
+  _hideAllSubsystemViews();  // clear any Fire-alarm view (or a prior generic form) first
   document.getElementById('step-nav').style.display = 'none';
   document.getElementById('sp-step-nav').style.display = 'flex';
   document.getElementById('sp-active-banner').style.display = 'block';
