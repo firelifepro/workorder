@@ -1814,12 +1814,9 @@ function buildFireSmokeDamperPanel() {
     </div>
     <div class="data-row cols-2">
       <div class="data-field"><label># Tested This Cycle</label><input type="text" id="dmp-inv-tested" readonly></div>
-    </div>
-
-    <div class="field-group" style="margin-top:10px;">
-      <label>General Fire &amp; Smoke Damper Notes</label>
-      <textarea id="fsd-notes" rows="3" placeholder="Access issues, overall findings, recommendations…"></textarea>
     </div>`;
+  // General findings go in the standard "General Notes & Site Observations" on the
+  // Sign & Export step (fa-notes-tbody) like every other system — no separate field.
   return div;
 }
 
@@ -2460,24 +2457,28 @@ function _eslManageDefic(typeStr, n) {
     const loc = document.getElementById(typeStr + '-loc-' + n)?.value?.trim() || '';
     const unitLabel = (typeStr === 'el' ? 'Emergency Light' : 'Exit Sign') + (loc ? ' - ' + loc : '') + ' (Unit #' + n + ')';
     const note = _eslDeficNote(typeStr, n);
+    // Standard row shape used by every system: [# cell][full "label: note" desc][✕].
+    // The whole description lives in the td:nth-child(2) input so collectAllData /
+    // the PDF read the unit label too (not just the note). data-esl-auto tracks
+    // whether the text is still auto-generated; a hand-edit stops the overwrite.
+    const desc = unitLabel + (note ? ': ' + note : '');
     if (!existing) {
+      if (typeof genericDeficCount !== 'undefined') genericDeficCount++;
       const row = document.createElement('tr');
       row.id = deficId;
-      // data-esl-auto tracks whether the note is still auto-generated; once the
-      // inspector edits it by hand we stop overwriting it from tests/comment.
-      row.innerHTML = `<td style="white-space:nowrap;font-size:.78rem;padding:4px 6px;">${escHtml(unitLabel)}</td>
-        <td style="padding:4px 6px;"><input type="text" id="${deficId}-txt" value="${escHtml(note)}" data-esl-auto="1" oninput="this.dataset.eslAuto='0'" placeholder="Deficiency note…" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></td>
-        <td style="padding:4px 6px;"><button class="del-btn" onclick="document.getElementById('${deficId}').remove();_eslAutoStatus();">✕</button></td>`;
+      row.innerHTML = `<td style="text-align:center;font-weight:700;color:var(--slate);"></td>
+        <td><input type="text" id="${deficId}-txt" value="${escHtml(desc)}" data-esl-auto="1" oninput="this.dataset.eslAuto='0'" placeholder="Describe deficiency…"></td>
+        <td><button class="del-btn" onclick="document.getElementById('${deficId}')?.remove();if(typeof renumberGenericDefic==='function')renumberGenericDefic();_eslAutoStatus();">✕</button></td>`;
       tbody.appendChild(row);
     } else {
-      const labelCell = existing.querySelector('td:first-child');
-      if (labelCell) labelCell.textContent = unitLabel;
       const txt = document.getElementById(deficId + '-txt');
-      if (txt && txt.dataset.eslAuto !== '0') txt.value = note;
+      if (txt && txt.dataset.eslAuto !== '0') txt.value = desc;
     }
   } else {
     if (existing) existing.remove();
   }
+  if (typeof renumberGenericDefic === 'function') renumberGenericDefic();
+  _eslAutoStatus();
 }
 
 function _eslAutoStatus() {

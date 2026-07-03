@@ -6,8 +6,9 @@
 // assembles the same note set the generic builder currently reads from the DOM.
 const PANEL_NOTES_ID = {
   'standpipe':'std-notes','hydrant':'hy-notes','bda':'bda-notes',
-  'smoke-control':'sc-notes','fire-smoke-damper':'fsd-notes','gas-detection':'gd-notes',
+  'smoke-control':'sc-notes','gas-detection':'gd-notes',
   'special-suppression':'ss-notes','backflow':'bf-notes',
+  // fire-smoke-damper intentionally omitted — it uses only the standard general-notes table.
 };
 
 // Collapse every system's "General Notes & Site Observations" into ONE ordered
