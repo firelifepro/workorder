@@ -457,6 +457,18 @@ function _continueSprinklerStart() {
         btn.classList.toggle('selected', types.includes(btn.textContent.trim()));
       });
     }
+    // Persist the property-level overview + 3/5-Year selections across inspections:
+    // "which systems are present" (sp-ov-*-yn) and each 3/5-Year "Applicable?"
+    // (sp-35-*-app), plus their counts/locations/last/next years (restored as text
+    // above). The per-inspection "Inspecting?/Inspecting Now?" toggles (sp-ov-*-insp
+    // / sp-35-*-insp) are intentionally left blank — cleared by clearSPInspectionState
+    // and NOT restored here, so each new inspection chooses what it's inspecting fresh.
+    const _pfd = prev.fieldData || {};
+    ['wet','dry','pump','hdr','fdc','prv','af','standp','del'].forEach(k =>
+      _restoreSPToggle('sp-ov-' + k + '-yn', _pfd['sp-ov-' + k + '-yn']));
+    ['dv','rt','fdc','ip','standp'].forEach(k =>
+      _restoreSPToggle('sp-35-' + k + '-app', _pfd['sp-35-' + k + '-app']));
+
     // Note: pfStates intentionally NOT restored — new inspections start with blank selections
     toast('✓ Previous config loaded');
   }
@@ -735,6 +747,20 @@ function setSPBtn(btn, fieldId, val) {
   btn.classList.add('selected');
   const inp = document.getElementById(fieldId);
   if (inp) inp.value = val;
+}
+
+// Restore a sprinkler Y/N/NA toggle (hidden input + its button's selected state)
+// from a saved value. Used to persist "which systems are present" / "applicable?"
+// across inspections. The hidden input sits right after its .pf-group in the HTML.
+function _restoreSPToggle(fieldId, val) {
+  const inp = document.getElementById(fieldId);
+  if (!inp) return;
+  inp.value = val || '';
+  const group = inp.previousElementSibling;
+  if (!group || !group.classList || !group.classList.contains('pf-group')) return;
+  group.querySelectorAll('.pf-btn').forEach(b => {
+    b.classList.toggle('selected', !!val && b.textContent.trim() === val);
+  });
 }
 
 function toggleSPType(btn, val) {
