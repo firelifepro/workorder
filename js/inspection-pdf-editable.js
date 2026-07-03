@@ -1822,6 +1822,16 @@ async function buildEditablePDFBytes() {
       C: { FIRE_RED: rgb(0.72, 0.08, 0.08), navy, sky, gold, lgray, white, blk }
     });
 
+    // Property name + address are drawn by the shared header above; continue with contact info.
+    gap(6);
+    subHdr('SITE CONTACT INFORMATION');
+    dataRow([
+      { label: 'PRIMARY CONTACT NAME',  val: data.property?.contact || '',      w: PW/2 },
+      { label: 'COMPANY',               val: data.property?.company || '',       w: PW/2 },
+    ]);
+    dataRow([{ label: 'PRIMARY CONTACT EMAIL', val: data.property?.contactEmail || '', w: PW }]);
+    gap(8);
+
     subHdr('NFPA REFERENCES AND PROCEDURE');
     gap(2);
     [
@@ -1864,16 +1874,6 @@ async function buildEditablePDFBytes() {
       renderInspectionDeficiencies(_c, data);
       page = _c.page; curY = _c.curY;
     }
-
-    // Property name + address are drawn by the shared header above; continue with contact info.
-    gap(6);
-    subHdr('SITE CONTACT INFORMATION');
-    dataRow([
-      { label: 'PRIMARY CONTACT NAME',  val: data.property?.contact || '',      w: PW/2 },
-      { label: 'COMPANY',               val: data.property?.company || '',       w: PW/2 },
-    ]);
-    dataRow([{ label: 'PRIMARY CONTACT EMAIL', val: data.property?.contactEmail || '', w: PW }]);
-    gap(8);
 
     // ── PAGE 2: Panel + Monitoring + Checklists ───────────────────────────────
     addPage();
@@ -2172,6 +2172,15 @@ async function buildHoodPDFBytes() {
     C: { FIRE_RED, navy, sky, gold, lgray, white, blk }
   });
 
+  // Property name + address are drawn by the shared header above; continue with contact info.
+  const phoneVal = dv('property-contact-phone');
+  dataRow([
+    { label: 'PROPERTY CONTACT', val: data.property?.contact || '', w: PW / 3 },
+    { label: 'CONTACT PHONE',    val: phoneVal,                     w: PW / 3 },
+    { label: 'COMPANY',          val: data.property?.company || '', w: PW / 3 },
+  ]);
+  gap(6);
+
   // NFPA References and Procedure
   const NFPA_LINES = [
     'YOUR KITCHEN HOOD EXTINGUISHING SYSTEM(S) ARE REQUIRED TO BE THOROUGHLY INSPECTED, TESTED AND MAINTAINED EVERY 6',
@@ -2219,15 +2228,6 @@ async function buildHoodPDFBytes() {
     renderInspectionDeficiencies(_c, data);
     page = _c.page; curY = _c.curY;
   }
-
-  // Property name + address are drawn by the shared header above; continue with contact info.
-  const phoneVal = dv('property-contact-phone');
-  dataRow([
-    { label: 'PROPERTY CONTACT', val: data.property?.contact || '', w: PW / 3 },
-    { label: 'CONTACT PHONE',    val: phoneVal,                     w: PW / 3 },
-    { label: 'COMPANY',          val: data.property?.company || '', w: PW / 3 },
-  ]);
-  gap(6);
 
   // ── PAGE 2+: PER-HOOD CONTENT ───────────────────────────────────────────────
   addPage();
