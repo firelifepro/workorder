@@ -163,18 +163,28 @@ function renderInspectionStatusBar(ctx, data) {
   ctx.curY += stH + sc(6);
 }
 
-// DEFICIENCY LIST — numbered editable rows from data.deficiencies, or a gold
-// "No deficiencies noted." bar when empty.
-// Renders the DEFICIENCY LIST only when there are deficiencies — a clean report
-// omits the section entirely (no "none noted" bar), so the canonical report order
-// is header → NFPA → status bar → deficiencies (if any) → rest.
+// Keep a section header with its first row on the SAME page — page-break BEFORE
+// the header if the header (secHdr ≈ sc(18)) plus the first row wouldn't both fit.
+// Prevents a tall preceding block (e.g. fire-alarm's big NFPA box) from stranding
+// a lone header at the bottom of a page with its list starting on the next one.
+function _reserveHeaderPlusRow(ctx, firstText, rowOpts) {
+  const firstH = pdfRowHeight(ctx.wrap(firstText || '', sc(7), ctx.PW - 30).length, rowOpts);
+  ctx.checkPage(sc(18) + firstH + sc(2));
+}
+
+// DEFICIENCY LIST — numbered editable rows from data.deficiencies. Renders only
+// when there are deficiencies (a clean report omits the section), so the canonical
+// report order is header → NFPA → status bar → deficiencies (if any) → rest.
 function renderInspectionDeficiencies(ctx, data) {
   const list = data.deficiencies || [];
   if (list.length === 0) return;
+  const rowOpts = { lineH: sc(9), pad: sc(4), min: sc(13) };
+  const firstText = (list[0].item || '') + (list[0].description ? ': ' + list[0].description : '');
+  _reserveHeaderPlusRow(ctx, firstText, rowOpts);
   ctx.secHdr('DEFICIENCY LIST');
   list.forEach((d, i) => {
     const text = (d.item || '') + (d.description ? ': ' + d.description : '');
-    _inspectionNumberedRow(ctx, i, text, { lineH: sc(9), pad: sc(4), min: sc(13) });
+    _inspectionNumberedRow(ctx, i, text, rowOpts);
   });
   ctx.gap(6);
 }
@@ -182,11 +192,13 @@ function renderInspectionDeficiencies(ctx, data) {
 // GENERAL NOTES & SITE OBSERVATIONS — numbered editable rows from data.notes,
 // padded to at least 3 blank fillable rows.
 function renderInspectionNotes(ctx, data) {
-  ctx.secHdr('GENERAL NOTES & SITE OBSERVATIONS');
   const notes = data.notes || [];
   const rowCount = Math.max(notes.length, 3);
+  const rowOpts = { lineH: sc(12), pad: sc(7), min: sc(18) };
+  _reserveHeaderPlusRow(ctx, notes[0] || '', rowOpts);
+  ctx.secHdr('GENERAL NOTES & SITE OBSERVATIONS');
   for (let i = 0; i < rowCount; i++) {
-    _inspectionNumberedRow(ctx, i, notes[i] || '', { lineH: sc(12), pad: sc(7), min: sc(18) });
+    _inspectionNumberedRow(ctx, i, notes[i] || '', rowOpts);
   }
   ctx.gap(6);
 }
