@@ -95,6 +95,11 @@ function goStep(n) {
       document.getElementById('fa-notes-card').style.display =
         (activeInspectionSystem === 'extinguisher') ? 'none' : 'block';
       document.getElementById('sp-notes-card').style.display = 'none';
+      // Mirror damper condition notes into the general-notes table so the user
+      // sees them here before generating the PDF.
+      if (activeInspectionSystem === 'fire-smoke-damper' && typeof syncDamperNotesToGeneral === 'function') {
+        syncDamperNotesToGeneral();
+      }
     }
   }
 }

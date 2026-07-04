@@ -36,23 +36,19 @@ function buildNotesList(system, extinguishers) {
     document.querySelectorAll('#sp-notes-tbody td:nth-child(2) input').forEach(inp => push(inp.value));
   } else if (system === 'exit-sign-lighting') {
     push(document.getElementById('esl-notes')?.value);
+    faTable();   // step-4 "General Notes & Site Observations" (shared table) too
   } else {
     // fire-alarm, hood, and every generic system share the step-4 notes table;
     // generic systems ALSO carry a panel-level notes field (fire-alarm/hood don't).
     const panelId = PANEL_NOTES_ID[system];
     if (panelId) push(document.getElementById(panelId)?.value);
-    faTable();
-    // Fire/smoke dampers: fold each card's "General Condition Notes" into the
-    // overall notes, tagged with the damper address (they have no other home).
-    if (system === 'fire-smoke-damper') {
-      document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
-        const id   = card.dataset.damperId;
-        const note = (document.getElementById('dmp-note-' + id)?.value || '').trim();
-        if (!note) return;
-        const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
-        push('Damper ' + addr + ': ' + note);
-      });
+    // Fire/smoke damper condition notes are mirrored into the shared general-notes
+    // table (syncDamperNotesToGeneral, on step-4 entry + collectAllData) so they show
+    // in the UI and are read from that one place here.
+    if (system === 'fire-smoke-damper' && typeof syncDamperNotesToGeneral === 'function') {
+      syncDamperNotesToGeneral();
     }
+    faTable();
   }
   return notes;
 }

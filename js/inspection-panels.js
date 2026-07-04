@@ -1982,6 +1982,44 @@ function removeDamperDefic(deficId) {
   if (typeof refreshAutoStatus === 'function') refreshAutoStatus();
 }
 
+// Mirror each damper card's "General Condition Notes" into the shared step-4
+// General Notes & Site Observations table, tagged + read-only (edit on the damper
+// card). Idempotent: updates existing mirror rows, adds new ones, and drops rows
+// whose damper lost its note or was deleted. Runs on step-4 entry and in
+// collectAllData so the notes show in the UI and flow to the PDF from one place.
+function syncDamperNotesToGeneral() {
+  const tbody = document.getElementById('fa-notes-tbody');
+  if (!tbody) return;
+  const seen = new Set();
+  document.querySelectorAll('#damper-cards-container .damper-card').forEach(card => {
+    const id   = card.dataset.damperId;
+    const note = (document.getElementById('dmp-note-' + id)?.value || '').trim();
+    const existing = tbody.querySelector(`tr[data-dmp-note-src="${id}"]`);
+    if (note) {
+      const addr = (document.getElementById('dmp-addr-' + id)?.value || '').trim() || '(unlabeled)';
+      const text = 'Damper ' + addr + ': ' + note;
+      seen.add(id);
+      if (existing) {
+        const inp = existing.querySelector('input');
+        if (inp) inp.value = text;
+      } else {
+        faNoteCount++;
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr id="fa-note-row-${faNoteCount}" data-dmp-note-src="${id}">
+            <td style="text-align:center;font-weight:700;color:var(--slate);">${faNoteCount}</td>
+            <td><input type="text" value="${escHtml(text)}" readonly title="From the damper card — edit it under that damper's General Condition Notes" style="background:#f3f4f6;"></td>
+            <td><button class="del-btn" disabled title="Edit on the damper card" style="opacity:.35;cursor:default;">✕</button></td>
+          </tr>`);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  });
+  tbody.querySelectorAll('tr[data-dmp-note-src]').forEach(tr => {
+    if (!seen.has(tr.getAttribute('data-dmp-note-src'))) tr.remove();
+  });
+}
+
 // Mark every UNANSWERED sub-check on this one damper PASS (preserves any FAIL/N-A
 // the inspector already set — mark exceptions first, then Fast Pass the rest).
 function fastPassDamper(id) {
