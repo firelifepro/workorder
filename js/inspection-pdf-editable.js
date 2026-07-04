@@ -149,13 +149,7 @@ async function buildExtinguisherPDFBytes() {
   let page, curY, _fid = 0;
   const fid = () => 'ext_' + (++_fid);
 
-  const FIRE_RED = rgb(0.72, 0.08, 0.08);
-  const navy  = rgb(0.13, 0.21, 0.42);
-  const sky   = rgb(0.71, 0.80, 0.93);
-  const gold  = rgb(1.0,  1.0,  0.75);
-  const lgray = rgb(0.94, 0.94, 0.94);
-  const white = rgb(1, 1, 1);
-  const blk   = rgb(0, 0, 0);
+  const { FIRE_RED, navy, sky, gold, lgray, white, blk } = inspPdfColors(rgb);
 
   const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
   const ry = (h) => PH - curY - h;
@@ -227,24 +221,10 @@ async function buildExtinguisherPDFBytes() {
   });
   curY += nfpaBlockH + sc(2);
 
-  // Overall status bar (page 1)
-  {
-    const stH = sc(18);
-    const stVal = (data.overallStatus || '').toUpperCase();
-    const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22) :
-                    stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10) :
-                    stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00) :
-                                            rgb(0.38, 0.44, 0.54);
-    checkPage(stH + sc(6));
-    page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
-    page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, sc(6)), size: sc(6.5), font: hFont, color: white });
-    page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, sc(6)), size: sc(9.5), font: hFont, color: white });
-    curY += stH + sc(6);
-  }
-
-  // Deficiencies (only if any) — right after the overall status bar.
+  // Overall status bar + deficiencies (right after the header/NFPA) — shared renderers.
   {
     const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionStatusBar(_c, data);
     renderInspectionDeficiencies(_c, data);
     page = _c.page; curY = _c.curY;
   }
@@ -483,13 +463,7 @@ async function buildSprinklerPDFBytes() {
   let page, curY, _fid = 0;
   const fid = () => 'sp_' + (++_fid);
 
-  const FIRE_RED = rgb(0.72, 0.08, 0.08);
-  const navy  = rgb(0.13, 0.21, 0.42);
-  const sky   = rgb(0.71, 0.80, 0.93);
-  const gold  = rgb(1.0,  1.0,  0.75);
-  const lgray = rgb(0.94, 0.94, 0.94);
-  const white = rgb(1, 1, 1);
-  const blk   = rgb(0, 0, 0);
+  const { FIRE_RED, navy, sky, gold, lgray, white, blk } = inspPdfColors(rgb);
 
   const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
   const ry = (h) => PH - curY - h;
@@ -689,24 +663,10 @@ async function buildSprinklerPDFBytes() {
   });
   curY += nfpaBoxH + sc(2);
 
-  // ── OVERALL STATUS — shown on page 1 (also rendered again at end of report) ──
-  {
-    const stH = sc(18);
-    const stVal = (data.overallStatus || '').toUpperCase();
-    const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22) :
-                    stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10) :
-                    stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00) :
-                                            rgb(0.38, 0.44, 0.54);
-    checkPage(stH + 4);
-    page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
-    page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: sc(6.5), font: hFont, color: white });
-    page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
-    curY += stH + 4;
-  }
-
-  // Deficiencies (only if any) — right after the overall status bar.
+  // Overall status bar + deficiencies (right after the header/NFPA) — shared renderers.
   {
     const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionStatusBar(_c, data);
     renderInspectionDeficiencies(_c, data);
     page = _c.page; curY = _c.curY;
   }
@@ -909,15 +869,9 @@ async function buildGenericSystemPDFBytes() {
   let page, curY, _fid = 0;
   const fid = () => 'gen_' + (++_fid);
 
-  const FIRE_RED = rgb(0.72, 0.08, 0.08);
-  const navy  = rgb(0.13, 0.21, 0.42);
-  const sky   = rgb(0.71, 0.80, 0.93);
-  const gold  = rgb(1.0, 1.0, 0.75);
-  const lgray = rgb(0.94, 0.94, 0.94);
-  const white = rgb(1, 1, 1);
+  const { FIRE_RED, navy, sky, gold, lgray, white } = inspPdfColors(rgb);
   const green = rgb(0.06, 0.50, 0.22);
   const red   = rgb(0.76, 0.10, 0.10);
-  const amber = rgb(0.75, 0.38, 0.00);
   const slate = rgb(0.39, 0.45, 0.55);
 
   const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
@@ -1180,19 +1134,10 @@ async function buildGenericSystemPDFBytes() {
     curY += dmpNfpaBoxH + sc(4);
   }
 
-  // Overall status bar
-  const stVal = (data.overallStatus || '').toUpperCase();
-  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
-  checkPage(sc(22));
-  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
-  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
-  curY += sc(18);
-  gap(6);
-
-  // Deficiencies first (right after the overall status bar) — consistent placement.
+  // Overall status bar + deficiencies (right after the header/NFPA) — shared renderers.
   {
     const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionStatusBar(_c, data);
     renderInspectionDeficiencies(_c, data);
     page = _c.page; curY = _c.curY;
   }
@@ -1394,16 +1339,9 @@ async function buildExitSignLightingPDFBytes() {
   let page, curY, _fid = 0;
   const fid = () => 'esl_' + (++_fid);
 
-  const FIRE_RED = rgb(0.72, 0.08, 0.08);
-  const navy  = rgb(0.13, 0.21, 0.42);
-  const sky   = rgb(0.71, 0.80, 0.93);
-  const gold  = rgb(1.0, 1.0, 0.75);
-  const lgray = rgb(0.94, 0.94, 0.94);
-  const white = rgb(1, 1, 1);
+  const { FIRE_RED, navy, sky, gold, lgray, white } = inspPdfColors(rgb);
   const green = rgb(0.06, 0.50, 0.22);
   const red   = rgb(0.76, 0.10, 0.10);
-  const amber = rgb(0.75, 0.38, 0.00);
-  const slate = rgb(0.39, 0.45, 0.55);
 
   const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
   const ry = (h) => PH - curY - h;
@@ -1469,19 +1407,10 @@ async function buildExitSignLightingPDFBytes() {
     curY += eslNfpaBoxH + sc(4);
   }
 
-  // Overall status
-  const stVal2 = (data.overallStatus || '').toUpperCase();
-  const stColor2 = stVal2 === 'COMPLIANT' ? green : stVal2 === 'DEFICIENT' ? red : stVal2 === 'IMPAIRED' ? amber : slate;
-  checkPage(sc(22));
-  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor2 });
-  page.drawText('OVERALL STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal2 || 'PENDING', { x: ML+100, y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
-  curY += sc(18);
-  gap(6);
-
-  // Deficiencies — standardized shared renderer (gold numbered editable rows).
+  // Overall status bar + deficiencies (right after the header/NFPA) — shared renderers.
   {
     const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionStatusBar(_c, data);
     renderInspectionDeficiencies(_c, data);
     page = _c.page; curY = _c.curY;
   }
@@ -1587,12 +1516,7 @@ async function buildEditablePDFBytes() {
     const fid = () => 'fld_' + (++_fid);
 
     // Colors
-    const navy  = rgb(0.13, 0.21, 0.42);
-    const sky   = rgb(0.71, 0.80, 0.93);
-    const gold  = rgb(1.0,  1.0,  0.75);
-    const lgray = rgb(0.94, 0.94, 0.94);
-    const white = rgb(1, 1, 1);
-    const blk   = rgb(0, 0, 0);
+    const { navy, sky, gold, lgray, white, blk } = inspPdfColors(rgb);
 
     const addPage = () => { page = pdfDoc.addPage([W, PH]); curY = MT; };
     // pdf-lib: origin bottom-left. ry() gives bottom-y of a strip at curY with height h.
@@ -1856,23 +1780,10 @@ async function buildEditablePDFBytes() {
     ].forEach(b => bulletText(b, 6.5));
     gap(4);
 
-    // Overall System Status bar — full width, prominently colored
-    {
-      const stH = sc(18);
-      const stVal = (data.overallStatus || '').toUpperCase();
-      const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22) :
-                      stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10) :
-                      stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00) :
-                                              rgb(0.38, 0.44, 0.54);
-      page.drawRectangle({ x: ML, y: ry(stH), width: PW, height: stH, color: stColor });
-      page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ty(stH, 6), size: sc(6.5), font: hFont, color: white });
-      page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(stH, 6), size: sc(9.5), font: hFont, color: white });
-      curY += stH + 4;
-    }
-
-    // Deficiencies (only if any) — right after the overall status bar.
+    // Overall status bar + deficiencies (right after the header/NFPA) — shared renderers.
     {
       const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+      renderInspectionStatusBar(_c, data);
       renderInspectionDeficiencies(_c, data);
       page = _c.page; curY = _c.curY;
     }
@@ -2090,18 +2001,11 @@ async function buildHoodPDFBytes() {
   let _pageCount = 0;
   const fid = () => 'hood_' + (++_fid);
 
-  const FIRE_RED = rgb(0.72, 0.08, 0.08);
-  const amber  = rgb(0.85, 0.47, 0.00);
-  const navy   = rgb(0.13, 0.21, 0.42);
-  const sky    = rgb(0.71, 0.80, 0.93);
-  const gold   = rgb(1.0,  1.0,  0.75);
-  const lgray  = rgb(0.94, 0.94, 0.94);
-  const cream  = rgb(0.99, 0.98, 0.92);
-  const white  = rgb(1, 1, 1);
-  const blk    = rgb(0, 0, 0);
-  const green  = rgb(0.06, 0.50, 0.22);
-  const red    = rgb(0.76, 0.10, 0.10);
-  const slate  = rgb(0.39, 0.45, 0.55);
+  const { FIRE_RED, navy, sky, gold, lgray, white, blk } = inspPdfColors(rgb);
+  const amber = rgb(0.85, 0.47, 0.00);
+  const cream = rgb(0.99, 0.98, 0.92);
+  const green = rgb(0.06, 0.50, 0.22);
+  const red   = rgb(0.76, 0.10, 0.10);
 
   const propName = data.property?.name || '';
   const inspDate = data.inspection?.date || '';
@@ -2214,19 +2118,10 @@ async function buildHoodPDFBytes() {
   });
   curY += nfpaBoxH + 6;
 
-  // Overall status bar
-  const stVal = (data.overallStatus || '').toUpperCase();
-  const stColor = stVal === 'COMPLIANT' ? green : stVal === 'DEFICIENT' ? red : stVal === 'IMPAIRED' ? amber : slate;
-  checkPage(sc(22));
-  page.drawRectangle({ x: ML, y: ry(sc(18)), width: PW, height: sc(18), color: stColor });
-  page.drawText('OVERALL SYSTEM STATUS', { x: ML+8, y: ty(sc(18), sc(6)), size: sc(6.5), font: hFont, color: white });
-  page.drawText(stVal || 'PENDING', { x: ML + 8 + hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ty(sc(18), sc(6)), size: sc(9.5), font: hFont, color: white });
-  curY += sc(18);
-  gap(6);
-
-  // Deficiencies — standardized shared renderer (gold numbered editable rows).
+  // Overall status bar + deficiencies (right after the header/NFPA) — shared renderers.
   {
     const _c = makeInspectionPdfCtx({ pdfDoc, form, page, curY, hFont, rFont, fid });
+    renderInspectionStatusBar(_c, data);
     renderInspectionDeficiencies(_c, data);
     page = _c.page; curY = _c.curY;
   }

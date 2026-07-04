@@ -23,17 +23,11 @@
 // the signature/photo state `sigHasData`/`custSigHasData`/`inspectionPhotos`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Build a drawing context that owns the page cursor. `o` supplies the pdf-lib doc,
-// form, fonts, the builder's current `page`/`curY`, and the builder's `fid`
-// generator (reused so field names keep incrementing without collision).
-function makeInspectionPdfCtx(o) {
-  const { rgb } = window.PDFLib;
-  const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 36;
-
-  const ctx = {
-    pdfDoc: o.pdfDoc, form: o.form, hFont: o.hFont, rFont: o.rFont, fid: o.fid,
-    page: o.page, curY: o.curY,
-    W, PH, ML, PW, MT, MB,
+// Shared inspection-PDF palette — the identical color set every builder redefined
+// locally. Pass pdf-lib's `rgb`. Returns { FIRE_RED, navy, sky, gold, lgray, white, blk }.
+function inspPdfColors(rgb) {
+  return {
+    FIRE_RED: rgb(0.72, 0.08, 0.08),
     navy:  rgb(0.13, 0.21, 0.42),
     sky:   rgb(0.71, 0.80, 0.93),
     gold:  rgb(1.0,  1.0,  0.75),
@@ -41,6 +35,20 @@ function makeInspectionPdfCtx(o) {
     white: rgb(1, 1, 1),
     blk:   rgb(0, 0, 0),
   };
+}
+
+// Build a drawing context that owns the page cursor. `o` supplies the pdf-lib doc,
+// form, fonts, the builder's current `page`/`curY`, and the builder's `fid`
+// generator (reused so field names keep incrementing without collision).
+function makeInspectionPdfCtx(o) {
+  const { rgb } = window.PDFLib;
+  const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 36;
+
+  const ctx = Object.assign({
+    pdfDoc: o.pdfDoc, form: o.form, hFont: o.hFont, rFont: o.rFont, fid: o.fid,
+    page: o.page, curY: o.curY,
+    W, PH, ML, PW, MT, MB,
+  }, inspPdfColors(rgb));
 
   ctx.addPage   = () => { ctx.page = ctx.pdfDoc.addPage([W, PH]); ctx.curY = MT; };
   ctx.ry        = (h) => PH - ctx.curY - h;
@@ -135,6 +143,24 @@ function _inspectionNumberedRow(ctx, i, text, opts) {
   nf.addToPage(ctx.page, { x: ML + 25, y: ctx.ry(rh) + 1, width: PW - 26, height: rh - 2, font: ctx.rFont });
   nf.setFontSize(sc(7));
   ctx.curY += rh + sc(1);
+}
+
+// OVERALL SYSTEM STATUS bar — the full-width colored status strip on page 1 of
+// every report (COMPLIANT green / DEFICIENT red / IMPAIRED amber / else slate).
+function renderInspectionStatusBar(ctx, data) {
+  const { rgb } = window.PDFLib;
+  const { ML, PW } = ctx;
+  const stH = sc(18);
+  const stVal = (data.overallStatus || '').toUpperCase();
+  const stColor = stVal === 'COMPLIANT' ? rgb(0.06, 0.50, 0.22)
+                : stVal === 'DEFICIENT' ? rgb(0.76, 0.10, 0.10)
+                : stVal === 'IMPAIRED'  ? rgb(0.75, 0.38, 0.00)
+                :                         rgb(0.38, 0.44, 0.54);
+  ctx.checkPage(stH + sc(6));
+  ctx.page.drawRectangle({ x: ML, y: ctx.ry(stH), width: PW, height: stH, color: stColor });
+  ctx.page.drawText('OVERALL SYSTEM STATUS', { x: ML + 8, y: ctx.ty(stH, sc(6)), size: sc(6.5), font: ctx.hFont, color: ctx.white });
+  ctx.page.drawText(stVal || 'PENDING', { x: ML + 8 + ctx.hFont.widthOfTextAtSize('OVERALL SYSTEM STATUS', sc(6.5)) + sc(12), y: ctx.ty(stH, sc(6)), size: sc(9.5), font: ctx.hFont, color: ctx.white });
+  ctx.curY += stH + sc(6);
 }
 
 // DEFICIENCY LIST — numbered editable rows from data.deficiencies, or a gold
@@ -257,7 +283,9 @@ async function renderInspectionPhotos(ctx) {
 // Dual-environment export: CommonJS for Node tests, global for the browser.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    inspPdfColors,
     makeInspectionPdfCtx,
+    renderInspectionStatusBar,
     renderInspectionDeficiencies,
     renderInspectionNotes,
     renderInspectionStatusAndSignatures,

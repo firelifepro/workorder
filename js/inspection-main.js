@@ -1,3 +1,17 @@
+// Single source of truth for which builder renders the active system's PDF.
+// Dispatched from BOTH saveAndDownload() and previewPDF() — keep the mapping here
+// so a new/changed system only has to be wired in one place.
+function buildActiveInspectionPDFBytes() {
+  switch (activeInspectionSystem) {
+    case 'sprinkler':          return buildSprinklerPDFBytes();
+    case 'fire-alarm':         return buildEditablePDFBytes();
+    case 'hood':               return buildHoodPDFBytes();
+    case 'extinguisher':       return buildExtinguisherPDFBytes();
+    case 'exit-sign-lighting': return buildExitSignLightingPDFBytes();
+    default:                   return buildGenericSystemPDFBytes();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SAVE & DOWNLOAD  (combined: save JSON to Drive + save PDF to Drive + download)
 function startNewInspection() {
@@ -102,19 +116,7 @@ async function saveAndDownload() {
   try {
     // ── 3. Build the PDF ───────────────────────────────────────────────────────
     setStatus2('Building PDF…', 'var(--slate)');
-    if (activeInspectionSystem === 'sprinkler') {
-      pdfBytes = await buildSprinklerPDFBytes();
-    } else if (activeInspectionSystem === 'fire-alarm') {
-      pdfBytes = await buildEditablePDFBytes();
-    } else if (activeInspectionSystem === 'hood') {
-      pdfBytes = await buildHoodPDFBytes();
-    } else if (activeInspectionSystem === 'extinguisher') {
-      pdfBytes = await buildExtinguisherPDFBytes();
-    } else if (activeInspectionSystem === 'exit-sign-lighting') {
-      pdfBytes = await buildExitSignLightingPDFBytes();
-    } else {
-      pdfBytes = await buildGenericSystemPDFBytes();
-    }
+    pdfBytes = await buildActiveInspectionPDFBytes();
     const data = collectAllData();
     const propSlug = buildFileSlug(data);
     const dateSlug = data.inspection.date || todayMT();
@@ -259,19 +261,7 @@ async function previewPDF() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Building…'; }
   try {
     let pdfBytes;
-    if (activeInspectionSystem === 'sprinkler') {
-      pdfBytes = await buildSprinklerPDFBytes();
-    } else if (activeInspectionSystem === 'fire-alarm') {
-      pdfBytes = await buildEditablePDFBytes();
-    } else if (activeInspectionSystem === 'hood') {
-      pdfBytes = await buildHoodPDFBytes();
-    } else if (activeInspectionSystem === 'extinguisher') {
-      pdfBytes = await buildExtinguisherPDFBytes();
-    } else if (activeInspectionSystem === 'exit-sign-lighting') {
-      pdfBytes = await buildExitSignLightingPDFBytes();
-    } else {
-      pdfBytes = await buildGenericSystemPDFBytes();
-    }
+    pdfBytes = await buildActiveInspectionPDFBytes();
     const data     = collectAllData();
     const propSlug = buildFileSlug(data);
     const dateSlug = (data.inspection.date || todayMT()).replace(/-/g, '');
