@@ -226,6 +226,7 @@
         </select>
       </div>
       <button class="icon-btn" onclick="loadInvoices()" title="Reload from QuickBooks">↺ Refresh</button>
+      <button class="icon-btn" onclick="reconcileWorkLog()" title="Find Work Log rows that are paid-in-full in QuickBooks (e.g. paid directly in QB, not via this page) and mark them paid/green so non-QB users see them">🔄 Reconcile Work Log</button>
       <button class="icon-btn" onclick="printInvoices()" title="Print filtered invoices">🖨 Print</button>
       <button class="icon-btn" onclick="sendRemindersInfo()" title="How to enable QB payment reminders">💡 Auto Reminders</button>
     </div>
@@ -1080,6 +1081,112 @@ async function markWorkLogPaid(rowNum, payDate, ref) {
   // Update local cache
   const r = workLog.find(x => x.rowNum === rowNum);
   if (r) r.paid = cellText;
+}
+
+// ─────────────────────────────────────────────────────
+// RECONCILE WORK LOG ← QUICKBOOKS
+// Sweeps every Work Log row that's invoiced-but-not-paid, asks QB whether
+// those specific invoices are paid-in-full (Balance == 0), and greens the
+// paid ones. This catches invoices paid directly in QB (not through this
+// page's Record-Payment flow), so non-QB users on worklog.html see them.
+// We positively confirm Balance == 0 rather than assume "missing from the
+// open list = paid", so a voided/deleted invoice can't false-mark a row.
+// ─────────────────────────────────────────────────────
+async function reconcileWorkLog() {
+  if (!qbAccessToken) { toast('⚠ Connect QuickBooks first'); return; }
+  if (!accessToken)   { toast('⚠ Connect Google first'); return; }
+  setProgress('Reconciling Work Log with QuickBooks…');
+  try {
+    await loadWorkLog();
+    if (!workLog.length) { setProgress('No Work Log rows found', 'err'); return; }
+
+    // Waiting rows: has an invoice reference (col H), not yet marked paid (col I).
+    const waiting = [];
+    for (const r of workLog) {
+      if (!r.invoiced || r.paid) continue;
+      const m = String(r.invoiced).match(/INV\s*#\s*(\d+)/i);
+      if (!m) continue;                       // no parseable invoice # → skip
+      waiting.push({ row: r, invNum: m[1] });
+    }
+    if (!waiting.length) {
+      setProgress('✓ Nothing to reconcile — no unpaid invoiced rows', 'done');
+      setTimeout(() => setProgress(''), 3500);
+      return;
+    }
+
+    // Look up those exact invoice numbers in QB, in chunks (query-length safety).
+    const nums = [...new Set(waiting.map(w => w.invNum))];
+    const invByNum = {};
+    const CHUNK = 40;
+    for (let i = 0; i < nums.length; i += CHUNK) {
+      const inList = nums.slice(i, i + CHUNK).map(n => `'${n}'`).join(',');
+      const q = `SELECT * FROM Invoice WHERE DocNumber IN (${inList})`;
+      const data = await qbProxy('GET', `/query?query=${encodeURIComponent(q)}&minorversion=70`);
+      for (const inv of (data?.QueryResponse?.Invoice || [])) invByNum[String(inv.DocNumber)] = inv;
+      setProgress(`Checking QuickBooks… ${Math.min(i + CHUNK, nums.length)}/${nums.length}`);
+    }
+
+    // Decide what's paid. Balance == 0 (within rounding) → paid in full.
+    const toMark = [];
+    let stillOpen = 0, notFound = 0;
+    for (const w of waiting) {
+      const inv = invByNum[w.invNum];
+      if (!inv) { notFound++; continue; }                        // voided/deleted/typo → leave alone
+      if (Number(inv.Balance) > 0.005) { stillOpen++; continue; } // genuinely still open
+      toMark.push({ w, inv });
+    }
+    if (!toMark.length) {
+      setProgress(`✓ Nothing to update — ${stillOpen} still open in QB${notFound ? `, ${notFound} not found` : ''}`, 'done');
+      setTimeout(() => setProgress(''), 4500);
+      return;
+    }
+    if (!confirm(
+      `${toMark.length} invoiced Work Log row${toMark.length === 1 ? ' is' : 's are'} paid-in-full in QuickBooks.\n` +
+      `(${stillOpen} still open${notFound ? `, ${notFound} not found in QB` : ''}.)\n\n` +
+      `Mark ${toMark.length === 1 ? 'it' : 'them'} paid (green) on the Work Log?`
+    )) {
+      setProgress('Reconcile cancelled', 'done');
+      setTimeout(() => setProgress(''), 2000);
+      return;
+    }
+
+    // Fetch the actual payment dates for the paid invoices (via their LinkedTxn),
+    // so the Work Log shows when it was paid rather than today.
+    const payIds = new Set();
+    for (const { inv } of toMark) {
+      for (const lt of (inv.LinkedTxn || [])) if (lt.TxnType === 'Payment') payIds.add(lt.TxnId);
+    }
+    const payDate = {};
+    const payArr = [...payIds];
+    for (let i = 0; i < payArr.length; i += CHUNK) {
+      const inList = payArr.slice(i, i + CHUNK).map(id => `'${id}'`).join(',');
+      const q = `SELECT Id, TxnDate FROM Payment WHERE Id IN (${inList})`;
+      const data = await qbProxy('GET', `/query?query=${encodeURIComponent(q)}&minorversion=70`);
+      for (const p of (data?.QueryResponse?.Payment || [])) payDate[p.Id] = p.TxnDate;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    let marked = 0;
+    for (const { w, inv } of toMark) {
+      // Latest linked-payment date, else today.
+      const dates = (inv.LinkedTxn || [])
+        .filter(lt => lt.TxnType === 'Payment')
+        .map(lt => payDate[lt.TxnId])
+        .filter(Boolean)
+        .sort();
+      const d = dates.length ? dates[dates.length - 1] : today;
+      await markWorkLogPaid(w.row.rowNum, d, 'paid in QuickBooks');
+      marked++;
+      setProgress(`Marking paid… ${marked}/${toMark.length}`);
+    }
+
+    setProgress(`✓ Reconciled — ${marked} marked paid, ${stillOpen} still open${notFound ? `, ${notFound} not found in QB` : ''}`, 'done');
+    toast(`✓ ${marked} Work Log row${marked === 1 ? '' : 's'} marked paid`, 5000);
+    setTimeout(() => setProgress(''), 5000);
+  } catch(e) {
+    setProgress('Error: ' + e.message, 'err');
+    console.error('reconcileWorkLog:', e);
+  }
 }
 
 // ─────────────────────────────────────────────────────
