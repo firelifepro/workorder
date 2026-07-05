@@ -111,8 +111,18 @@ async function _blankFormHeader(pdfDoc, form, hFont, rFont, title, freqOptions) 
   const { FIRE_RED, navy, sky, gold, lgray, white } = inspPdfColors(rgb);
   const W = 612, PH = 792, ML = 36, PW = 540;
   const page = pdfDoc.addPage([W, PH]);
-  const data = (typeof collectAllData === 'function') ? collectAllData() : {};
-  const hdrData = { property: data.property || {}, inspection: {} };
+  // Read the property straight from the step-1 fields so the worksheet can be
+  // printed before an inspection is started (no active system / no row context,
+  // so we avoid collectAllData which is system-context-dependent).
+  const fv = (id) => (document.getElementById(id)?.value || '').trim();
+  const hdrData = {
+    property: {
+      name: fv('property-name') || fv('property-select') || fv('service-address'),
+      address: fv('service-address'),
+      cityStateZip: fv('city-state-zip'),
+    },
+    inspection: {},
+  };
   let n = 0;
   const curY = await drawReportHeader({
     pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW,

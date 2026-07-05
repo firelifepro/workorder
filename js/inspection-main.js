@@ -12,10 +12,11 @@ function buildActiveInspectionPDFBytes() {
   }
 }
 
-// Blank printable field worksheet for the active system (extinguisher / exit-sign).
-// Returns null for systems without a worksheet. See js/inspection-blank-forms.js.
-function buildActiveBlankFormBytes() {
-  switch (activeInspectionSystem) {
+// Blank printable field worksheet for a system (extinguisher / exit-sign).
+// Falls back to the active system when none is passed. Returns null for systems
+// without a worksheet. See js/inspection-blank-forms.js.
+function buildActiveBlankFormBytes(system) {
+  switch (system || activeInspectionSystem) {
     case 'extinguisher':       return buildBlankExtinguisherFormBytes();
     case 'exit-sign-lighting': return buildBlankExitSignFormBytes();
     default:                   return null;
@@ -23,15 +24,17 @@ function buildActiveBlankFormBytes() {
 }
 
 // Build + download the blank worksheet so it can be printed and filled by hand.
-// Pre-fills the property header when a property is selected (no property required).
-async function downloadBlankForm() {
-  const build = buildActiveBlankFormBytes();
+// Pass a system explicitly (start-screen buttons) or omit it to use the active
+// system (panel buttons). Pre-fills the property header when one is selected.
+async function downloadBlankForm(system) {
+  const sys = system || activeInspectionSystem;
+  const build = buildActiveBlankFormBytes(sys);
   if (!build) { toast('⚠ A blank worksheet is available for extinguishers and exit signs/lighting.'); return; }
   try {
     const pdfBytes = await build;
     const propName = (document.getElementById('property-name')?.value || document.getElementById('property-select')?.value || '').trim();
     const propSlug = (propName || 'blank').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
-    const sysSlug  = activeInspectionSystem.replace(/-/g, '_');
+    const sysSlug  = sys.replace(/-/g, '_');
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
