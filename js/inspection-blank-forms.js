@@ -8,23 +8,37 @@
 // P/F/N-A columns, PASS/FAIL). The contractor just marks an X in a box — far more
 // reliable for inspection-scan-import.js to read back than handwritten letters.
 //
-// Only the shared cover header (via drawReportHeader) uses fillable form fields
-// and pre-fills the property name/address when a property is selected;
-// Job/PO/Date/Inspector print blank for hand entry. Everything else is drawn.
+// The cover header is drawn here (self-contained) and pre-fills the property
+// name/address when a property is selected; Date/Inspector/Frequency print blank
+// for hand entry. Everything is drawn (no fillable form fields).
 //
-// Loaded AFTER inspection-pdf-editable.js (needs drawReportHeader), and after
-// inspection-pdf-scale.js / inspection-pdf-components.js (sc, pdfSafe,
-// inspPdfColors) and inspection-pdf-layout.js (wrapText).
+// SELF-CONTAINED so it works on BOTH inspection.html and hospital-inspection.html
+// by loading only this file + inspection-scan-import.js. Depends only on the tiny
+// pure helpers both pages already load: sc/pdfSafe (inspection-pdf-scale.js) and
+// wrapText (inspection-pdf-layout.js), plus window.PDFLib. It does NOT need the
+// full editable PDF engine or inspection-pdf-components.js.
 //
-// Dispatched by buildActiveBlankFormBytes() → downloadBlankForm() (inspection-main.js).
+// Dispatch + download entry points (buildActiveBlankFormBytes / downloadBlankForm
+// / _blankFormOpts) live at the bottom of this file so both pages get them.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Palette (inlined so this module carries no dependency on inspPdfColors).
+function _blankPalette(rgb) {
+  return {
+    FIRE_RED: rgb(0.72, 0.08, 0.08),
+    navy:  rgb(0.13, 0.21, 0.42),
+    sky:   rgb(0.71, 0.80, 0.93),
+    lgray: rgb(0.94, 0.94, 0.94),
+    white: rgb(1, 1, 1),
+  };
+}
 
 // Shared page/geometry primitives for a worksheet builder. Seeds onto an existing
 // page/cursor (the header page) so the body continues below the cover header.
 // Everything is in absolute points (US Letter 612×792), unscaled.
 function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
   const rgb = window.PDFLib.rgb;
-  const { navy, sky, white } = inspPdfColors(rgb);
+  const { navy, sky, white } = _blankPalette(rgb);
   const boxInk = rgb(0.25, 0.3, 0.4);
   const numInk = rgb(0.4, 0.45, 0.55);
   const capInk = navy;
@@ -121,35 +135,72 @@ function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
   return { secHdr, note, unitBlock, linedBlock };
 }
 
-// Draw the shared cover header on a fresh first page, pre-filling the property
-// (when selected) but leaving Job/PO/Date/Inspector blank for hand entry. Returns
-// the header page and the curY beneath it.
-async function _blankFormHeader(pdfDoc, form, hFont, rFont, title, freqOptions) {
+// Draw a self-contained cover header on a fresh first page, pre-filling the
+// property (when selected) but leaving Date/Inspector/Frequency blank for hand
+// entry. Returns the header page and the curY beneath it.
+function _blankFormHeader(pdfDoc, hFont, rFont, title, freqOptions) {
   const rgb = window.PDFLib.rgb;
-  const { FIRE_RED, navy, sky, gold, lgray, white } = inspPdfColors(rgb);
+  const { FIRE_RED, navy, sky, lgray, white } = _blankPalette(rgb);
   const W = 612, PH = 792, ML = 36, PW = 540;
   const page = pdfDoc.addPage([W, PH]);
-  // Read the property straight from the step-1 fields so the worksheet can be
-  // printed before an inspection is started (no active system / no row context,
-  // so we avoid collectAllData which is system-context-dependent).
+  const blk = rgb(0.1, 0.13, 0.2);
+
+  // Read the property from whichever page's fields exist (inspection.html step-1
+  // or hospital-inspection.html), so the worksheet can be printed before an
+  // inspection is started.
   const fv = (id) => (document.getElementById(id)?.value || '').trim();
-  const hdrData = {
-    property: {
-      name: fv('property-name') || fv('property-select') || fv('service-address'),
-      address: fv('service-address'),
-      cityStateZip: fv('city-state-zip'),
-    },
-    inspection: {},
+  const propName = fv('property-name') || fv('property-select') || fv('service-address');
+  const propAddr = [fv('service-address'), fv('city-state-zip')].filter(Boolean).join(', ');
+
+  let cy = 20;
+  const ry = (h) => PH - cy - h;
+
+  // Title banner
+  const titleH = 24;
+  page.drawRectangle({ x: 0, y: ry(titleH), width: W, height: titleH, color: navy });
+  page.drawText(title, { x: W / 2 - hFont.widthOfTextAtSize(title, 13) / 2, y: ry(titleH) + 7, size: 13, font: hFont, color: white });
+  cy += titleH + 4;
+
+  // Company line + accent rule
+  page.drawText('Fire Life Protection Systems, Inc.', { x: ML, y: ry(11), size: 10, font: hFont, color: FIRE_RED });
+  page.drawText('8201 Shaffer Parkway Suite B, Littleton, CO 80127  ·  Office (720) 974-1570', { x: ML, y: ry(21), size: 7.5, font: rFont, color: rgb(0.35, 0.4, 0.5) });
+  cy += 26;
+  page.drawRectangle({ x: ML, y: ry(1.2), width: PW, height: 1.2, color: sky });
+  cy += 8;
+
+  // Labeled cell: caption + value/blank writing area.
+  const cell = (x, w, label, value) => {
+    const h = 20;
+    page.drawRectangle({ x, y: ry(h), width: w, height: h, color: white, borderColor: sky, borderWidth: 0.6 });
+    page.drawText(label, { x: x + 3, y: ry(h) + h - 8, size: 6, font: hFont, color: navy });
+    if (value) {
+      const v = wrapText(pdfSafe(String(value)), 9, w - 8, (s, z) => rFont.widthOfTextAtSize(s, z))[0] || '';
+      page.drawText(v, { x: x + 4, y: ry(h) + 4, size: 9, font: rFont, color: blk });
+    }
   };
-  let n = 0;
-  const curY = await drawReportHeader({
-    pdfDoc, page, form, hFont, rFont, sc, W, PH, ML, PW,
-    fid: () => 'blank_' + (++n),
-    data: hdrData, fd: {}, dv: () => '',
-    title, freqOptions,
-    C: { FIRE_RED, navy, sky, gold, lgray, white, blk: rgb(0, 0, 0) },
+  cell(ML, PW, 'BUILDING / PROPERTY NAME', propName);
+  cy += 22;
+  cell(ML, PW, 'STREET, CITY, STATE, ZIP', propAddr);
+  cy += 22;
+
+  // Date / Inspector / Frequency row
+  const h = 22;
+  const wDate = 130, wInsp = 190, wFreq = PW - wDate - wInsp;
+  cell(ML, wDate, 'DATE PERFORMED', '');
+  cell(ML + wDate, wInsp, 'INSPECTOR', '');
+  // Frequency as ☐ boxes
+  const fx = ML + wDate + wInsp;
+  page.drawRectangle({ x: fx, y: ry(h), width: wFreq, height: h, color: white, borderColor: sky, borderWidth: 0.6 });
+  page.drawText('FREQUENCY', { x: fx + 3, y: ry(h) + h - 8, size: 6, font: hFont, color: navy });
+  let bx = fx + 4;
+  (freqOptions || ['ANNUAL', 'SEMI-ANNUAL', 'MONTHLY']).forEach(op => {
+    page.drawRectangle({ x: bx, y: ry(h) + 4, width: 9, height: 9, borderColor: rgb(0.25, 0.3, 0.4), borderWidth: 1 });
+    page.drawText(op, { x: bx + 11, y: ry(h) + 5.5, size: 6.5, font: hFont, color: rgb(0.25, 0.3, 0.4) });
+    bx += 11 + hFont.widthOfTextAtSize(op, 6.5) + 8;
   });
-  return { page, curY: curY + 6 };
+  cy += h + 8;
+
+  return { page, curY: cy };
 }
 
 // ── PORTABLE FIRE EXTINGUISHER — field worksheet ─────────────────────────────
@@ -160,12 +211,11 @@ async function buildBlankExtinguisherFormBytes(opts) {
   const { count = 100, known = [] } = opts || {};
   const { PDFDocument, StandardFonts } = window.PDFLib;
   const pdfDoc = await PDFDocument.create();
-  const form   = pdfDoc.getForm();
   const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const { page, curY } = await _blankFormHeader(
-    pdfDoc, form, hFont, rFont,
+  const { page, curY } = _blankFormHeader(
+    pdfDoc, hFont, rFont,
     'PORTABLE FIRE EXTINGUISHER - FIELD WORKSHEET',
     ['ANNUAL', 'SEMI-ANNUAL', 'MONTHLY']
   );
@@ -210,12 +260,11 @@ async function buildBlankExitSignFormBytes(opts) {
   const { count = 100, knownEL = [], knownES = [] } = opts || {};
   const { PDFDocument, StandardFonts } = window.PDFLib;
   const pdfDoc = await PDFDocument.create();
-  const form   = pdfDoc.getForm();
   const hFont  = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const rFont  = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  const { page, curY } = await _blankFormHeader(
-    pdfDoc, form, hFont, rFont,
+  const { page, curY } = _blankFormHeader(
+    pdfDoc, hFont, rFont,
     'EXIT SIGN & EMERGENCY LIGHTING - FIELD WORKSHEET',
     ['ANNUAL', 'SEMI-ANNUAL', 'MONTHLY']
   );
@@ -259,4 +308,68 @@ async function buildBlankExitSignFormBytes(opts) {
   ctx.linedBlock('EXIT SIGN & LIGHTING NOTES / DEFICIENCIES', 6);
 
   return await pdfDoc.save();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DISPATCH + DOWNLOAD — shared by inspection.html AND hospital-inspection.html
+// (both load this file). Extinguishers are identical on both pages; the hospital
+// stores its device list under the single `hospital` profile record, so the
+// prefill falls back to it (this is how the hospital's 145 extinguishers land on
+// the worksheet).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Blank printable field worksheet for a system (extinguisher / exit-sign).
+// Falls back to the active system when none is passed. Returns null otherwise.
+function buildActiveBlankFormBytes(system, opts) {
+  switch (system || (typeof activeInspectionSystem !== 'undefined' ? activeInspectionSystem : '')) {
+    case 'extinguisher':       return buildBlankExtinguisherFormBytes(opts);
+    case 'exit-sign-lighting': return buildBlankExitSignFormBytes(opts);
+    default:                   return null;
+  }
+}
+
+// Read row count + "pre-fill known devices" toggle from the worksheet controls
+// (same ids on both pages), and gather known devices from the property profile.
+// Extinguishers: prefer the dedicated per-system record, else the hospital
+// record (the 145). Exit-sign device lists only exist on the standard flow.
+function _blankFormOpts(sys) {
+  let count = parseInt(document.getElementById('blank-row-count')?.value, 10);
+  if (!Number.isFinite(count) || count < 1) count = 100;
+  count = Math.min(count, 300);
+  const prefill = !!document.getElementById('blank-prefill-known')?.checked;
+  // _propertyProfile is a script-scope `let` (inspection-config.js), not a window
+  // property — reference the bare global, guarded for pages that lack it.
+  const prof = (typeof _propertyProfile !== 'undefined' && _propertyProfile) ? _propertyProfile : null;
+  const byS = (prof && prof.lastInspBySystem) || {};
+  if (sys === 'exit-sign-lighting') {
+    const rec = prefill ? (byS['exit-sign-lighting'] || byS.hospital) : null;
+    return { count, knownEL: rec?.elUnits || [], knownES: rec?.esUnits || [] };
+  }
+  const rec = prefill ? (byS.extinguisher || byS.hospital) : null;
+  return { count, known: rec?.extinguishers || [] };
+}
+
+// Build + download the blank worksheet so it can be printed and filled by hand.
+// Pass a system explicitly (start-screen / hospital buttons) or omit it to use
+// the active system. Pre-fills the property header when one is selected.
+async function downloadBlankForm(system) {
+  const sys = system || (typeof activeInspectionSystem !== 'undefined' ? activeInspectionSystem : '');
+  const opts = _blankFormOpts(sys);
+  const build = buildActiveBlankFormBytes(sys, opts);
+  if (!build) { if (typeof toast === 'function') toast('⚠ A blank worksheet is available for extinguishers and exit signs/lighting.'); return; }
+  try {
+    const pdfBytes = await build;
+    const propName = (document.getElementById('property-name')?.value || document.getElementById('property-select')?.value || '').trim();
+    const propSlug = (propName || 'blank').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
+    const sysSlug  = sys.replace(/-/g, '_');
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `FLPS_WORKSHEET_${sysSlug}_${propSlug}.pdf`; a.click();
+    URL.revokeObjectURL(url);
+    if (typeof toast === 'function') toast('🖨 Blank worksheet downloaded — print and fill by hand');
+  } catch (e) {
+    if (typeof toast === 'function') toast('✗ Worksheet failed: ' + e.message);
+    alert('Blank worksheet failed: ' + e.message);
+  }
 }

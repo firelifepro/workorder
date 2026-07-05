@@ -124,8 +124,10 @@ function scanNormExtType(v) {
 }
 
 // ── Entry point (wired to the panel button) ──────────────────────────────────
-function scanImportActiveSystem() {
-  const sys = SCAN_SYSTEMS[typeof activeInspectionSystem !== 'undefined' ? activeInspectionSystem : ''];
+// `systemOverride` lets pages without `activeInspectionSystem` (hospital-inspection.html)
+// invoke a specific system, e.g. scanImportActiveSystem('extinguisher').
+function scanImportActiveSystem(systemOverride) {
+  const sys = SCAN_SYSTEMS[systemOverride || (typeof activeInspectionSystem !== 'undefined' ? activeInspectionSystem : '')];
   if (!sys) {
     if (typeof toast === 'function') toast('⚠ Scan import is available for extinguishers and exit signs/lighting.');
     return;

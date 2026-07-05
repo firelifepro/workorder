@@ -12,56 +12,9 @@ function buildActiveInspectionPDFBytes() {
   }
 }
 
-// Blank printable field worksheet for a system (extinguisher / exit-sign).
-// Falls back to the active system when none is passed. `opts` (row count + known
-// devices) is forwarded to the builder. Returns null for systems without a
-// worksheet. See js/inspection-blank-forms.js.
-function buildActiveBlankFormBytes(system, opts) {
-  switch (system || activeInspectionSystem) {
-    case 'extinguisher':       return buildBlankExtinguisherFormBytes(opts);
-    case 'exit-sign-lighting': return buildBlankExitSignFormBytes(opts);
-    default:                   return null;
-  }
-}
-
-// Read the row count + "pre-fill known devices" toggle from the step-1 worksheet
-// controls (they live in the DOM regardless of which step is showing).
-function _blankFormOpts(sys) {
-  let count = parseInt(document.getElementById('blank-row-count')?.value, 10);
-  if (!Number.isFinite(count) || count < 1) count = 100;
-  count = Math.min(count, 300);
-  const prefill = !!document.getElementById('blank-prefill-known')?.checked;
-  const rec = prefill ? (window._propertyProfile?.lastInspBySystem?.[sys] || null) : null;
-  if (sys === 'exit-sign-lighting') {
-    return { count, knownEL: rec?.elUnits || [], knownES: rec?.esUnits || [] };
-  }
-  return { count, known: rec?.extinguishers || [] };
-}
-
-// Build + download the blank worksheet so it can be printed and filled by hand.
-// Pass a system explicitly (start-screen buttons) or omit it to use the active
-// system (panel buttons). Pre-fills the property header when one is selected.
-async function downloadBlankForm(system) {
-  const sys = system || activeInspectionSystem;
-  const opts = _blankFormOpts(sys);
-  const build = buildActiveBlankFormBytes(sys, opts);
-  if (!build) { toast('⚠ A blank worksheet is available for extinguishers and exit signs/lighting.'); return; }
-  try {
-    const pdfBytes = await build;
-    const propName = (document.getElementById('property-name')?.value || document.getElementById('property-select')?.value || '').trim();
-    const propSlug = (propName || 'blank').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
-    const sysSlug  = sys.replace(/-/g, '_');
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `FLPS_WORKSHEET_${sysSlug}_${propSlug}.pdf`; a.click();
-    URL.revokeObjectURL(url);
-    toast('🖨 Blank worksheet downloaded — print and fill by hand');
-  } catch (e) {
-    toast('✗ Worksheet failed: ' + e.message);
-    alert('Blank worksheet failed: ' + e.message);
-  }
-}
+// Blank field worksheet dispatch/download (buildActiveBlankFormBytes,
+// _blankFormOpts, downloadBlankForm) lives in js/inspection-blank-forms.js so it
+// is shared with hospital-inspection.html. Loaded before this file.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SAVE & DOWNLOAD  (combined: save JSON to Drive + save PDF to Drive + download)

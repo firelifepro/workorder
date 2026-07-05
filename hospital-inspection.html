@@ -1782,6 +1782,29 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
   ══════════════════════════════════════════════ -->
   <div id="step-hosp-extinguish" style="display:none;">
 
+    <!-- BLANK WORKSHEET / SCAN -->
+    <div class="card">
+      <div class="card-header"><span class="icon">🖨</span><span>Field Worksheets &amp; Scan</span></div>
+      <div class="card-body">
+        <p style="font-size:.8rem;color:var(--slate);margin-bottom:10px;">Print a paper worksheet for a contractor to fill by hand, or <strong>📷 Scan</strong> a completed one to auto-load these extinguisher rows. Pre-fill uses this building's known extinguishers on file.</p>
+        <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+          <div class="field-group" style="max-width:150px;">
+            <label>Blank rows per section</label>
+            <input type="number" id="blank-row-count" value="100" min="1" max="300" style="width:100%;">
+          </div>
+          <label style="display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--navy);cursor:pointer;padding-bottom:9px;">
+            <input type="checkbox" id="blank-prefill-known" style="width:16px;height:16px;">
+            Pre-fill known devices from last inspection
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="add-row-btn" onclick="downloadBlankForm('extinguisher')" title="Download a blank printable extinguisher worksheet (pre-fills this building's known units if checked above)">🧯 Extinguisher Worksheet</button>
+          <button class="add-row-btn" onclick="downloadBlankForm('exit-sign-lighting')" title="Download a blank printable exit sign &amp; emergency lighting worksheet">💡 Exit Sign &amp; Lighting Worksheet</button>
+          <button class="add-row-btn" onclick="scanImportActiveSystem('extinguisher')" title="Snap or upload a photo of a completed extinguisher worksheet — Claude reads the handwriting and auto-fills the rows below for you to review.">📷 Scan Extinguisher Form</button>
+        </div>
+      </div>
+    </div>
+
     <!-- UNIT INVENTORY -->
     <div class="card">
       <div class="card-header"><span class="icon">🧯</span><span>Portable Fire Extinguishers — EC.02.03.05 EP 16</span></div>
@@ -2063,6 +2086,8 @@ input.no-spin{-moz-appearance:textfield;appearance:textfield;}
 <script src="js/inspection-pdf-layout.js"></script>
 <script src="js/inspection-pdf-scale.js"></script>
 <script src="js/inspection-hospital-pdf.js"></script>
+<script src="js/inspection-blank-forms.js"></script>
+<script src="js/inspection-scan-import.js"></script>
 
 <script>
 /* ═══════════════════════════════════════════════
