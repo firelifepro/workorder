@@ -226,10 +226,16 @@ async function buildBlankExtinguisherFormBytes(opts) {
     (known.length ? ' Pre-filled rows are from the last inspection — confirm and mark Pass/Fail.' : ''));
 
   const extBlock = (num, d) => ctx.unitBlock(num, [
-    { h: 26, segs: [
+    { h: 24, segs: [
       { t: 'num', w: 28 },
+      { t: 'open', label: 'DOOR',    w: 74,  value: d.door },
+      { t: 'open', label: 'UNIT ID', w: 150, value: d.unitId },
+      { t: 'open', label: 'HEIGHT',  w: 78,  value: d.height },
+      { t: 'open', label: 'SN',      w: 210, value: d.sn },
+    ] },
+    { h: 26, segs: [
       { t: 'open',  label: 'FLR',      w: 46,  value: d.flr },
-      { t: 'open',  label: 'LOCATION', w: 286, value: d.location || d.loc },
+      { t: 'open',  label: 'LOCATION', w: 314, value: d.location || d.loc },
       { t: 'check', label: 'MOUNT',    w: 180, opts: ['HK', 'WALL', 'CAB', 'STAND'], mark: d.mount },
     ] },
     { h: 30, segs: [

@@ -148,6 +148,11 @@ function collectAllData() {
       rowNum:   i,
       flr:      document.getElementById('u-flr-' + i)?.value?.trim() || '',
       location: document.getElementById('u-loc-' + i)?.value?.trim() || '',
+      // Device-identity fields — persist across inspections via the property profile.
+      door:     document.getElementById('u-door-' + i)?.value?.trim() || '',
+      unitId:   document.getElementById('u-unitid-' + i)?.value?.trim() || '',
+      height:   document.getElementById('u-height-' + i)?.value?.trim() || '',
+      sn:       document.getElementById('u-sn-' + i)?.value?.trim() || '',
       mount:    document.getElementById('u-mount-' + i)?.value || '',
       cabM:     document.getElementById('u-cab-m-' + i)?.value || '',
       cabG:     document.getElementById('u-cab-g-' + i)?.value || '',

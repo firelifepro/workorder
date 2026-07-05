@@ -307,6 +307,21 @@ async function buildExtinguisherPDFBytes() {
       x += col.w;
     });
     curY += cellH + sc(1);
+    // Device-identity line (Door / Unit ID / Height / SN) — persists across
+    // inspections; shown beneath the row when any field is populated.
+    const identBits = [
+      ext.door   ? 'Door: ' + ext.door : '',
+      ext.unitId ? 'Unit ID: ' + ext.unitId : '',
+      ext.height ? 'Height: ' + ext.height : '',
+      ext.sn     ? 'SN: ' + ext.sn : '',
+    ].filter(Boolean);
+    if (identBits.length) {
+      const ih = sc(11);
+      checkPage(ih + sc(1));
+      page.drawRectangle({ x: ML, y: ry(ih), width: PW, height: ih, color: rgb(0.96, 0.97, 0.99), borderColor: sky, borderWidth: 0.3 });
+      page.drawText(pdfSafe(identBits.join('     ')), { x: ML + 4, y: ty(ih, sc(3.5)), size: sc(6.5), font: rFont, color: blk });
+      curY += ih + sc(1);
+    }
     // Full-width NOTE line beneath the row (multiline, auto-height) when present.
     if (noteTxt) {
       const label = 'Unit #' + (ext.rowNum || '') + ' Note: ' + noteTxt;

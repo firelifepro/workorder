@@ -1099,6 +1099,17 @@ function addExtUnitRow(prefill) {
       <td><select id="u-type-${n}">${typeSel}</select></td>
       <td><button class="del-btn" onclick="removeExtUnit(${n})">✕</button></td>
     </tr>
+    <tr id="ext-ident-row-${n}" class="ext-ident-row">
+      <td colspan="8" style="padding:4px 8px;background:#f8fafc;border-bottom:1px solid var(--border);">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;">
+          <span style="font-size:.66rem;font-weight:700;color:var(--slate);letter-spacing:.03em;white-space:nowrap;">DEVICE ID (persists):</span>
+          <label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--slate);">Door<input type="text" id="u-door-${n}" value="${(p.door||'').replace(/"/g,'&quot;')}" style="width:52px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--slate);">Unit ID<input type="text" id="u-unitid-${n}" value="${(p.unitId||'').replace(/"/g,'&quot;')}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--slate);">Height<input type="text" id="u-height-${n}" value="${(p.height||'').replace(/"/g,'&quot;')}" style="width:60px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--slate);">SN<input type="text" id="u-sn-${n}" value="${(p.sn||'').replace(/"/g,'&quot;')}" style="width:110px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.78rem;font-family:inherit;"></label>
+        </div>
+      </td>
+    </tr>
     <tr id="ext-action-row-${n}" class="ext-action-row">
       <td colspan="8">
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">

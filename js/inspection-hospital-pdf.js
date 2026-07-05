@@ -1298,6 +1298,10 @@ async function buildHospPDF(opts = {}) {
     _extUnits.push({
       flr:      document.getElementById('u-flr-'     + _ei)?.value || '',
       loc:      document.getElementById('u-loc-'     + _ei)?.value || '',
+      door:     document.getElementById('u-door-'    + _ei)?.value || '',
+      unitId:   document.getElementById('u-unitid-'  + _ei)?.value || '',
+      height:   document.getElementById('u-height-'  + _ei)?.value || '',
+      sn:       document.getElementById('u-sn-'      + _ei)?.value || '',
       mount:    document.getElementById('u-mount-'   + _ei)?.value || '',
       mfg:      document.getElementById('u-mfg-'     + _ei)?.value || '',
       size:     document.getElementById('u-size-'    + _ei)?.value || '',
@@ -1354,20 +1358,35 @@ async function buildHospPDF(opts = {}) {
       {label:'Type',w:PW*0.07},{label:'P/F',w:PW*0.07},{label:'Hydro Due',w:PW*0.09},
       {label:'Recharge',w:PW*0.08},{label:'New Unit',w:PW*0.13},
     ];
-    for (let start = 0; start < _extUnits.length; start += 33) {
-      addPage('Annual — Fire Extinguisher Inspection Results — EC.02.03.05 EP 16');
-      tblHdr(extCols);
-      _extUnits.slice(start, start + 33).forEach(u => {
-        const cab = [u.cabM==='Y'?'Mallet':'', u.cabG==='Y'?'Glass':'', u.cabS==='Y'?'Sign':''].filter(Boolean).join('/') || '—';
-        tblRow(extCols, [u.flr, u.loc, u.mount, cab, u.mfg, u.size, u.type, u.pf,
-          u.hydro, u.recharge==='Y'?'YES':'', u.newunit==='Y'?'YES':''], 7);
-      });
-      if (start + 33 >= _extUnits.length) {
-        checkPage(sc(14));
-        page.drawText(`UNIT COUNT: ${_extUnits.length}`, { x: ML, y: ty(sc(13), sc(4)), size: sc(8), font: hFont, color: navy });
-        curY += sc(14);
+    // Per-unit: the main detail row + (when populated) a Device-ID sub-line
+    // (Door / Unit ID / Height / SN — persists across inspections). We paginate
+    // per unit (re-drawing the header) instead of a fixed 33/page so the taller
+    // blocks never orphan a header-less page.
+    const IDENT_H = sc(10);
+    const EXT_PAGE_TITLE = 'Annual — Fire Extinguisher Inspection Results — EC.02.03.05 EP 16';
+    addPage(EXT_PAGE_TITLE);
+    tblHdr(extCols);
+    _extUnits.forEach(u => {
+      const cab = [u.cabM==='Y'?'Mallet':'', u.cabG==='Y'?'Glass':'', u.cabS==='Y'?'Sign':''].filter(Boolean).join('/') || '—';
+      const identBits = [
+        u.door   ? 'Door: ' + u.door : '',
+        u.unitId ? 'Unit ID: ' + u.unitId : '',
+        u.height ? 'Height: ' + u.height : '',
+        u.sn     ? 'SN: ' + u.sn : '',
+      ].filter(Boolean);
+      const identH = identBits.length ? IDENT_H + 1 : 0;
+      if (curY + sc(16) + identH + 1 > PH - MB) { addPage(EXT_PAGE_TITLE); tblHdr(extCols); }
+      tblRow(extCols, [u.flr, u.loc, u.mount, cab, u.mfg, u.size, u.type, u.pf,
+        u.hydro, u.recharge==='Y'?'YES':'', u.newunit==='Y'?'YES':''], 7);
+      if (identBits.length) {
+        page.drawRectangle({ x: ML, y: ry(IDENT_H), width: PW, height: IDENT_H, color: rgb(0.96, 0.97, 0.99), borderColor: sky, borderWidth: 0.3 });
+        page.drawText(pdfSafe(identBits.join('     ')), { x: ML + 6, y: ty(IDENT_H, sc(3)), size: sc(6.5), font: rFont, color: blk });
+        curY += IDENT_H + 1;
       }
-    }
+    });
+    checkPage(sc(14));
+    page.drawText(`UNIT COUNT: ${_extUnits.length}`, { x: ML, y: ty(sc(13), sc(4)), size: sc(8), font: hFont, color: navy });
+    curY += sc(14);
   }
   } // end if (!skipExt)
 

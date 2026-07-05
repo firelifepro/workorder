@@ -35,6 +35,10 @@ const SCAN_SYSTEMS = {
       'Transcribe every block that has any writing. Return ONLY a JSON array (no prose, no code fences); ' +
       'each element is one extinguisher with EXACTLY these keys:\n' +
       '{\n' +
+      '  "door": string,       // door / room number, else ""\n' +
+      '  "unitId": string,     // unit identifier / asset tag, else ""\n' +
+      '  "height": string,     // mounting height, else ""\n' +
+      '  "sn": string,         // serial number, else ""\n' +
       '  "flr": string,        // floor, e.g. "1", "2", "B"\n' +
       '  "loc": string,        // location description\n' +
       '  "mount": string,      // the X-marked box: HK, WALL, CAB, or STAND ("" if none marked)\n' +
@@ -47,12 +51,14 @@ const SCAN_SYSTEMS = {
       '}\n' +
       'Skip fully blank blocks. Preserve the order.',
     parse: (v) => Array.isArray(v) ? v : (v.units || v.rows || []),
-    preview: (r) => `${r.loc || '(no location)'} — ${r.type || '?'} ${r.size || ''} · ${r.pf || '—'}`,
+    preview: (r) => `${r.loc || '(no location)'} — ${r.type || '?'} ${r.size || ''} · ${r.pf || '—'}` +
+      (r.unitId ? ` · ID ${r.unitId}` : '') + (r.sn ? ` · SN ${r.sn}` : ''),
     apply: (rows) => {
       if (typeof addExtUnitRow !== 'function') return 0;
       let n = 0;
       rows.forEach(r => {
         addExtUnitRow({
+          door: r.door || '', unitId: r.unitId || '', height: r.height || '', sn: r.sn || '',
           flr: r.flr || '', loc: r.loc || '', mount: scanNormMount(r.mount),
           mfg: r.mfg || '', size: r.size || '', type: scanNormExtType(r.type),
           hydroDue: r.hydroDue || '', pf: scanNormPF(r.pf), noteTxt: r.noteTxt || '',
@@ -260,7 +266,9 @@ async function _scanCallClaude(sys, key) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
-    body: JSON.stringify({ model, max_tokens: 4000, system: systemMsg, messages: [{ role: 'user', content }] }),
+    // High output cap: a full property (e.g. 145 extinguishers) is a lot of JSON —
+    // too low a cap silently truncates the array mid-scan.
+    body: JSON.stringify({ model, max_tokens: 16000, system: systemMsg, messages: [{ role: 'user', content }] }),
   });
   if (!res.ok) throw new Error('Claude HTTP ' + res.status + ': ' + (await res.text()).slice(0, 160));
   const txt = (await res.json()).content?.[0]?.text || '';
