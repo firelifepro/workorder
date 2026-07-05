@@ -2,31 +2,32 @@
 // BLANK FIELD WORKSHEETS — printable, hand-fill PDF forms.
 //
 // For inspectors/contractors who'd rather write on paper than tap through the
-// wizard (e.g. the extinguisher / exit-sign & lighting contractor). We print a
-// clean, numbered grid whose columns match the on-screen panels one-for-one, so:
-//   1. it's obvious what to write in each cell, and
-//   2. the SAME grid scans back reliably in inspection-scan-import.js (a photo of
-//      a controlled layout reads far better than a freeform page).
+// wizard (e.g. the extinguisher / exit-sign & lighting contractor). Each unit is
+// a TWO-ROW block: open-text cells (location, type, floor, sizes, comments, note)
+// plus ☐-to-X CHECKBOXES for every categorical / pass-fail field (mount, type,
+// P/F/N-A columns, PASS/FAIL). The contractor just marks an X in a box — far more
+// reliable for inspection-scan-import.js to read back than handwritten letters.
 //
-// These draw PLAIN bordered cells (no fillable form fields) — this is a worksheet
-// meant to be printed and filled by hand. Only the shared cover header (via
-// drawReportHeader) uses form fields, and it pre-fills the property name/address
-// when a property is selected; Job/PO/Date/Inspector print blank for hand entry.
+// Only the shared cover header (via drawReportHeader) uses fillable form fields
+// and pre-fills the property name/address when a property is selected;
+// Job/PO/Date/Inspector print blank for hand entry. Everything else is drawn.
 //
 // Loaded AFTER inspection-pdf-editable.js (needs drawReportHeader), and after
 // inspection-pdf-scale.js / inspection-pdf-components.js (sc, pdfSafe,
 // inspPdfColors) and inspection-pdf-layout.js (wrapText).
 //
-// Dispatched by buildActiveBlankFormBytes() (js/inspection-main.js).
+// Dispatched by buildActiveBlankFormBytes() → downloadBlankForm() (inspection-main.js).
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Shared page/geometry primitives for a worksheet builder. Seeds onto an existing
 // page/cursor (the header page) so the body continues below the cover header.
-// rowH is intentionally generous (room to write by hand); everything is in
-// absolute points (US Letter 612×792), unscaled.
+// Everything is in absolute points (US Letter 612×792), unscaled.
 function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
   const rgb = window.PDFLib.rgb;
   const { navy, sky, white } = inspPdfColors(rgb);
+  const boxInk = rgb(0.25, 0.3, 0.4);
+  const numInk = rgb(0.4, 0.45, 0.55);
+  const capInk = navy;
   const W = 612, PH = 792, ML = 36, PW = 540, MT = 36, MB = 40;
 
   let page = initialPage;
@@ -38,7 +39,7 @@ function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
 
   const secHdr = (title) => {
     const H = 18;
-    checkPage(H + 22);
+    checkPage(H + 30);
     page.drawRectangle({ x: ML, y: ry(H), width: PW, height: H, color: navy });
     page.drawText(title, { x: ML + 5, y: ty(H, 6), size: 9.5, font: hFont, color: white });
     curY += H + 3;
@@ -54,38 +55,48 @@ function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
     curY += 3;
   };
 
-  // A numbered grid: navy column-header band (re-drawn on each new page) + `rows`
-  // empty bordered rows. cols = [{label, w}] (widths must sum to PW). The first
-  // column is auto-populated with the printed row number.
-  const grid = (cols, rows, rowH = 22) => {
-    const HDR = 15;
-    const drawHdr = () => {
-      checkPage(HDR + rowH);
+  // Draw one unit as a stacked set of bordered lines. `num` prints in the first
+  // line's leading cell. Each line = { h, segs:[seg…] }; segs sum to PW.
+  //   seg.t: 'num'   → centered row number (no caption)
+  //          'open'  → caption + blank writing area (with a light baseline)
+  //          'check' → caption + ☐ boxes, each followed by its option label
+  //   seg: { t, label, w, opts?:[string…] }
+  const unitBlock = (num, lines) => {
+    const totalH = lines.reduce((a, l) => a + l.h, 0);
+    checkPage(totalH + 4);
+    const blockTop = curY;               // distance from page top to block's top edge
+    let top = curY;
+    lines.forEach(ln => {
+      const lineTopY = PH - top;         // y of this line's TOP edge
+      const lineBotY = PH - (top + ln.h);// y of this line's BOTTOM edge
+      page.drawRectangle({ x: ML, y: lineBotY, width: PW, height: ln.h, color: white, borderColor: sky, borderWidth: 0.5 });
       let x = ML;
-      cols.forEach(c => {
-        page.drawRectangle({ x, y: ry(HDR), width: c.w, height: HDR, color: navy });
-        const lines = wrapText(c.label, 6.5, c.w - 4, (s, z) => hFont.widthOfTextAtSize(s, z));
-        page.drawText(lines[0] || '', { x: x + 2, y: ty(HDR, 5), size: 6.5, font: hFont, color: white });
-        x += c.w;
-      });
-      curY += HDR;
-    };
-    drawHdr();
-    for (let i = 1; i <= rows; i++) {
-      if (checkPage(rowH)) drawHdr();
-      let x = ML;
-      cols.forEach((c, ci) => {
-        page.drawRectangle({ x, y: ry(rowH), width: c.w, height: rowH, color: white, borderColor: sky, borderWidth: 0.5 });
-        if (ci === 0) {
-          const num = String(i);
-          const tw = rFont.widthOfTextAtSize(num, 8);
-          page.drawText(num, { x: x + c.w / 2 - tw / 2, y: ty(rowH, rowH / 2 - 1), size: 8, font: rFont, color: rgb(0.4, 0.45, 0.55) });
+      ln.segs.forEach(seg => {
+        const w = seg.w;
+        if (seg.label) page.drawText(seg.label, { x: x + 3, y: lineTopY - 9, size: 6, font: hFont, color: capInk });
+        if (seg.t === 'num') {
+          const t = String(num);
+          page.drawText(t, { x: x + w / 2 - rFont.widthOfTextAtSize(t, 10) / 2, y: (lineTopY + lineBotY) / 2 - 3.5, size: 10, font: rFont, color: numInk });
+        } else if (seg.t === 'open') {
+          page.drawLine({ start: { x: x + 4, y: lineBotY + 5 }, end: { x: x + w - 4, y: lineBotY + 5 }, thickness: 0.4, color: sky });
+        } else if (seg.t === 'check') {
+          const bs = 10;                 // box size
+          const by = lineBotY + 4;       // boxes sit near the bottom of the line
+          let bx = x + 3;
+          seg.opts.forEach(op => {
+            page.drawRectangle({ x: bx, y: by, width: bs, height: bs, borderColor: boxInk, borderWidth: 1 });
+            page.drawText(op, { x: bx + bs + 2, y: by + 1.5, size: 7.5, font: hFont, color: boxInk });
+            bx += bs + 2 + hFont.widthOfTextAtSize(op, 7.5) + 8;
+          });
         }
-        x += c.w;
+        x += w;
+        if (x < ML + PW - 0.5) page.drawLine({ start: { x, y: lineBotY }, end: { x, y: lineTopY }, thickness: 0.4, color: sky });
       });
-      curY += rowH;
-    }
-    curY += 8;
+      top += ln.h;
+    });
+    // Thicker outer border groups the stacked lines into one unit.
+    page.drawRectangle({ x: ML, y: PH - (blockTop + totalH), width: PW, height: totalH, borderColor: navy, borderWidth: 0.9 });
+    curY = top + 3;
   };
 
   // A block of blank numbered lines for hand-written notes / deficiencies.
@@ -94,13 +105,13 @@ function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
     for (let i = 1; i <= lines; i++) {
       checkPage(rowH);
       page.drawRectangle({ x: ML, y: ry(rowH), width: PW, height: rowH, color: white, borderColor: sky, borderWidth: 0.5 });
-      page.drawText(i + '.', { x: ML + 4, y: ty(rowH, rowH / 2 - 1), size: 8, font: rFont, color: rgb(0.4, 0.45, 0.55) });
+      page.drawText(i + '.', { x: ML + 4, y: ty(rowH, rowH / 2 - 1), size: 8, font: rFont, color: numInk });
       curY += rowH;
     }
     curY += 8;
   };
 
-  return { secHdr, note, grid, linedBlock };
+  return { secHdr, note, unitBlock, linedBlock };
 }
 
 // Draw the shared cover header on a fresh first page, pre-filling the property
@@ -150,19 +161,26 @@ async function buildBlankExtinguisherFormBytes() {
   );
   const ctx = _makeBlankFormCtx(pdfDoc, hFont, rFont, page, curY);
 
-  ctx.note('Log every portable fire extinguisher at this property. MOUNT: HK (hook) / WALL / CAB (cabinet) / STAND. TYPE: ABC / CO2 / K / Water / Halon. Mark PASS or FAIL. Note the year hydro/6-yr is due.');
-  ctx.grid([
-    { label: '#',         w: 24  },
-    { label: 'FLR',       w: 30  },
-    { label: 'LOCATION',  w: 150 },
-    { label: 'MOUNT',     w: 55  },
-    { label: 'MFG YR',    w: 45  },
-    { label: 'SIZE (lb)', w: 45  },
-    { label: 'TYPE',      w: 55  },
-    { label: 'HYDRO DUE', w: 50  },
-    { label: 'PASS/FAIL', w: 40  },
-    { label: 'NOTES',     w: 46  },
-  ], 44);
+  ctx.secHdr('EXTINGUISHER UNITS');
+  ctx.note('One block per extinguisher. Write Location / Floor / MFG Yr / Size / Hydro Due, and mark an X in the box for Mount, Type, and Pass/Fail. Note anything unusual in NOTES.');
+  for (let i = 1; i <= 20; i++) {
+    ctx.unitBlock(i, [
+      { h: 26, segs: [
+        { t: 'num', w: 28 },
+        { t: 'open',  label: 'FLR',      w: 46 },
+        { t: 'open',  label: 'LOCATION', w: 286 },
+        { t: 'check', label: 'MOUNT',    w: 180, opts: ['HK', 'WALL', 'CAB', 'STAND'] },
+      ] },
+      { h: 30, segs: [
+        { t: 'open',  label: 'MFG YR',     w: 52 },
+        { t: 'open',  label: 'SIZE (LB)',  w: 52 },
+        { t: 'check', label: 'TYPE',       w: 210, opts: ['ABC', 'CO2', 'K', 'WATER', 'HALON'] },
+        { t: 'open',  label: 'HYDRO DUE',  w: 52 },
+        { t: 'check', label: 'PASS / FAIL',w: 94, opts: ['PASS', 'FAIL'] },
+        { t: 'open',  label: 'NOTES',      w: 80 },
+      ] },
+    ]);
+  }
 
   ctx.linedBlock('DEFICIENCIES (describe each failed / missing unit)', 6);
   ctx.linedBlock('GENERAL NOTES', 5);
@@ -187,28 +205,42 @@ async function buildBlankExitSignFormBytes() {
   const ctx = _makeBlankFormCtx(pdfDoc, hFont, rFont, page, curY);
 
   ctx.secHdr('EMERGENCY LIGHTING UNITS (NFPA 101 7.9)');
-  ctx.note('30-SEC: press test button, verify lamps illuminate. 90-MIN: full-duration annual test. BATTERY: condition/charge. Mark P (pass), F (fail), or N/A per column.');
-  ctx.grid([
-    { label: '#',         w: 24  },
-    { label: 'LOCATION',  w: 180 },
-    { label: 'TYPE',      w: 90  },
-    { label: '30-SEC',    w: 55  },
-    { label: '90-MIN',    w: 55  },
-    { label: 'BATTERY',   w: 60  },
-    { label: 'PASS/FAIL', w: 76  },
-  ], 20);
+  ctx.note('One block per unit. Write Location / Type / Comments; mark an X in the box for each test result. 30-SEC: button test. 90-MIN: full-duration test. Use N/A when a test was not performed.');
+  for (let i = 1; i <= 14; i++) {
+    ctx.unitBlock(i, [
+      { h: 24, segs: [
+        { t: 'num',  w: 28 },
+        { t: 'open', label: 'LOCATION', w: 340 },
+        { t: 'open', label: 'TYPE',     w: 172 },
+      ] },
+      { h: 30, segs: [
+        { t: 'check', label: '30-SEC',      w: 90,  opts: ['P', 'F', 'N/A'] },
+        { t: 'check', label: '90-MIN',      w: 90,  opts: ['P', 'F', 'N/A'] },
+        { t: 'check', label: 'BATTERY',     w: 96,  opts: ['P', 'F', 'N/A'] },
+        { t: 'check', label: 'PASS / FAIL', w: 78,  opts: ['P', 'F'] },
+        { t: 'open',  label: 'COMMENTS',    w: 186 },
+      ] },
+    ]);
+  }
 
   ctx.secHdr('EXIT SIGNS (NFPA 101 7.10)');
-  ctx.note('ILLUMINATED: legend lit & legible. ARROWS: correct directional arrows. BATT BKUP: illuminates on battery. Mark P (pass), F (fail), or N/A per column.');
-  ctx.grid([
-    { label: '#',          w: 24  },
-    { label: 'LOCATION',   w: 170 },
-    { label: 'TYPE',       w: 80  },
-    { label: 'ILLUMINATED',w: 60  },
-    { label: 'ARROWS',     w: 56  },
-    { label: 'BATT BKUP',  w: 74  },
-    { label: 'PASS/FAIL',  w: 76  },
-  ], 20);
+  ctx.note('One block per sign. Write Location / Type / Comments; mark an X in the box for each result. ILLUMINATED: legend lit & legible. ARROWS: correct direction. BATT BKUP: illuminates on battery.');
+  for (let i = 1; i <= 14; i++) {
+    ctx.unitBlock(i, [
+      { h: 24, segs: [
+        { t: 'num',  w: 28 },
+        { t: 'open', label: 'LOCATION', w: 340 },
+        { t: 'open', label: 'TYPE',     w: 172 },
+      ] },
+      { h: 30, segs: [
+        { t: 'check', label: 'ILLUMINATED', w: 96,  opts: ['P', 'F', 'N/A'] },
+        { t: 'check', label: 'ARROWS',      w: 84,  opts: ['P', 'F', 'N/A'] },
+        { t: 'check', label: 'BATT BKUP',   w: 96,  opts: ['P', 'F', 'N/A'] },
+        { t: 'check', label: 'PASS / FAIL', w: 78,  opts: ['P', 'F'] },
+        { t: 'open',  label: 'COMMENTS',    w: 186 },
+      ] },
+    ]);
+  }
 
   ctx.linedBlock('EXIT SIGN & LIGHTING NOTES / DEFICIENCIES', 6);
 

@@ -29,21 +29,23 @@ const SCAN_SYSTEMS = {
   'extinguisher': {
     label: 'Portable Fire Extinguishers',
     prompt:
-      'This is a hand-filled PORTABLE FIRE EXTINGUISHER worksheet (a numbered grid). ' +
-      'Transcribe every row that has any writing. Return ONLY a JSON array (no prose, no code fences); ' +
+      'This is a hand-filled PORTABLE FIRE EXTINGUISHER worksheet. Each extinguisher is a TWO-ROW block. ' +
+      'MOUNT, TYPE, and PASS/FAIL are CHECKBOXES — the inspector marks an X (or check/dot) in one box; ' +
+      'report the label of the marked box. FLR, LOCATION, MFG YR, SIZE, HYDRO DUE, and NOTES are handwritten. ' +
+      'Transcribe every block that has any writing. Return ONLY a JSON array (no prose, no code fences); ' +
       'each element is one extinguisher with EXACTLY these keys:\n' +
       '{\n' +
       '  "flr": string,        // floor, e.g. "1", "2", "B"\n' +
       '  "loc": string,        // location description\n' +
-      '  "mount": string,      // ONE of: HK, WALL, CAB, STAND (best guess; "" if blank)\n' +
+      '  "mount": string,      // the X-marked box: HK, WALL, CAB, or STAND ("" if none marked)\n' +
       '  "mfg": string,        // manufacture year, 4 digits, else ""\n' +
       '  "size": string,       // size in lb, e.g. "10", "5"\n' +
-      '  "type": string,       // ONE of: ABC, CO2, K, Water, Halon (best guess; "" if blank)\n' +
+      '  "type": string,       // the X-marked box: ABC, CO2, K, Water, or Halon ("" if none marked)\n' +
       '  "hydroDue": string,   // year hydro/6-yr is due, else ""\n' +
-      '  "pf": string,         // "PASS" or "FAIL" (map P/✓→PASS, F/✗→FAIL; "" if blank)\n' +
+      '  "pf": string,         // the X-marked box: "PASS" or "FAIL" ("" if none marked)\n' +
       '  "noteTxt": string     // any note written for this unit, else ""\n' +
       '}\n' +
-      'Skip fully blank rows. Preserve the row order.',
+      'Skip fully blank blocks. Preserve the order.',
     parse: (v) => Array.isArray(v) ? v : (v.units || v.rows || []),
     preview: (r) => `${r.loc || '(no location)'} — ${r.type || '?'} ${r.size || ''} · ${r.pf || '—'}`,
     apply: (rows) => {
@@ -63,16 +65,18 @@ const SCAN_SYSTEMS = {
   'exit-sign-lighting': {
     label: 'Exit Signs & Emergency Lighting',
     prompt:
-      'This is a hand-filled EXIT SIGN & EMERGENCY LIGHTING worksheet with TWO grids: ' +
-      '"EMERGENCY LIGHTING UNITS" and "EXIT SIGNS". Transcribe every row that has any writing. ' +
-      'Return ONLY a JSON object (no prose, no code fences) with EXACTLY these keys:\n' +
+      'This is a hand-filled EXIT SIGN & EMERGENCY LIGHTING worksheet with TWO sections: ' +
+      '"EMERGENCY LIGHTING UNITS" and "EXIT SIGNS". Each unit is a TWO-ROW block: LOCATION, TYPE, and ' +
+      'COMMENTS are handwritten; the test columns are CHECKBOXES with P / F / N/A boxes (PASS/FAIL has P / F) — ' +
+      'the inspector marks an X (or check/dot) in one box per column; report which box is marked. ' +
+      'Transcribe every block that has any writing. Return ONLY a JSON object (no prose, no code fences) with EXACTLY these keys:\n' +
       '{\n' +
       '  "emergencyLights": [ { "loc": string, "type": string, "pf30s": string, "pf90m": string, "pfBatt": string, "pf": string, "comments": string } ],\n' +
       '  "exitSigns":       [ { "loc": string, "type": string, "pfIllum": string, "pfArrows": string, "pfBatt": string, "pf": string, "comments": string } ]\n' +
       '}\n' +
-      'For every P/F/N/A column value return "PASS", "FAIL", or "NA" (map P/✓→PASS, F/✗→FAIL, N/A→NA, blank→""). ' +
+      'For every checkbox column return the marked box as "PASS", "FAIL", or "NA" (P→PASS, F→FAIL, N/A→NA, none marked→""). ' +
       'Emergency-light "type" is one of LED/Fluorescent/Incandescent/Other; exit-sign "type" is one of LED/Photoluminescent/Incandescent/Other. ' +
-      'Skip fully blank rows.',
+      'Skip fully blank blocks.',
     parse: (v) => v || {},
     isSplit: true,
     previewSplit: (v) =>
