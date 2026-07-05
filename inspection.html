@@ -250,6 +250,16 @@
       <div class="card-header"><span class="icon">🖨</span><span>Blank Field Worksheets</span></div>
       <div class="card-body">
         <p style="font-size:0.82rem;color:var(--slate);margin-bottom:10px;">Print a paper form for a contractor to fill by hand — later, transcribe it or use <strong>📷 Scan Paper Form</strong> inside the system panel to auto-load it. Picks up the property above if one is selected.</p>
+        <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+          <div class="field-group" style="max-width:150px;">
+            <label>Blank rows per section</label>
+            <input type="number" id="blank-row-count" value="100" min="1" max="300" style="width:100%;">
+          </div>
+          <label style="display:flex;align-items:center;gap:7px;font-size:0.82rem;color:var(--navy);cursor:pointer;padding-bottom:9px;">
+            <input type="checkbox" id="blank-prefill-known" style="width:16px;height:16px;">
+            Pre-fill known devices from last inspection
+          </label>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn-secondary" onclick="downloadBlankForm('extinguisher')">🧯 Extinguisher Worksheet</button>
           <button class="btn-secondary" onclick="downloadBlankForm('exit-sign-lighting')">💡 Exit Sign &amp; Lighting Worksheet</button>

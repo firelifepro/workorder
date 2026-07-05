@@ -1018,8 +1018,7 @@ let extUnitCount = 0, extDeficCount = 0, extNoteCount = 0;
 function buildExtinguisherPanel() {
   const extTable = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-      <button class="add-row-btn" onclick="downloadBlankForm()" title="Download a blank printable worksheet to fill by hand">🖨 Blank Field Form</button>
-      <button class="add-row-btn" onclick="scanImportActiveSystem()" title="Upload a photo of a filled-out worksheet to auto-load the units">📷 Scan Paper Form</button>
+      <button class="add-row-btn" onclick="scanImportActiveSystem()" title="Snap or upload a photo of a completed paper worksheet — Claude reads the handwriting and auto-fills these extinguisher rows for you to review.">📷 Scan Paper Form</button>
     </div>
     <p style="font-size:0.78rem;color:var(--slate);margin-bottom:6px;">Log each extinguisher. Add rows for all units at this property.</p>
     <div id="ext-unit-count-bar" style="display:flex;gap:10px;margin-bottom:12px;">
@@ -2264,8 +2263,7 @@ function buildExitSignLightingPanel() {
   esCount = 0;
   const body = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <button class="add-row-btn" onclick="downloadBlankForm()" title="Download a blank printable worksheet to fill by hand">🖨 Blank Field Form</button>
-      <button class="add-row-btn" onclick="scanImportActiveSystem()" title="Upload a photo of a filled-out worksheet to auto-load the units">📷 Scan Paper Form</button>
+      <button class="add-row-btn" onclick="scanImportActiveSystem()" title="Snap or upload a photo of a completed paper worksheet — Claude reads the handwriting and auto-fills the emergency-light and exit-sign rows for you to review.">📷 Scan Paper Form</button>
     </div>
     ${sectionDiv('Emergency Lighting Units (NFPA 101 7.9)')}
     <p style="font-size:.78rem;color:var(--slate);margin-bottom:8px;">Test each unit. 30-sec: press test button and verify lamp illuminates. 90-min annual: full discharge test.</p>

@@ -58,9 +58,9 @@ function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
   // Draw one unit as a stacked set of bordered lines. `num` prints in the first
   // line's leading cell. Each line = { h, segs:[seg…] }; segs sum to PW.
   //   seg.t: 'num'   → centered row number (no caption)
-  //          'open'  → caption + blank writing area (with a light baseline)
-  //          'check' → caption + ☐ boxes, each followed by its option label
-  //   seg: { t, label, w, opts?:[string…] }
+  //          'open'  → caption + blank writing area; seg.value pre-prints text
+  //          'check' → caption + ☐ boxes; seg.mark pre-X's the matching option
+  //   seg: { t, label, w, opts?:[string…], value?, mark? }
   const unitBlock = (num, lines) => {
     const totalH = lines.reduce((a, l) => a + l.h, 0);
     checkPage(totalH + 4);
@@ -79,12 +79,19 @@ function _makeBlankFormCtx(pdfDoc, hFont, rFont, initialPage, initialCurY) {
           page.drawText(t, { x: x + w / 2 - rFont.widthOfTextAtSize(t, 10) / 2, y: (lineTopY + lineBotY) / 2 - 3.5, size: 10, font: rFont, color: numInk });
         } else if (seg.t === 'open') {
           page.drawLine({ start: { x: x + 4, y: lineBotY + 5 }, end: { x: x + w - 4, y: lineBotY + 5 }, thickness: 0.4, color: sky });
+          if (seg.value) {
+            const v = wrapText(pdfSafe(String(seg.value)), 8, w - 8, (s, z) => rFont.widthOfTextAtSize(s, z))[0] || '';
+            page.drawText(v, { x: x + 4, y: lineBotY + 8, size: 8, font: rFont, color: rgb(0.1, 0.13, 0.2) });
+          }
         } else if (seg.t === 'check') {
           const bs = 10;                 // box size
           const by = lineBotY + 4;       // boxes sit near the bottom of the line
           let bx = x + 3;
           seg.opts.forEach(op => {
             page.drawRectangle({ x: bx, y: by, width: bs, height: bs, borderColor: boxInk, borderWidth: 1 });
+            if (seg.mark && String(seg.mark).toUpperCase() === op.toUpperCase()) {
+              page.drawText('X', { x: bx + 1.8, y: by + 1.5, size: 8.5, font: hFont, color: rgb(0.1, 0.13, 0.2) });
+            }
             page.drawText(op, { x: bx + bs + 2, y: by + 1.5, size: 7.5, font: hFont, color: boxInk });
             bx += bs + 2 + hFont.widthOfTextAtSize(op, 7.5) + 8;
           });
@@ -146,8 +153,11 @@ async function _blankFormHeader(pdfDoc, form, hFont, rFont, title, freqOptions) 
 }
 
 // ── PORTABLE FIRE EXTINGUISHER — field worksheet ─────────────────────────────
-async function buildBlankExtinguisherFormBytes() {
+// opts = { count = 100, known = [] } — `count` blank blocks after any `known`
+// devices pre-filled from the last inspection.
+async function buildBlankExtinguisherFormBytes(opts) {
   if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
+  const { count = 100, known = [] } = opts || {};
   const { PDFDocument, StandardFonts } = window.PDFLib;
   const pdfDoc = await PDFDocument.create();
   const form   = pdfDoc.getForm();
@@ -162,25 +172,29 @@ async function buildBlankExtinguisherFormBytes() {
   const ctx = _makeBlankFormCtx(pdfDoc, hFont, rFont, page, curY);
 
   ctx.secHdr('EXTINGUISHER UNITS');
-  ctx.note('One block per extinguisher. Write Location / Floor / MFG Yr / Size / Hydro Due, and mark an X in the box for Mount, Type, and Pass/Fail. Note anything unusual in NOTES.');
-  for (let i = 1; i <= 20; i++) {
-    ctx.unitBlock(i, [
-      { h: 26, segs: [
-        { t: 'num', w: 28 },
-        { t: 'open',  label: 'FLR',      w: 46 },
-        { t: 'open',  label: 'LOCATION', w: 286 },
-        { t: 'check', label: 'MOUNT',    w: 180, opts: ['HK', 'WALL', 'CAB', 'STAND'] },
-      ] },
-      { h: 30, segs: [
-        { t: 'open',  label: 'MFG YR',     w: 52 },
-        { t: 'open',  label: 'SIZE (LB)',  w: 52 },
-        { t: 'check', label: 'TYPE',       w: 210, opts: ['ABC', 'CO2', 'K', 'WATER', 'HALON'] },
-        { t: 'open',  label: 'HYDRO DUE',  w: 52 },
-        { t: 'check', label: 'PASS / FAIL',w: 94, opts: ['PASS', 'FAIL'] },
-        { t: 'open',  label: 'NOTES',      w: 80 },
-      ] },
-    ]);
-  }
+  ctx.note('One block per extinguisher. Write Location / Floor / MFG Yr / Size / Hydro Due, and mark an X in the box for Mount, Type, and Pass/Fail. Note anything unusual in NOTES.' +
+    (known.length ? ' Pre-filled rows are from the last inspection — confirm and mark Pass/Fail.' : ''));
+
+  const extBlock = (num, d) => ctx.unitBlock(num, [
+    { h: 26, segs: [
+      { t: 'num', w: 28 },
+      { t: 'open',  label: 'FLR',      w: 46,  value: d.flr },
+      { t: 'open',  label: 'LOCATION', w: 286, value: d.location || d.loc },
+      { t: 'check', label: 'MOUNT',    w: 180, opts: ['HK', 'WALL', 'CAB', 'STAND'], mark: d.mount },
+    ] },
+    { h: 30, segs: [
+      { t: 'open',  label: 'MFG YR',     w: 52, value: d.mfgYear || d.mfg },
+      { t: 'open',  label: 'SIZE (LB)',  w: 52, value: d.size },
+      { t: 'check', label: 'TYPE',       w: 210, opts: ['ABC', 'CO2', 'K', 'WATER', 'HALON'], mark: d.type },
+      { t: 'open',  label: 'HYDRO DUE',  w: 52, value: d.hydroDue },
+      { t: 'check', label: 'PASS / FAIL',w: 94, opts: ['PASS', 'FAIL'] },
+      { t: 'open',  label: 'NOTES',      w: 80 },
+    ] },
+  ]);
+
+  let n = 0;
+  known.forEach(d => extBlock(++n, d || {}));
+  for (let i = 0; i < count; i++) extBlock(++n, {});
 
   ctx.linedBlock('DEFICIENCIES (describe each failed / missing unit)', 6);
   ctx.linedBlock('GENERAL NOTES', 5);
@@ -189,8 +203,11 @@ async function buildBlankExtinguisherFormBytes() {
 }
 
 // ── EXIT SIGN & EMERGENCY LIGHTING — field worksheet ─────────────────────────
-async function buildBlankExitSignFormBytes() {
+// opts = { count = 100, knownEL = [], knownES = [] } — `count` blank blocks per
+// section after any known devices pre-filled from the last inspection.
+async function buildBlankExitSignFormBytes(opts) {
   if (!window.PDFLib) throw new Error('PDF library not loaded. Please refresh.');
+  const { count = 100, knownEL = [], knownES = [] } = opts || {};
   const { PDFDocument, StandardFonts } = window.PDFLib;
   const pdfDoc = await PDFDocument.create();
   const form   = pdfDoc.getForm();
@@ -204,43 +221,40 @@ async function buildBlankExitSignFormBytes() {
   );
   const ctx = _makeBlankFormCtx(pdfDoc, hFont, rFont, page, curY);
 
+  const unitBlock2 = (num, d, checkCols) => ctx.unitBlock(num, [
+    { h: 24, segs: [
+      { t: 'num',  w: 28 },
+      { t: 'open', label: 'LOCATION', w: 340, value: d.loc || d.location },
+      { t: 'open', label: 'TYPE',     w: 172, value: d.type },
+    ] },
+    { h: 30, segs: checkCols.concat([{ t: 'open', label: 'COMMENTS', w: 186 }]) },
+  ]);
+
   ctx.secHdr('EMERGENCY LIGHTING UNITS (NFPA 101 7.9)');
-  ctx.note('One block per unit. Write Location / Type / Comments; mark an X in the box for each test result. 30-SEC: button test. 90-MIN: full-duration test. Use N/A when a test was not performed.');
-  for (let i = 1; i <= 14; i++) {
-    ctx.unitBlock(i, [
-      { h: 24, segs: [
-        { t: 'num',  w: 28 },
-        { t: 'open', label: 'LOCATION', w: 340 },
-        { t: 'open', label: 'TYPE',     w: 172 },
-      ] },
-      { h: 30, segs: [
-        { t: 'check', label: '30-SEC',      w: 90,  opts: ['P', 'F', 'N/A'] },
-        { t: 'check', label: '90-MIN',      w: 90,  opts: ['P', 'F', 'N/A'] },
-        { t: 'check', label: 'BATTERY',     w: 96,  opts: ['P', 'F', 'N/A'] },
-        { t: 'check', label: 'PASS / FAIL', w: 78,  opts: ['P', 'F'] },
-        { t: 'open',  label: 'COMMENTS',    w: 186 },
-      ] },
-    ]);
-  }
+  ctx.note('One block per unit. Write Location / Type / Comments; mark an X in the box for each test result. 30-SEC: button test. 90-MIN: full-duration test. Use N/A when a test was not performed.' +
+    (knownEL.length ? ' Pre-filled rows are from the last inspection — confirm and mark results.' : ''));
+  const elCols = () => [
+    { t: 'check', label: '30-SEC',      w: 90,  opts: ['P', 'F', 'N/A'] },
+    { t: 'check', label: '90-MIN',      w: 90,  opts: ['P', 'F', 'N/A'] },
+    { t: 'check', label: 'BATTERY',     w: 96,  opts: ['P', 'F', 'N/A'] },
+    { t: 'check', label: 'PASS / FAIL', w: 78,  opts: ['P', 'F'] },
+  ];
+  let en = 0;
+  knownEL.forEach(d => unitBlock2(++en, d || {}, elCols()));
+  for (let i = 0; i < count; i++) unitBlock2(++en, {}, elCols());
 
   ctx.secHdr('EXIT SIGNS (NFPA 101 7.10)');
-  ctx.note('One block per sign. Write Location / Type / Comments; mark an X in the box for each result. ILLUMINATED: legend lit & legible. ARROWS: correct direction. BATT BKUP: illuminates on battery.');
-  for (let i = 1; i <= 14; i++) {
-    ctx.unitBlock(i, [
-      { h: 24, segs: [
-        { t: 'num',  w: 28 },
-        { t: 'open', label: 'LOCATION', w: 340 },
-        { t: 'open', label: 'TYPE',     w: 172 },
-      ] },
-      { h: 30, segs: [
-        { t: 'check', label: 'ILLUMINATED', w: 96,  opts: ['P', 'F', 'N/A'] },
-        { t: 'check', label: 'ARROWS',      w: 84,  opts: ['P', 'F', 'N/A'] },
-        { t: 'check', label: 'BATT BKUP',   w: 96,  opts: ['P', 'F', 'N/A'] },
-        { t: 'check', label: 'PASS / FAIL', w: 78,  opts: ['P', 'F'] },
-        { t: 'open',  label: 'COMMENTS',    w: 186 },
-      ] },
-    ]);
-  }
+  ctx.note('One block per sign. Write Location / Type / Comments; mark an X in the box for each result. ILLUMINATED: legend lit & legible. ARROWS: correct direction. BATT BKUP: illuminates on battery.' +
+    (knownES.length ? ' Pre-filled rows are from the last inspection — confirm and mark results.' : ''));
+  const esCols = () => [
+    { t: 'check', label: 'ILLUMINATED', w: 96,  opts: ['P', 'F', 'N/A'] },
+    { t: 'check', label: 'ARROWS',      w: 84,  opts: ['P', 'F', 'N/A'] },
+    { t: 'check', label: 'BATT BKUP',   w: 96,  opts: ['P', 'F', 'N/A'] },
+    { t: 'check', label: 'PASS / FAIL', w: 78,  opts: ['P', 'F'] },
+  ];
+  let sn = 0;
+  knownES.forEach(d => unitBlock2(++sn, d || {}, esCols()));
+  for (let i = 0; i < count; i++) unitBlock2(++sn, {}, esCols());
 
   ctx.linedBlock('EXIT SIGN & LIGHTING NOTES / DEFICIENCIES', 6);
 
