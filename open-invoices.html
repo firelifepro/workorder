@@ -117,6 +117,24 @@
     .btn-cancel { background: #e5e7eb; border: none; padding: 8px 18px; border-radius: 4px; font-weight: 700; cursor: pointer; }
     .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #555; }
 
+    /* Reconcile review modal */
+    #recon-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 600; align-items: center; justify-content: center; padding: 20px; }
+    #recon-overlay.open { display: flex; }
+    #recon-modal { background: white; border-radius: 8px; max-width: 760px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    #recon-modal .rh { background: #1a1a2e; color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; border-radius: 8px 8px 0 0; }
+    #recon-modal .rh h2 { font-size: 1rem; font-weight: 700; }
+    #recon-modal .rh button { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    #recon-body { padding: 14px 18px; overflow: auto; }
+    #recon-intro { font-size: 0.85rem; color: #444; margin-bottom: 10px; }
+    #recon-intro b { color: #15803d; }
+    table.recon-tbl { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    table.recon-tbl th, table.recon-tbl td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+    table.recon-tbl th { background: #f4f4f7; font-weight: 700; color: #333; position: sticky; top: 0; }
+    table.recon-tbl td.r, table.recon-tbl th.r { text-align: right; white-space: nowrap; }
+    table.recon-tbl tr.off td { opacity: 0.4; text-decoration: line-through; }
+    #recon-footer { padding: 12px 18px; background: #f8f8f8; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; align-items: center; border-radius: 0 0 8px 8px; }
+    #recon-count { flex: 1; font-size: 0.82rem; color: #555; }
+
     #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 9px 22px; border-radius: 20px; font-size: 0.82rem; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 9999; white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
     #toast.show { opacity: 1; }
 
@@ -322,6 +340,38 @@
       <span id="m-status" style="flex:1;font-size:0.82rem;color:#555;"></span>
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" id="m-save" onclick="recordPayment()">💰 Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: reconcile review -->
+<div id="recon-overlay" onclick="if(event.target===this)closeRecon()">
+  <div id="recon-modal">
+    <div class="rh">
+      <h2>Reconcile Work Log — review before marking paid</h2>
+      <button onclick="closeRecon()">✕</button>
+    </div>
+    <div id="recon-body">
+      <div id="recon-intro"></div>
+      <table class="recon-tbl">
+        <thead>
+          <tr>
+            <th style="width:34px;"><input type="checkbox" id="recon-all" checked onchange="toggleAllRecon(this.checked)"></th>
+            <th>Row</th>
+            <th>Property</th>
+            <th>Customer</th>
+            <th>Inv #</th>
+            <th class="r">Amount</th>
+            <th>QB Paid Date</th>
+          </tr>
+        </thead>
+        <tbody id="recon-tbody"></tbody>
+      </table>
+    </div>
+    <div id="recon-footer">
+      <span id="recon-count"></span>
+      <button class="btn-cancel" onclick="closeRecon()">Cancel</button>
+      <button class="btn-save" id="recon-apply" onclick="applyReconcile()">✓ Mark Selected Paid</button>
     </div>
   </div>
 </div>
@@ -1140,18 +1190,9 @@ async function reconcileWorkLog() {
       setTimeout(() => setProgress(''), 4500);
       return;
     }
-    if (!confirm(
-      `${toMark.length} invoiced Work Log row${toMark.length === 1 ? ' is' : 's are'} paid-in-full in QuickBooks.\n` +
-      `(${stillOpen} still open${notFound ? `, ${notFound} not found in QB` : ''}.)\n\n` +
-      `Mark ${toMark.length === 1 ? 'it' : 'them'} paid (green) on the Work Log?`
-    )) {
-      setProgress('Reconcile cancelled', 'done');
-      setTimeout(() => setProgress(''), 2000);
-      return;
-    }
 
     // Fetch the actual payment dates for the paid invoices (via their LinkedTxn),
-    // so the Work Log shows when it was paid rather than today.
+    // so the review list — and the Work Log — show when it was paid, not today.
     const payIds = new Set();
     for (const { inv } of toMark) {
       for (const lt of (inv.LinkedTxn || [])) if (lt.TxnType === 'Payment') payIds.add(lt.TxnId);
@@ -1166,26 +1207,111 @@ async function reconcileWorkLog() {
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    let marked = 0;
-    for (const { w, inv } of toMark) {
-      // Latest linked-payment date, else today.
+    reconPending = toMark.map(({ w, inv }) => {
       const dates = (inv.LinkedTxn || [])
         .filter(lt => lt.TxnType === 'Payment')
         .map(lt => payDate[lt.TxnId])
         .filter(Boolean)
         .sort();
-      const d = dates.length ? dates[dates.length - 1] : today;
-      await markWorkLogPaid(w.row.rowNum, d, 'paid in QuickBooks');
-      marked++;
-      setProgress(`Marking paid… ${marked}/${toMark.length}`);
-    }
+      return {
+        rowNum:   w.row.rowNum,
+        property: w.row.property || '',
+        customer: inv.CustomerRef?.name || '',
+        invNum:   w.invNum,
+        amount:   Number(inv.TotalAmt) || 0,
+        date:     dates.length ? dates[dates.length - 1] : today,  // YYYY-MM-DD
+      };
+    });
 
-    setProgress(`✓ Reconciled — ${marked} marked paid, ${stillOpen} still open${notFound ? `, ${notFound} not found in QB` : ''}`, 'done');
-    toast(`✓ ${marked} Work Log row${marked === 1 ? '' : 's'} marked paid`, 5000);
-    setTimeout(() => setProgress(''), 5000);
+    // Hand off to the review modal — nothing is written until the user confirms there.
+    setProgress('');
+    openReconModal(stillOpen, notFound);
   } catch(e) {
     setProgress('Error: ' + e.message, 'err');
     console.error('reconcileWorkLog:', e);
+  }
+}
+
+// ── Reconcile review modal ──────────────────────────────
+let reconPending = [];   // [{ rowNum, property, customer, invNum, amount, date }]
+
+function fmtPayDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+function openReconModal(stillOpen, notFound) {
+  const intro = document.getElementById('recon-intro');
+  const extra = [];
+  if (stillOpen) extra.push(`${stillOpen} still open in QB`);
+  if (notFound)  extra.push(`${notFound} not found in QB`);
+  intro.innerHTML =
+    `<b>${reconPending.length}</b> invoiced Work Log row${reconPending.length === 1 ? '' : 's'} ` +
+    `appear paid-in-full in QuickBooks. Review below and un-check any you don't want to touch, ` +
+    `then confirm — each checked row gets its Paid date + "paid in QuickBooks" and turns green.` +
+    (extra.length ? `<br><span style="color:#888;">(${extra.join(', ')} — left unchanged.)</span>` : '');
+
+  const tb = document.getElementById('recon-tbody');
+  tb.innerHTML = reconPending.map((p, i) => `
+    <tr id="recon-row-${i}">
+      <td><input type="checkbox" class="recon-cb" data-i="${i}" checked onchange="onReconToggle(${i}, this.checked)"></td>
+      <td><a href="worklog.html?row=${p.rowNum}" target="_blank" style="color:#2563eb;">#${p.rowNum}</a></td>
+      <td>${esc(p.property)}</td>
+      <td>${esc(p.customer)}</td>
+      <td>${esc(p.invNum)}</td>
+      <td class="r">$${money(p.amount)}</td>
+      <td>${fmtPayDate(p.date)}</td>
+    </tr>`).join('');
+
+  document.getElementById('recon-all').checked = true;
+  updateReconCount();
+  document.getElementById('recon-overlay').classList.add('open');
+}
+
+function onReconToggle(i, on) {
+  const row = document.getElementById('recon-row-' + i);
+  if (row) row.classList.toggle('off', !on);
+  const boxes = [...document.querySelectorAll('.recon-cb')];
+  document.getElementById('recon-all').checked = boxes.every(b => b.checked);
+  updateReconCount();
+}
+
+function toggleAllRecon(on) {
+  document.querySelectorAll('.recon-cb').forEach(b => { b.checked = on; onReconToggle(Number(b.dataset.i), on); });
+}
+
+function updateReconCount() {
+  const n = document.querySelectorAll('.recon-cb:checked').length;
+  document.getElementById('recon-count').textContent = `${n} selected`;
+  document.getElementById('recon-apply').disabled = n === 0;
+}
+
+function closeRecon() {
+  document.getElementById('recon-overlay').classList.remove('open');
+  reconPending = [];
+}
+
+async function applyReconcile() {
+  const chosen = [...document.querySelectorAll('.recon-cb:checked')].map(b => reconPending[Number(b.dataset.i)]);
+  if (!chosen.length) return;
+  document.getElementById('recon-apply').disabled = true;
+  document.getElementById('recon-overlay').classList.remove('open');
+  setProgress(`Marking ${chosen.length} paid…`);
+  let marked = 0;
+  try {
+    for (const p of chosen) {
+      await markWorkLogPaid(p.rowNum, p.date, 'paid in QuickBooks');
+      marked++;
+      setProgress(`Marking paid… ${marked}/${chosen.length}`);
+    }
+    setProgress(`✓ Reconciled — ${marked} Work Log row${marked === 1 ? '' : 's'} marked paid`, 'done');
+    toast(`✓ ${marked} row${marked === 1 ? '' : 's'} marked paid`, 5000);
+    setTimeout(() => setProgress(''), 5000);
+  } catch(e) {
+    setProgress(`Error after ${marked} row(s): ${e.message}`, 'err');
+    console.error('applyReconcile:', e);
+  } finally {
+    reconPending = [];
   }
 }
 
