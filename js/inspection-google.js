@@ -549,12 +549,13 @@ function startInspectionForSystem(sysKey) {
   const lastBySystem = (_propertyProfile && _propertyProfile.lastInspBySystem) || {};
   let last = lastBySystem[sysKey];
 
-  // Extinguishers from a HOSPITAL inspection are stored under the 'hospital'
-  // record. For a standalone Extinguisher inspection (e.g. doing just the fire
-  // extinguishers at a hospital property), borrow that list so the units
-  // pre-fill here too.
+  // Single source of truth for a HOSPITAL property's extinguishers: the
+  // 'hospital' record. A standalone Extinguisher inspection reads that list
+  // (and, on save, writes back to it — see updatePropertyProfileAfterSave), so
+  // the full hospital report and the standalone extinguisher report never
+  // diverge. Normal properties have no hospital record, so this never fires for
+  // them and the standard flow is untouched.
   if (sysKey === 'extinguisher'
-      && !(last && last.extinguishers && last.extinguishers.length)
       && lastBySystem.hospital && lastBySystem.hospital.extinguishers && lastBySystem.hospital.extinguishers.length) {
     last = Object.assign({}, last, { extinguishers: lastBySystem.hospital.extinguishers });
   }
@@ -803,6 +804,11 @@ function _buildFreshGenericInspection() {
           size:     ext.size,
           type:     ext.type,
           hydroDue: ext.hydroDue,
+          // Device-identity fields — persist across inspections.
+          door:     ext.door,
+          unitId:   ext.unitId,
+          height:   ext.height,
+          sn:       ext.sn,
         });
       });
     }

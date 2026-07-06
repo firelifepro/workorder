@@ -776,6 +776,14 @@ async function updatePropertyProfileAfterSave(data, sysKey) {
   };
   profile.lastInspBySystem[sysKey] = inspRecord;
 
+  // Keep a hospital property's extinguishers in ONE place: mirror a standalone
+  // Extinguisher inspection back into the existing hospital record so it and the
+  // full hospital report never diverge. Only fires when a hospital record already
+  // exists (i.e. Sloan's Lake) — normal properties are unaffected.
+  if (sysKey === 'extinguisher' && profile.lastInspBySystem.hospital) {
+    profile.lastInspBySystem.hospital.extinguishers = data.extinguishers || [];
+  }
+
   // For hood, save per-identifier data for each non-excluded hood
   if (sysKey === 'hood' && activeHoodList && activeHoodList.length > 0) {
     profile.lastInspByHood = profile.lastInspByHood || {};
