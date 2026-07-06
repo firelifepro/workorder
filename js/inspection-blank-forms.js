@@ -226,25 +226,25 @@ async function buildBlankExtinguisherFormBytes(opts) {
     (known.length ? ' Pre-filled rows are from the last inspection — confirm and mark Pass/Fail.' : ''));
 
   const extBlock = (num, d) => ctx.unitBlock(num, [
-    { h: 24, segs: [
-      { t: 'num', w: 28 },
-      { t: 'open', label: 'DOOR',    w: 74,  value: d.door },
-      { t: 'open', label: 'UNIT ID', w: 150, value: d.unitId },
-      { t: 'open', label: 'HEIGHT',  w: 78,  value: d.height },
-      { t: 'open', label: 'SN',      w: 210, value: d.sn },
-    ] },
     { h: 26, segs: [
+      { t: 'num', w: 28 },
       { t: 'open',  label: 'FLR',      w: 46,  value: d.flr },
-      { t: 'open',  label: 'LOCATION', w: 314, value: d.location || d.loc },
+      { t: 'open',  label: 'LOCATION', w: 286, value: d.location || d.loc },
       { t: 'check', label: 'MOUNT',    w: 180, opts: ['HK', 'WALL', 'CAB', 'STAND'], mark: d.mount },
     ] },
+    { h: 24, segs: [
+      { t: 'open', label: 'DOOR',    w: 80,  value: d.door },
+      { t: 'open', label: 'UNIT ID', w: 160, value: d.unitId },
+      { t: 'open', label: 'HEIGHT',  w: 90,  value: d.height },
+      { t: 'open', label: 'SN',      w: 210, value: d.sn },
+    ] },
     { h: 30, segs: [
-      { t: 'open',  label: 'MFG YR',     w: 52, value: d.mfgYear || d.mfg },
-      { t: 'open',  label: 'SIZE (LB)',  w: 52, value: d.size },
+      { t: 'open',  label: 'MFG YR',     w: 52,  value: d.mfgYear || d.mfg },
+      { t: 'open',  label: 'SIZE (LB)',  w: 52,  value: d.size },
       { t: 'check', label: 'TYPE',       w: 210, opts: ['ABC', 'CO2', 'K', 'WATER', 'HALON'], mark: d.type },
-      { t: 'open',  label: 'HYDRO DUE',  w: 52, value: d.hydroDue },
-      { t: 'check', label: 'PASS / FAIL',w: 94, opts: ['PASS', 'FAIL'] },
+      { t: 'open',  label: 'HYDRO DUE',  w: 52,  value: d.hydroDue },
       { t: 'open',  label: 'NOTES',      w: 80 },
+      { t: 'check', label: 'PASS / FAIL',w: 94,  opts: ['PASS', 'FAIL'] },
     ] },
   ]);
 
