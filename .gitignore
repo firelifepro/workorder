@@ -6,3 +6,9 @@
 !.env.example
 FLPS_Profile_Sloans_Lake_Medical_Center_updated.json
 
+# Client data — property profiles (device inventories, serials, contacts). Never commit.
+FLPS_Profile_*.json
+# One-off data tools that embed client serial numbers.
+tools/*sloans*.js
+tools/*Sloans*.js
+

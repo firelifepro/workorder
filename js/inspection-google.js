@@ -547,7 +547,17 @@ function startInspectionForSystem(sysKey) {
   }
 
   const lastBySystem = (_propertyProfile && _propertyProfile.lastInspBySystem) || {};
-  const last = lastBySystem[sysKey];
+  let last = lastBySystem[sysKey];
+
+  // Extinguishers from a HOSPITAL inspection are stored under the 'hospital'
+  // record. For a standalone Extinguisher inspection (e.g. doing just the fire
+  // extinguishers at a hospital property), borrow that list so the units
+  // pre-fill here too.
+  if (sysKey === 'extinguisher'
+      && !(last && last.extinguishers && last.extinguishers.length)
+      && lastBySystem.hospital && lastBySystem.hospital.extinguishers && lastBySystem.hospital.extinguishers.length) {
+    last = Object.assign({}, last, { extinguishers: lastBySystem.hospital.extinguishers });
+  }
 
   // Build _prevInspectionData from the profile's per-system record
   window._prevInspectionData = last ? {
