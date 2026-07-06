@@ -426,7 +426,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     </tr>
     <tr>
       <td class="label-cell">Line #:</td>
-      <td class="value-cell"><input type="text" id="wo-number" placeholder="Auto or enter manually" oninput="this.classList.remove('field-error');this.closest('td').classList.remove('field-error-cell');"></td>
+      <td class="value-cell"><input type="text" id="wo-number" placeholder="Auto or enter manually" oninput="this.classList.remove('field-error');this.closest('td').classList.remove('field-error-cell');" onchange="onWoNumberEntered()"></td>
       <td class="label-cell">Priority:</td>
       <td class="value-cell">
         <div class="check-group">
@@ -1269,6 +1269,103 @@ async function validateWorkLogLineNum(lineNum) {
     if (!rowCells.some(Boolean)) return 'invalid';   // genuinely empty row
     return 'valid';
   } catch(_) { return 'skip'; }
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTO-FILL FROM WORK LOG — fired when the user types a Line #
+// by hand (blur/change). Reads that row from the WR sheet and
+// pre-fills empty fields (non-destructive), then matches the
+// property so the address auto-fills. Warns if the work-log
+// property doesn't match any property in the list.
+// ─────────────────────────────────────────────────────────
+function _wlToIsoDate(str) {
+  const s = (str || '').trim();
+  if (!s) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mdy) {
+    const yr = mdy[3].length === 2 ? '20' + mdy[3] : mdy[3];
+    return `${yr}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  }
+  const d = new Date(s);
+  return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+}
+
+// Match a free-text work-log property string to a dropdown option value.
+// Returns the matching option value, or '' if none is confident enough.
+function _matchWorkLogProperty(raw) {
+  const sel = document.getElementById('property-select');
+  if (!sel) return '';
+  const prop = (raw || '').trim().toLowerCase();
+  if (!prop) return '';
+  const opts = [...sel.options].map(o => o.value).filter(Boolean);
+  // 1) exact (case-insensitive)
+  let hit = opts.find(v => v.toLowerCase() === prop);
+  if (hit) return hit;
+  // 2) one is a substring of the other — prefer the longest such option
+  const subs = opts.filter(v => {
+    const lv = v.toLowerCase();
+    return lv.includes(prop) || prop.includes(lv);
+  }).sort((a, b) => b.length - a.length);
+  return subs[0] || '';
+}
+
+async function onWoNumberEntered() {
+  if (editModeFileId || viewModeActive) return;
+  if (!accessToken) return;
+  const woInput = document.getElementById('wo-number');
+  const num = parseInt((woInput?.value || '').trim(), 10);
+  if (!num || num < 2) return;
+
+  let row;
+  try {
+    const m = await _getWRSheetMeta();
+    if (!m) return;
+    const res = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(m.tabName + '!A' + num + ':I' + num)}`);
+    if (!res.ok) return;
+    const { values = [] } = await res.json();
+    row = (values[0] || []).map(c => (c || '').trim());
+  } catch(_) { return; }
+
+  // Empty / voided rows: leave the save-time validator to flag them.
+  if (!row || !row.some(Boolean) || row[0] === 'DID NOT USE THIS LINE') return;
+
+  // Columns: A dateReq · B reqBy · C property · D workReq · G dateComp
+  const reqBy    = row[1] || '';
+  const property = row[2] || '';
+  const workReq  = row[3] || '';
+  const dateComp = _wlToIsoDate(row[6] || '');
+
+  // Non-destructive: only fill fields the user hasn't already touched.
+  const fillIfEmpty = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val && !el.value.trim()) el.value = val;
+  };
+  fillIfEmpty('requested-by',     reqBy);
+  fillIfEmpty('work-description',  workReq);
+  fillIfEmpty('date-requested',   dateComp);
+
+  // Property → select it (which auto-fills the address via onPropertySelect).
+  const woCell = woInput.closest('td');
+  if (property) {
+    const match = _matchWorkLogProperty(property);
+    const sel = document.getElementById('property-select');
+    if (match && sel) {
+      sel.value = match;
+      onPropertySelect();
+      woInput.classList.remove('field-error');
+      if (woCell) woCell.classList.remove('field-error-cell');
+      toast(`✓ Line ${num} pulled from Work Log — ${match}`);
+    } else {
+      // Property list not loaded yet → retry after loadSheet populates it.
+      if (sel && sel.options.length <= 1) { _pendingPropMatch = property; return; }
+      woInput.classList.add('field-error');
+      if (woCell) woCell.classList.add('field-error-cell');
+      toast(`⚠ Line ${num}: property "${property}" isn't in your list — pick it manually so the address is right`);
+    }
+  } else {
+    toast(`✓ Line ${num} pulled from Work Log`);
+  }
 }
 
 async function checkDuplicateWOLineNum(lineNum) {
