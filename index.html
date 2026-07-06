@@ -1258,12 +1258,15 @@ async function validateWorkLogLineNum(lineNum) {
   try {
     const m = await _getWRSheetMeta();
     if (!m) return 'skip';
-    const res = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(m.tabName + '!A' + num + ':C' + num)}`);
+    // Read A:D (date requested / requested by / property / work requested).
+    // A row is valid if ANY of these is filled — column A (Date Requested) is
+    // optional, so keying validation on it alone rejected real rows.
+    const res = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(m.tabName + '!A' + num + ':D' + num)}`);
     if (!res.ok) return 'skip';
     const { values = [] } = await res.json();
-    if (!values.length || !values[0].length) return 'invalid';
-    const cell = (values[0][0] || '').trim();
-    if (!cell || cell === 'DID NOT USE THIS LINE') return 'invalid';
+    const rowCells = (values[0] || []).map(c => (c || '').trim());
+    if (rowCells[0] === 'DID NOT USE THIS LINE') return 'invalid';
+    if (!rowCells.some(Boolean)) return 'invalid';   // genuinely empty row
     return 'valid';
   } catch(_) { return 'skip'; }
 }
