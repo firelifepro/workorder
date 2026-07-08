@@ -263,7 +263,7 @@ async function loadWOs() {
     const q = encodeURIComponent(`'${currentFolderId}' in parents and trashed=false`);
     const res = await apiFetch(
       `https://www.googleapis.com/drive/v3/files?q=${q}` +
-      `&fields=files(id,name,modifiedTime,mimeType,appProperties)&includeItemsFromAllDrives=true&supportsAllDrives=true&pageSize=200&orderBy=name`
+      `&fields=files(id,name,modifiedTime,mimeType,appProperties,capabilities/canEdit)&includeItemsFromAllDrives=true&supportsAllDrives=true&pageSize=200&orderBy=name`
     );
     if (!res.ok) throw new Error(await res.text());
     const json = await res.json();
@@ -280,6 +280,7 @@ async function loadWOs() {
       name:         f.name,
       mimeType:     f.mimeType,
       modifiedTime: f.modifiedTime,
+      canEdit:      f.capabilities?.canEdit !== false,
       lineNum:      f.appProperties?.flips_line_num  || '',
       client:       f.appProperties?.flips_client    || '',
       amount:       f.appProperties?.flips_amount    || '',
@@ -297,6 +298,12 @@ async function loadWOs() {
     showPlaceholder(`<div class="big-icon">⚠️</div><div>Error: ${e.message}</div>`);
   }
 }
+
+// Once a write-back PATCH 403s, the signed-in user lacks edit access to these
+// WO files (owned by another account, shared read-only). Every PATCH will fail
+// the same way, so stop attempting them to avoid spamming the console. The
+// enrichment still works — it just can't cache back to the file's appProperties.
+let _enrichWriteBackDisabled = false;
 
 async function enrichMissingInBackground() {
   const needsEnrich = allWOs.filter(w => !w.lineNum || !w.services || !w.date || !w.workDesc);
@@ -327,17 +334,22 @@ async function enrichMissingInBackground() {
       wo.date     = wo.date     || date;
       wo.workDesc = wo.workDesc || workDesc;
       if (!wo.lineNum && !wo.services && !wo.date && !wo.workDesc) continue;
-      apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?supportsAllDrives=true`, 'PATCH', {
-        appProperties: {
-          flips_line_num:  wo.lineNum  || '',
-          flips_services:  wo.services || '',
-          flips_date:      wo.date     || '',
-          flips_client:    wo.client   || '',
-          flips_amount:    wo.amount   || '',
-          flips_work_desc: wo.workDesc || '',
-        }
-      }).catch(() => {});
       renderTable(allWOs);
+      if (!_enrichWriteBackDisabled && wo.canEdit) {
+        try {
+          const pr = await apiFetch(`https://www.googleapis.com/drive/v3/files/${wo.id}?supportsAllDrives=true`, 'PATCH', {
+            appProperties: {
+              flips_line_num:  wo.lineNum  || '',
+              flips_services:  wo.services || '',
+              flips_date:      wo.date     || '',
+              flips_client:    wo.client   || '',
+              flips_amount:    wo.amount   || '',
+              flips_work_desc: wo.workDesc || '',
+            }
+          });
+          if (pr.status === 403) _enrichWriteBackDisabled = true;
+        } catch(_) {}
+      }
     } catch(_) {}
   }
 }
