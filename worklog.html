@@ -89,12 +89,15 @@
     tr.row-open    { background: #fff; }
     tr.row-invoice { background: #fce7f3; }
     tr.row-waiting { background: #fefce8; }
-    tr.row-paid    { background: #dcfce7; }
+    tr.row-paid    { background: #86efac; }
     tr.row-flash td { animation: wlflash 4s ease-out 1; }
     @keyframes wlflash { 0%, 12% { background: #ffe08a; } 100% { background: inherit; } }
 
     .td-rownum    { font-weight: 700; color: #6b7280; text-align: center; width: 44px; white-space: nowrap; font-size: 8pt; }
     .td-date      { white-space: nowrap; width: 84px; }
+    .td-datereq   { white-space: nowrap; width: 72px; font-size: 8pt; }
+    /* Voided ("DID NOT USE THIS LINE") short chip */
+    .void-chip    { display: inline-block; background: #e5e7eb; color: #6b7280; font-weight: 600; font-size: 0.72em; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
     .td-datecomp  { min-width: 80px; max-width: 130px; word-break: break-word; white-space: normal; }
     .td-by        { min-width: 100px; }
     .td-prop      { min-width: 140px; font-weight: 600; }
@@ -134,15 +137,12 @@
     #view-toggle-btn.full { background: #f5f5f5; border-color: #999; color: #555; }
     #view-toggle-btn.full:hover { background: #e8e8e8; }
 
-    /* ── Simple view — larger font, hide detail columns ── */
+    /* ── Simple view — larger font; all columns kept, scroll right for detail ── */
     #table-wrap.simple-view table { font-size: 12pt; }
-    #table-wrap.simple-view .col-compliance,
-    #table-wrap.simple-view .col-datecomp,
-    #table-wrap.simple-view .col-invoiced,
-    #table-wrap.simple-view .col-paid,
-    #table-wrap.simple-view .col-status { display: none; }
     #table-wrap.simple-view .td-prop { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #table-wrap.simple-view .td-note { font-size: 12pt; }
+    /* Keep the date-requested column compact even when zoomed in */
+    #table-wrap.simple-view .td-datereq { font-size: 9pt; }
 
     #empty-row td { text-align: center; padding: 44px 20px; color: #aaa; font-style: italic; }
 
@@ -313,8 +313,8 @@
       <thead>
         <tr>
           <th class="th-c">Row #</th>
-          <th>Date Requested</th>
-          <th>Requested By</th>
+          <th class="th-c col-status">Status</th>
+          <th>Date Req.</th>
           <th>Property</th>
           <th>Work Requested</th>
           <th>Notes</th>
@@ -322,7 +322,7 @@
           <th class="col-datecomp">Date Completed</th>
           <th class="col-invoiced">Invoiced</th>
           <th class="col-paid">Paid</th>
-          <th class="th-c col-status">Status</th>
+          <th>Requested By</th>
           <th class="th-acts"></th>
         </tr>
       </thead>
@@ -776,6 +776,17 @@ function parseLogRows(rows, rowColors) {
 // ─────────────────────────────────────────────────────
 const WORK_MAX = 110;
 
+// Text a voided row is filled with (see deleteEntry). Shown compactly in the grid.
+const VOID_TEXT = 'DID NOT USE THIS LINE';
+
+// Date Requested cell: collapse a voided line to a short chip instead of the
+// full "DID NOT USE THIS LINE" string.
+function dateReqCell(text, id) {
+  if (text && text.trim().toUpperCase() === VOID_TEXT)
+    return '<span class="void-chip" title="Row marked unused">Do not use</span>';
+  return workCell(text, id);
+}
+
 function workCell(text, id) {
   if (!text || text.length <= WORK_MAX) return esc(text);
   return `<span id="wp-${id}">${esc(text.slice(0, WORK_MAX))}<span>… <button class="show-more-btn" onclick="event.stopPropagation();toggleWork('${id}',1)">more</button></span></span>`
@@ -839,8 +850,10 @@ function renderTable() {
   tbody.innerHTML = filtered.map(r => `
     <tr id="wlrow-${r._rowNum}" class="${STATUS_ROW[r._status] || 'row-open'}" onclick="openModal(${r._rowNum})" title="Click to edit">
       <td class="td-rownum">${r._rowNum}</td>
-      <td class="td-datecomp">${workCell(r.dateReq, 'dr' + r._rowNum)}</td>
-      <td class="td-datecomp">${workCell(r.reqBy, 'rb' + r._rowNum)}</td>
+      <td class="col-status" style="text-align:center;white-space:nowrap;">
+        <span class="badge ${STATUS_BADGE[r._status]}">${STATUS_LABEL[r._status]}</span>
+      </td>
+      <td class="td-datereq">${dateReqCell(r.dateReq, 'dr' + r._rowNum)}</td>
       <td class="td-prop">${esc(r.property)}</td>
       <td class="td-work">${workCell(r.workReq, 'w' + r._rowNum)}</td>
       <td class="td-note">${workCell(r.notes, 'n' + r._rowNum)}</td>
@@ -848,9 +861,7 @@ function renderTable() {
       <td class="td-datecomp col-datecomp">${workCell(r.dateComp, 'd' + r._rowNum)}</td>
       <td class="td-inv col-invoiced">${esc(r.invoiced)}</td>
       <td class="td-datecomp col-paid">${workCell(r.paid, 'p' + r._rowNum)}</td>
-      <td class="col-status" style="text-align:center;white-space:nowrap;">
-        <span class="badge ${STATUS_BADGE[r._status]}">${STATUS_LABEL[r._status]}</span>
-      </td>
+      <td class="td-by">${workCell(r.reqBy, 'rb' + r._rowNum)}</td>
       <td class="td-acts">
         <button class="act-btn wo"  onclick="event.stopPropagation();createWOFromRow(${r._rowNum})" title="Create Work Order from this row">⏰</button>
         <button class="act-btn del" onclick="event.stopPropagation();deleteEntry(${r._rowNum})" title="Mark row as unused (keeps row number)">✕</button>
@@ -1091,7 +1102,7 @@ async function deleteEntry(rowNum) {
   if (!confirm(`Mark row ${rowNum} as unused? This will overwrite all cells with "DID NOT USE THIS LINE" and keep the row number in place.\n\n${preview || '(empty row)'}`)) return;
   if (!accessToken) { toast('⚠ Not connected'); return; }
   if (!wrTabName)   { toast('⚠ Sheet not loaded — refresh first'); return; }
-  const VOID = 'DID NOT USE THIS LINE';
+  const VOID = VOID_TEXT;
   const range = `${wrTabName}!A${rowNum}:I${rowNum}`;
   try {
     // Overwrite all 9 columns with the void marker
