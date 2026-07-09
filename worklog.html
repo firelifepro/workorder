@@ -87,15 +87,16 @@
 
     /* Row status tints */
     tr.row-open    { background: #fff; }
-    tr.row-invoice { background: #fce7f3; }
-    tr.row-waiting { background: #fefce8; }
+    tr.row-invoice { background: #f9a8d4; }
+    tr.row-waiting { background: #fde047; }
     tr.row-paid    { background: #86efac; }
     tr.row-flash td { animation: wlflash 4s ease-out 1; }
     @keyframes wlflash { 0%, 12% { background: #ffe08a; } 100% { background: inherit; } }
 
     .td-rownum    { font-weight: 700; color: #6b7280; text-align: center; width: 44px; white-space: nowrap; font-size: 8pt; }
     .td-date      { white-space: nowrap; width: 84px; }
-    .td-datereq   { white-space: nowrap; width: 72px; font-size: 8pt; }
+    .td-datereq   { white-space: normal; width: 58px; font-size: 9.5pt; word-break: break-word; }
+    thead th.th-datereq { white-space: normal; width: 58px; }
     /* Voided ("DID NOT USE THIS LINE") short chip */
     .void-chip    { display: inline-block; background: #e5e7eb; color: #6b7280; font-weight: 600; font-size: 0.72em; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
     .td-datecomp  { min-width: 80px; max-width: 130px; word-break: break-word; white-space: normal; }
@@ -141,8 +142,8 @@
     #table-wrap.simple-view table { font-size: 12pt; }
     #table-wrap.simple-view .td-prop { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #table-wrap.simple-view .td-note { font-size: 12pt; }
-    /* Keep the date-requested column compact even when zoomed in */
-    #table-wrap.simple-view .td-datereq { font-size: 9pt; }
+    /* Keep the date-requested column narrow (but readable) even when zoomed in */
+    #table-wrap.simple-view .td-datereq { font-size: 11pt; }
 
     #empty-row td { text-align: center; padding: 44px 20px; color: #aaa; font-style: italic; }
 
@@ -314,7 +315,7 @@
         <tr>
           <th class="th-c">Row #</th>
           <th class="th-c col-status">Status</th>
-          <th>Date Req.</th>
+          <th class="th-datereq">Date Req.</th>
           <th>Property</th>
           <th>Work Requested</th>
           <th>Notes</th>
