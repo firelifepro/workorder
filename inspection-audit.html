@@ -124,6 +124,9 @@ table.ent tr:last-child td { border-bottom: none; }
 .rep-item { display: flex; align-items: baseline; gap: 6px; padding: 1px 0; }
 .rep-item + .rep-item { border-top: 1px dotted #eee; }
 .rep-date { font-size: 0.68rem; color: #999; white-space: nowrap; }
+.rep-dl { cursor: pointer; border: none; background: none; padding: 0 2px; font-size: 0.9rem; line-height: 1; color: #1a73e8; }
+.rep-dl:hover { color: #0b57d0; }
+.rep-dl:disabled { opacity: 0.5; cursor: default; }
 .rep-count { font-size: 0.68rem; font-weight: 700; color: #2e6da4; }
 .rep-maybe { color: #b8860b; }
 .rep-missing { color: #c62828; font-weight: 700; }
@@ -1127,7 +1130,8 @@ function renderProp(p) {
         const label = truncMid(r.title || r.name, 36);
         const tip   = (r.title || r.name) + ' — Open report';
         const dt    = r.dateMs ? `<span class="rep-date">${fmtDate(new Date(r.dateMs))}</span>` : '';
-        return `<div class="rep-item"><a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(r.link)}" target="_blank" rel="noopener" title="${escAttr(tip)}">📄 ${escHtml(label)}</a>${dt}</div>`;
+        const dl    = `<button class="rep-dl" title="Download PDF" onclick="downloadReport('${r.id}','${encodeURIComponent(r.name)}',this)">⬇</button>`;
+        return `<div class="rep-item"><a class="rep-link ${e.confident ? '' : 'rep-maybe'}" href="${escAttr(r.link)}" target="_blank" rel="noopener" title="${escAttr(tip)}">📄 ${escHtml(label)}</a>${dt}${dl}</div>`;
       }).join('');
       if (!e.extra && !e.confident) rep += `<div class="conf">(likely match)</div>`;
     } else {
@@ -1361,6 +1365,28 @@ async function handleDraftErr(res) {
     toast('✗ Session expired — click Connect Google, then retry');
   } else {
     toast('✗ Draft failed: ' + txt.substring(0, 120));
+  }
+}
+
+// Download a report PDF straight to the browser's Downloads folder — skips the
+// "open in a Chrome tab → click download" round-trip. Fetches the bytes via the
+// same Drive alt=media path used for the Gmail-draft attachments (read-only).
+async function downloadReport(fileId, encName, btn) {
+  const name = decodeURIComponent(encName || '') || 'report.pdf';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    const res = await googleFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`);
+    if (!res.ok) throw new Error('Drive fetch ' + res.status);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (e) {
+    toast('✗ Download failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇'; }
   }
 }
 
