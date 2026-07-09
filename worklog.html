@@ -93,7 +93,8 @@
     tr.row-flash td { animation: wlflash 4s ease-out 1; }
     @keyframes wlflash { 0%, 12% { background: #ffe08a; } 100% { background: inherit; } }
 
-    .td-rownum    { font-weight: 700; color: #6b7280; text-align: center; width: 44px; white-space: nowrap; font-size: 8pt; }
+    .td-rownum    { font-weight: 700; color: #6b7280; text-align: center; width: 36px; white-space: nowrap; font-size: 8pt; padding-left: 4px; padding-right: 4px; }
+    thead th.th-rownum { width: 36px; padding-left: 4px; padding-right: 4px; }
     .td-date      { white-space: nowrap; width: 84px; }
     .td-datereq   { white-space: normal; width: 68px; font-size: 9.5pt; padding-left: 6px; padding-right: 6px; }
     thead th.th-datereq { white-space: normal; width: 68px; padding-left: 6px; padding-right: 6px; }
@@ -144,6 +145,8 @@
     #table-wrap.simple-view .td-note { font-size: 12pt; }
     /* Keep the date-requested column narrow (but readable) even when zoomed in */
     #table-wrap.simple-view .td-datereq { font-size: 11pt; }
+    /* Row # is fixed at 8pt for the full view — scale it up when zoomed in */
+    #table-wrap.simple-view .td-rownum { font-size: 11pt; }
 
     #empty-row td { text-align: center; padding: 44px 20px; color: #aaa; font-style: italic; }
 
@@ -313,7 +316,7 @@
     <table>
       <thead>
         <tr>
-          <th class="th-c">Row #</th>
+          <th class="th-c th-rownum">Row #</th>
           <th class="th-c col-status">Status</th>
           <th class="th-datereq">Date Req.</th>
           <th>Property</th>
