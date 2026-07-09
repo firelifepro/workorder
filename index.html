@@ -2180,7 +2180,10 @@ window.addEventListener('load', () => {
           const sel = document.getElementById('property-select');
           if (sel && !sel.value) {
             const opt = [...sel.options].find(o => o.value === _pendingPropMatch || o.text.startsWith(_pendingPropMatch));
-            if (opt) { sel.value = opt.value; onPropertySelect(); }
+            // In view/edit we only reflect the property in the dropdown; we must NOT
+            // re-derive the client fields from the sheet (would overwrite the saved
+            // address — see loadFromEditWO). onPropertySelect only for fresh/WO-log flows.
+            if (opt) { sel.value = opt.value; if (!editModeFileId && !viewModeActive) onPropertySelect(); }
           }
           _pendingPropMatch = null;
         }
@@ -2247,12 +2250,18 @@ function loadFromEditWO(d) {
   set('flps-acct-num',    d.flpsAcct);
   set('access-info',      d.accessInfo);
 
-  // Property name dropdown — try to match (dropdown may still be loading)
+  // Property name dropdown — select for context only. We intentionally do NOT call
+  // onPropertySelect() here: this is a SAVED work order, and its address/contact fields
+  // (set above from d.*) are the source of truth. Re-deriving from the current property
+  // sheet would (a) cause a visible address "flash" and (b) can overwrite the saved
+  // address with the wrong one when the loose match lands on a different property that
+  // shares a street (e.g. the several Shaffer Pkwy properties). The user can still
+  // re-pick the property manually to refresh from the sheet if they want to.
   if (d.propertyName) {
     const sel = document.getElementById('property-select');
     if (sel) {
       const opt = [...sel.options].find(o => o.value === d.propertyName || o.text.startsWith(d.propertyName));
-      if (opt) { sel.value = opt.value; onPropertySelect(); }
+      if (opt) sel.value = opt.value;
     }
     // If dropdown not populated yet, store for retry after loadSheet completes
     if (!document.getElementById('property-select').value) _pendingPropMatch = d.propertyName;

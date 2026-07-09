@@ -227,7 +227,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .doc-name { font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .doc-meta { font-size: 0.73rem; color: #888; margin-top: 1px; }
 .doc-amount { font-size: 0.82rem; font-weight: 700; color: #2e7d50; white-space: nowrap; margin-left: auto; }
-.doc-view-btn { font-size: 0.72rem; color: #2e6da4; text-decoration: none; padding: 3px 7px; border: 1px solid #c0d8f0; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0f6ff; transition: background 0.1s; }
+.doc-view-btn { font-size: 0.72rem; color: #2e6da4; text-decoration: none; padding: 3px 7px; border: 1px solid #c0d8f0; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0f6ff; transition: background 0.1s; cursor: pointer; }
 .doc-view-btn:hover { background: #d0e8ff; }
 .doc-worklog-btn { font-size: 0.72rem; color: #2e7d50; text-decoration: none; padding: 3px 7px; border: 1px solid #b7dfb7; border-radius: 3px; white-space: nowrap; flex-shrink: 0; background: #f0fff4; transition: background 0.1s; display: inline-flex; align-items: center; gap: 4px; }
 .doc-worklog-btn:hover { background: #d0f0dc; }
@@ -498,6 +498,11 @@ const FOLDER_NAME        = '2 - Ready to Invoice';
 const FOLDER_NAME_SENT   = '3 - Invoice Sent';
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents.readonly https://www.googleapis.com/auth/spreadsheets';
 const WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+// Property list sheet — same source flips-shared.js uses. We key the invoice job
+// location off the FLPS account number here so the billed address always comes from
+// this authoritative list, not from (possibly stale) work-order file metadata.
+const PROP_SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
+const PROP_SHEET_GID = '1899870347';
 
 
 // ── Hamburger nav ──────────────────────────────────────────
@@ -518,6 +523,116 @@ let allDocs = [];        // { id, name, modifiedTime, amount, client }
 let sourceFolderId = null; // Drive folder ID for '2 - Ready to Invoice'
 let qbAccessToken = null;
 let qbRealmId = null;
+
+// Property addresses keyed by FLPS account number: acctNum -> { svcAddr, citySt, propName }
+let _propAddrByAcct = null;
+
+// Minimal CSV parser (quote-aware, preserves newlines inside quoted cells).
+// Ported from flips-shared.js parseCSV — create-invoices doesn't load that file.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"' && text[i+1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { q = false; }
+      else { cur += ch; }
+    } else {
+      if (ch === '"') { q = true; }
+      else if (ch === ',') { row.push(cur.trim()); cur = ''; }
+      else if (ch === '\r') { /* swallow */ }
+      else if (ch === '\n') { row.push(cur.trim()); cur = ''; if (row.some(c => c !== '')) rows.push(row); row = []; }
+      else { cur += ch; }
+    }
+  }
+  if (cur !== '' || row.length > 0) { row.push(cur.trim()); if (row.some(c => c !== '')) rows.push(row); }
+  return rows;
+}
+
+// Split a single-cell address ("650 S Wadsworth Lakewood, CO 80226") into
+// { street, cityStateZip }. Mirrors the logic in flips-shared.js onPropertySelect().
+function splitAddressCell(rawAddr) {
+  const raw = (rawAddr || '').trim();
+  if (!raw) return { street: '', cityStateZip: '' };
+  const lines = raw.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+  if (lines.length >= 2) return { street: lines[0], cityStateZip: lines[lines.length - 1] };
+  const zipIdx = raw.search(/,\s*[A-Z]{2}\s+\d{5}/);
+  if (zipIdx > 0) {
+    const prevComma = raw.lastIndexOf(',', zipIdx - 1);
+    const splitAt = prevComma > 0 ? prevComma : zipIdx;
+    return { street: raw.slice(0, splitAt).trim(), cityStateZip: raw.slice(splitAt + 1).trim() };
+  }
+  if (raw.includes(',')) {
+    const last = raw.lastIndexOf(',');
+    return { street: raw.slice(0, last).trim(), cityStateZip: raw.slice(last + 1).trim() };
+  }
+  return { street: raw, cityStateZip: '' };
+}
+
+// Build the acct# -> address index from sheet rows (array of arrays, header in row 0).
+function buildAcctAddrMap(rows) {
+  const map = {};
+  if (!rows || !rows.length) return map;
+  const header = rows[0].map(h => (h || '').trim().toLowerCase());
+  const findCol = (...pats) => header.findIndex(h => pats.some(p => h.includes(p)));
+  const acctCol = findCol('flps internal account number', 'internal account number', 'account number', 'account no', 'acct');
+  const addrCol = findCol('service address', 'street address', 'address');
+  if (acctCol < 0 || addrCol < 0) return map;
+  for (let i = 1; i < rows.length; i++) {
+    const acct = (rows[i][acctCol] || '').trim();
+    const addr = (rows[i][addrCol] || '').trim();
+    if (!acct || !addr) continue;
+    const { street, cityStateZip } = splitAddressCell(addr);
+    map[acct] = { svcAddr: street, citySt: cityStateZip, propName: (rows[i][0] || '').trim() };
+  }
+  return map;
+}
+
+// Load the property list sheet once and index it by FLPS account number. Uses the
+// Sheets API (honors the tab gid) with a Drive CSV export fallback, mirroring
+// flips-shared.js loadSheet(). Non-fatal: on any failure we leave the map empty and
+// fall back to each file's stored address.
+async function loadPropertyAddresses() {
+  if (_propAddrByAcct) return _propAddrByAcct;
+  _propAddrByAcct = {};
+  try {
+    const metaRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${PROP_SHEET_ID}?fields=sheets.properties`);
+    if (metaRes.ok) {
+      const metaJson = await metaRes.json();
+      let tabName = metaJson.sheets[0].properties.title;
+      for (const s of metaJson.sheets) {
+        if (String(s.properties.sheetId) === String(PROP_SHEET_GID)) { tabName = s.properties.title; break; }
+      }
+      const valRes = await apiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${PROP_SHEET_ID}/values/${encodeURIComponent(tabName)}`);
+      if (valRes.ok) {
+        _propAddrByAcct = buildAcctAddrMap((await valRes.json()).values || []);
+        return _propAddrByAcct;
+      }
+    }
+    // Fallback: Drive CSV export (first tab only, but the property list is the first tab).
+    const csvRes = await apiFetch(`https://www.googleapis.com/drive/v3/files/${PROP_SHEET_ID}/export?mimeType=text/csv`);
+    if (csvRes.ok) _propAddrByAcct = buildAcctAddrMap(parseCSV(await csvRes.text()));
+  } catch (e) {
+    console.warn('[props] address load failed:', e.message);
+  }
+  return _propAddrByAcct;
+}
+
+// Resolve the job-location address for a work order. The FLPS account number is the
+// authoritative join key: if it matches a property row we use THAT address. We only
+// fall back to the file's stored svcAddr/citySt when there's no acct # / no match
+// (shouldn't happen for real clients — every location should be in the list with an acct #).
+function resolveJobLocation(doc) {
+  const acct = (doc.acctNum != null ? String(doc.acctNum) : '').trim();
+  const hit = acct && _propAddrByAcct ? _propAddrByAcct[acct] : null;
+  if (hit && (hit.svcAddr || hit.citySt)) {
+    const fileAddr = [doc.svcAddr, doc.citySt].filter(Boolean).join(' ').trim().toLowerCase();
+    const sheetAddr = [hit.svcAddr, hit.citySt].filter(Boolean).join(' ').trim().toLowerCase();
+    return { svcAddr: hit.svcAddr, citySt: hit.citySt, source: 'acct', staleMeta: !!fileAddr && fileAddr !== sheetAddr };
+  }
+  return { svcAddr: doc.svcAddr || '', citySt: doc.citySt || '', source: 'file', staleMeta: false };
+}
 
 let _workLogTab = null;
 let _workLogGid = null;
@@ -666,6 +781,9 @@ async function loadDocs() {
   allDocs = [];
 
   try {
+    // 0. Load authoritative property addresses (keyed by FLPS acct #) for the job location.
+    await loadPropertyAddresses();
+
     // 1. Find the target folder
     const folderId = await findFolder(FOLDER_NAME);
     if (!folderId) { showPlaceholder(`<div class="big-icon">📂</div><div>Folder "<strong>${FOLDER_NAME}</strong>" not found in your Drive</div>`); return; }
@@ -989,6 +1107,13 @@ function renderDocList(docs) {
       ? `<div class="doc-amount">$${_amt.toLocaleString('en-US',{minimumFractionDigits:2})}</div>`
       : '';
     const clientStr = doc.client ? ` &middot; ${doc.client}` : '';
+    const isJson = doc.mimeType === 'application/json';
+    // Job location resolved by FLPS acct # — this is what the invoice will bill.
+    const loc = resolveJobLocation(doc);
+    const locStr = [loc.svcAddr, loc.citySt].filter(Boolean).join(', ');
+    const locHtml = locStr
+      ? `<div class="doc-meta doc-loc" style="color:#2e6da4;">📍 ${escHtml(locStr)}${loc.staleMeta ? ` <span style="color:#b26a00;" title="This file's saved address differs from the property list. The invoice will use the property-list address (looked up by FLPS account #).">⚠ metadata mismatch</span>` : ''}</div>`
+      : '';
     const viewUrl = doc.mimeType === 'application/vnd.google-apps.document'
       ? `https://docs.google.com/document/d/${doc.id}/edit`
       : `https://drive.google.com/file/d/${doc.id}/view`;
@@ -1003,12 +1128,15 @@ function renderDocList(docs) {
       <div class="doc-info">
         <div class="doc-name">${escHtml(doc.name)}</div>
         <div class="doc-meta">Modified ${date}${clientStr}</div>
+        ${locHtml}
         ${scopeHtml}
       </div>
       ${amountHtml}
       ${doc.lineNum != null ? `<a class="doc-worklog-btn" href="worklog.html?row=${doc.lineNum}" target="_blank" onclick="event.stopPropagation()" title="Open Work Log row #${doc.lineNum}"><img src="img/sheets.svg" style="width:13px;height:13px;vertical-align:middle;"> #${doc.lineNum}</a>` : ''}
       <button class="doc-edit-btn" data-id="${doc.id}" data-name="${escHtml(doc.name)}" data-mime="${doc.mimeType}" onclick="event.stopPropagation();openEditWorkOrder(this.dataset.id,this.dataset.name,this.dataset.mime)" title="Edit this work order and overwrite the Drive file">✏️ Edit WO</button>
-      <a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="View work order">⏰ View WO</a>
+      ${isJson
+        ? `<button class="doc-view-btn" data-id="${doc.id}" data-name="${escHtml(doc.name)}" onclick="event.stopPropagation();viewWorkOrder(this.dataset.id,this.dataset.name)" title="View work order (read-only)">👁 View WO</button>`
+        : `<a class="doc-view-btn" href="${viewUrl}" target="_blank" onclick="event.stopPropagation()" title="View work order">👁 View WO</a>`}
     </div>`;
   }).join('');
 
@@ -1039,6 +1167,24 @@ function updateDocRow(doc) {
       const date = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
       metaEl.innerHTML = `Modified ${date} &middot; ${escHtml(doc.client)}`;
     }
+  }
+
+  // Refresh the resolved job-location line — enrichment may have filled/changed the acct #.
+  const loc = resolveJobLocation(doc);
+  const locStr = [loc.svcAddr, loc.citySt].filter(Boolean).join(', ');
+  let locEl = row.querySelector('.doc-loc');
+  if (locStr) {
+    if (!locEl) {
+      locEl = document.createElement('div');
+      locEl.className = 'doc-meta doc-loc';
+      locEl.style.color = '#2e6da4';
+      const info = row.querySelector('.doc-info');
+      const metaEl = row.querySelector('.doc-meta');
+      if (info && metaEl) metaEl.insertAdjacentElement('afterend', locEl); else if (info) info.appendChild(locEl);
+    }
+    locEl.innerHTML = `📍 ${escHtml(locStr)}${loc.staleMeta ? ` <span style="color:#b26a00;" title="This file's saved address differs from the property list. The invoice will use the property-list address (looked up by FLPS account #).">⚠ metadata mismatch</span>` : ''}`;
+  } else if (locEl) {
+    locEl.remove();
   }
 }
 
@@ -1236,7 +1382,12 @@ async function createQBInvoice(doc) {
   const fmt   = d => d.toISOString().split('T')[0];
   const amount = parseFloat(doc.amount) || 0;
 
-  const addrParts   = [doc.svcAddr, doc.citySt].filter(Boolean);
+  // Job location address: resolved from the property list by FLPS account number (the
+  // authoritative source), falling back to the file's stored address only if unmatched.
+  // The invoice text still shows the plain street address — the acct # is used purely to
+  // look it up, never printed (customers don't know/care about it).
+  const loc = resolveJobLocation(doc);
+  const addrParts   = [loc.svcAddr, loc.citySt].filter(Boolean);
   const locationStr = addrParts.length ? addrParts.join('\n') : (doc.client || doc.name);
   let lineDesc = `Job Location - ${locationStr}`;
   if (doc.dateCompleted) lineDesc += `\nDate Work Completed: ${doc.dateCompleted}`;
@@ -1622,6 +1773,21 @@ function parseWODate(str) {
   return '';
 }
 
+// View a JSON work order in read-only mode on index.html (mirrors workorder-tracker.html viewWO)
+async function viewWorkOrder(docId, docName) {
+  if (!accessToken) { toast('⚠ Connect to Google first'); return; }
+  toast('⏳ Loading work order…');
+  try {
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${docId}?alt=media&supportsAllDrives=true`);
+    if (!res.ok) throw new Error('Could not load work order file');
+    const woData = await res.json();
+    const payload = buildEditPayloadFromWOData(docId, docName, woData, 'view');
+    localStorage.setItem('flips_edit_workorder', JSON.stringify(payload));
+    window.open(`index.html?view_wo=${encodeURIComponent(docId)}`, '_blank');
+    toast('✓ Work order viewer opening in new tab…');
+  } catch(e) { toast('✗ ' + e.message); }
+}
+
 async function openEditWorkOrder(docId, docName, mimeType) {
   if (!accessToken) { toast('⚠ Connect to Google first'); return; }
   toast('⏳ Loading work order…');
@@ -1806,7 +1972,7 @@ function servicesFromJSON(servicesStr) {
 }
 
 // Build the edit payload object from a parsed JSON work order data object
-function buildEditPayloadFromWOData(docId, docName, d) {
+function buildEditPayloadFromWOData(docId, docName, d, mode) {
   const pd = (str) => parseWODate((str || '').trim());
   const strip$ = (str) => (str || '').replace(/\$/, '').replace(/\/hr.*/, '').trim();
   const stripNonNum = (str) => (str || '').replace(/[^0-9.]/g, '');
@@ -1817,7 +1983,7 @@ function buildEditPayloadFromWOData(docId, docName, d) {
   subRows.forEach(r => { if (r.label || r.expense) subMatLines.push(`Sub — ${r.label || '(unlabeled)'}: $${(r.total||0).toFixed(2)}`); });
   matRows.forEach(r => { if (r.desc  || r.expense) subMatLines.push(`Mat — ${r.desc  || '(unlabeled)'}${r.qty?' (qty:'+r.qty+')':''}: $${(r.total||0).toFixed(2)}`); });
   return {
-    fileId: docId, fileName: docName, fileType: 'json',
+    fileId: docId, fileName: docName, fileType: 'json', mode: mode || 'edit',
     dateCompleted:    d['DATE COMPLETED ISO'] || pd(d['DATE COMPLETED']),
     dateRequired:     pd(d['DATE REQUIRED']),
     lineNum:          d['LINE #'],
