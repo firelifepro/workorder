@@ -141,7 +141,8 @@
 
     /* ── Simple view — larger font; all columns kept, scroll right for detail ── */
     #table-wrap.simple-view table { font-size: 12pt; }
-    #table-wrap.simple-view .td-prop { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #table-wrap.simple-view .td-prop { min-width: 260px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #table-wrap.simple-view .td-work { min-width: 260px; max-width: 360px; }
     #table-wrap.simple-view .td-note { font-size: 12pt; }
     /* Keep the date-requested column narrow (but readable) even when zoomed in */
     #table-wrap.simple-view .td-datereq { font-size: 11pt; }
