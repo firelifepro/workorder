@@ -148,6 +148,62 @@ export default {
       }
     }
 
+    // ── /api/qb-upload — attach a file to a QB entity (Invoice) ─────
+    // The QB Attachable "upload" endpoint needs multipart/form-data, which the
+    // JSON qb-api proxy above can't send. The browser base64-encodes the report
+    // PDF and posts JSON here; the Worker rebuilds the multipart body server-side
+    // and links it to the invoice with IncludeOnSend so it rides along when the
+    // invoice is emailed from QuickBooks.
+    if (url.pathname === '/api/qb-upload' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); }
+      catch (e) { return corsResponse({ error: 'Invalid JSON body' }, 400, origin); }
+
+      const { access_token, realm_id, env: qbEnv, invoiceId, fileName, contentBase64, includeOnSend } = body;
+      if (!access_token || !realm_id || !invoiceId || !fileName || !contentBase64) {
+        return corsResponse({ error: 'Missing required fields: access_token, realm_id, invoiceId, fileName, contentBase64' }, 400, origin);
+      }
+
+      const baseUrl = qbEnv === 'production'
+        ? `https://quickbooks.api.intuit.com/v3/company/${realm_id}`
+        : `https://sandbox-quickbooks.api.intuit.com/v3/company/${realm_id}`;
+
+      try {
+        // base64 → bytes
+        const bin = atob(contentBase64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+        const metadata = {
+          AttachableRef: [{
+            EntityRef: { type: 'Invoice', value: String(invoiceId) },
+            IncludeOnSend: includeOnSend !== false,
+          }],
+          FileName: fileName,
+          ContentType: 'application/pdf',
+        };
+
+        // QB expects two named parts: file_metadata_01 (the Attachable JSON) and
+        // file_content_01 (the bytes). FormData builds the multipart boundary for us.
+        const form = new FormData();
+        form.append('file_metadata_01', new Blob([JSON.stringify(metadata)], { type: 'application/json' }), 'metadata.json');
+        form.append('file_content_01', new Blob([bytes], { type: 'application/pdf' }), fileName);
+
+        const resp = await fetch(`${baseUrl}/upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'Accept': 'application/json',
+          },
+          body: form,
+        });
+        const data = await resp.json();
+        return corsResponse(data, resp.status, origin);
+      } catch (err) {
+        return corsResponse({ error: 'QB upload failed', message: err.message }, 500, origin);
+      }
+    }
+
     // ── /api/fetch-report — host-locked proxy for Inspect Point reports ──
     // import-inspectpoint.html follows the "Click here to view your invoice"
     // link in Martinez/Inspect Point emails. That link (…inspectpoint.com/

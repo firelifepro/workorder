@@ -238,6 +238,15 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .doc-scope-wrap { margin-top: 4px; display: flex; align-items: flex-start; gap: 4px; }
 .doc-scope-lbl { font-size: 0.71rem; color: #888; white-space: nowrap; padding-top: 3px; }
 .doc-scope-input { font-size: 0.71rem; flex: 1; padding: 2px 4px; border: 1px solid #c0d8f0; border-radius: 3px; resize: vertical; min-height: 36px; }
+/* ── Matched inspection reports (attach-to-invoice) ── */
+.doc-reports { margin-top: 5px; padding-top: 4px; border-top: 1px dashed #e0e6f0; }
+.doc-reports:empty { display: none; }
+.doc-reports-lbl { font-size: 0.68rem; color: #2e7d32; font-weight: 600; margin-bottom: 2px; }
+.att-item { display: flex; align-items: baseline; gap: 5px; font-size: 0.72rem; color: #444; padding: 1px 0; cursor: pointer; }
+.att-item input[type=checkbox] { width: 13px; height: 13px; accent-color: #2e7d32; flex-shrink: 0; cursor: pointer; }
+.att-name { font-weight: 600; color: #1b5e20; }
+.att-date { font-size: 0.66rem; color: #999; white-space: nowrap; }
+.att-maybe { color: #b26a00; font-size: 0.64rem; }
 
 /* ── Empty / loading states ── */
 #list-placeholder {
@@ -446,6 +455,10 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
       Select All
     </label>
     <span id="selected-label" style="color:#555;font-size:0.78rem;">0 selected</span>
+    <label style="margin-left:auto;color:#2e7d32;font-size:0.76rem;display:flex;align-items:center;gap:4px;cursor:pointer;" title="Find inspection reports in the Drive Reports folder that match each work order and attach the ones you check to the QuickBooks invoice (they email out with the invoice).">
+      <input type="checkbox" id="attach-reports-toggle" checked onchange="onAttachToggle()">
+      📎 Attach matched reports
+    </label>
   </div>
 
   <div id="doc-list">
@@ -503,6 +516,64 @@ const WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
 // this authoritative list, not from (possibly stale) work-order file metadata.
 const PROP_SHEET_ID  = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 const PROP_SHEET_GID = '1899870347';
+// FLPS Inspection Reports folder — same one inspection-audit.html reads and the
+// inspection pages write to. Used to find reports that match each work order so
+// they can be attached to the QB invoice.
+const REPORTS_FOLDER_ID = '1YcIKbtFLaYPB4WEYVWmPR_o8BuSsCHhg';
+
+// ── Report-filename → property/date matching ───────────────────────────────
+// Ported (slimmed) from inspection-audit.html. Report PDFs are named
+// FLPS_{systemSlug}_{freq}_{propertySlug}_{date}.pdf (EXT_… for outside vendors).
+// We only need to recover the property tokens + inspection date to match a report
+// to a work order, so this carries the system slugs (to strip) but not the full
+// system recognizers the audit uses. Keep the slug list in sync with SYS_DEFS there.
+const REPORT_SYS_SLUGS = ['fire_alarm','internal_pipe','fdc','dry_pipe','sprinkler','standpipe','fire_pump','jockey','hood','special_suppression','extinguisher','exit_sign_lighting','hydrant','bda','smoke_control','fire_smoke_damper','gas_detection','hospital','backflow','elevator','deficiency','correction']
+  .sort((a, b) => b.length - a.length);   // longest-first so 'special_suppression' beats a shorter prefix
+const REPORT_STOP = new Set(['the','and','llc','inc','of','co','company','corp','ltd','at']);
+function reportTokens(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+    .filter(t => t.length >= 3 && !REPORT_STOP.has(t));
+}
+// The property portion of a report filename (system slug, freq, vendor and the
+// trailing date stripped off) → tokens.
+function reportFilePropTokens(name) {
+  let n = (name || '').toLowerCase().replace(/\.pdf$/, '');
+  n = n.replace(/^flps_/, '').replace(/^ext_/, '');
+  for (const slug of REPORT_SYS_SLUGS) { if (n.startsWith(slug + '_')) { n = n.slice(slug.length + 1); break; } }
+  n = n.replace(/^(semi[_-]?annual|annual|quarterly|monthly|weekly|5[_-]?year|3[_-]?year)_/, '');
+  n = n.replace(/^(martinez|convergint)_/, '');
+  n = n.replace(/_\d{4}-\d{2}-\d{2}(_\d+)?$/, '').replace(/_\d{8}(_\d+)?$/, '');
+  return reportTokens(n);
+}
+// Score a report file against a work order's property (name + address tokens).
+// Bidirectional: pass if the property name mostly appears in the filename OR the
+// filename's property portion is mostly covered by the property's name+address.
+function reportPropScore(nameToks, addrToks, filePropToks, fileAllToks) {
+  if (!nameToks.length) return 0;
+  const has = t => fileAllToks.includes(t);
+  const nOv = nameToks.filter(has).length / nameToks.length;
+  const pool = new Set([...nameToks, ...addrToks]);
+  const fileCover = filePropToks.length >= 2
+    ? filePropToks.filter(t => pool.has(t)).length / filePropToks.length
+    : 0;                                                 // avoid a lone token matching many
+  if (nOv < 0.6 && fileCover < 0.6) return 0;
+  const aOv = addrToks.length ? addrToks.filter(has).length / addrToks.length : 0;
+  return Math.max(nOv, fileCover) + aOv * 0.5;
+}
+// Inspection date from the filename (YYYY-MM-DD for systems, YYYYMMDD for hospital).
+function reportFileDate(name) {
+  let m = (name || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], 12);
+  m = (name || '').match(/_(\d{4})(\d{2})(\d{2})(?=[._]|$)/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], 12);
+  return null;
+}
+// Human-readable title: drop FLPS_/EXT_ prefix, trailing date and .pdf.
+function reportCleanTitle(name) {
+  let t = (name || '').replace(/\.pdf$/i, '').replace(/^FLPS_/i, '').replace(/^EXT_/i, '');
+  t = t.replace(/_\d{4}-\d{2}-\d{2}(_\d+)?$/, '').replace(/_\d{8}(_\d+)?$/, '');
+  return t.replace(/_/g, ' ').trim();
+}
 
 
 // ── Hamburger nav ──────────────────────────────────────────
@@ -526,6 +597,167 @@ let qbRealmId = null;
 
 // Property addresses keyed by FLPS account number: acctNum -> { svcAddr, citySt, propName }
 let _propAddrByAcct = null;
+
+// Inspection report PDFs from the Reports Drive folder (for attach-to-invoice).
+// Loaded once in the background after docs load; null until then.
+let reportFiles = null;
+let reportsLoading = false;
+function attachEnabled() {
+  const el = document.getElementById('attach-reports-toggle');
+  return !el || el.checked;
+}
+
+// List all report PDFs in the Reports folder (+ one level of subfolders, e.g.
+// "Legacy inspection reports"), mirroring inspection-audit.html's loader.
+async function loadReportFiles() {
+  if (reportFiles || reportsLoading) return;
+  reportsLoading = true;
+  try {
+    const folderIds = [REPORTS_FOLDER_ID];
+    try {
+      const subRes = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+        `'${REPORTS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      )}&fields=files(id)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+      if (subRes.ok) ((await subRes.json()).files || []).forEach(f => folderIds.push(f.id));
+    } catch (_) {}
+
+    const files = [];
+    for (const fid of folderIds) {
+      let pageToken = '';
+      do {
+        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+          `'${fid}' in parents and trashed=false`
+        )}&fields=nextPageToken,files(id,name,webViewLink,mimeType)&pageSize=1000&orderBy=createdTime desc&supportsAllDrives=true&includeItemsFromAllDrives=true` +
+          (pageToken ? `&pageToken=${pageToken}` : '');
+        const res = await apiFetch(url);
+        if (!res.ok) throw new Error('Drive list ' + res.status);
+        const j = await res.json();
+        (j.files || []).forEach(f => {
+          const name = f.name || '';
+          if (f.mimeType === 'application/vnd.google-apps.folder') return;
+          if (/_PREVIEW_/i.test(name)) return;
+          if (!/\.pdf$/i.test(name)) return;
+          const d = reportFileDate(name);
+          files.push({
+            id: f.id, name, link: f.webViewLink,
+            ntoks: reportTokens(name),
+            propToks: reportFilePropTokens(name),
+            dateMs: d ? d.getTime() : null,
+          });
+        });
+        pageToken = j.nextPageToken || '';
+      } while (pageToken);
+    }
+    reportFiles = files;
+  } catch (e) {
+    console.warn('[attach] report folder load failed:', e);
+    reportFiles = [];   // don't retry-loop; user can Refresh
+  } finally {
+    reportsLoading = false;
+  }
+}
+
+// Kick off report loading + match once docs are shown, then paint the matches.
+async function loadAndMatchReports() {
+  if (!attachEnabled()) return;
+  await loadReportFiles();
+  if (!reportFiles || !reportFiles.length) return;
+  allDocs.forEach(matchReportsForDoc);
+  allDocs.forEach(paintReportMatches);
+}
+
+// Find the reports that best match one work order. Sets doc.reportMatches to
+// [{ id, name, title, link, dateMs, score, attach }]. Pre-checks (attach=true)
+// only confident matches: strong property score AND report date near the WO date.
+const ATTACH_DATE_WINDOW_MS = 75 * 86400000;   // 75 days
+function matchReportsForDoc(doc) {
+  if (!reportFiles) return;
+  const nameToks = reportTokens(doc.client || doc.name || '');
+  const loc = resolveJobLocation(doc);
+  const addrToks = reportTokens([loc.svcAddr, loc.citySt].filter(Boolean).join(' '));
+  const woMs = docDateMs(doc);
+
+  const scored = [];
+  for (const f of reportFiles) {
+    const score = reportPropScore(nameToks, addrToks, f.propToks, f.ntoks);
+    if (score <= 0) continue;
+    const dateDist = (woMs && f.dateMs) ? Math.abs(woMs - f.dateMs) : Infinity;
+    const confident = score >= 1.0 && dateDist <= ATTACH_DATE_WINDOW_MS;
+    scored.push({ id: f.id, name: f.name, title: reportCleanTitle(f.name), link: f.link, dateMs: f.dateMs, score, dateDist, confident });
+  }
+  // Best first: confident, then higher property score, then closest date.
+  scored.sort((a, b) => (b.confident - a.confident) || (b.score - a.score) || (a.dateDist - b.dateDist));
+  const top = scored.slice(0, 5);
+
+  // Preserve any prior user checkbox choices when re-matching (e.g. after enrich).
+  const prev = {};
+  (doc.reportMatches || []).forEach(m => { prev[m.id] = m.attach; });
+  doc.reportMatches = top.map(m => ({
+    id: m.id, name: m.name, title: m.title, link: m.link, dateMs: m.dateMs, score: m.score,
+    attach: (m.id in prev) ? prev[m.id] : m.confident,
+  }));
+}
+
+// Best available WO date in ms: the parsed completion date if we have it, else the
+// file's modified time (WO files are moved to "Ready to Invoice" near completion).
+function docDateMs(doc) {
+  if (doc.dateCompleted) {
+    const t = Date.parse(doc.dateCompleted);
+    if (!isNaN(t)) return t;
+  }
+  if (doc.modifiedTime) {
+    const t = Date.parse(doc.modifiedTime);
+    if (!isNaN(t)) return t;
+  }
+  return null;
+}
+
+// Inner HTML for a work order's matched-report checkboxes (empty string if none).
+function reportMatchesHtml(doc) {
+  const ms = doc.reportMatches || [];
+  if (!ms.length) return '';
+  const rows = ms.map(m => {
+    const dt = m.dateMs ? `<span class="att-date">${new Date(m.dateMs).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}</span>` : '';
+    const maybe = m.attach ? '' : ` <span class="att-maybe">(check to attach)</span>`;
+    return `<label class="att-item" onclick="event.stopPropagation()">
+      <input type="checkbox" ${m.attach ? 'checked' : ''} onchange="event.stopPropagation();toggleAttach('${doc.id}','${m.id}',this.checked)">
+      📄 <span class="att-name">${escHtml(truncMid(m.title || m.name, 44))}</span>${dt}${maybe}
+    </label>`;
+  }).join('');
+  return `<div class="doc-reports-lbl">📎 ${ms.length} matching report${ms.length > 1 ? 's' : ''} — checked ones attach to the invoice</div>${rows}`;
+}
+// Repaint one row's report section in place (used when reports load after render).
+function paintReportMatches(doc) {
+  const c = document.getElementById('reports-' + doc.id);
+  if (c) c.innerHTML = reportMatchesHtml(doc);
+}
+function toggleAttach(docId, fileId, checked) {
+  const doc = allDocs.find(d => d.id === docId);
+  const m = doc && (doc.reportMatches || []).find(x => x.id === fileId);
+  if (m) m.attach = checked;
+}
+function onAttachToggle() {
+  if (attachEnabled()) {
+    loadAndMatchReports();
+  } else {
+    allDocs.forEach(d => { const c = document.getElementById('reports-' + d.id); if (c) c.innerHTML = ''; });
+  }
+}
+
+// Truncate keeping head + tail so a distinguishing suffix stays visible.
+function truncMid(s, n) {
+  s = s || '';
+  if (s.length <= n) return s;
+  const head = Math.ceil((n - 1) * 0.6), tail = Math.floor((n - 1) * 0.4);
+  return s.slice(0, head) + '…' + s.slice(s.length - tail);
+}
+// ArrayBuffer → base64 (chunked to avoid call-stack limits on big PDFs).
+function abToB64(buf) {
+  let bin = '';
+  const bytes = new Uint8Array(buf), chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(bin);
+}
 
 // Minimal CSV parser (quote-aware, preserves newlines inside quoted cells).
 // Ported from flips-shared.js parseCSV — create-invoices doesn't load that file.
@@ -824,6 +1056,11 @@ async function loadDocs() {
     // 3. Background — try to read amounts/clients from Google Docs content
     enrichDocsInBackground();
 
+    // 4. Background — find inspection reports that match each WO so they can be
+    // attached to the invoice. Independent of enrichment; PDFs already carry
+    // client + address from appProperties, which is enough to match on.
+    loadAndMatchReports();
+
   } catch(e) {
     showPlaceholder(`<div class="big-icon">⚠️</div><div>Error loading docs: ${e.message}</div>`);
   }
@@ -898,6 +1135,9 @@ async function enrichDocsInBackground() {
       }
 
       updateDocRow(doc);
+      // Enrichment may have filled in client / address / completion date — re-match
+      // reports for this row now that we can match more precisely.
+      if (reportFiles && attachEnabled()) { matchReportsForDoc(doc); paintReportMatches(doc); }
       enriched++;
     } catch(e) {
       failed++;
@@ -1130,6 +1370,7 @@ function renderDocList(docs) {
         <div class="doc-meta">Modified ${date}${clientStr}</div>
         ${locHtml}
         ${scopeHtml}
+        <div class="doc-reports" id="reports-${doc.id}">${reportMatchesHtml(doc)}</div>
       </div>
       ${amountHtml}
       ${doc.lineNum != null ? `<a class="doc-worklog-btn" href="worklog.html?row=${doc.lineNum}" target="_blank" onclick="event.stopPropagation()" title="Open Work Log row #${doc.lineNum}"><img src="img/sheets.svg" style="width:13px;height:13px;vertical-align:middle;"> #${doc.lineNum}</a>` : ''}
@@ -1296,6 +1537,7 @@ async function createInvoices() {
   btn.disabled = true; btn.classList.add('loading');
   setActionStatus('Creating invoices…', '');
   const results = [];
+  const env = document.getElementById('qb-env').value;   // shared by invoice + report-attach calls
 
   const docs = ids.map(id => allDocs.find(d => d.id === id)).filter(Boolean);
 
@@ -1352,6 +1594,19 @@ async function createInvoices() {
         await updateWorkLogInvoiced(doc, invoiceResult.DocNumber);
       } catch(wlErr) {
         console.warn('Work log invoiced stamp failed:', wlErr);
+      }
+      // Attach the reports the user left checked. Non-fatal — a failed attach
+      // never fails the invoice (it already exists in QB).
+      const attach = attachEnabled() ? (doc.reportMatches || []).filter(m => m.attach) : [];
+      if (attach.length) {
+        const r = results[results.length - 1];
+        r.attached = 0; r.attachFailed = 0;
+        for (const m of attach) {
+          try { await attachReportToInvoice(invoiceResult.Id, m, env); r.attached++; }
+          catch(aErr) { console.warn('Attach failed:', m.name, aErr); r.attachFailed++; }
+        }
+        if (r.attached)     toast(`📎 Attached ${r.attached} report${r.attached > 1 ? 's' : ''} to ${invoiceResult.DocNumber}`);
+        if (r.attachFailed) toast(`⚠ ${r.attachFailed} report(s) failed to attach to ${invoiceResult.DocNumber}`);
       }
     } catch(e) {
       results.push({ doc, status: 'error', message: e.message });
@@ -1611,6 +1866,41 @@ async function qbProxy(method, path, env, payload) {
   return res.json();
 }
 
+// Attach one matched report PDF to a QB invoice: pull the bytes from Drive, then
+// hand them to the Worker's /api/qb-upload route (which builds the multipart
+// Attachable upload QB requires). IncludeOnSend=true so it emails with the invoice.
+async function attachReportToInvoice(invoiceId, match, env) {
+  const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${match.id}?alt=media&supportsAllDrives=true`);
+  if (!res.ok) throw new Error('Drive fetch ' + res.status);
+  const contentBase64 = abToB64(await res.arrayBuffer());
+  return qbUpload(invoiceId, match.name, contentBase64, env);
+}
+
+async function qbUpload(invoiceId, fileName, contentBase64, env) {
+  const makeRequest = async () => fetch('/api/qb-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: qbAccessToken,
+      realm_id: qbRealmId,
+      env: env || 'sandbox',
+      invoiceId, fileName, contentBase64,
+      includeOnSend: true,
+    })
+  });
+
+  let res = await makeRequest();
+  if (res.status === 401) {
+    await refreshQBToken();
+    res = await makeRequest();
+  }
+  if (!res.ok) throw new Error(`QB upload HTTP ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  if (data.Fault) throw new Error(JSON.stringify(data.Fault));
+  if (data.error) throw new Error(data.message || data.error);
+  return data;
+}
+
 function buildQBLink(invoiceId) {
   const env = document.getElementById('qb-env').value;
   const base = env === 'production' ? 'https://app.qbo.intuit.com' : 'https://app.sandbox.qbo.intuit.com';
@@ -1628,9 +1918,12 @@ function showResults(results) {
     const _ramtVal = parseFloat(r.doc.amount);
     const amt = (r.doc.amount && !isNaN(_ramtVal)) ? `$${_ramtVal.toLocaleString('en-US',{minimumFractionDigits:2})}` : '—';
     const client = r.doc.client || '—';
-    const badge = r.status === 'ok'
+    const attachBadge = (r.status === 'ok' && (r.attached || r.attachFailed))
+      ? `<br><span style="font-size:0.68rem;color:${r.attachFailed ? '#b26a00' : '#2e7d32'};">📎 ${r.attached || 0} attached${r.attachFailed ? `, ${r.attachFailed} failed` : ''}</span>`
+      : '';
+    const badge = (r.status === 'ok'
       ? `<span class="badge badge-ok">✓ Created</span>`
-      : `<span class="badge badge-err">✗ Error</span>`;
+      : `<span class="badge badge-err">✗ Error</span>`) + attachBadge;
     const link = r.status === 'ok'
       ? `<span style="display:flex;flex-direction:column;gap:3px;">
            <a class="result-link" href="${r.link}" target="qb-invoice-${r.invoiceId}"
