@@ -246,7 +246,6 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .att-item input[type=checkbox] { width: 13px; height: 13px; accent-color: #2e7d32; flex-shrink: 0; cursor: pointer; }
 .att-name { font-weight: 600; color: #1b5e20; }
 .att-date { font-size: 0.66rem; color: #999; white-space: nowrap; }
-.att-maybe { color: #b26a00; font-size: 0.64rem; }
 
 /* ── Empty / loading states ── */
 #list-placeholder {
@@ -690,11 +689,13 @@ function matchReportsForDoc(doc) {
   const top = scored.slice(0, 5);
 
   // Preserve any prior user checkbox choices when re-matching (e.g. after enrich).
+  // Default is unchecked — a WO usually needs only one report, so the user picks
+  // the one to send rather than un-picking auto-selected extras.
   const prev = {};
   (doc.reportMatches || []).forEach(m => { prev[m.id] = m.attach; });
   doc.reportMatches = top.map(m => ({
     id: m.id, name: m.name, title: m.title, link: m.link, dateMs: m.dateMs, score: m.score,
-    attach: (m.id in prev) ? prev[m.id] : m.confident,
+    attach: (m.id in prev) ? prev[m.id] : false,
   }));
 }
 
@@ -718,13 +719,12 @@ function reportMatchesHtml(doc) {
   if (!ms.length) return '';
   const rows = ms.map(m => {
     const dt = m.dateMs ? `<span class="att-date">${new Date(m.dateMs).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}</span>` : '';
-    const maybe = m.attach ? '' : ` <span class="att-maybe">(check to attach)</span>`;
     return `<label class="att-item" onclick="event.stopPropagation()">
       <input type="checkbox" ${m.attach ? 'checked' : ''} onchange="event.stopPropagation();toggleAttach('${doc.id}','${m.id}',this.checked)">
-      📄 <span class="att-name">${escHtml(truncMid(m.title || m.name, 44))}</span>${dt}${maybe}
+      📄 <span class="att-name">${escHtml(truncMid(m.title || m.name, 44))}</span>${dt}
     </label>`;
   }).join('');
-  return `<div class="doc-reports-lbl">📎 ${ms.length} matching report${ms.length > 1 ? 's' : ''} — checked ones attach to the invoice</div>${rows}`;
+  return `<div class="doc-reports-lbl">📎 ${ms.length} matching report${ms.length > 1 ? 's' : ''} — check any to attach to the invoice</div>${rows}`;
 }
 // Repaint one row's report section in place (used when reports load after render).
 function paintReportMatches(doc) {
