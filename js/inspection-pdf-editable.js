@@ -1199,28 +1199,30 @@ async function buildGenericSystemPDFBytes() {
       const hdrH    = Math.max(sc(14), hdrLines.length * sc(9) + sc(4));
       // Rough space for the header + all check rows + note, so a damper block
       // isn't split awkwardly right after its header.
-      checkPage(hdrH + Math.ceil(CHK.length / 3) * 11 + (d.note ? 14 : 0) + 4);
+      const NCOL = 2; // 2 columns so the full check label fits (no truncation)
+      checkPage(hdrH + Math.ceil(CHK.length / NCOL) * 11 + (d.note ? 14 : 0) + 4);
       const bg = res === 'PASS' ? rgb(0.94, 0.99, 0.95) : res === 'FAIL' ? rgb(0.99, 0.93, 0.93) : lgray;
       page.drawRectangle({ x: ML, y: ry(hdrH), width: PW, height: hdrH, color: bg, borderColor: sky, borderWidth: 0.4 });
       hdrLines.forEach((ln, li) => page.drawText(ln, { x: ML + 4, y: ry(hdrH) + hdrH - sc(9) - li*sc(9), size: sc(8), font: hFont, color: navy }));
       page.drawText(resTxt, { x: ML + PW - hFont.widthOfTextAtSize(resTxt, sc(8)) - 5, y: ry(hdrH) + hdrH - 10, size: sc(8), font: hFont, color: resCol });
       curY += hdrH + 1;
 
-      // Sub-checks in 3 columns
+      // Sub-checks laid out in NCOL columns using the FULL check label (no
+      // truncation) — fewer columns / taller block, per the report design.
       const checks = d.checks || {};
-      const colW   = PW / 3;
+      const colW   = PW / NCOL;
       const chkRowH = sc(11);
       for (let i = 0; i < CHK.length; i++) {
         const c   = CHK[i];
-        const col = i % 3;
+        const col = i % NCOL;
         if (col === 0) checkPage(chkRowH);
         const cx  = ML + col * colW;
         const val = checks[c.id] || '';
         const vCol = val === 'PASS' ? green : val === 'FAIL' ? red : slate;
-        const lbl = c.short + ': ';
+        const lbl = c.label + ': ';
         page.drawText(lbl, { x: cx + 4, y: ry(chkRowH) + 2, size: sc(6.5), font: rFont, color: navy });
         page.drawText(val || '—', { x: cx + 4 + rFont.widthOfTextAtSize(lbl, sc(6.5)), y: ry(chkRowH) + 2, size: sc(6.5), font: hFont, color: vCol });
-        if (col === 2 || i === CHK.length - 1) curY += chkRowH;
+        if (col === NCOL - 1 || i === CHK.length - 1) curY += chkRowH;
       }
 
       if (d.note) {
