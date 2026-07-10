@@ -1094,7 +1094,7 @@ function addExtUnitRow(prefill) {
         <input type="hidden" id="u-cab-g-${n}" value="${p.cabG||''}">
         <input type="hidden" id="u-cab-s-${n}" value="${p.cabS||''}">
       </td>
-      <td><input type="text" inputmode="numeric" class="no-spin" id="u-mfg-${n}" value="${defMfg}" placeholder="Year" style="width:54px;"></td>
+      <td><input type="text" inputmode="numeric" class="no-spin" id="u-mfg-${n}" value="${defMfg}" placeholder="Year" style="width:54px;" oninput="extAutoHydro(${n})"></td>
       <td><input type="text" id="u-size-${n}" value="${(p.size||'').replace(/"/g,'&quot;')}" placeholder="lbs"></td>
       <td><select id="u-type-${n}">${typeSel}</select></td>
       <td><button class="del-btn" onclick="removeExtUnit(${n})">✕</button></td>
@@ -1123,7 +1123,7 @@ function addExtUnitRow(prefill) {
           </div>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:.7rem;font-weight:700;color:var(--slate);white-space:nowrap;">Hydro Due:</span>
-            <input type="text" inputmode="numeric" class="no-spin" id="u-hydro-${n}" value="${defHydro}" placeholder="Year" style="width:52px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.8rem;font-family:inherit;">
+            <input type="text" inputmode="numeric" class="no-spin" id="u-hydro-${n}" value="${defHydro}" placeholder="Year" title="Auto-fills to manufacture year + 6 when you enter a mfg year. Edit to override." style="width:52px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:.8rem;font-family:inherit;" oninput="this.dataset.manual='1'">
           </div>
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:.7rem;font-weight:700;color:var(--slate);white-space:nowrap;">Recharge:</span>
@@ -1155,6 +1155,20 @@ function addExtUnitRow(prefill) {
   if (p.pf) _restoreExtBtns(n);
   if (p.noteTxt) document.getElementById('ext-note-row-' + n).style.display = '';
   updateExtStats();
+}
+
+// Auto-fill Hydro Due = manufacture year + 6 (the hydro-test interval) as the tech
+// types a mfg year. Backs off once the tech hand-edits the Hydro Due field
+// (data-manual flag), so the value is always overridable.
+const EXT_HYDRO_INTERVAL_YEARS = 6;
+function extAutoHydro(n) {
+  const mfgEl = document.getElementById('u-mfg-' + n);
+  const hydroEl = document.getElementById('u-hydro-' + n);
+  if (!mfgEl || !hydroEl) return;
+  if (hydroEl.dataset.manual === '1') return;          // tech overrode it — leave alone
+  const m = (mfgEl.value || '').trim();
+  if (!/^\d{4}$/.test(m)) return;                       // need a full year to compute
+  hydroEl.value = String(parseInt(m, 10) + EXT_HYDRO_INTERVAL_YEARS);
 }
 
 function setPFTable(btn, id, val) {
