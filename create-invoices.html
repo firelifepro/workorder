@@ -1444,12 +1444,14 @@ function toggleRow(id) {
 }
 
 function toggleAll(checked) {
-  document.querySelectorAll('#doc-list input[type=checkbox]').forEach(c => c.checked = checked);
+  // Only the work-order row checkboxes (id="chk-…") — NOT the per-report
+  // attach checkboxes, which also live inside #doc-list.
+  document.querySelectorAll('#doc-list input[type=checkbox][id^="chk-"]').forEach(c => c.checked = checked);
   onCheckChange();
 }
 
 function onCheckChange() {
-  const all = document.querySelectorAll('#doc-list input[type=checkbox]');
+  const all = document.querySelectorAll('#doc-list input[type=checkbox][id^="chk-"]');
   all.forEach(chk => {
     const row = chk.closest('.doc-row');
     if (row) row.classList.toggle('selected', chk.checked);
@@ -1465,7 +1467,7 @@ function updateSelectedCount() {
 }
 
 function getCheckedIds() {
-  return [...document.querySelectorAll('#doc-list input[type=checkbox]:checked')].map(c => c.id.replace('chk-', ''));
+  return [...document.querySelectorAll('#doc-list input[type=checkbox][id^="chk-"]:checked')].map(c => c.id.replace('chk-', ''));
 }
 
 // ─────────────────────────────────────────────────────────
