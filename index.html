@@ -616,6 +616,9 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
     </tr>
   </table>
 
+  <!-- ══ PRICING HISTORY (advisory — filled by js/flips-price-history.js) ══ -->
+  <div id="price-history-panel" style="display:none;"></div>
+
   <!-- ══ FIRE SYSTEM INFORMATION ══ -->
   <table class="wo-table">
     <tr><td colspan="4" class="section-header">FIRE SYSTEM INFORMATION</td></tr>
@@ -988,6 +991,7 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 <script src="js/flips-shared.js"></script>
 <script src="js/flips-google-fetch.js"></script>
 <script src="js/flips-history.js"></script>
+<script src="js/flips-price-history.js"></script>
 
 <script>
 
@@ -1059,6 +1063,17 @@ function hasInspectionChecked() {
   return [...document.querySelectorAll('input[name="svc"]:checked')]
     .some(cb => INSPECTION_SVC_PREFIXES.some(p => cb.value.startsWith(p)));
 }
+
+// ─────────────────────────────────────────────────────────
+// PRICING HISTORY PANEL — refresh when property or services change
+// (rendering lives in js/flips-price-history.js)
+// ─────────────────────────────────────────────────────────
+function onPropertySelectExtras(d) {
+  schedulePricePanel();
+}
+document.addEventListener('change', e => {
+  if (e.target && e.target.name === 'svc') schedulePricePanel();
+});
 
 // ─────────────────────────────────────────────────────────
 // FLAT RATE
@@ -1738,13 +1753,19 @@ async function createDoc() {
               flips_city_st:    data['CITY / STATE / ZIP'] || '',
               flips_line_num:   data['LINE #']             || '',
               flips_date:       data['DATE COMPLETED ISO'] || '',
-              flips_services:   (data['SERVICES'] || '').split('\n')[0] || '',
+              // Full service list (was first-line-only). Drive caps each
+              // appProperty at 124 bytes key+value, hence the byte truncate.
+              flips_services:   phTruncateBytes((data['SERVICES'] || '').split('\n').filter(s => s && s !== '(none selected)').join(' | '), 108),
           }}
         );
       } catch(patchErr) {
         console.warn('[WO] appProperties patch failed:', patchErr);
       }
     }
+
+    // Price History upsert — keyed on line #, so edit re-saves update the
+    // same row instead of double-counting. Fire-and-forget.
+    upsertPriceHistoryFromWO(data).catch(e => console.warn('[WO] price history:', e.message));
 
     if (data['LINE #'] && !editModeFileId) {
       updateWorkLogRowToInvoice(data['LINE #']).catch(e => console.warn('[WO] worklog status update:', e.message));
