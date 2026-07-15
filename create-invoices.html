@@ -1597,6 +1597,11 @@ async function createInvoices() {
       } catch(wlErr) {
         console.warn('Work log invoiced stamp failed:', wlErr);
       }
+      // Price History reconciliation — stamp QB invoice # + billed amount on
+      // the row for this line #, so the pricing panel on index.html shows
+      // ✓ QB-confirmed figures. Non-fatal.
+      reconcilePriceHistoryQB(doc.lineNum, invoiceResult.DocNumber, invoiceResult.TotalAmt)
+        .catch(pErr => console.warn('Price history QB stamp failed:', pErr.message));
       // Attach the reports the user left checked. Non-fatal — a failed attach
       // never fails the invoice (it already exists in QB).
       const attach = attachEnabled() ? (doc.reportMatches || []).filter(m => m.attach) : [];
@@ -2435,6 +2440,7 @@ window.addEventListener('load', () => {
 });
 </script>
 <script src="js/flips-google-fetch.js"></script>
+<script src="js/flips-price-history.js"></script>
 <script>window.FLIPS_MODAL_CONFIG = { requiresQB: true };</script>
 <script src="js/flips-conn-modal.js"></script>
 </body>

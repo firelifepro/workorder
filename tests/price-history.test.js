@@ -106,6 +106,17 @@ test('stats: aggregates count distinct properties', () => {
   assert.strictEqual(s.all.props, 2);
 });
 
+test('stats: QB-reconciled amount supersedes the work-order total', () => {
+  const rows = [
+    mk({ lineNum: '1', total: 500, qbAmount: 525, source: 'qb-reconciled' }),
+    mk({ lineNum: '2', total: 475 }),   // no QB amount → WO total stands
+  ];
+  const s = phComputeStats(rows, CTX).services[0];
+  assert.strictEqual(s.all.avg, 500);   // (525 + 475) / 2 — not (500 + 475) / 2
+  const latest = s.property.find(e => e.lineNum === '1');
+  assert.strictEqual(latest.total, 525);
+});
+
 test('stats: multi-service rows are excluded from per-service math', () => {
   const rows = [
     mk({ lineNum: '1', total: 450 }),

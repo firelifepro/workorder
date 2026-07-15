@@ -121,7 +121,11 @@ function phComputeStats(rows, ctx) {
   const email = (ctx.billingEmail || '').trim().toLowerCase();
   const prop  = (ctx.propertyName || '').trim().toLowerCase();
 
-  const usable = (rows || []).filter(r => r && r.total > 0 && r.services && r.services.length);
+  // QB-reconciled rows carry the actually-billed amount — the gold standard —
+  // so it supersedes the work-order total in every calculation.
+  const usable = (rows || [])
+    .map(r => (r && r.qbAmount > 0) ? Object.assign({}, r, { total: r.qbAmount }) : r)
+    .filter(r => r && r.total > 0 && r.services && r.services.length);
   const isProp = r => (acct && r.acctNum && r.acctNum === acct)
                    || (prop && (r.property || '').toLowerCase() === prop);
   const isGroup = r => !!email && r.billingEmail === email;
@@ -273,6 +277,36 @@ async function upsertPriceHistoryFromWO(data) {
     );
   }
   try { sessionStorage.removeItem(PH_CACHE_KEY); } catch (_) {}
+}
+
+// Phase-3 reconciliation — called by create-invoices.html right after a QB
+// invoice is created. Stamps K–N (source → qb-reconciled, QB invoice #,
+// billed amount, timestamp) on the row matching the Work Log line #.
+// Update-only: rows exist for every WO saved since the panel shipped and for
+// backfilled ones; anything else just logs and moves on.
+async function reconcilePriceHistoryQB(lineNum, qbInvoiceNum, qbAmount) {
+  const ln = String(lineNum || '').trim();
+  if (!ln) return false;
+  const rows = await loadPriceHistoryRows(true);
+  const row = rows.find(r => r.lineNum === ln);
+  if (!row) {
+    console.log('[PriceHist] no history row for line #' + ln + ' — QB stamp skipped');
+    return false;
+  }
+  const range = `${PRICE_HISTORY_TAB}!K${row.rowNum}:N${row.rowNum}`;
+  const res = await apiFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+    'PUT',
+    { values: [[
+      'qb-reconciled',
+      String(qbInvoiceNum || ''),
+      qbAmount != null && isFinite(qbAmount) ? String(qbAmount) : '',
+      new Date().toISOString(),
+    ]] }
+  );
+  if (!res.ok) throw new Error('QB stamp HTTP ' + res.status);
+  try { sessionStorage.removeItem(PH_CACHE_KEY); } catch (_) {}
+  return true;
 }
 
 // ─── Advisory panel (index.html) ─────────────────────────
