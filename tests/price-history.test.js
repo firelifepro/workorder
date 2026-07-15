@@ -95,6 +95,17 @@ test('stats: property / group / all tiers from single-service rows', () => {
   assert.strictEqual(s.all.n, 3);
 });
 
+test('stats: aggregates count distinct properties', () => {
+  const rows = [
+    mk({ lineNum: '1', total: 400 }),
+    mk({ lineNum: '2', total: 500 }),                                   // same property
+    mk({ lineNum: '3', total: 450, acctNum: 'A2', property: 'Elm Court' }),
+  ];
+  const s = phComputeStats(rows, CTX).services[0];
+  assert.strictEqual(s.all.n, 3);
+  assert.strictEqual(s.all.props, 2);
+});
+
 test('stats: multi-service rows are excluded from per-service math', () => {
   const rows = [
     mk({ lineNum: '1', total: 450 }),

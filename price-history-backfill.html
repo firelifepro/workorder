@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<title>FLPS – Price History Backfill</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; background: #e8e8e8; color: #000; }
+#conn-drawer { background: #0f0f23; border-bottom: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+#conn-drawer.open { max-height: 420px; }
+.conn-drawer-inner { padding: 14px 20px; display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; }
+.conn-field { display: flex; flex-direction: column; gap: 4px; }
+.conn-field label { font-size: 0.7rem; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.conn-field input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-family: inherit; width: 240px; }
+.conn-btn { background: #2e6da4; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; align-self: flex-end; }
+.conn-btn:hover { background: #4a86e8; }
+.conn-status-pill { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; align-self: center; }
+.conn-status-pill.ok { background: rgba(31,178,114,0.2); color: #7fffb8; border: 1px solid rgba(31,178,114,0.3); }
+.conn-status-pill.err { background: rgba(220,53,69,0.2); color: #ff8888; border: 1px solid rgba(220,53,69,0.3); }
+.conn-status-pill.warn { background: rgba(249,168,37,0.2); color: #ffe082; border: 1px solid rgba(249,168,37,0.3); }
+#top-bar { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+#top-bar h1 { font-size: 1rem; font-weight: 600; }
+.nav-hamburger { position: relative; }
+.hamburger-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+.nav-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 230px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; overflow: hidden; }
+.nav-menu.open { display: block; }
+.nav-menu a { display: block; padding: 10px 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.82rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.nav-menu a:hover { background: rgba(255,255,255,0.1); color: white; }
+.nav-menu a.active { color: #7fc4fd; font-weight: 600; }
+.nav-section-label { padding: 7px 16px 3px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.38); font-weight: 700; }
+#content { padding: 18px 24px; max-width: min(1840px, 98vw); margin: 0 auto; }
+#notes { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.78rem; color: #5b4a00; line-height: 1.5; }
+#controls { background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+.btn { border: none; border-radius: 4px; padding: 8px 15px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.btn-primary { background: #2e6da4; color: white; } .btn-primary:hover { background: #4a86e8; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn-green { background: #1fb272; color: white; } .btn-green:hover { background: #27ae60; }
+#progress { font-size: 0.8rem; color: #555; margin-bottom: 12px; min-height: 18px; }
+#progress.err { color: #c0392b; } #progress.done { color: #1b7a4b; }
+#table-wrap { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+thead th { background: #1a1a2e; color: white; padding: 9px 10px; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+tbody td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+tbody tr.already { background: #fafafa; color: #999; }
+tbody tr.imported { background: #f1faf4; }
+tbody tr.review td { background: #fffbf0; }
+.fname a { font-size: 0.7rem; color: #2e6da4; text-decoration: none; }
+.fname a:hover { text-decoration: underline; }
+.svc-warn { color: #b8860b; font-size: 0.7rem; font-weight: 600; cursor: help; }
+.src-tag { font-size: 0.66rem; font-weight: 700; padding: 2px 6px; border-radius: 8px; }
+.src-json { background: #e6f4ea; color: #1b7a4b; } .src-doc { background: #e8f0fe; color: #1a56b0; } .src-props { background: #fdf3dc; color: #8a6d00; }
+.row-status { font-size: 0.7rem; color: #888; } .row-status.ok { color: #1b7a4b; font-weight: 700; } .row-status.err { color: #c0392b; }
+#empty { text-align: center; padding: 50px; color: #999; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: white; padding: 10px 22px; border-radius: 6px; font-size: 0.85rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.3s; z-index: 9999; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="nav-hamburger">
+    <button class="hamburger-btn" onclick="toggleNav()">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <div class="nav-section-label">Administrators</div>
+      <a href="index.html">📝 Work Orders</a>
+      <a href="clients.html">👥 Client Management</a>
+      <a href="worklog.html">📊 Work Log</a>
+      <a href="create-invoices.html">🧾 Create QB Invoices</a>
+      <a href="legacy-cleanup.html">🧹 Legacy Report Cleanup</a>
+      <a href="price-history-backfill.html" class="active">💰 Price History Backfill</a>
+    </div>
+  </div>
+  <h1>💰 Price History Backfill</h1>
+  <span id="conn-status" class="conn-status-pill warn">Not connected</span>
+  <button class="conn-btn" style="padding:4px 10px;font-size:0.72rem;" onclick="document.getElementById('conn-drawer').classList.toggle('open')">⚙ Connection</button>
+</div>
+
+<div id="conn-drawer">
+  <div class="conn-drawer-inner">
+    <div class="conn-field"><label>Google API Key</label><input type="password" id="api-key" placeholder="AIzaSy…"></div>
+    <div class="conn-field"><label>OAuth Client ID</label><input type="text" id="client-id" placeholder="…apps.googleusercontent.com"></div>
+    <button class="conn-btn" onclick="initGoogle()">🔗 Connect Google</button>
+  </div>
+</div>
+
+<div id="content">
+  <div id="notes">
+    <b>One-time backfill.</b> Scans the work-order Drive folders (<b>2 - Ready to Invoice</b> and <b>3 - Invoice Sent</b>) and seeds the
+    <b>Price History</b> tab that powers the pricing panel on the <a href="index.html">work order form</a>. Each WO is read from the best
+    source available: <span class="src-tag src-json">JSON</span> full form data · <span class="src-tag src-doc">DOC</span> parsed from the
+    Google Doc text · <span class="src-tag src-props">PROPS</span> Drive metadata only (older files stored just the <i>first</i> service, so
+    these are flagged <span class="svc-warn">⚠ may be incomplete</span> and left unchecked — open the file, verify, then tick to include).
+    WOs already in the Price History tab are skipped, so re-running is safe. Nothing is written until you click Import.
+  </div>
+
+  <div id="controls">
+    <button class="btn btn-primary" id="scan-btn" onclick="scan()">🔍 Scan WO folders</button>
+    <button class="btn btn-green" id="import-btn" onclick="importChecked()" disabled>📥 Import checked rows</button>
+    <span id="counts" style="font-size:0.78rem;color:#555;"></span>
+    <label style="margin-left:auto;font-size:0.74rem;color:#666;"><input type="checkbox" id="hide-already" checked onchange="render()"> Hide already-recorded</label>
+  </div>
+
+  <div id="progress"></div>
+  <div id="table-wrap">
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="check-all" onclick="toggleAll(this.checked)"></th>
+        <th>WO Line #</th><th>Date</th><th>Property</th><th>Services</th><th>Total</th><th>Source</th><th>File</th><th>Status</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty">Connect Google, then click "Scan WO folders".</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="js/flips-google-fetch.js"></script>
+<script src="js/flips-price-history.js"></script>
+<script>
+'use strict';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly';
+const WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+const WO_FOLDERS = ['2 - Ready to Invoice', '3 - Invoice Sent'];
+
+let accessToken = null, tokenClient = null;
+let rows = [];   // one per WO line #
+
+// ── ui helpers ─────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500);
+}
+function setStatus(msg, cls) {
+  const el = document.getElementById('conn-status');
+  el.textContent = msg; el.className = 'conn-status-pill ' + (cls || 'warn');
+}
+function setProgress(msg, cls) {
+  const el = document.getElementById('progress');
+  el.textContent = msg || ''; el.className = cls || '';
+}
+function toggleNav() { document.getElementById('nav-menu').classList.toggle('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-hamburger')) document.getElementById('nav-menu').classList.remove('open');
+});
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+// ── auth ───────────────────────────────────────────────────
+function initGoogle() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  if (!apiKey || !clientId) { toast('⚠ Enter API Key and Client ID'); return; }
+  localStorage.setItem('flips_api_key', apiKey); localStorage.setItem('flips_client_id', clientId);
+  setStatus('Connecting…', '');
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId, scope: SCOPES,
+      callback: (resp) => {
+        if (resp.error) { setStatus('✗ ' + resp.error, 'err'); return; }
+        accessToken = resp.access_token;
+        localStorage.setItem('flips_access_token', accessToken);
+        localStorage.setItem('flips_token_expiry', Date.now() + 55*60*1000);
+        setStatus('✓ Connected', 'ok');
+        document.getElementById('conn-drawer').classList.remove('open');
+      },
+      error_callback: (err) => setStatus('✗ ' + (err.message || err.type), 'err')
+    });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e) { setStatus('✗ ' + e.message, 'err'); }
+}
+
+// ── parsers (ported from create-invoices.html) ─────────────
+function extractDocText(docData) {
+  function walk(blocks) {
+    let out = '';
+    for (const block of (blocks || [])) {
+      if (block.paragraph) for (const el of (block.paragraph.elements || [])) out += (el.textRun?.content || '');
+      if (block.table) for (const row of (block.table.tableRows || [])) for (const cell of (row.tableCells || [])) out += walk(cell.content);
+    }
+    return out;
+  }
+  return walk(docData?.body?.content || []);
+}
+function toIso(str) {
+  if (!str) return '';
+  str = String(str).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const mdy = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  const d = new Date(str);
+  return isNaN(d) ? '' : d.toISOString().split('T')[0];
+}
+function parseDocAmount(text) {
+  const mFixed = text.match(/fixed\s+rate[\s\S]{0,20}?(\d[\d,]*\.\d{2})/i);
+  if (mFixed) { const v = parseFloat(mFixed[1].replace(/,/g, '')); if (v > 0) return { total: v, fixedRate: true }; }
+  const m = text.match(/total[\s\S]{0,30}?to[\s\S]{0,30}?invoice[\s\S]{0,40}?(\d[\d,]*\.\d{2})/i);
+  if (m) { const v = parseFloat(m[1].replace(/,/g, '')); if (v > 0) return { total: v, fixedRate: false }; }
+  return { total: null, fixedRate: false };
+}
+function parseDocField(text, re) { const m = text.match(re); return m ? m[1].trim() : ''; }
+function parseDocDate(text) {
+  const idx = text.search(/date\s+completed/i);
+  if (idx < 0) return '';
+  const m = text.slice(idx, idx + 120).match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{4}|\d{4}-\d{2}-\d{2})/);
+  return m ? toIso(m[1]) : '';
+}
+function parseLineNum(name) { const m = String(name || '').match(/Line\s+(\d+)/i); return m ? String(parseInt(m[1], 10)) : ''; }
+
+// ── drive scan ─────────────────────────────────────────────
+async function findFolder(name) {
+  const q = encodeURIComponent(`name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+  const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+  if (!res.ok) throw new Error(`folder lookup "${name}" HTTP ` + res.status);
+  return (await res.json()).files?.[0]?.id || null;
+}
+
+async function listFolderFiles(folderId) {
+  const out = [];
+  let pageToken = '';
+  do {
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name,mimeType,modifiedTime,appProperties)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? '&pageToken=' + pageToken : ''}`);
+    if (!res.ok) throw new Error('file list HTTP ' + res.status);
+    const json = await res.json();
+    out.push(...(json.files || []));
+    pageToken = json.nextPageToken || '';
+  } while (pageToken);
+  return out;
+}
+
+// Best-source parse for one WO's file group. Preference: JSON (full form
+// dict) > Google Doc (text parse) > PDF appProperties (may be incomplete).
+async function parseGroup(lineNum, files) {
+  const byTime = (a, b) => (b.modifiedTime || '').localeCompare(a.modifiedTime || '');
+  const json = files.filter(f => f.mimeType === 'application/json').sort(byTime)[0];
+  const gdoc = files.filter(f => f.mimeType === 'application/vnd.google-apps.document').sort(byTime)[0];
+  const withProps = files.filter(f => f.appProperties?.flips_amount).sort(byTime)[0];
+  const anyFile = json || gdoc || withProps || files[0];
+  const base = {
+    lineNum, fileId: anyFile.id, fileName: anyFile.name, mimeType: anyFile.mimeType,
+    date: '', property: '', acctNum: '', billingEmail: '', mgmtCo: '',
+    services: [], total: null, fixedRate: false, srcKind: '', uncertain: false,
+  };
+
+  if (json) {
+    const res = await apiFetch(`https://www.googleapis.com/drive/v3/files/${json.id}?alt=media&supportsAllDrives=true`);
+    if (res.ok) {
+      const d = await res.json();
+      base.fileId = json.id; base.fileName = json.name; base.mimeType = json.mimeType;
+      base.srcKind = 'json';
+      base.services = (d['SERVICES'] || '').split('\n').map(s => s.trim()).filter(s => s && s !== '(none selected)');
+      base.total = phParseAmount(d['TOTAL TO INVOICE']);
+      base.date = d['DATE COMPLETED ISO'] || toIso(d['DATE COMPLETED']) || '';
+      base.property = d['PROPERTY NAME'] || '';
+      base.acctNum = d['FLPS ACCT #'] || '';
+      base.billingEmail = (d['BILLING EMAIL'] || '').trim().toLowerCase();
+      base.mgmtCo = d['CLIENT / COMPANY'] || '';
+      base.fixedRate = d['FLAT RATE'] === 'Yes';
+      return base;
+    }
+  }
+
+  if (gdoc) {
+    const res = await apiFetch(`https://docs.googleapis.com/v1/documents/${gdoc.id}?fields=body`);
+    if (res.ok) {
+      const text = extractDocText(await res.json());
+      const amt = parseDocAmount(text);
+      base.fileId = gdoc.id; base.fileName = gdoc.name; base.mimeType = gdoc.mimeType;
+      base.srcKind = 'doc';
+      // The doc renders only the SELECTED services, as the exact checkbox
+      // strings — so a literal search finds them without fuzzy matching.
+      base.services = PH_ALL_SERVICES.filter(s => text.includes(s));
+      base.total = amt.total;
+      base.fixedRate = amt.fixedRate;
+      base.date = parseDocDate(text) || (gdoc.modifiedTime || '').slice(0, 10);
+      base.property = parseDocField(text, /Property\s+Name[:\s]+([^\n\r\t]+)/i);
+      base.acctNum = parseDocField(text, /FLPS\s+Account\s+#[:\s]+([\d]+)/i);
+      base.billingEmail = parseDocField(text, /Billing\s+Email[:\s]+([^\n\r\t]+)/i).toLowerCase();
+      base.mgmtCo = parseDocField(text, /Client\s*\/\s*Company[:\s]+([^\n\r\t]+)/i);
+      return base;
+    }
+  }
+
+  if (withProps) {
+    const p = withProps.appProperties;
+    base.fileId = withProps.id; base.fileName = withProps.name; base.mimeType = withProps.mimeType;
+    base.srcKind = 'props';
+    let raw = (p.flips_services || '').trim();
+    if (raw.endsWith('…')) {   // byte-truncated list — drop the cut-off tail
+      raw = raw.slice(0, -1);
+      raw = raw.includes(' | ') ? raw.slice(0, raw.lastIndexOf(' | ')) : '';
+    }
+    base.services = raw.split('|').map(s => s.trim()).filter(Boolean);
+    // Pre-2026-07 saves stored only the FIRST service — no way to tell from
+    // metadata alone whether more were checked, so props rows are uncertain.
+    base.uncertain = true;
+    base.total = phParseAmount(p.flips_amount);
+    base.date = p.flips_date || (withProps.modifiedTime || '').slice(0, 10);
+    base.property = p.flips_client || '';
+    base.acctNum = p.flips_acct_num || '';
+    base.billingEmail = (p.flips_bill_email || '').trim().toLowerCase();
+    return base;
+  }
+
+  base.srcKind = 'none';
+  return base;
+}
+
+async function scan() {
+  if (!accessToken) { toast('⚠ Connect Google first'); return; }
+  document.getElementById('scan-btn').disabled = true;
+  rows = []; render();
+  try {
+    setProgress('Reading existing Price History tab…');
+    const existing = new Set((await loadPriceHistoryRows(true)).map(r => r.lineNum));
+
+    const groups = new Map();   // lineNum -> [files]
+    for (const folderName of WO_FOLDERS) {
+      setProgress(`Listing "${folderName}"…`);
+      const folderId = await findFolder(folderName);
+      if (!folderId) { toast(`⚠ Folder "${folderName}" not found`); continue; }
+      for (const f of await listFolderFiles(folderId)) {
+        const ln = (f.appProperties?.flips_line_num || '').trim() || parseLineNum(f.name);
+        if (!ln) continue;
+        if (!groups.has(ln)) groups.set(ln, []);
+        groups.get(ln).push(f);
+      }
+    }
+
+    const lineNums = [...groups.keys()].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+    let i = 0;
+    for (const ln of lineNums) {
+      i++;
+      setProgress(`Parsing WO ${i} of ${lineNums.length} (line #${ln})…`);
+      let r;
+      if (existing.has(ln)) {
+        const f = groups.get(ln)[0];
+        r = { lineNum: ln, fileId: f.id, fileName: f.name, mimeType: f.mimeType, services: [],
+              total: null, date: '', property: '', srcKind: '', uncertain: false, status: 'already' };
+      } else {
+        try { r = await parseGroup(ln, groups.get(ln)); }
+        catch(e) { r = { lineNum: ln, fileName: groups.get(ln)[0].name, services: [], total: null, status: 'error', error: e.message }; }
+        if (!r.status) {
+          r.status = (r.services.length && r.total > 0 && r.date) ? 'ok' : 'review';
+        }
+      }
+      r.checked = r.status === 'ok' && !r.uncertain;
+      rows.push(r);
+      if (i % 10 === 0) render();
+    }
+    render();
+    const ok = rows.filter(r => r.checked).length;
+    const already = rows.filter(r => r.status === 'already').length;
+    setProgress(`Scan complete — ${rows.length} work orders found · ${already} already recorded · ${ok} ready to import.`, 'done');
+  } catch(e) {
+    setProgress('⚠ ' + e.message, 'err');
+  } finally {
+    document.getElementById('scan-btn').disabled = false;
+  }
+}
+
+// ── render ─────────────────────────────────────────────────
+function fileLink(r) {
+  if (!r.fileId) return esc(r.fileName || '');
+  const url = r.mimeType === 'application/vnd.google-apps.document'
+    ? `https://docs.google.com/document/d/${r.fileId}/edit`
+    : `https://drive.google.com/file/d/${r.fileId}/view`;
+  return `<a href="${url}" target="_blank" title="${esc(r.fileName || '')}">open ↗</a>`;
+}
+const SRC_LABELS = { json: ['JSON', 'src-json'], doc: ['DOC', 'src-doc'], props: ['PROPS', 'src-props'] };
+
+function render() {
+  const tb = document.getElementById('tbody');
+  const hideAlready = document.getElementById('hide-already').checked;
+  const visible = rows.filter(r => !(hideAlready && r.status === 'already'));
+  document.getElementById('empty').style.display = visible.length ? 'none' : 'block';
+
+  tb.innerHTML = visible.map(r => {
+    const idx = rows.indexOf(r);
+    const [srcLbl, srcCls] = SRC_LABELS[r.srcKind] || ['—', ''];
+    const svc = r.services.length
+      ? esc(r.services.join(' | ')) + (r.uncertain ? ' <span class="svc-warn" title="Older Drive metadata stored only the first service — open the file to verify the full list before including this row.">⚠ may be incomplete</span>' : '')
+      : '<span style="color:#bbb;">none parsed</span>';
+    const statusHtml = {
+      already:  '<span class="row-status">already recorded</span>',
+      ok:       '<span class="row-status ok">ready</span>',
+      review:   '<span class="row-status" style="color:#b8860b;">needs review</span>',
+      imported: '<span class="row-status ok">✓ imported</span>',
+      error:    `<span class="row-status err" title="${esc(r.error || '')}">error</span>`,
+    }[r.status] || '';
+    const disabled = r.status === 'already' || r.status === 'imported' || r.status === 'error';
+    return `<tr class="${r.status === 'already' ? 'already' : r.status === 'imported' ? 'imported' : r.status === 'review' ? 'review' : ''}">
+      <td><input type="checkbox" ${r.checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="rows[${idx}].checked=this.checked;updateCounts()"></td>
+      <td><a href="worklog.html?row=${encodeURIComponent(r.lineNum)}" target="_blank" style="color:#2e6da4;">#${esc(r.lineNum)}</a></td>
+      <td>${esc(r.date || '')}</td>
+      <td>${esc(r.property || '')}</td>
+      <td>${svc}</td>
+      <td>${r.total > 0 ? '$' + r.total.toLocaleString('en-US') : ''}</td>
+      <td>${srcLbl !== '—' ? `<span class="src-tag ${srcCls}">${srcLbl}</span>` : '—'}</td>
+      <td class="fname">${fileLink(r)}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+  updateCounts();
+}
+
+function toggleAll(on) {
+  rows.forEach(r => {
+    if (r.status === 'ok' || r.status === 'review') r.checked = on && r.services.length > 0 && r.total > 0;
+  });
+  render();
+}
+
+function updateCounts() {
+  const n = rows.filter(r => r.checked).length;
+  document.getElementById('counts').textContent = rows.length ? `${n} row${n === 1 ? '' : 's'} checked` : '';
+  document.getElementById('import-btn').disabled = n === 0;
+}
+
+// ── import ─────────────────────────────────────────────────
+async function importChecked() {
+  const picked = rows.filter(r => r.checked && r.services.length && r.total > 0);
+  if (!picked.length) { toast('⚠ Nothing checked (rows need services + a total)'); return; }
+  document.getElementById('import-btn').disabled = true;
+  try {
+    setProgress('Ensuring Price History tab…');
+    await ensurePriceHistoryTab();
+    const now = new Date().toISOString();
+    const values = picked.map(r => [
+      r.date || '', r.lineNum, r.property || '', r.acctNum || '', r.billingEmail || '',
+      r.mgmtCo || '', r.services.join(' | '), String(r.services.length), String(r.total),
+      r.fixedRate ? 'Yes' : 'No', 'backfill', '', '', now,
+    ]);
+    setProgress(`Appending ${values.length} rows…`);
+    const res = await apiFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${WR_SHEET_ID}/values/${encodeURIComponent(PRICE_HISTORY_TAB + '!A1:N1')}:append?valueInputOption=RAW`,
+      'POST', { values }
+    );
+    if (!res.ok) throw new Error('append HTTP ' + res.status);
+    picked.forEach(r => { r.status = 'imported'; r.checked = false; });
+    try { sessionStorage.removeItem(PH_CACHE_KEY); } catch(_) {}
+    render();
+    setProgress(`✓ Imported ${values.length} work orders into Price History.`, 'done');
+    toast(`✓ ${values.length} rows imported`);
+  } catch(e) {
+    setProgress('⚠ Import failed: ' + e.message, 'err');
+  } finally {
+    updateCounts();
+  }
+}
+
+// ── boot ───────────────────────────────────────────────────
+(function boot() {
+  const k = localStorage.getItem('flips_api_key'), c = localStorage.getItem('flips_client_id');
+  if (k) document.getElementById('api-key').value = k;
+  if (c) document.getElementById('client-id').value = c;
+  if (!k || !c) { document.getElementById('conn-drawer').classList.add('open'); return; }
+  const cachedToken = localStorage.getItem('flips_access_token');
+  const exp = parseInt(localStorage.getItem('flips_token_expiry') || '0', 10);
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: c, scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { setStatus('⚠ Session expired', 'err'); document.getElementById('conn-drawer').classList.add('open'); return; }
+      accessToken = resp.access_token;
+      localStorage.setItem('flips_access_token', accessToken);
+      localStorage.setItem('flips_token_expiry', Date.now() + 55*60*1000);
+      setStatus('✓ Connected', 'ok');
+    },
+  });
+  if (cachedToken && Date.now() < exp) { accessToken = cachedToken; setStatus('✓ Connected', 'ok'); }
+  else { setStatus('⏳ Reconnecting…', ''); tokenClient.requestAccessToken({ prompt: '' }); }
+})();
+</script>
+</body>
+</html>

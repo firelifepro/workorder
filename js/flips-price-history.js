@@ -34,6 +34,22 @@ function phIsRateable(svc) {
   return PH_RATEABLE_PREFIXES.some(p => (svc || '').startsWith(p));
 }
 
+// Every canonical service checkbox value on index.html (en-dash included).
+// price-history-backfill.html searches legacy WO doc text for these exact
+// strings. Keep in sync with the `input[name="svc"]` values in index.html.
+const PH_ALL_SERVICES = [
+  'Fire Alarm – Annual', 'Fire Alarm – Semi Annual', 'Fire Alarm – Quarterly', 'Fire Alarm – Monthly',
+  'Sprinkler – Annual', 'Sprinkler – Semi Annual', 'Sprinkler – Quarterly', 'Sprinkler – Monthly',
+  'Extinguisher – Annual', 'Extinguisher – Semi Annual', 'Extinguisher – Quarterly', 'Extinguisher – Monthly',
+  'Exit Light – Annual', 'Exit Light – Semi Annual', 'Exit Light – Quarterly', 'Exit Light – Monthly',
+  'Hood Inspection – Annual', 'Hood Inspection – Semi Annual',
+  'Fire Pump Inspection – Annual', 'Fire Pump Inspection – Semi Annual', 'Fire Pump Inspection – Quarterly', 'Fire Pump Inspection – Monthly',
+  'Jockey Pump Inspection – Annual', 'Jockey Pump Inspection – Semi Annual', 'Jockey Pump Inspection – Quarterly', 'Jockey Pump Inspection – Monthly',
+  '5-Year Internal Pipe Inspection', '5-Year FDC Hydrostatic Test', '3-Year Dry Pipe Test', 'Annual Backflow Prevention Test',
+  'Deficiency Correction', 'Repair / Service Call', 'New Installation',
+  'Monitoring Setup / Change', 'Sub-Contractor Work', 'Walk-Through / Consultation',
+];
+
 // Order-insensitive key for a service combo, so "Sprinkler + Fire Alarm"
 // matches a past WO saved as "Fire Alarm + Sprinkler".
 function phComboKey(services) {
@@ -111,7 +127,12 @@ function phComputeStats(rows, ctx) {
   const isGroup = r => !!email && r.billingEmail === email;
   const sortDesc = arr => [...arr].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const agg = arr => arr.length
-    ? { n: arr.length, avg: phAvg(arr.map(r => r.total)), median: phMedian(arr.map(r => r.total)) }
+    ? {
+        n: arr.length,
+        avg: phAvg(arr.map(r => r.total)),
+        median: phMedian(arr.map(r => r.total)),
+        props: new Set(arr.map(r => r.acctNum || (r.property || '').toLowerCase())).size,
+      }
     : null;
 
   const perService = services.map(name => {
@@ -148,7 +169,7 @@ function phComputeStats(rows, ctx) {
 // Dual-environment export: CommonJS for Node tests, global for the browser.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    PH_RATEABLE_PREFIXES, phIsRateable, phComboKey, phParseAmount,
+    PH_RATEABLE_PREFIXES, PH_ALL_SERVICES, phIsRateable, phComboKey, phParseAmount,
     phAvg, phMedian, phTruncateBytes, phParseRowValues, phComputeStats,
   };
 }
@@ -292,7 +313,10 @@ async function refreshPricePanel() {
     s.property.length || s.group || s.all || s.groupRecent.length);
   if (!hasAnything) return hide();
 
-  panel.innerHTML = phPanelHTML(stats);
+  panel.innerHTML = phPanelHTML(stats, {
+    mgmtCo:       document.getElementById('client-company')?.value || '',
+    billingEmail: ctx.billingEmail,
+  });
   panel.style.display = 'block';
 }
 
@@ -332,16 +356,29 @@ function phEntryHTML(e) {
          ` <span title="${phEsc(tip)}" style="cursor:help;color:#888;">${sym}</span>`;
 }
 
-function phAggHTML(a) {
+// Aggregate line, e.g. "avg $430 · median $425 (n=6 · 4 properties)".
+// `who` describes the population for the tooltip on the (n=…) part.
+function phAggHTML(a, who) {
   if (!a) return '<span style="color:#999;">no history</span>';
   let s = `avg <b>${phFmtMoney(a.avg)}</b>`;
   if (a.n >= 3 && Math.abs(a.median - a.avg) >= 1) s += ` · median ${phFmtMoney(a.median)}`;
-  return s + ` <span style="color:#888;">(n=${a.n})</span>`;
+  const tip = `Averaged from ${a.n} past work order${a.n === 1 ? '' : 's'} for this service ${who}` +
+    (a.props > 1 ? `, across ${a.props} different properties` : '') +
+    '. Only single-service work orders count — bundled and one-off jobs are excluded.';
+  const nLabel = `n=${a.n}` + (a.props > 1 ? ` · ${a.props} properties` : '');
+  return s + ` <span title="${phEsc(tip)}" style="cursor:help;color:#888;border-bottom:1px dotted #bbb;">(${nLabel})</span>`;
 }
 
-function phPanelHTML(stats) {
-  const row = (label, html) =>
-    `<div style="display:flex;gap:8px;padding:1px 0;"><span style="min-width:110px;color:#555;">${label}</span><span>${html}</span></div>`;
+function phPanelHTML(stats, info) {
+  const row = (label, html, labelTip) =>
+    `<div style="display:flex;gap:8px;padding:1px 0;"><span style="min-width:110px;color:#555;${labelTip ? 'cursor:help;' : ''}"${labelTip ? ` title="${phEsc(labelTip)}"` : ''}>${label}</span><span>${html}</span></div>`;
+
+  const mgmtCo = (info && info.mgmtCo) || '';
+  const email  = ((info && info.billingEmail) || '').trim().toLowerCase();
+  const groupTip = 'All properties that share this billing email' + (email ? ': ' + email : '');
+  const groupWho = mgmtCo
+    ? `<span style="color:#666;" title="${phEsc(groupTip)}">${phEsc(mgmtCo)}</span> · `
+    : '';
 
   const blocks = stats.services.map(s => {
     let body;
@@ -354,8 +391,8 @@ function phPanelHTML(stats) {
     } else {
       body =
         row('This property', s.property.length ? s.property.map(phEntryHTML).join(' &nbsp;·&nbsp; ') : '<span style="color:#999;">no history here</span>') +
-        row('Billing group', phAggHTML(s.group)) +
-        row('All properties', phAggHTML(s.all));
+        row('Billing group', (s.group ? groupWho : '') + phAggHTML(s.group, 'in this billing group'), groupTip) +
+        row('All properties', phAggHTML(s.all, 'across all our properties'), 'Every property in the price history, all clients');
     }
     return `<div style="margin:6px 0 2px;"><div style="font-weight:700;color:#2e6da4;">${phEsc(s.name)}</div>${body}</div>`;
   }).join('');
@@ -369,7 +406,7 @@ function phPanelHTML(stats) {
     : '';
 
   return `<div style="border:1px solid #c9d8e8;background:#f6f9fc;border-radius:6px;padding:8px 12px;margin:8px 0;font-size:9pt;">
-    <div style="font-weight:700;margin-bottom:2px;">💰 What we've charged before
+    <div style="font-weight:700;margin-bottom:2px;">💰 What we have charged in the past
       <span style="font-weight:400;color:#888;font-size:8pt;">— advisory, from past work orders${'&nbsp;'}(✓ QB-confirmed · ○ work order · ~ estimated)</span>
     </div>
     ${blocks}${comboHtml}
