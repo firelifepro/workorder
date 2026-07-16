@@ -34,8 +34,10 @@ const FLIPS_NAV_SECTIONS = [
     ['inspection.html',          '🔥 Fire Inspection'],
     ['hospital-inspection.html', '🏥 Hospital Inspection'],
     ['schedule.html',            '📅 Inspection Schedule'],
-    ['estimate.html',            '🎯 Estimate'],
-    ['estimate-tracker.html',    '📈 Estimate Tracker'],
+    // Single entry for both estimate pages — the tracker is the hub (list
+    // view); the builder (estimate.html) is reached via its buttons and
+    // highlights this entry too (alias).
+    ['estimate-tracker.html',    '🎯 Estimates', ['estimate.html']],
     ['inspection-audit.html',    '📋 Inspection Reports Audit'],
   ]},
   { label: 'Office', items: [
@@ -86,8 +88,8 @@ async function flipsIsAdmin() {
     const menu = document.getElementById('nav-menu');
     if (!menu) return;
     const here = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    const link = ([href, label]) =>
-      `<a href="${href}"${href === here ? ' class="active"' : ''}>${label}</a>`;
+    const link = ([href, label, aliases]) =>
+      `<a href="${href}"${href === here || (aliases || []).includes(here) ? ' class="active"' : ''}>${label}</a>`;
 
     menu.innerHTML = FLIPS_NAV_SECTIONS.map((sec, i) =>
       (i > 0 ? '<div class="nav-divider"></div>' : '') +
