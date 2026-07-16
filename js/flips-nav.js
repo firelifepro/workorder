@@ -28,21 +28,20 @@ const FLIPS_NAV_ICON_QB     = '<img src="img/quickbooks.svg" style="width:14px;h
 
 const FLIPS_NAV_SECTIONS = [
   { label: 'Field Technicians', items: [
+    ['worklog.html',             FLIPS_NAV_ICON_SHEETS + ' Work Log (the Drive)'],
     ['index.html',               '⏰ Work Order'],
     ['workorder-tracker.html',   '🗄️ Work Order Tracker'],
-    ['worklog.html',             FLIPS_NAV_ICON_SHEETS + ' Work Log (the Drive)'],
-    ['schedule.html',            '📅 Inspection Schedule'],
     ['inspection.html',          '🔥 Fire Inspection'],
     ['hospital-inspection.html', '🏥 Hospital Inspection'],
+    ['schedule.html',            '📅 Inspection Schedule'],
     ['estimate.html',            '🎯 Estimate'],
     ['estimate-tracker.html',    '📈 Estimate Tracker'],
+    ['inspection-audit.html',    '📋 Inspection Reports Audit'],
   ]},
   { label: 'Office', items: [
     ['clients.html',             '👥 Client Management'],
     ['create-invoices.html',     FLIPS_NAV_ICON_QB + ' Create QB Invoices'],
     ['open-invoices.html',       '💰 Record Payments'],
-    ['inspection-audit.html',    '📋 Inspection Reports Audit'],
-    ['triage.html',              '📬 Inbox Triage'],
   ]},
 ];
 
@@ -51,7 +50,7 @@ const FLIPS_NAV_SECTIONS = [
 const FLIPS_ADMIN_TOOL_PAGES = [
   'admin.html', 'price-history-backfill.html', 'legacy-cleanup.html',
   'import-reports.html', 'import-inspectpoint.html', 'sub-invoices.html',
-  'real-estate-agent.html',
+  'triage.html', 'real-estate-agent.html',
 ];
 
 async function flipsIsAdmin() {
