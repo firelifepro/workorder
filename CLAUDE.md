@@ -27,7 +27,7 @@ npm run check   # lint + test together
 | File | Purpose |
 |---|---|
 | `index.html` | Work order creation — the main form |
-| `schedule.html` | Inspection schedule tracker (next-due dates, overdue alerts) |
+| `schedule.html` | Inspection schedule tracker (next-due dates, overdue alerts). Also shows an advisory **Last Billed** column per row (loads `js/flips-price-history.js`; `TYPE_TO_SVC` maps schedule type+freq back to the canonical service value — inverse of `SVC_MAP` in index.html, keep in sync). Hidden in print. |
 | `estimate.html` | Estimate builder — PDF + Drive + Gmail draft |
 | `estimate-tracker.html` | List/manage estimates, convert to work order |
 | `clients.html` | Client list + QuickBooks reconciliation |

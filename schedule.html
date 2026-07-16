@@ -173,6 +173,9 @@ tbody tr:hover .edit-last-btn { color: #2e6da4; }
 .col-del { width:36px; text-align:center; }
 thead th.col-del { cursor:default; }
 thead th.col-del:hover { background:#1a1a2e; }
+.col-billed { white-space:nowrap; font-size:0.78rem; }
+thead th.col-billed { cursor:default; }
+thead th.col-billed:hover { background:#1a1a2e; }
 
 /* ── Empty / loading states ── */
 #loading, #empty-state { text-align: center; padding: 60px 20px; color: #888; }
@@ -202,6 +205,8 @@ thead th.col-del:hover { background:#1a1a2e; }
   thead th { background: #1a1a2e !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 6px 8px; font-size: 7.5pt; }
   tbody td { padding: 5px 8px; }
   .col-del, thead th.col-del { display: none !important; }
+  /* Keep internal pricing off printed schedules (printouts may be shared) */
+  .col-billed, thead th.col-billed { display: none !important; }
   .edit-last-btn { display: none !important; }
   .src-badge { display: none !important; }
   .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -324,6 +329,7 @@ thead th.col-del:hover { background:#1a1a2e; }
           <th onclick="sortBy('type')" data-col="type">Inspection Type <span class="sort-arrow">↕</span></th>
           <th onclick="sortBy('freq')" data-col="freq">Frequency <span class="sort-arrow">↕</span></th>
           <th onclick="sortBy('last')" data-col="last">Last Done <span class="sort-arrow">↕</span></th>
+          <th class="col-billed" title="Most recent amount billed for this inspection at this property (from the Price History tab)">Last Billed</th>
           <th onclick="sortBy('next')" data-col="next">Next Due <span class="sort-arrow">↕</span></th>
           <th onclick="sortBy('days')" data-col="days" class="sorted">Days <span class="sort-arrow">↑</span></th>
           <th onclick="sortBy('status')" data-col="status">Status <span class="sort-arrow">↕</span></th>
@@ -396,6 +402,7 @@ thead th.col-del:hover { background:#1a1a2e; }
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="js/flips-google-fetch.js"></script>
 <script src="js/flips-history.js"></script>
+<script src="js/flips-price-history.js"></script>
 <script>
 const SHEET_ID          = '1_Koq_v0RjsFbQ_c2qZh-eQpGQT2-0IkOal-I4CjSJrI';
 const HISTORY_TAB_NAME  = 'Inspection History';
@@ -452,11 +459,81 @@ function initGoogle() {
 // googleFetch / refreshAccessToken live in js/flips-google-fetch.js
 
 
+// ── Last-billed pricing ────────────────────────────────────
+// Advisory column fed by the Price History tab in the WR sheet (written by
+// index.html / price-history-backfill.html, read via js/flips-price-history.js).
+// Shows the most recent single-service charge for each row's inspection at
+// that property. QB-reconciled amounts supersede work-order totals.
+const WR_SHEET_ID = '1-DBErY57b1Avl6UHvuaZeYKkWlyEOLhrNBz6Cozvaik';
+let priceIdx = null;   // 'acct:<n>|<svc>' / 'name:<prop>|<svc>' → latest entry
+let _pricingStarted = false;
+
+// Schedule inspection type + frequency → canonical service checkbox value
+// (the Price History service key). Inverse of SVC_MAP in index.html's
+// updateInspectionSchedule — keep the two in sync.
+const TYPE_TO_SVC = {
+  'Fire Alarm Inspection':           f => `Fire Alarm – ${f}`,
+  'Sprinkler Inspection':            f => `Sprinkler – ${f}`,
+  'Extinguisher Inspection':         f => `Extinguisher – ${f}`,
+  'Emergency Exit Light Inspection': f => `Exit Light – ${f}`,
+  'Hood Inspection':                 f => `Hood Inspection – ${f}`,
+  'Fire Pump Inspection':            f => `Fire Pump Inspection – ${f}`,
+  'Jockey Pump Inspection':          f => `Jockey Pump Inspection – ${f}`,
+  '5-Year Internal Pipe Inspection': () => '5-Year Internal Pipe Inspection',
+  '5-Year FDC Hydrostatic Test':     () => '5-Year FDC Hydrostatic Test',
+  '3-Year Dry Pipe Test':            () => '3-Year Dry Pipe Test',
+  'Annual Backflow Prevention Test': () => 'Annual Backflow Prevention Test',
+};
+
+async function loadPricing() {
+  if (_pricingStarted) return;
+  _pricingStarted = true;
+  try {
+    const rows = await loadPriceHistoryRows();
+    priceIdx = new Map();
+    for (const r of rows) {
+      if (r.services.length !== 1) continue;   // bundled totals aren't one service's price
+      const total = r.qbAmount > 0 ? r.qbAmount : r.total;
+      if (!(total > 0)) continue;
+      const entry = { total, date: r.date, lineNum: r.lineNum, source: r.source, svc: r.services[0] };
+      const keys = [];
+      if (r.acctNum)  keys.push('acct:' + r.acctNum + '|' + r.services[0]);
+      if (r.property) keys.push('name:' + r.property.toLowerCase() + '|' + r.services[0]);
+      for (const k of keys) {
+        const prev = priceIdx.get(k);
+        if (!prev || (r.date || '') > (prev.date || '')) priceIdx.set(k, entry);
+      }
+    }
+    if (allRows.length) renderTable();
+  } catch(e) {
+    priceIdx = new Map();   // fail quiet — column just shows —
+    console.warn('[Schedule] pricing load:', e.message);
+  }
+}
+
+function lastBilledCell(r) {
+  const dash = '<td class="col-billed" style="color:#bbb;">—</td>';
+  if (!priceIdx) return '<td class="col-billed" style="color:#ccc;">…</td>';
+  const toSvc = TYPE_TO_SVC[r.type];
+  if (!toSvc) return dash;
+  const svc = toSvc(r.freq || 'Annual');
+  const e = (r.acct && priceIdx.get('acct:' + r.acct + '|' + svc))
+         || priceIdx.get('name:' + (r.property || '').toLowerCase() + '|' + svc);
+  if (!e) return dash;
+  const marks = { 'qb-reconciled': ['✓', 'QB-confirmed'], 'backfill': ['~', 'estimated — parsed from an older work order'], 'live': ['○', 'from the saved work order (not yet invoiced)'] };
+  const [sym, srcTip] = marks[e.source] || marks.live;
+  const tip = `Last billed for ${svc} — WO #${e.lineNum} (${srcTip})`;
+  return `<td class="col-billed">` +
+    `<a href="worklog.html?row=${encodeURIComponent(e.lineNum)}" target="_blank" title="${escHtml(tip)}" style="color:#1b7a4b;text-decoration:none;font-weight:600;">${phFmtMoney(e.total)}</a>` +
+    ` <span style="color:#999;font-size:0.72rem;" title="${escHtml(tip)}">${phFmtMonth(e.date)} ${sym}</span></td>`;
+}
+
 // ── Load schedule ──────────────────────────────────────────
 // Reads the append-only Inspection History tab. Groups by property + type
 // and keeps only the most recent completion per combination. Next Due is
 // computed in JS from that date + the frequency column.
 async function loadSchedule(forceRefresh = false) {
+  loadPricing();   // fire-and-forget; re-renders when the price index is ready
   const CACHE_KEY = 'flips_schedule_cache';
   const CACHE_TTL = 5 * 60 * 1000;
   if (!forceRefresh) {
@@ -838,7 +915,7 @@ function renderRows(rows) {
   document.getElementById('filter-count').textContent = `Showing ${s.length} of ${allRows.length}`;
   const tbody = document.getElementById('sched-body');
   if (s.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#888;">No records match your filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:#888;">No records match your filters.</td></tr>';
     return;
   }
   const trash = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
@@ -860,6 +937,7 @@ function renderRows(rows) {
       <td class="col-type">${escHtml(r.type)}</td>
       <td class="col-freq">${escHtml(r.freq)}</td>
       ${buildLastDoneCell(r)}
+      ${lastBilledCell(r)}
       <td class="col-next">${escHtml(r.next)}</td>
       <td class="col-days">${daysPill}</td>
       <td class="col-status">${badge}</td>
