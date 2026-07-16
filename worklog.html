@@ -1091,7 +1091,15 @@ async function saveEntry() {
 
     toast(row ? '✓ Row ' + targetRowNum + ' updated' : '✓ Entry added');
     closeModal();
-    if (row) { renderTable(); } else { await loadWorkLog(); }
+    if (row) {
+      renderTable();
+    } else {
+      await loadWorkLog();
+      if (targetRowNum) {
+        const el = document.getElementById('wlrow-' + targetRowNum);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
   } catch(e) {
     toast('⚠ Save failed: ' + e.message);
     console.error('saveEntry:', e);
