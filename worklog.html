@@ -417,7 +417,7 @@
       <div class="form-row cols-2">
         <div class="form-group">
           <label>Invoiced</label>
-          <input type="text" id="f-invoiced" placeholder="e.g. 9/23/25 or Inv. 1001">
+          <textarea id="f-invoiced" rows="3" style="min-height:52px;" placeholder="e.g. 9/23/25 or Inv. 1001"></textarea>
         </div>
         <div class="form-group">
           <label>Paid</label>
@@ -817,6 +817,20 @@ function esc(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// create-invoices.html stamps column H as "INV #1307\n7/14/26\n$520.00". Rows that
+// were re-saved through this page's edit modal lost those newlines (a single-line
+// text input strips \n), leaving "INV #13077/14/26$520.00". Re-split those so both
+// display and the open-invoices INV-number match work again.
+function invRepair(s) {
+  s = s || '';
+  const m = s.match(/^(INV\s*#\d+)\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(\$[\d,]+(?:\.\d{2})?)?\s*$/i);
+  if (!m) return s;
+  return m[1] + '\n' + m[2] + (m[3] ? '\n' + m[3] : '');
+}
+function invCell(s) {
+  return esc(invRepair(s)).replace(/\n/g, '<br>');
+}
+
 function renderTable() {
   const propFilter = document.getElementById('prop-select').value;
   _updatePropertyBadge(propFilter);
@@ -865,7 +879,7 @@ function renderTable() {
       <td class="td-note">${workCell(r.notes, 'n' + r._rowNum)}</td>
       <td class="td-comp col-compliance">${workCell(r.compliance, 'c' + r._rowNum)}</td>
       <td class="td-datecomp col-datecomp">${workCell(r.dateComp, 'd' + r._rowNum)}</td>
-      <td class="td-inv col-invoiced">${esc(r.invoiced)}</td>
+      <td class="td-inv col-invoiced">${invCell(r.invoiced)}</td>
       <td class="td-datecomp col-paid">${workCell(r.paid, 'p' + r._rowNum)}</td>
       <td class="td-by">${workCell(r.reqBy, 'rb' + r._rowNum)}</td>
       <td class="td-acts">
@@ -979,7 +993,7 @@ function openModal(rowNum) {
     document.getElementById('f-compliance').value = editingRow.compliance;
     document.getElementById('f-notes').value      = editingRow.notes;
     document.getElementById('f-date-comp').value  = editingRow.dateComp;
-    document.getElementById('f-invoiced').value   = editingRow.invoiced;
+    document.getElementById('f-invoiced').value   = invRepair(editingRow.invoiced);
     document.getElementById('f-paid').value       = editingRow.paid;
     document.getElementById('f-status').value     = editingRow._status || 'open';
 
