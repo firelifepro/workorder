@@ -246,6 +246,8 @@ code { background: #ffe082; padding: 1px 5px; border-radius: 3px; font-size: 0.7
 .att-item input[type=checkbox] { width: 13px; height: 13px; accent-color: #2e7d32; flex-shrink: 0; cursor: pointer; }
 .att-name { font-weight: 600; color: #1b5e20; }
 .att-date { font-size: 0.66rem; color: #999; white-space: nowrap; }
+.att-view { font-size: 0.66rem; color: #1565c0; text-decoration: none; white-space: nowrap; margin-left: 2px; }
+.att-view:hover { text-decoration: underline; }
 
 /* ── Empty / loading states ── */
 #list-placeholder {
@@ -720,9 +722,10 @@ function reportMatchesHtml(doc) {
   if (!ms.length) return '';
   const rows = ms.map(m => {
     const dt = m.dateMs ? `<span class="att-date">${new Date(m.dateMs).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}</span>` : '';
+    const view = m.link ? `<a class="att-view" href="${escHtml(m.link)}" target="_blank" rel="noopener" title="Open report in Drive" onclick="event.stopPropagation()">👁 View</a>` : '';
     return `<label class="att-item" onclick="event.stopPropagation()">
       <input type="checkbox" ${m.attach ? 'checked' : ''} onchange="event.stopPropagation();toggleAttach('${doc.id}','${m.id}',this.checked)">
-      📄 <span class="att-name">${escHtml(truncMid(m.title || m.name, 44))}</span>${dt}
+      📄 <span class="att-name">${escHtml(truncMid(m.title || m.name, 44))}</span>${dt}${view}
     </label>`;
   }).join('');
   return `<div class="doc-reports-lbl">📎 ${ms.length} matching report${ms.length > 1 ? 's' : ''} — check any to attach to the invoice</div>${rows}`;
